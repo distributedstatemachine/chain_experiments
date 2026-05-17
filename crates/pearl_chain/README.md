@@ -1,7 +1,7 @@
 # pearl_chain
 
 Rust prototype for the matrix-multiplication proof-of-useful-work chain described in
-[`pearl.pdf`](../../pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
+[`pearl.pdf`](../../docs/pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
 
 The implementation is self-contained and dependency-free:
 

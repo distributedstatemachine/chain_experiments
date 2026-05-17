@@ -7,7 +7,7 @@ variants.
 
 | Crate | Purpose |
 | --- | --- |
-| [pearl_chain](crates/pearl_chain/README.md) | Matrix-multiplication proof-of-useful-work chain prototype based on [`pearl.pdf`](pearl.pdf). |
+| [pearl_chain](crates/pearl_chain/README.md) | Matrix-multiplication proof-of-useful-work chain prototype based on [`pearl.pdf`](docs/pearl.pdf). |
 
 New chain designs should live under `crates/<name>/` and include their own `README.md`.
 
@@ -27,10 +27,10 @@ cargo run -p pearl_chain --release --example mine
 
 ## Research Notes
 
-- [pearl.pdf](pearl.pdf)
-- [Ambient litepaper](Ambient_Litepaper_V1.pdf)
+- [pearl.pdf](docs/pearl.pdf)
+- [Ambient litepaper](docs/Ambient_Litepaper_V1.pdf)
 - [Paper critique](docs/pearl_critique.md)
-- [Pearl vs Ambient protocol review](pearl_vs_ambient_protocol_review.md)
+- [Pearl vs Ambient protocol review](docs/pearl_vs_ambient_protocol_review.md)
 - [AI reproducibility schemes](docs/ai_reproducibility_schemes.md)
 - [Attack matrix](docs/attack_matrix.md)
 - [GF(2) bit-packing break](docs/gf2_bitpack_break.md)

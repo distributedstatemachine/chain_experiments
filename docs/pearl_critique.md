@@ -1,8 +1,8 @@
-# Critique of `pearl.pdf`
+# Critique of [`pearl.pdf`](pearl.pdf)
 
 ## What The Paper Proposes
 
-`pearl.pdf` argues for a proof-of-useful-work blockchain whose mining work is matrix multiplication instead
+[`pearl.pdf`](pearl.pdf) argues for a proof-of-useful-work blockchain whose mining work is matrix multiplication instead
 of hash iteration. The useful task is `C = A * B`; the proof task is based on the transcript of a noisy tiled
 matrix multiplication.
 
