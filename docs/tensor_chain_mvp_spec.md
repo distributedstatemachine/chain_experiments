@@ -1,8 +1,28 @@
-# TensorChain Final MVP Specification
+# TensorChain MVP Specification (Reviewed Draft)
 
-## 0. One-Line Definition
+## 0. Review Status
 
-TensorChain is a blockchain testnet where **verified tensor computation** is the native block-production primitive. The MVP begins with deterministic tensor operations and introduces a minimal forward/backward training-step primitive so the network proves not only raw compute, but verifiable learning state transitions.
+This document is a reviewed design draft, not a production security proof.
+
+The MVP is viable as a research testnet if it is framed as **probabilistically verified tensor work under a
+bounded adversarial model**. It is not yet a complete base-layer security design. The original version
+overstated several points:
+
+- row-sampled Freivalds checks do not, by themselves, give high-probability detection for sparse row
+  corruptions
+- sampled optimizer checks can miss poisoned model-state entries
+- block-hash-derived validator randomness can be grindable if the proposer influences the block hash
+- TensorWork-weighted proposer selection is circular if current receipts influence current proposer choice
+- serving sampled chunks to validators is availability for verification, not durable data availability
+- synthetic random tensor jobs prove verifiable compute, not externally useful work
+
+The spec below keeps the architecture but tightens the MVP around these constraints.
+
+## 0.1 One-Line Definition
+
+TensorChain is a blockchain testnet where **probabilistically verified tensor computation** is the native
+block-production primitive. The MVP begins with deterministic tensor operations and introduces a minimal
+forward/backward training-step primitive so the network can test verifiable learning state transitions.
 
 ---
 
@@ -10,7 +30,8 @@ TensorChain is a blockchain testnet where **verified tensor computation** is the
 
 Traditional Proof-of-Work proves that energy was spent on hash search.
 
-TensorChain proves that tensor computation was performed correctly.
+TensorChain should prove, within explicit soundness parameters, that tensor computation was performed
+according to canonical deterministic semantics.
 
 The long-term vision is a blockchain where the core commodity is not hashpower, gas, or generic computation, but:
 
@@ -18,17 +39,21 @@ The long-term vision is a blockchain where the core commodity is not hashpower, 
 verified tensor state transitions
 ```
 
-The MVP should prove the smallest useful version of this idea:
+The MVP should test the smallest verifiable version of this idea:
 
 ```text
-A decentralized network can generate tensor jobs, have miners execute them, have validators cheaply verify them, and use valid tensor work to produce blocks and distribute rewards.
+A decentralized network can generate deterministic tensor jobs, have miners execute them, have validators
+verify them with cheaper-than-recompute checks, and use settled valid tensor work to assign block-production
+eligibility and rewards.
 ```
 
-The MVP should not attempt full decentralized LLM training immediately. It should build the verification and incentive rails that make that possible later.
+The MVP should not attempt full decentralized LLM training immediately. It should build the verification and
+incentive rails that make that possible later. It should also avoid claiming production economic security
+until slashing, unbiasable randomness, and data availability are implemented.
 
 ---
 
-## 2. Final MVP Scope
+## 2. Reviewed MVP Scope
 
 The final MVP has two execution primitives:
 
@@ -136,7 +161,7 @@ Target asymmetry:
 
 ```text
 miner cost:     O(n^3) or large tensor execution
-validator cost: O(n^2), sampled, or probabilistic
+validator cost: O(n^2) full-output checks, plus optional sampled audits
 ```
 
 Freivalds-style verification is the first canonical verifier for matrix-heavy workloads.
@@ -163,6 +188,26 @@ model evaluation
 architecture search
 scientific simulation
 ```
+
+---
+
+### 4.5 Security Gates Before Public Testnet
+
+The MVP must pass these gates before it is treated as a public adversarial testnet:
+
+```text
+explicit threat model for miners, validators, proposers, and data servers
+unbiasable validation randomness from a finalized beacon or commit-reveal protocol
+settled-epoch TensorWork only for proposer eligibility
+full-output Freivalds for block-eligible matmul receipts, or a documented row-sampling soundness bound
+random-linear checks for full elementwise training relations
+bounded verifier bandwidth per job shape
+data retention through settlement and challenge windows
+adversarial simulations for sparse corruptions, colluding validators, and data withholding
+```
+
+Until these gates pass, v0 rewards should be capped and the network should be described as a research
+testnet, not as an economically secure proof-of-work chain.
 
 ---
 
@@ -224,10 +269,10 @@ collect receipts
 collect validator attestations
 compute reward updates
 propose block
-include valid TensorWork score
+include settled TensorWork score
 ```
 
-In the MVP, proposers are selected from miners according to verified TensorWork score.
+In the MVP, proposers are selected from miners according to settled prior-epoch TensorWork score.
 
 ---
 
@@ -477,7 +522,7 @@ This prevents ambiguity in execution receipts.
 
 ### 9.1 Purpose
 
-TensorOp jobs prove raw tensor compute.
+TensorOp jobs verify raw tensor compute.
 
 The canonical MVP job is matrix multiplication:
 
@@ -506,7 +551,7 @@ struct MatmulJob {
 Inputs are generated from public randomness:
 
 ```text
-seed = H(previous_block_hash || epoch || job_id)
+seed = H(finalized_epoch_beacon || epoch || job_id)
 A = random_tensor(seed_a, [m, k])
 B = random_tensor(seed_b, [k, n])
 ```
@@ -551,7 +596,7 @@ For synthetic jobs, `input_roots` can be derived from seeds and may not need ful
 
 ### 10.1 Purpose
 
-The LinearTrainingStep primitive proves the full shape of learning:
+The LinearTrainingStep primitive tests the full shape of learning:
 
 ```text
 forward pass
@@ -562,7 +607,7 @@ optimizer update
 
 without requiring Transformer complexity.
 
-This is the smallest useful training primitive.
+This is the smallest learning-shaped training primitive.
 
 ---
 
@@ -595,6 +640,16 @@ Backward:
 dY = Y - T
 grad_W = X^T dY
 ```
+
+Consensus convention:
+
+```text
+dY = Y - T is the MVP gradient signal.
+```
+
+This is equivalent to using a half-squared-error sum, or to absorbing the constant factor from mean-squared
+error into `lr`. Do not claim exact mean-MSE gradient semantics unless the protocol defines the scale factor,
+division rule, and rounding rule.
 
 Optimizer:
 
@@ -670,13 +725,13 @@ struct LinearTrainingStepReceipt {
 
 ### 10.5 Why Include This in the MVP?
 
-TensorOp proves:
+TensorOp demonstrates:
 
 ```text
 miners can do verifiable tensor compute
 ```
 
-LinearTrainingStep proves:
+LinearTrainingStep demonstrates:
 
 ```text
 miners can do verifiable learning state transitions
@@ -723,6 +778,9 @@ If `C` is incorrect, one random check catches the error with high probability.
 
 Repeated checks reduce false acceptance probability exponentially.
 
+This statement is true for a full Freivalds check over the whole output matrix. It is not true for a
+row-sampled variant unless the sampling probability is included in the soundness bound.
+
 ---
 
 ### 12.2 Full Freivalds Check
@@ -743,7 +801,9 @@ full matmul verification: O(n^3)
 Freivalds verification:   O(n^2)
 ```
 
-This gives the desired asymmetry.
+This gives the desired asymmetry while still touching the full committed output. A validator can stream `C`
+from chunks and compute `C r` without storing the full tensor. For MVP block eligibility, this is the default
+verification path.
 
 ---
 
@@ -770,7 +830,32 @@ Validator procedure:
 6. check dot(C_i, r) == dot(A_i, x)
 ```
 
-This reduces validator bandwidth.
+This reduces validator bandwidth, but it weakens soundness against sparse corruptions.
+
+If an adversary corrupts `t` rows out of `m` and validators sample `s` distinct rows, row sampling catches
+the corruption with probability:
+
+```text
+P_detect = 1 - C(m - t, s) / C(m, s)
+```
+
+For a one-row corruption this is only:
+
+```text
+P_detect = s / m
+```
+
+Therefore row-sampled Freivalds must not be the only validity check for block-eligible receipts unless the
+protocol publishes a target false-accept probability and chooses `s` accordingly. Row sampling is acceptable
+as:
+
+```text
+extra audit coverage
+bandwidth-reduced monitoring
+large-job telemetry before fraud proofs/ZK are available
+```
+
+It is not a substitute for full-output verification in the first MVP.
 
 ---
 
@@ -780,25 +865,42 @@ Initial suggested parameters:
 
 ```text
 validators_per_job: 8
-freivalds_rounds_per_validator: 2
-rows_checked_per_round: 16
-minimum_valid_attestations: 5
+full_freivalds_rounds_per_validator: 1
+audit_rows_per_validator: 16
+minimum_valid_attestations: max(5 validators, 2/3 assigned validator stake)
 ```
 
 This yields:
 
 ```text
-8 validators × 2 rounds × 16 rows = 256 row checks per job
+at least 5 full-output Freivalds attestations for block eligibility
+up to 128 additional sampled-row audit checks per job
 ```
+
+For small MVP jobs, full-output Freivalds should be mandatory. For larger jobs, row-sampled-only acceptance
+requires a separate parameter study and must state the expected false-accept probability for sparse and dense
+corruptions.
 
 ---
 
 ### 12.5 Randomness
 
-Validator randomness is derived from unrevealed or recent chain randomness:
+Validator randomness must be unbiasable by the miner, proposer, and assigned validators.
+
+Do not derive validation randomness from a block hash that the current proposer can grind after seeing
+receipt roots. Use a finalized beacon or commit-reveal sequence:
 
 ```text
-r_seed = H(block_hash || job_id || validator_address || round_id)
+1. miner commits output root
+2. receipt root is finalized or locked
+3. validation beacon is revealed from prior validator commitments or prior finalized randomness
+4. validators derive vectors and sampled rows
+```
+
+Recommended derivation:
+
+```text
+r_seed = H(finalized_validation_beacon || receipt_root || job_id || validator_address || round_id)
 row_seed = H(r_seed || "rows")
 ```
 
@@ -811,10 +913,11 @@ Validators must not reveal sampled rows before the miner has committed the outpu
 For `C = A @ B`, validator checks:
 
 ```text
-A and B are generated from correct seeds
+A and B are generated from correct seeds, or input tensor openings are available
 C commitment is available
-sampled C rows open correctly under Merkle root
-Freivalds row checks pass
+input availability is sufficient to compute B r and A(B r)
+full-output Freivalds check passes for block-eligible receipts
+sampled C rows open correctly under Merkle root for additional audits
 receipt signature is valid
 receipt deadline is valid
 ```
@@ -823,7 +926,9 @@ Acceptance rule:
 
 ```text
 A TensorOp receipt is valid if:
+  - required input tensors are generated or available
   - output tensor data is available
+  - required full-output Freivalds attestations pass
   - enough validators attest valid
   - enough redundant miners agree on output root, if redundancy is enabled
 ```
@@ -833,6 +938,10 @@ A TensorOp receipt is valid if:
 ## 14. Verification of LinearTrainingStep Jobs
 
 Validators verify the learning transition in pieces.
+
+MVP training verification should use one algebraic domain for all consensus checks. Prefer a prime field.
+If fixed-point values are used, represent scaled integers inside the field and define all scale factors as
+public constants. Avoid saturating arithmetic and hardware rounding in consensus-critical identities.
 
 ### 14.1 Forward Check
 
@@ -846,11 +955,16 @@ using Freivalds-style verification.
 
 ### 14.2 Error Tensor Check
 
-Check sampled entries:
+Do not check only sampled entries. A miner could corrupt unsampled `dY` entries and still pass while poisoning
+the backward pass or future state.
+
+Use a random-linear check over the flattened tensor:
 
 ```text
-dY = Y - T
+<q, dY> = <q, Y> - <q, T>
 ```
+
+where `q` is derived from the validation randomness after the miner commits `dY_root`.
 
 ### 14.3 Backward Check
 
@@ -864,11 +978,17 @@ using Freivalds-style verification.
 
 ### 14.4 Optimizer Check
 
-Check sampled entries:
+Do not check only sampled entries. `W_{t+1}` is consensus state, so sparse corruptions are dangerous even if
+most entries are correct.
+
+Use a random-linear check over the flattened tensors:
 
 ```text
-W_{t+1}[i] = W_t[i] - lr * grad_W[i]
+<q, W_{t+1}> = <q, W_t> - lr * <q, grad_W>
 ```
+
+For small MVP shapes, a validator may also fully stream the tensors and check every update entry. For larger
+shapes, the random-linear check gives algebraic coverage analogous to Freivalds for elementwise relations.
 
 ### 14.5 Loss Check
 
@@ -884,8 +1004,9 @@ But block validity should rely on the structural checks:
 
 ```text
 forward correctness
+full-tensor error relation
 backward correctness
-optimizer correctness
+full-tensor optimizer relation
 data availability
 ```
 
@@ -906,6 +1027,18 @@ agreement_quorum: 3
 
 A result root becomes a candidate if at least three independent miners produce the same root.
 
+This is a robustness tool, not a proof of correctness. It only helps if the miners are actually independent.
+With weak identity controls, a single operator can register multiple miners and satisfy the quorum.
+
+MVP requirements:
+
+```text
+replicated miners must be sampled from stake- or identity-separated operators
+agreement does not replace validator verification
+disagreement triggers delayed settlement and additional full Freivalds checks
+agreement quorum must be excluded from formal soundness unless Sybil resistance is specified
+```
+
 This mitigates:
 
 ```text
@@ -923,6 +1056,9 @@ Over time, redundancy can be reduced as fraud proofs/ZK mature.
 
 A miner’s receipt is invalid unless validators can retrieve requested tensor chunks before the verification deadline.
 
+This is verification availability, not durable network data availability. A miner serving sampled rows during
+verification can still disappear after settlement. The MVP must define the retention window explicitly.
+
 Data availability check:
 
 ```text
@@ -938,6 +1074,15 @@ receipt invalid
 no reward
 reputation penalty
 future versions: slash
+```
+
+MVP retention rule:
+
+```text
+output tensors and required traces must remain retrievable until reward_settlement_delay + challenge_window
+validators attest only to chunks they actually retrieved
+receipts cannot be finalized if required full Freivalds streams cannot be served
+large tensors should use external content-addressed storage or replication before public testnet rewards
 ```
 
 ---
@@ -1007,24 +1152,31 @@ enum VerificationResult {
 }
 ```
 
-`checks_root` commits to the validator’s sampled checks without necessarily revealing all check details immediately.
+`checks_root` commits to the validator’s verification checks without necessarily revealing all check details
+immediately.
+
+For auditability, validators should reveal check details after the receipt settlement delay or during a
+challenge. Hidden check details are useful against adaptive miners, but permanent secrecy makes validator
+misconduct hard to prove.
 
 ---
 
 ## 19. Job Lifecycle
 
 ```text
-1. Chain generates job from epoch randomness.
+1. Chain generates job from finalized epoch randomness.
 2. Miners observe job.
 3. Miners execute TensorVM program.
 4. Miners commit output roots.
-5. Miners submit receipts.
-6. Validators derive random checks.
-7. Validators request tensor openings.
-8. Validators perform Freivalds/sampled checks.
-9. Validators submit attestations.
-10. Proposer includes valid receipts in block.
-11. Rewards are calculated and settled after delay.
+5. Miners submit receipts before the receipt deadline.
+6. Receipt root is locked for the validation window.
+7. Validation randomness is revealed from an unbiasable beacon.
+8. Validators derive random checks.
+9. Validators request tensor openings.
+10. Validators perform full-output Freivalds checks and sampled audits.
+11. Validators submit attestations.
+12. Proposer includes valid attestations and settled receipts in a block.
+13. Rewards and future proposer eligibility are calculated after delay.
 ```
 
 ---
@@ -1036,14 +1188,29 @@ enum VerificationResult {
 The MVP uses:
 
 ```text
-TensorWork-weighted proposer selection
+settled TensorWork-weighted proposer selection
 +
 validator finality
 ```
 
-Miners earn proposer eligibility by producing valid tensor work.
+Miners earn future proposer eligibility by producing valid tensor work.
 
-Validators finalize blocks through stake-weighted voting.
+Validators finalize blocks through stake-weighted voting. Validator stake is the immediate consensus security
+source in v0; TensorWork is a proposer-eligibility and reward signal until slashing and stronger fraud proofs
+exist.
+
+The chain must also have a liveness fallback. Genesis and zero-work epochs cannot rely on prior TensorWork.
+
+Fallback rule:
+
+```text
+if total_valid_tensor_work(epoch E) == 0:
+  proposer selection for epoch E+1 falls back to stake-weighted validator/proposer rotation
+  no miner TensorWork rewards are paid for epoch E
+  job generation continues with smaller fallback jobs
+```
+
+This keeps the chain live while still making TensorWork the normal proposer-eligibility path.
 
 ---
 
@@ -1063,7 +1230,7 @@ Each epoch has:
 challenge generation
 receipt submission
 verification
-proposer selection
+next-epoch proposer selection
 reward settlement
 ```
 
@@ -1074,16 +1241,20 @@ reward settlement
 Each valid receipt contributes TensorWork Units.
 
 ```text
-score_miner = sum(valid_receipt.tensor_work_units)
+score_miner(epoch E) = sum(settled_valid_receipt.tensor_work_units from epoch E)
 ```
 
 Block proposer probability:
 
 ```text
-P(miner) = score_miner / total_valid_tensor_work
+P(miner for epoch E+1) = score_miner(epoch E) / total_valid_tensor_work(epoch E)
 ```
 
 Use weighted randomness rather than deterministic top-miner selection to reduce monopolization.
+
+Do not let receipts from the current block or current epoch affect the current proposer selection. That would
+let proposers bias inclusion, validation timing, and their own future eligibility within the same decision
+cycle.
 
 ---
 
@@ -1160,6 +1331,15 @@ struct ModelState {
 ```
 
 For MVP LinearTrainingStep, optimizer state can be empty because SGD does not require momentum.
+
+Model-state transition rule:
+
+```text
+only one weight_root_after can be accepted for a given (model_id, step, weight_root_before)
+duplicate receipts with the same valid weight_root_after may be rewarded as redundant execution
+conflicting valid-looking roots trigger delayed settlement and expanded verification
+receipts against stale weight_root_before are invalid for state transition, but may be kept as non-state audits
+```
 
 Deferred:
 
@@ -1266,6 +1446,14 @@ Recommendation:
 Do not hard-slash in v0 until verification code is battle-tested.
 ```
 
+Consequence:
+
+```text
+v0 has weak economic security.
+Invalid work is deterred mainly by non-payment, reputation loss, redundancy, and audits.
+Public rewards should be capped until slashing and appeal/challenge flows are implemented.
+```
+
 ---
 
 ## 27. TensorWork Units
@@ -1306,13 +1494,14 @@ reward_settlement_delay: 1 epoch
 replication_factor: 5
 agreement_quorum: 3
 validators_per_job: 8
-freivalds_rounds_per_validator: 2
-rows_checked_per_round: 16
-minimum_valid_attestations: 5
+full_freivalds_rounds_per_validator: 1
+audit_rows_per_validator: 16
+minimum_valid_attestations: max(5 validators, 2/3 assigned validator stake)
 miner_min_stake: 100 tokens
 validator_min_stake: 10,000 tokens
 chunk_size: 1 MiB
 tensor_retention_epochs: 2
+challenge_window: 1 epoch
 ```
 
 Initial TensorOp shapes:
@@ -1467,6 +1656,32 @@ invalid-output test harness
 
 ## 33. Development Milestones
 
+### Milestone -1: Threat Model and Parameter Study
+
+Deliverables:
+
+```text
+miner/validator/proposer threat model
+row-sampling detection probability simulator
+Freivalds false-accept test harness
+validator randomness grindability analysis
+data withholding simulation
+TensorWork concentration simulation
+liveness fallback simulation for zero-work epochs
+```
+
+Success criteria:
+
+```text
+documented false-accept targets per job shape
+no row-sampled-only block eligibility unless target bounds are met
+validation randomness cannot be biased by the current proposer
+settled-epoch TensorWork selection is implemented in simulation
+genesis and zero-work epochs still produce blocks via fallback proposer selection
+```
+
+---
+
 ### Milestone 0: Local Simulation
 
 Deliverables:
@@ -1520,12 +1735,15 @@ full Freivalds check
 row-sampled Freivalds check
 Merkle row openings
 validator attestation format
+soundness calculator for full and row-sampled checks
 ```
 
 Success criteria:
 
 ```text
 validators detect corrupted outputs with expected probability
+sparse row corruptions are tested separately from dense corruptions
+block-eligible receipts require full-output Freivalds or documented equivalent soundness
 ```
 
 ---
@@ -1537,7 +1755,8 @@ Deliverables:
 ```text
 forward check: Y = XW
 backward check: grad_W = X^T dY
-optimizer check: W_next = W - lr * grad_W
+random-linear error check: dY = Y - T
+random-linear optimizer check: W_next = W - lr * grad_W
 sampled loss check
 ```
 
@@ -1545,6 +1764,7 @@ Success criteria:
 
 ```text
 invalid forward/backward/update receipts are rejected
+sparse corruptions in dY and W_next are rejected with stated probability
 ```
 
 ---
@@ -1650,24 +1870,39 @@ The MVP succeeds if:
 
 ```text
 1. Miners execute deterministic tensor jobs.
-2. Validators verify jobs with Freivalds/sampled checks.
-3. Blocks are produced using valid TensorWork.
-4. Rewards are distributed according to verified TensorWork.
-5. Invalid tensor outputs are rejected in controlled tests.
-6. LinearTrainingStep receipts validate forward/backward/update structure.
-7. Honest miners produce identical output roots.
-8. Validators spend materially less compute than full recomputation.
-9. Tensor data availability exceeds 95% during active windows.
-10. The network runs for 7 consecutive days with independent nodes.
+2. Validators verify block-eligible matmul jobs with full-output Freivalds or an explicitly bounded equivalent.
+3. Row-sampled checks are treated as audits unless their false-accept bounds are documented.
+4. Blocks are produced using settled prior-epoch TensorWork.
+5. Rewards are distributed according to verified settled TensorWork.
+6. Validation randomness is unbiasable after receipt roots are committed.
+7. Invalid tensor outputs are rejected in controlled dense and sparse corruption tests.
+8. LinearTrainingStep receipts validate forward/backward/error/update structure.
+9. Sparse corruptions in dY and W_next are rejected with stated probability.
+10. Honest miners produce identical output roots.
+11. Validators spend materially less compute than full recomputation.
+12. Tensor data availability exceeds 95% during active windows and required retention windows.
+13. The network runs for 7 consecutive days with independent nodes.
+14. Genesis and zero-work epochs have a tested fallback proposer path.
+15. Reward concentration, validator disagreement, and data withholding are reported.
+```
+
+Do not count the MVP as successful if:
+
+```text
+current-epoch receipts affect current proposer selection
+row-sampled checks are the only validity check without a parameterized soundness bound
+training-step state updates are only sampled entry-by-entry
+validation randomness can be influenced after miners commit receipt roots
+data disappears before reward settlement or challenge windows close
 ```
 
 ---
 
 ## 36. Pros of This MVP Design
 
-### 36.1 It Proves the Core Primitive
+### 36.1 It Tests the Core Primitive
 
-The MVP demonstrates verified tensor work as a block-production commodity.
+The MVP demonstrates probabilistically verified tensor work as a block-production commodity.
 
 ### 36.2 It Avoids PyTorch Consensus Complexity
 
@@ -1675,7 +1910,8 @@ PyTorch can become a frontend later, but the MVP remains deterministic and audit
 
 ### 36.3 Freivalds Gives Cheap Verification
 
-Matrix-heavy tensor work can be verified much more cheaply than full recomputation.
+Matrix-heavy tensor work can be verified much more cheaply than full recomputation when validators perform
+full-output Freivalds checks or a row-sampling scheme with explicit soundness bounds.
 
 ### 36.4 LinearTrainingStep Creates a Bridge to Real Training
 
@@ -1712,6 +1948,14 @@ random audits
 future fraud proofs/ZK
 ```
 
+Critical caveat:
+
+```text
+row sampling primarily detects corrupted sampled rows
+it is weak against sparse row corruptions unless sample counts are large
+full-output Freivalds should remain the block-eligibility path in v0
+```
+
 ### 37.2 Data Availability Can Become a Bottleneck
 
 Validators need tensor rows/chunks.
@@ -1737,6 +1981,7 @@ start with LinearTrainingStep only
 avoid Transformer backward initially
 make loss auxiliary
 use SGD not Adam
+use random-linear checks for elementwise relations
 ```
 
 ### 37.4 Hardware Centralization
@@ -1765,6 +2010,43 @@ redundancy
 attestation audits
 settlement delay
 future slashing
+```
+
+### 37.6 Synthetic Usefulness Gap
+
+Synthetic random matmul jobs are useful for benchmarking and security testing, but they are not external user
+work.
+
+Mitigation:
+
+```text
+describe v0 as verifiable tensor work, not full useful work
+add user-submitted jobs only after deterministic execution and verification are stable
+track how much TensorWork comes from synthetic versus user-valued jobs
+```
+
+### 37.7 TensorWork Consensus Circularity
+
+If current receipts influence current proposer selection, proposers can bias inclusion and timing.
+
+Mitigation:
+
+```text
+use only settled prior-epoch TensorWork for proposer eligibility
+settle rewards after validation and challenge windows
+make validator stake the immediate finality security source in v0
+```
+
+### 37.8 No-Slashing v0 Is Not Economically Secure
+
+Without hard slashing, invalid behavior is punished by non-payment and reputation only.
+
+Mitigation:
+
+```text
+cap rewards
+publish v0 as a research testnet
+add slashing only after verifier correctness and appeal flows are tested
 ```
 
 ---
@@ -1810,25 +2092,25 @@ Use ZK proofs for small inference, private inference, high-value settlement, and
 The final MVP should be:
 
 ```text
-A Tensor Proof-of-Work testnet with:
+A Tensor Proof-of-Work research testnet with:
   - deterministic TensorVM
   - finite-field/int tensor arithmetic
   - Merkle-committed tensors
   - synthetic matmul TensorOp jobs
-  - Freivalds validator checks
-  - row/chunk data availability
+  - full-output Freivalds validator checks for block-eligible receipts
+  - row/chunk audits and verification-time availability checks
   - redundant miner agreement
-  - TensorWork-weighted proposer selection
+  - settled prior-epoch TensorWork-weighted proposer selection
   - validator finality
-  - reward distribution by valid TensorWork
-  - LinearTrainingStep primitive for forward/backward/update validation
+  - reward distribution by settled valid TensorWork
+  - LinearTrainingStep primitive with forward/backward/random-linear update validation
 ```
 
-The MVP should prove two claims:
+The MVP should test two claims:
 
 ```text
-1. Tensor computation can secure block production.
-2. Simple learning steps can be verified as state transitions.
+1. Tensor computation can be used as a measurable block-production resource in a testnet.
+2. Simple learning steps can be probabilistically verified as deterministic state transitions.
 ```
 
 Do not begin with full LLM training.
@@ -1854,8 +2136,7 @@ The strategic message is:
 
 ```text
 Bitcoin proved energy was spent.
-TensorChain proves learning-relevant tensor work was performed.
+TensorChain tests whether learning-relevant tensor work can be verified cheaply enough to drive block production.
 ```
 
 That is the MVP worth building.
-

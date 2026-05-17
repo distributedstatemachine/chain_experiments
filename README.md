@@ -29,6 +29,7 @@ cargo run -p pearl_chain --release --example mine
 
 - [pearl.pdf](docs/pearl.pdf)
 - [Ambient litepaper](docs/Ambient_Litepaper_V1.pdf)
+- [TensorChain MVP spec](docs/tensor_chain_mvp_spec.md)
 - [Paper critique](docs/pearl_critique.md)
 - [Pearl vs Ambient protocol review](docs/pearl_vs_ambient_protocol_review.md)
 - [AI reproducibility schemes](docs/ai_reproducibility_schemes.md)
