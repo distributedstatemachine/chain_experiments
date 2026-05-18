@@ -183,8 +183,8 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 - 14 in `pearl_chain`
 - 171 in `tensor_vm`
 
-`cargo test --workspace --release` also runs 2 `tvmd` binary tests for the documented spec-path pending
-manifest commands.
+`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 2 `tvmd` CLI integration
+tests for the documented spec-path pending manifest commands.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
