@@ -1,7 +1,7 @@
 # pearl_chain
 
 Rust prototype for the matrix-multiplication proof-of-useful-work chain described in
-[`pearl.pdf`](../../docs/pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
+[`pearl.pdf`](../../docs/pearl/pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
 
 The implementation is self-contained and dependency-free:
 
@@ -59,7 +59,7 @@ cargo run -p pearl_chain --release --example gf2_bitpack_break
 
 ## Related Notes
 
-- [Paper critique](../../docs/pearl_critique.md)
-- [AI reproducibility schemes](../../docs/ai_reproducibility_schemes.md)
-- [Attack matrix](../../docs/attack_matrix.md)
-- [GF(2) bit-packing break](../../docs/gf2_bitpack_break.md)
+- [Paper critique](../../docs/pearl/critique.md)
+- [AI reproducibility schemes](../../docs/pearl/ai_reproducibility_schemes.md)
+- [Attack matrix](../../docs/attacks/attack_matrix.md)
+- [GF(2) bit-packing break](../../docs/attacks/gf2_bitpack_break.md)

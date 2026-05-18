@@ -20,7 +20,7 @@ with less work than honest tiled multiplication. The implementation now rejects 
 Artifact:
 
 - [assumption_break_poc.md](assumption_break_poc.md)
-- [break_assumption.rs](../crates/pearl_chain/examples/break_assumption.rs)
+- [break_assumption.rs](../../crates/pearl_chain/examples/break_assumption.rs)
 
 ### 2. Small-Field Word-Packing Cost-Model Break
 
@@ -35,7 +35,7 @@ in word/bit complexity and benchmarked against bit-sliced implementations.
 Artifact:
 
 - [gf2_bitpack_break.md](gf2_bitpack_break.md)
-- [gf2_bitpack_break.rs](../crates/pearl_chain/examples/gf2_bitpack_break.rs)
+- [gf2_bitpack_break.rs](../../crates/pearl_chain/examples/gf2_bitpack_break.rs)
 
 ## Attempted But Not A Break
 
@@ -47,7 +47,7 @@ is not asymptotically better once `rank == tile`.
 Artifact:
 
 - [paper_param_probe.md](paper_param_probe.md)
-- [paper_param_probe.rs](../crates/pearl_chain/examples/paper_param_probe.rs)
+- [paper_param_probe.rs](../../crates/pearl_chain/examples/paper_param_probe.rs)
 
 ### 2. Zero-Job No-Decode Route
 
@@ -57,7 +57,7 @@ not a transcript-hardness break and benchmark results have not shown a stable ad
 Artifact:
 
 - [paper_param_practical_break.md](paper_param_practical_break.md)
-- [paper_param_practical_break.rs](../crates/pearl_chain/examples/paper_param_practical_break.rs)
+- [paper_param_practical_break.rs](../../crates/pearl_chain/examples/paper_param_practical_break.rs)
 
 ## Still Unbroken Here
 

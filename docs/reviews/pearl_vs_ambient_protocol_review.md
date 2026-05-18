@@ -4,8 +4,8 @@
 
 This document compares:
 
-- [`pearl.pdf`](pearl.pdf): "Proofs of Useful Work from Arbitrary Matrix Multiplication" by Ilan Komargodski and Omri Weinstein. I refer to it as **Pearl** below.
-- [`Ambient_Litepaper_V1.pdf`](Ambient_Litepaper_V1.pdf): "Ambient Litepaper V1". I refer to it as **Ambient** below.
+- [`pearl.pdf`](../pearl/pearl.pdf): "Proofs of Useful Work from Arbitrary Matrix Multiplication" by Ilan Komargodski and Omri Weinstein. I refer to it as **Pearl** below.
+- [`Ambient_Litepaper_V1.pdf`](../ambient/Ambient_Litepaper_V1.pdf): "Ambient Litepaper V1". I refer to it as **Ambient** below.
 
 The comparison focuses on protocol design quality: usefulness of work, security model, verification cost, decentralization, AI workload fit, and readiness for implementation.
 
