@@ -34,7 +34,7 @@ The objective decomposes into these deliverables:
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
 | Public deployment scaffold | `deploy/tensorvm/` contains systemd, nginx, environment, and preflight-manifest templates; `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example` reports launch readiness | Present as pre-run scaffold |
-| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed independent-auditor records, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, signed operator-attestation-derived external-operator evidence, `tvmd public-evidence validate --manifest <path>`, `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`, `tvmd public-evidence run-window ...`, `tvmd public-evidence node-heartbeat ...`, `tvmd public-evidence operator-attestation ...`, `tvmd public-evidence service-health ...` signed service-record generation, `tvmd public-evidence network-observation ...` signed libp2p observation-record generation, `tvmd public-evidence record-summary ...` signed supporting-record generation, and `tvmd public-evidence record-summary-from-roots ...` deterministic supporting-record root aggregation | Present |
+| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed independent-auditor records, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed operator-attestation-derived external-operator evidence, `tvmd public-evidence validate --manifest <path>`, `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`, `tvmd public-evidence run-window ...`, `tvmd public-evidence node-heartbeat ...`, `tvmd public-evidence operator-attestation ...`, `tvmd public-evidence service-health ...` signed service-record generation, `tvmd public-evidence network-observation ...` signed libp2p observation-record generation, `tvmd public-evidence record-summary ...` signed supporting-record generation, and `tvmd public-evidence record-summary-from-roots ...` deterministic supporting-record root aggregation | Present |
 | Miner, validator, and service CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, libp2p multiaddr validation for miner/validator nodes, required `tvmd service serve --p2p-listen <multiaddr>`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
 | GPU miner backend | `runtime::GpuMinerBackend` reports the selected CUDA device and rejects execution when native CUDA kernels are not compiled; CPU execution remains a separate `runtime::CpuReferenceBackend` | Present locally |
@@ -84,10 +84,11 @@ These are not satisfied by local tests or manifests alone:
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
 Local evidence validators reject localhost, private, link-local, and empty publication endpoints, and they
-verify manifest publication signatures, signed run-window records, signed block/finality/data-availability
-summary roots, signed production libp2p network-observation roots, signed service-health records bound to
-external HTTPS URLs, signed independent-auditor records bound to external audit URIs, and external-operator
-evidence derived from signed manifest operator-attestation records.
+verify manifest publication signatures, signed run-window records, signed
+block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
+network-observation roots, signed service-health records bound to external HTTPS URLs, signed
+independent-auditor records bound to external audit URIs, and external-operator evidence derived from
+signed manifest operator-attestation records.
 These blockers therefore require real external infrastructure rather than loopback, private-network,
 unsigned, or out-of-band manifests.
 

@@ -1152,7 +1152,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nsigned_invalid_work_rejection_records={}\nsigned_reward_settlement_records={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
@@ -1164,6 +1164,8 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         report.has_operator_identity_attestations,
         report.has_network_runtime_observations,
         report.has_data_availability_measurements,
+        report.has_invalid_work_rejection_records,
+        report.has_reward_settlement_record_summary,
         report.run_evidence.miner_count,
         report.run_evidence.validator_count,
         report.run_evidence.run_started_at_unix_seconds,
@@ -1273,6 +1275,8 @@ fn parse_public_evidence_record_kind(value: &str) -> Result<PublicEvidenceRecord
         "finality-history" => Ok(PublicEvidenceRecordKind::FinalityHistory),
         "network-runtime" => Ok(PublicEvidenceRecordKind::NetworkRuntimeObservations),
         "data-availability" => Ok(PublicEvidenceRecordKind::DataAvailabilityMeasurements),
+        "invalid-work" => Ok(PublicEvidenceRecordKind::InvalidWorkRejections),
+        "reward-settlement" => Ok(PublicEvidenceRecordKind::RewardSettlements),
         _ => Err(TvmError::InvalidReceipt(
             "invalid public evidence record kind",
         )),
@@ -1285,6 +1289,8 @@ fn public_evidence_record_kind_tag(kind: PublicEvidenceRecordKind) -> &'static s
         PublicEvidenceRecordKind::FinalityHistory => "finality-history",
         PublicEvidenceRecordKind::NetworkRuntimeObservations => "network-runtime",
         PublicEvidenceRecordKind::DataAvailabilityMeasurements => "data-availability",
+        PublicEvidenceRecordKind::InvalidWorkRejections => "invalid-work",
+        PublicEvidenceRecordKind::RewardSettlements => "reward-settlement",
     }
 }
 
@@ -1294,6 +1300,8 @@ fn public_evidence_record_field_prefix(kind: PublicEvidenceRecordKind) -> &'stat
         PublicEvidenceRecordKind::FinalityHistory => "finality_history",
         PublicEvidenceRecordKind::NetworkRuntimeObservations => "network_runtime_observation",
         PublicEvidenceRecordKind::DataAvailabilityMeasurements => "data_availability_measurement",
+        PublicEvidenceRecordKind::InvalidWorkRejections => "invalid_work_rejection",
+        PublicEvidenceRecordKind::RewardSettlements => "reward_settlement",
     }
 }
 
@@ -1616,6 +1624,9 @@ mod tests {
                     b"test",
                     &[b"data-availability-root"],
                 ),
+                invalid_work_rejection_records: 1,
+                invalid_work_rejection_root: hash_bytes(b"test", &[b"invalid-work-root"]),
+                reward_settlement_root: hash_bytes(b"test", &[b"reward-settlement-root"]),
             },
         )
     }
@@ -1661,7 +1672,12 @@ checked_receipts=20
 available_receipts=19
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
+invalid_work_rejection_records=1
+invalid_work_rejection_root={}
+invalid_work_rejection_signature={}
 reward_settlement_records=1
+reward_settlement_root={}
+reward_settlement_signature={}
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
@@ -1701,6 +1717,10 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_hash(b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
             hex(&manifest_bundle().run_window_signature),
+            manifest_hash(b"invalid-work-root"),
+            hex(&manifest_bundle().invalid_work_rejection_signature),
+            manifest_hash(b"reward-settlement-root"),
+            hex(&manifest_bundle().reward_settlement_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -2255,6 +2275,26 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             }),
             "generate network-runtime public evidence record summary from 2 roots"
         );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::InvalidWorkRejections,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"invalid-work-root"]),
+                record_count: 1,
+            }),
+            "generate invalid-work public evidence record summary records=1"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::RewardSettlements,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"reward-settlement-root"]),
+                record_count: 1,
+            }),
+            "generate reward-settlement public evidence record summary records=1"
+        );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceNetworkObservation {
@@ -2636,7 +2676,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             )
         );
 
-        let record_cases: [(PublicEvidenceRecordKind, &[u8], u64, &str, String); 4] = [
+        let record_cases: [(PublicEvidenceRecordKind, &[u8], u64, &str, String); 6] = [
             (
                 PublicEvidenceRecordKind::BlockHistory,
                 b"block-history-root",
@@ -2664,6 +2704,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 20,
                 "data_availability_measurement",
                 hex(&manifest_bundle().data_availability_measurement_signature),
+            ),
+            (
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                b"invalid-work-root",
+                1,
+                "invalid_work_rejection",
+                hex(&manifest_bundle().invalid_work_rejection_signature),
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                b"reward-settlement-root",
+                1,
+                "reward_settlement",
+                hex(&manifest_bundle().reward_settlement_signature),
             ),
         ];
         for (kind, root_label, count, field_prefix, expected_signature) in record_cases {
@@ -2962,6 +3016,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert_eq!(
             parse_public_evidence_record_kind("data-availability").unwrap(),
             PublicEvidenceRecordKind::DataAvailabilityMeasurements
+        );
+        assert_eq!(
+            parse_public_evidence_record_kind("invalid-work").unwrap(),
+            PublicEvidenceRecordKind::InvalidWorkRejections
+        );
+        assert_eq!(
+            parse_public_evidence_record_kind("reward-settlement").unwrap(),
+            PublicEvidenceRecordKind::RewardSettlements
         );
         assert!(parse_public_evidence_record_kind("operator-identity").is_err());
         assert!(parse_hash_argument("12").is_err());
@@ -3393,6 +3455,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("operator_identity_attestations=true"));
         assert!(report.contains("network_runtime_observations=true"));
         assert!(report.contains("data_availability_measurements=true"));
+        assert!(report.contains("signed_invalid_work_rejection_records=true"));
+        assert!(report.contains("signed_reward_settlement_records=true"));
         assert!(report.contains("miners=2"));
         assert!(report.contains("validators=1"));
         assert!(report.contains("run_started_at_unix_seconds=1700000000"));

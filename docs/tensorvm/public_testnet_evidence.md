@@ -23,8 +23,8 @@ A complete evidence bundle must include:
 - signed finality-history summary root for the full 7-day run
 - signed production libp2p network-observation summary root
 - signed data-availability measurement summary root for checked tensor receipts
-- invalid-work submission and rejection evidence
-- reward-settlement records for verified TensorWork
+- signed invalid-work submission and rejection evidence
+- signed reward-settlement records for verified TensorWork
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
 - external HTTPS URLs, health paths, and reachability records for deployed RPC, explorer, faucet, and
   telemetry services
@@ -49,10 +49,10 @@ a manifest publication signature over the bundle ID, public URI, manifest signat
 auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
 end time, and observed block count. It verifies signed supporting-record roots for block history, finality
-history, production libp2p observations, and data-availability measurements, and it derives
-`external_operator_evidence` from signed operator identity attestation records that match the signed
-node-heartbeat records. These local checks are still only evidence-format validation until an external run
-publishes real records.
+history, production libp2p observations, data-availability measurements, invalid-work rejections, and
+reward settlements, and it derives `external_operator_evidence` from signed operator identity attestation
+records that match the signed node-heartbeat records. These local checks are still only evidence-format
+validation until an external run publishes real records.
 
 ## Manifest Format
 
@@ -61,15 +61,16 @@ External evidence can be represented as a line-oriented manifest parsed by
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
 signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
-Block, finality, network-runtime, and data-availability signatures cover the bundle ID, record-set kind,
-record-set root, and record count. The run-window signature covers the bundle ID, Unix start time, Unix end
-time, and observed block count. Heartbeat signatures cover the node role, address, operator ID, first/last
-observed block, and heartbeat count. Operator identity signatures cover the node role, node address,
-operator ID, external identity URI, and observation time. Service-health signatures cover the service kind,
-endpoint ID, public URL, health path, first/last observed block, reachable observation count, and signed
-health-check count. Service URLs, auditor HTTPS URIs, and operator identity HTTPS URIs must use external
-hosts; localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Auditor and
-operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
+Block, finality, network-runtime, data-availability, invalid-work, and reward-settlement signatures cover
+the bundle ID, record-set kind, record-set root, and record count. The run-window signature covers the
+bundle ID, Unix start time, Unix end time, and observed block count. Heartbeat signatures cover the node
+role, address, operator ID, first/last observed block, and heartbeat count. Operator identity signatures
+cover the node role, node address, operator ID, external identity URI, and observation time.
+Service-health signatures cover the service kind, endpoint ID, public URL, health path, first/last observed
+block, reachable observation count, and signed health-check count. Service URLs, auditor HTTPS URIs, and
+operator identity HTTPS URIs must use external hosts; localhost, `.local`, loopback, private, link-local,
+and unspecified hosts are rejected. Auditor and operator identity URIs may also use non-empty `ipfs://` or
+`ar://` content identifiers.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths.
@@ -112,7 +113,12 @@ checked_receipts=1000
 available_receipts=1000
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
+invalid_work_rejection_records=1
+invalid_work_rejection_root=<invalid-work-root-hex>
+invalid_work_rejection_signature=<invalid-work-signature-hex>
 reward_settlement_records=1
+reward_settlement_root=<reward-settlement-root-hex>
+reward_settlement_signature=<reward-settlement-signature-hex>
 node=miner,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
 node=validator,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
 service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
@@ -237,9 +243,10 @@ tvmd public-evidence record-summary-from-roots \
   --record-roots <comma-separated-record-roots>
 ```
 
-Supported record kinds are `block-history`, `finality-history`, `network-runtime`, and
-`data-availability`. The command emits the corresponding `<record>_records`, `<record>_root`, and
-`<record>_signature` manifest fields using the same signature domain the validator checks.
+Supported record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
+`invalid-work`, and `reward-settlement`. The command emits the corresponding `<record>_records`,
+`<record>_root`, and `<record>_signature` manifest fields using the same signature domain the validator
+checks.
 The `record-summary-from-roots` variant derives a deterministic aggregate root and record count from the
 provided supporting-record roots before signing those same summary fields.
 
@@ -260,6 +267,8 @@ finality_history=true
 operator_identity_attestations=true
 network_runtime_observations=true
 data_availability_measurements=true
+signed_invalid_work_rejection_records=true
+signed_reward_settlement_records=true
 miners=2
 validators=1
 run_started_at_unix_seconds=1700000000

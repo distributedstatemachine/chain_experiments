@@ -1728,7 +1728,9 @@ public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/reque
 counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
-observations, or data-availability measurements.
+observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
+record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
+`invalid-work`, and `reward-settlement`.
 The `record-summary-from-roots` command deterministically aggregates comma-separated supporting-record
 roots, derives the record count, and emits the same signed manifest summary fields so operators do not
 need an out-of-band root-signing tool for post-run bundles.

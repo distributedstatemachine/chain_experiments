@@ -706,6 +706,9 @@ pub struct PublicEvidenceRecordSummaries {
     pub network_runtime_observation_root: Hash,
     pub data_availability_measurement_records: u64,
     pub data_availability_measurement_root: Hash,
+    pub invalid_work_rejection_records: u64,
+    pub invalid_work_rejection_root: Hash,
+    pub reward_settlement_root: Hash,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -728,6 +731,11 @@ pub struct PublicTestnetEvidenceBundle {
     pub data_availability_measurement_records: u64,
     pub data_availability_measurement_root: Hash,
     pub data_availability_measurement_signature: Signature,
+    pub invalid_work_rejection_records: u64,
+    pub invalid_work_rejection_root: Hash,
+    pub invalid_work_rejection_signature: Signature,
+    pub reward_settlement_root: Hash,
+    pub reward_settlement_signature: Signature,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -741,6 +749,8 @@ pub struct PublicTestnetEvidenceBundleReport {
     pub has_operator_identity_attestations: bool,
     pub has_network_runtime_observations: bool,
     pub has_data_availability_measurements: bool,
+    pub has_invalid_work_rejection_records: bool,
+    pub has_reward_settlement_record_summary: bool,
     pub independently_checkable: bool,
     pub full_spec_evidence_met: bool,
 }
@@ -769,6 +779,11 @@ struct PublicEvidenceManifestBuilder {
     data_availability_measurement_records: Option<u64>,
     data_availability_measurement_root: Option<Hash>,
     data_availability_measurement_signature: Option<Signature>,
+    invalid_work_rejection_records: Option<u64>,
+    invalid_work_rejection_root: Option<Hash>,
+    invalid_work_rejection_signature: Option<Signature>,
+    reward_settlement_root: Option<Hash>,
+    reward_settlement_signature: Option<Signature>,
     run_started_at_unix_seconds: Option<u64>,
     run_ended_at_unix_seconds: Option<u64>,
     run_window_signature: Option<Signature>,
@@ -949,6 +964,19 @@ impl PublicEvidenceManifestBuilder {
             "data_availability_measurement_signature" => {
                 self.data_availability_measurement_signature = Some(parse_hash_hex(value)?);
             }
+            "invalid_work_rejection_records" => {
+                self.invalid_work_rejection_records = Some(parse_manifest_u64(value)?);
+            }
+            "invalid_work_rejection_root" => {
+                self.invalid_work_rejection_root = Some(parse_hash_hex(value)?);
+            }
+            "invalid_work_rejection_signature" => {
+                self.invalid_work_rejection_signature = Some(parse_hash_hex(value)?);
+            }
+            "reward_settlement_root" => self.reward_settlement_root = Some(parse_hash_hex(value)?),
+            "reward_settlement_signature" => {
+                self.reward_settlement_signature = Some(parse_hash_hex(value)?);
+            }
             "run_started_at_unix_seconds" => {
                 self.run_started_at_unix_seconds = Some(parse_manifest_u64(value)?);
             }
@@ -1053,6 +1081,11 @@ impl PublicEvidenceManifestBuilder {
             data_availability_measurement_signature: required_hash(
                 self.data_availability_measurement_signature,
             )?,
+            invalid_work_rejection_records: required_u64(self.invalid_work_rejection_records)?,
+            invalid_work_rejection_root: required_hash(self.invalid_work_rejection_root)?,
+            invalid_work_rejection_signature: required_hash(self.invalid_work_rejection_signature)?,
+            reward_settlement_root: required_hash(self.reward_settlement_root)?,
+            reward_settlement_signature: required_hash(self.reward_settlement_signature)?,
         })
     }
 }
@@ -1319,6 +1352,8 @@ pub enum PublicEvidenceRecordKind {
     FinalityHistory,
     NetworkRuntimeObservations,
     DataAvailabilityMeasurements,
+    InvalidWorkRejections,
+    RewardSettlements,
 }
 
 impl PublicEvidenceRecordKind {
@@ -1328,6 +1363,8 @@ impl PublicEvidenceRecordKind {
             Self::FinalityHistory => b"finality-history",
             Self::NetworkRuntimeObservations => b"network-runtime-observations",
             Self::DataAvailabilityMeasurements => b"data-availability-measurements",
+            Self::InvalidWorkRejections => b"invalid-work-rejections",
+            Self::RewardSettlements => b"reward-settlements",
         }
     }
 }
@@ -1527,6 +1564,7 @@ impl PublicTestnetEvidenceBundle {
             run.run_ended_at_unix_seconds,
             run.observed_blocks,
         );
+        let reward_settlement_records = run.reward_settlement_records;
         Self {
             run,
             publication,
@@ -1572,6 +1610,23 @@ impl PublicTestnetEvidenceBundle {
                 PublicEvidenceRecordKind::DataAvailabilityMeasurements,
                 &record_summaries.data_availability_measurement_root,
                 record_summaries.data_availability_measurement_records,
+            ),
+            invalid_work_rejection_records: record_summaries.invalid_work_rejection_records,
+            invalid_work_rejection_root: record_summaries.invalid_work_rejection_root,
+            invalid_work_rejection_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                &record_summaries.invalid_work_rejection_root,
+                record_summaries.invalid_work_rejection_records,
+            ),
+            reward_settlement_root: record_summaries.reward_settlement_root,
+            reward_settlement_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::RewardSettlements,
+                &record_summaries.reward_settlement_root,
+                reward_settlement_records,
             ),
         }
     }
@@ -1633,6 +1688,21 @@ impl PublicTestnetEvidenceBundle {
                 self.data_availability_measurement_records,
                 &self.data_availability_measurement_signature,
             );
+        let has_invalid_work_rejection_records = run_evidence.has_invalid_work_rejection_evidence
+            && self.invalid_work_rejection_records >= self.run.invalid_receipts_submitted
+            && self.public_record_signature_valid(
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                &self.invalid_work_rejection_root,
+                self.invalid_work_rejection_records,
+                &self.invalid_work_rejection_signature,
+            );
+        let has_reward_settlement_record_summary = run_evidence.has_reward_settlement_records
+            && self.public_record_signature_valid(
+                PublicEvidenceRecordKind::RewardSettlements,
+                &self.reward_settlement_root,
+                self.run.reward_settlement_records,
+                &self.reward_settlement_signature,
+            );
         let independently_checkable = has_published_evidence_bundle
             && has_independent_auditor_records
             && has_signed_run_window
@@ -1641,8 +1711,8 @@ impl PublicTestnetEvidenceBundle {
             && has_operator_identity_attestations
             && has_network_runtime_observations
             && has_data_availability_measurements
-            && run_evidence.has_invalid_work_rejection_evidence
-            && run_evidence.has_reward_settlement_records;
+            && has_invalid_work_rejection_records
+            && has_reward_settlement_record_summary;
         let full_spec_evidence_met = run_evidence.public_criterion_met && independently_checkable;
         PublicTestnetEvidenceBundleReport {
             run_evidence,
@@ -1654,6 +1724,8 @@ impl PublicTestnetEvidenceBundle {
             has_operator_identity_attestations,
             has_network_runtime_observations,
             has_data_availability_measurements,
+            has_invalid_work_rejection_records,
+            has_reward_settlement_record_summary,
             independently_checkable,
             full_spec_evidence_met,
         }
@@ -2367,6 +2439,9 @@ mod tests {
                     b"test",
                     &[b"data-availability-root"],
                 ),
+                invalid_work_rejection_records: 1,
+                invalid_work_rejection_root: hash_bytes(b"test", &[b"invalid-work-root"]),
+                reward_settlement_root: hash_bytes(b"test", &[b"reward-settlement-root"]),
             },
         )
     }
@@ -2497,7 +2572,12 @@ checked_receipts=20
 available_receipts=19
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
+invalid_work_rejection_records=1
+invalid_work_rejection_root={}
+invalid_work_rejection_signature={}
 reward_settlement_records=1
+reward_settlement_root={}
+reward_settlement_signature={}
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
@@ -2537,6 +2617,10 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_hash(b"test", b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
             hex(&manifest_bundle().run_window_signature),
+            manifest_hash(b"test", b"invalid-work-root"),
+            hex(&manifest_bundle().invalid_work_rejection_signature),
+            manifest_hash(b"test", b"reward-settlement-root"),
+            hex(&manifest_bundle().reward_settlement_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"test", b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -3024,6 +3108,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.has_operator_identity_attestations);
         assert!(complete.has_network_runtime_observations);
         assert!(complete.has_data_availability_measurements);
+        assert!(complete.has_invalid_work_rejection_records);
+        assert!(complete.has_reward_settlement_record_summary);
         assert!(complete.independently_checkable);
         assert!(complete.full_spec_evidence_met);
 
@@ -3199,6 +3285,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!tampered_data_availability_measurements.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.invalid_work_rejection_signature = [2; 32];
+        let tampered_invalid_work_records = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_invalid_work_records.has_invalid_work_rejection_records);
+        assert!(!tampered_invalid_work_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.invalid_work_rejection_records = 0;
+        let missing_invalid_work_records = bundle.evaluate(&criteria, 6);
+        assert!(!missing_invalid_work_records.has_invalid_work_rejection_records);
+        assert!(!missing_invalid_work_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.reward_settlement_signature = [1; 32];
+        let tampered_reward_records = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_reward_records.has_reward_settlement_record_summary);
+        assert!(!tampered_reward_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.run.services.clear();
         let missing_services = bundle.evaluate(&criteria, 6);
         assert!(missing_services.independently_checkable);
@@ -3225,6 +3329,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             parsed
                 .evaluate(&criteria, 6)
                 .has_independent_auditor_records
+        );
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .has_invalid_work_rejection_records
+        );
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .has_reward_settlement_record_summary
         );
         assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
@@ -3295,6 +3409,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest_without_line(&manifest, "network_runtime_observation_signature="),
             manifest_without_line(&manifest, "data_availability_measurement_root="),
             manifest_without_line(&manifest, "data_availability_measurement_signature="),
+            manifest_without_line(&manifest, "invalid_work_rejection_records="),
+            manifest_without_line(&manifest, "invalid_work_rejection_root="),
+            manifest_without_line(&manifest, "invalid_work_rejection_signature="),
+            manifest_without_line(&manifest, "reward_settlement_root="),
+            manifest_without_line(&manifest, "reward_settlement_signature="),
             manifest_without_line(&manifest, "run_started_at_unix_seconds="),
             manifest_without_line(&manifest, "run_ended_at_unix_seconds="),
             manifest_without_line(&manifest, "run_window_signature="),

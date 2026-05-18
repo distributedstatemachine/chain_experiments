@@ -86,8 +86,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs, a signed run-window record, block/finality history, signed operator identity attestations
   matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
-  block/finality/network-runtime/data-availability summary roots, and data-availability measurement records
-  before full-spec evidence can be considered independently checkable
+  block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, and
+  data-availability measurement records before full-spec evidence can be considered independently
+  checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -107,8 +108,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `service=...` manifest records bound to external HTTPS health URLs and observation counts,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records,
-  `tvmd public-evidence record-summary ...` generation for signed block/finality/network-runtime/data-availability
-  summary fields including production libp2p network-observation roots, and
+  `tvmd public-evidence record-summary ...` generation for signed
+  block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
+  production libp2p network-observation roots, and
   `tvmd public-evidence record-summary-from-roots ...` deterministic root aggregation for post-run
   supporting records
 
@@ -133,8 +135,8 @@ The workspace currently has 179 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.79% workspace line coverage
-- 6721/6803 workspace lines covered
+- 98.80% workspace line coverage
+- 6764/6846 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
