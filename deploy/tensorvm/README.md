@@ -42,7 +42,8 @@ one signed `network_runtime_observation=...` record per counted public operator 
 gossip, request/response, and configured DoS controls during the external run. Those observation roots
 can be generated directly from captured `tvmd service serve` logs with
 `network-observation-from-service-log`, but the supplied listen multiaddr still has to be public. They
-must be aggregated into the signed network-runtime summary. Each signed block, finality, libp2p,
+can be aggregated from the saved raw-record file with `record-summary-from-file` and
+`record-artifact-from-file`. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
 the raw records behind that root.
 

@@ -1813,11 +1813,24 @@ tvmd public-evidence record-artifact-from-roots \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
+tvmd public-evidence record-artifact-from-file \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
+  --record-file artifacts/network-runtime.records
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
+
+tvmd public-evidence record-summary-from-file \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-file artifacts/network-runtime.records
 ```
 
 The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operator-attestation` commands
@@ -1897,6 +1910,11 @@ can be generated from the same raw record-root list.
 The `record-summary-from-roots` command deterministically aggregates unique comma-separated
 supporting-record roots, rejects duplicate roots that would pad the derived count, and emits the same signed
 manifest summary fields so operators do not need an out-of-band root-signing tool for post-run bundles.
+The `record-summary-from-file` and `record-artifact-from-file` commands derive the same aggregate root and
+count from a saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic
+supporting-record root files use `record_root=<hex>` lines, and network-runtime files may contain the
+exact signed `network_runtime_observation=...` lines emitted by `network-observation` or
+`network-observation-from-service-log`.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 `public_evidence_full_spec=true` is reserved for default-or-stricter public-testnet criteria; shortened or

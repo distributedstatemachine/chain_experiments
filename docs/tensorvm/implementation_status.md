@@ -153,15 +153,18 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   validation that binds one such signed raw record to every counted public operator and to the aggregate
   network-runtime root; the process-level `tvmd` service smoke test now derives a public-address
   observation root from the live libp2p peer/protocol/control stdout and feeds that root through
-  `record-summary-from-roots` and `record-artifact-from-roots`,
+  `record-summary-from-roots`, `record-artifact-from-roots`, and the matching file-derived commands,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
   `tvmd public-evidence record-artifact ...` generation for signed external raw-record artifact locators,
   `tvmd public-evidence record-artifact-from-roots ...` generation that signs artifact locators from the
-  same derived aggregate root and count as summary generation, and `tvmd public-evidence
+  same derived aggregate root and count as summary generation, `tvmd public-evidence
   record-summary-from-roots ...` deterministic root aggregation for post-run supporting records with
-  duplicate-root rejection; a process-level `tvmd` integration test now assembles a short
+  duplicate-root rejection, plus `tvmd public-evidence record-summary-from-file ...` and
+  `tvmd public-evidence record-artifact-from-file ...` generation from saved raw-record files containing
+  `record_root=...` lines or signed `network_runtime_observation=...` lines; a process-level `tvmd`
+  integration test now assembles a short
   external-addressed evidence manifest entirely from the signed generator subcommands, validates it from
   disk, and proves it is independently checkable without allowing the default full-spec flag to pass
 
@@ -215,10 +218,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.98% workspace line coverage
-- 7967/8049 workspace lines covered
+- 98.99% workspace line coverage
+- 8058/8140 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7399/7399 `tensor_vm` lines covered
+- 7490/7490 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

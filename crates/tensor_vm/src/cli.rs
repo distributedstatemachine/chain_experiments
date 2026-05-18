@@ -110,11 +110,24 @@ pub enum CliCommand {
         artifact_uri: String,
         record_roots: Vec<Hash>,
     },
+    PublicEvidenceRecordArtifactFromFile {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
+        record_file: String,
+    },
     PublicEvidenceRecordSummaryFromRoots {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         record_roots: Vec<Hash>,
+    },
+    PublicEvidenceRecordSummaryFromFile {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_file: String,
     },
     PublicEvidenceNetworkObservation {
         operator_id: Hash,
@@ -420,6 +433,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "record-artifact-from-file",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--artifact-uri",
+            artifact_uri,
+            "--record-file",
+            record_file,
+        ] => Ok(CliCommand::PublicEvidenceRecordArtifactFromFile {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            artifact_uri: (*artifact_uri).to_owned(),
+            record_file: (*record_file).to_owned(),
+        }),
+        [
+            "public-evidence",
             "record-summary-from-roots",
             "--kind",
             kind,
@@ -434,6 +467,23 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             bundle_id: parse_hash_argument(bundle_id)?,
             manifest_signer: parse_hash_argument(manifest_signer)?,
             record_roots: parse_hash_list_argument(record_roots)?,
+        }),
+        [
+            "public-evidence",
+            "record-summary-from-file",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--record-file",
+            record_file,
+        ] => Ok(CliCommand::PublicEvidenceRecordSummaryFromFile {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            record_file: (*record_file).to_owned(),
         }),
         [
             "public-evidence",
@@ -720,6 +770,17 @@ pub fn describe_command(command: &CliCommand) -> String {
                 record_roots.len()
             )
         }
+        CliCommand::PublicEvidenceRecordArtifactFromFile {
+            kind,
+            artifact_uri,
+            record_file,
+            ..
+        } => {
+            format!(
+                "generate {} public evidence artifact locator from record file record_file={record_file} artifact_uri={artifact_uri}",
+                public_evidence_record_kind_tag(*kind),
+            )
+        }
         CliCommand::PublicEvidenceRecordSummaryFromRoots {
             kind, record_roots, ..
         } => {
@@ -727,6 +788,14 @@ pub fn describe_command(command: &CliCommand) -> String {
                 "generate {} public evidence record summary from {} roots",
                 public_evidence_record_kind_tag(*kind),
                 record_roots.len()
+            )
+        }
+        CliCommand::PublicEvidenceRecordSummaryFromFile {
+            kind, record_file, ..
+        } => {
+            format!(
+                "generate {} public evidence record summary from record file record_file={record_file}",
+                public_evidence_record_kind_tag(*kind),
             )
         }
         CliCommand::PublicEvidenceNetworkObservation {
@@ -995,6 +1064,24 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
                 record_roots.len() as u64,
             )
         }
+        CliCommand::PublicEvidenceRecordArtifactFromFile {
+            kind,
+            bundle_id,
+            manifest_signer,
+            artifact_uri,
+            record_file,
+        } => {
+            let record_roots = public_evidence_record_roots_from_file(*kind, record_file)?;
+            let record_root = aggregate_public_evidence_record_roots(*kind, &record_roots)?;
+            record_artifact_evidence_line(
+                *kind,
+                *bundle_id,
+                *manifest_signer,
+                artifact_uri,
+                record_root,
+                record_roots.len() as u64,
+            )
+        }
         CliCommand::PublicEvidenceRecordSummaryFromRoots {
             kind,
             bundle_id,
@@ -1002,6 +1089,22 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             record_roots,
         } => {
             let record_root = aggregate_public_evidence_record_roots(*kind, record_roots)?;
+            record_summary_evidence_lines(
+                *kind,
+                *bundle_id,
+                *manifest_signer,
+                record_root,
+                record_roots.len() as u64,
+            )
+        }
+        CliCommand::PublicEvidenceRecordSummaryFromFile {
+            kind,
+            bundle_id,
+            manifest_signer,
+            record_file,
+        } => {
+            let record_roots = public_evidence_record_roots_from_file(*kind, record_file)?;
+            let record_root = aggregate_public_evidence_record_roots(*kind, &record_roots)?;
             record_summary_evidence_lines(
                 *kind,
                 *bundle_id,
@@ -1501,6 +1604,60 @@ fn aggregate_public_evidence_record_roots(
             &encoded_roots,
         ],
     ))
+}
+
+fn public_evidence_record_roots_from_file(
+    kind: PublicEvidenceRecordKind,
+    record_file: &str,
+) -> Result<Vec<Hash>> {
+    let contents = std::fs::read_to_string(record_file)
+        .map_err(|_| TvmError::Storage("failed to read public evidence record file"))?;
+    let mut roots = Vec::new();
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        roots.push(public_evidence_record_root_from_line(kind, line)?);
+    }
+    if roots.is_empty() {
+        return Err(TvmError::InvalidReceipt("record file has no roots"));
+    }
+    Ok(roots)
+}
+
+fn public_evidence_record_root_from_line(
+    kind: PublicEvidenceRecordKind,
+    line: &str,
+) -> Result<Hash> {
+    if let Some(root) = line.strip_prefix("record_root=") {
+        return parse_record_file_root(root);
+    }
+    if kind == PublicEvidenceRecordKind::NetworkRuntimeObservations
+        && let Some(record) = line.strip_prefix("network_runtime_observation=")
+    {
+        return network_observation_root_from_record_line(record);
+    }
+    Err(TvmError::InvalidReceipt(
+        "unsupported public evidence record line",
+    ))
+}
+
+fn parse_record_file_root(root: &str) -> Result<Hash> {
+    if root.trim() != root {
+        return Err(TvmError::InvalidReceipt("invalid record root file line"));
+    }
+    parse_hash_argument(root)
+}
+
+fn network_observation_root_from_record_line(record: &str) -> Result<Hash> {
+    let fields = record.split(',').collect::<Vec<_>>();
+    if fields.len() != 13 {
+        return Err(TvmError::InvalidReceipt(
+            "invalid network observation record line",
+        ));
+    }
+    parse_record_file_root(fields[11])
 }
 
 struct NetworkObservationEvidenceLine<'a> {
@@ -3127,6 +3284,51 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             }
         );
         assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary-from-file",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--record-file",
+                "artifacts/network-runtime.records",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordSummaryFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_file: "artifacts/network-runtime.records".to_owned(),
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-artifact-from-file",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--artifact-uri",
+                "https://evidence.tensorvm.net/network-runtime.json",
+                "--record-file",
+                "artifacts/network-runtime.records",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordArtifactFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_file: "artifacts/network-runtime.records".to_owned(),
+            }
+        );
+        assert_eq!(
             parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
             CliCommand::ServiceInit {
                 data_dir: "/var/lib/tensorvm".to_owned(),
@@ -3405,6 +3607,25 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 ],
             }),
             "generate network-runtime public evidence artifact locator from 2 roots artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_file: "artifacts/network-runtime.records".to_owned(),
+            }),
+            "generate network-runtime public evidence record summary from record file record_file=artifacts/network-runtime.records"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_file: "artifacts/network-runtime.records".to_owned(),
+            }),
+            "generate network-runtime public evidence artifact locator from record file record_file=artifacts/network-runtime.records artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
         );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
@@ -4124,6 +4345,140 @@ p2p_idle_timeout_seconds=60
                 hex(&aggregate_root),
                 hex(&aggregate_artifact_signature)
             )
+        );
+
+        let record_file_roots = vec![
+            observation_root,
+            hash_bytes(b"test", &[b"network-observation-b"]),
+        ];
+        let record_file_aggregate_root = aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &record_file_roots,
+        )
+        .unwrap();
+        let record_file = std::env::temp_dir().join(format!(
+            "tensor-vm-network-records-{}-{}.records",
+            std::process::id(),
+            record_file_aggregate_root[0]
+        ));
+        std::fs::write(
+            &record_file,
+            format!(
+                "# captured network-runtime records\n\n{network_observation}\nrecord_root={}\n",
+                hex(&record_file_roots[1])
+            ),
+        )
+        .unwrap();
+        let record_file_path = record_file.to_string_lossy().into_owned();
+        let record_file_roots_from_disk = public_evidence_record_roots_from_file(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &record_file_path,
+        )
+        .unwrap();
+        assert_eq!(record_file_roots_from_disk, record_file_roots);
+        let record_file_summary =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_file: record_file_path.clone(),
+            })
+            .unwrap();
+        let record_file_signature = sign_public_evidence_record(
+            &address(b"public-evidence-publisher"),
+            &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &record_file_aggregate_root,
+            record_file_roots.len() as u64,
+        );
+        assert_eq!(
+            record_file_summary,
+            format!(
+                "network_runtime_observation_records=2\nnetwork_runtime_observation_root={}\nnetwork_runtime_observation_signature={}",
+                hex(&record_file_aggregate_root),
+                hex(&record_file_signature)
+            )
+        );
+        let record_file_artifact =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: aggregate_artifact_uri.to_owned(),
+                record_file: record_file_path.clone(),
+            })
+            .unwrap();
+        let record_file_artifact_signature = crate::testnet::sign_public_evidence_artifact(
+            &address(b"public-evidence-publisher"),
+            &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            aggregate_artifact_uri,
+            &record_file_aggregate_root,
+            record_file_roots.len() as u64,
+        );
+        assert_eq!(
+            record_file_artifact,
+            format!(
+                "record_artifact=network-runtime,{aggregate_artifact_uri},{},2,{}",
+                hex(&record_file_aggregate_root),
+                hex(&record_file_artifact_signature)
+            )
+        );
+        std::fs::remove_file(&record_file).unwrap();
+        assert_eq!(
+            public_evidence_record_roots_from_file(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &record_file_path,
+            )
+            .unwrap_err()
+            .to_string(),
+            "storage error: failed to read public evidence record file"
+        );
+        let empty_record_file = std::env::temp_dir().join(format!(
+            "tensor-vm-empty-records-{}-{}.records",
+            std::process::id(),
+            record_file_aggregate_root[1]
+        ));
+        std::fs::write(&empty_record_file, "# no roots yet\n\n").unwrap();
+        assert_eq!(
+            public_evidence_record_roots_from_file(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &empty_record_file.to_string_lossy(),
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: record file has no roots"
+        );
+        std::fs::remove_file(&empty_record_file).unwrap();
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::FinalityHistory,
+                "network_runtime_observation=bad",
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: unsupported public evidence record line"
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::BlockHistory,
+                &format!(
+                    "record_root= {}",
+                    hex(&hash_bytes(b"test", &[b"bad-whitespace"]))
+                ),
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid record root file line"
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                "network_runtime_observation=bad",
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid network observation record line"
         );
     }
 

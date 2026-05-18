@@ -103,7 +103,9 @@ pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
     "tvmd public-evidence record-artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
     "tvmd public-evidence record-artifact-from-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
+    "tvmd public-evidence record-artifact-from-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
     "tvmd public-evidence record-summary-from-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
+    "tvmd public-evidence record-summary-from-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
 ];
 
 pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] =
@@ -206,12 +208,22 @@ mod tests {
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
+                .any(|command| command.contains("record-artifact-from-file"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
                 .any(|command| command.contains("auditor-record"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("record-summary-from-roots"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("record-summary-from-file"))
         );
         assert!(
             PUBLIC_TESTNET_CLI_COMMANDS

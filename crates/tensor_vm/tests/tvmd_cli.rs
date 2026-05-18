@@ -526,6 +526,44 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         "--record-roots",
         &network_root_csv,
     ]));
+    let network_record_file = data_dir.join("network-runtime.records");
+    std::fs::write(&network_record_file, network_lines.join("\n"))
+        .expect("network runtime record file must be written");
+    let network_record_file_text = network_record_file.to_string_lossy().into_owned();
+    let network_summary_from_file = trimmed_tvmd(&[
+        "public-evidence",
+        "record-summary-from-file",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--record-file",
+        &network_record_file_text,
+    ]);
+    assert_eq!(network_summary_from_file, network_summary);
+    let network_artifact_from_file = trimmed_tvmd(&[
+        "public-evidence",
+        "record-artifact-from-file",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--artifact-uri",
+        "https://evidence.tensorvm.net/tensorvm/network-runtime.json",
+        "--record-file",
+        &network_record_file_text,
+    ]);
+    assert_eq!(
+        network_artifact_from_file,
+        artifact_lines
+            .last()
+            .expect("network runtime artifact line must exist")
+            .as_str()
+    );
 
     let run_window = trimmed_tvmd(&[
         "public-evidence",

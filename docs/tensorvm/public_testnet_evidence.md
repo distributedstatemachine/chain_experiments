@@ -407,11 +407,24 @@ tvmd public-evidence record-artifact-from-roots \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
+tvmd public-evidence record-artifact-from-file \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
+  --record-file artifacts/network-runtime.records
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
+
+tvmd public-evidence record-summary-from-file \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-file artifacts/network-runtime.records
 ```
 
 Supported record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
@@ -425,6 +438,10 @@ The `record-summary-from-roots` and `record-artifact-from-roots` variants derive
 root and record count from unique provided supporting-record roots before signing the summary fields or
 artifact locator; duplicate roots are rejected so a summary count cannot be padded by repeating the same raw
 record root.
+The `record-summary-from-file` and `record-artifact-from-file` variants derive those same fields from a
+saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic raw-record files use
+`record_root=<hex>` lines, and network-runtime files can contain the exact signed
+`network_runtime_observation=...` lines emitted by the network-observation commands.
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires the default
 public-testnet criteria or stricter criteria, `public_criterion=true`, and `independently_checkable=true`.

@@ -69,7 +69,9 @@ tvmd public-evidence network-observation-from-service-log ...
 tvmd public-evidence record-summary ...
 tvmd public-evidence record-artifact ...
 tvmd public-evidence record-artifact-from-roots ...
+tvmd public-evidence record-artifact-from-file ...
 tvmd public-evidence record-summary-from-roots ...
+tvmd public-evidence record-summary-from-file ...
 ```
 
 The collected records must cover the full 7-day window, not only a final snapshot. The final node
@@ -84,7 +86,8 @@ the signed run window. Prefer `network-observation-from-service-log` when the ra
 stdout/stderr log is available, so the peer ID, protocol counts, bootstrap-peer count, and DoS-control
 settings are derived from the captured service runtime instead of being copied by hand. Every
 `record-summary` root must have a matching signed `record-artifact` locator for the external raw-record
-artifact. Preserve raw supporting records for:
+artifact; when possible, use `record-summary-from-file` and `record-artifact-from-file` over the saved raw
+record file instead of manually copying comma-separated roots. Preserve raw supporting records for:
 
 - block history
 - finality history
@@ -163,7 +166,8 @@ publication must include:
 - libp2p network-observation artifacts, including the per-operator `network_runtime_observation=...`
   manifest lines, the source `tvmd service serve` logs used with
   `network-observation-from-service-log`, and the roots passed to
-  `record-summary-from-roots --kind network-runtime`
+  `record-summary-from-roots --kind network-runtime` or the raw file passed to
+  `record-summary-from-file --kind network-runtime`
 
 After validation returns `public_evidence_full_spec=true`, link the published bundle from
 `docs/tensorvm/implementation_status.md` and rerun the required verification commands from the repository
