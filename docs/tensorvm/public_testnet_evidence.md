@@ -41,8 +41,9 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed service-health summaries, and an external
-publication URI, but those local checks are only evidence-format validation until an external run publishes
-real records.
+publication URI. It also derives `external_operator_evidence` from the manifest's operator identity
+attestation record count rather than from a CLI flag. These local checks are still only evidence-format
+validation until an external run publishes real records.
 
 ## Manifest Format
 
@@ -90,8 +91,9 @@ tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
 ```
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
-`public_criterion=true` and `independently_checkable=true`; the individual fields identify which
-post-run artifact or protocol observation is missing:
+`public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true
+only when enough signed node evidence and operator identity attestation records are present. The individual
+fields identify which post-run artifact or protocol observation is missing:
 
 ```text
 public_evidence_full_spec=false

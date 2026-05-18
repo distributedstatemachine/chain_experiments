@@ -82,7 +82,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   health-check summaries
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, signatures, independent auditor records, block/finality history, operator attestations, and
-  data-availability measurement records before full-spec evidence can be considered independently checkable
+  data-availability measurement records, and derives external-operator evidence from the operator
+  attestation count before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -111,7 +112,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.56% workspace line coverage
-- 5622/5704 workspace lines covered
+- 5623/5705 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

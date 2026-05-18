@@ -982,21 +982,22 @@ impl PublicTestnetEvidenceBundle {
         &self,
         criteria: &PublicTestnetCriteria,
         block_time_seconds: u64,
-        external_operator_evidence: bool,
     ) -> PublicTestnetEvidenceBundleReport {
-        let run_evidence =
-            self.run
-                .evaluate(criteria, block_time_seconds, external_operator_evidence);
         let has_published_evidence_bundle =
             self.publication.is_published_and_independently_checkable();
         let has_block_history =
             self.run.observed_blocks > 0 && self.block_history_records >= self.run.observed_blocks;
         let has_finality_history = self.run.observed_blocks > 0
             && self.finality_history_records >= self.run.observed_blocks;
-        let required_operator_attestations =
-            (run_evidence.miner_count + run_evidence.validator_count) as u64;
+        let (miner_count, validator_count) = self.run.independent_operator_counts();
+        let required_operator_attestations = (miner_count + validator_count) as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
             && self.operator_identity_attestation_records >= required_operator_attestations;
+        let run_evidence = self.run.evaluate(
+            criteria,
+            block_time_seconds,
+            has_operator_identity_attestations,
+        );
         let has_data_availability_measurements = self.run.checked_receipts > 0
             && self.data_availability_measurement_records >= self.run.checked_receipts;
         let independently_checkable = has_published_evidence_bundle
@@ -2068,7 +2069,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         };
         let mut bundle = complete_public_evidence_bundle();
 
-        let complete = bundle.evaluate(&criteria, 6, true);
+        let complete = bundle.evaluate(&criteria, 6);
         assert!(complete.run_evidence.public_criterion_met);
         assert!(complete.has_published_evidence_bundle);
         assert!(complete.has_block_history);
@@ -2079,56 +2080,66 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.full_spec_evidence_met);
 
         bundle.publication.public_uri = String::from("http://localhost:8545/evidence.json");
-        let local_uri = bundle.evaluate(&criteria, 6, true);
+        let local_uri = bundle.evaluate(&criteria, 6);
         assert!(!local_uri.has_published_evidence_bundle);
         assert!(!local_uri.independently_checkable);
         assert!(!local_uri.full_spec_evidence_met);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("https://localhost/evidence.json");
-        let localhost_https_uri = bundle.evaluate(&criteria, 6, true);
+        let localhost_https_uri = bundle.evaluate(&criteria, 6);
         assert!(!localhost_https_uri.has_published_evidence_bundle);
         assert!(!localhost_https_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("https://192.168.1.2/evidence.json");
-        let private_https_uri = bundle.evaluate(&criteria, 6, true);
+        let private_https_uri = bundle.evaluate(&criteria, 6);
         assert!(!private_https_uri.has_published_evidence_bundle);
         assert!(!private_https_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("ipfs://");
-        let empty_ipfs_uri = bundle.evaluate(&criteria, 6, true);
+        let empty_ipfs_uri = bundle.evaluate(&criteria, 6);
         assert!(!empty_ipfs_uri.has_published_evidence_bundle);
         assert!(!empty_ipfs_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.block_history_records = 9;
-        let missing_block_history = bundle.evaluate(&criteria, 6, true);
+        let missing_block_history = bundle.evaluate(&criteria, 6);
         assert!(!missing_block_history.has_block_history);
         assert!(!missing_block_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.finality_history_records = 9;
-        let missing_finality_history = bundle.evaluate(&criteria, 6, true);
+        let missing_finality_history = bundle.evaluate(&criteria, 6);
         assert!(!missing_finality_history.has_finality_history);
         assert!(!missing_finality_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestation_records = 2;
-        let missing_operator_attestations = bundle.evaluate(&criteria, 6, true);
+        let missing_operator_attestations = bundle.evaluate(&criteria, 6);
         assert!(!missing_operator_attestations.has_operator_identity_attestations);
+        assert!(
+            !missing_operator_attestations
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(
+            !missing_operator_attestations
+                .run_evidence
+                .public_criterion_met
+        );
         assert!(!missing_operator_attestations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.data_availability_measurement_records = 19;
-        let missing_data_availability_measurements = bundle.evaluate(&criteria, 6, true);
+        let missing_data_availability_measurements = bundle.evaluate(&criteria, 6);
         assert!(!missing_data_availability_measurements.has_data_availability_measurements);
         assert!(!missing_data_availability_measurements.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.run.services.clear();
-        let missing_services = bundle.evaluate(&criteria, 6, true);
+        let missing_services = bundle.evaluate(&criteria, 6);
         assert!(missing_services.independently_checkable);
         assert!(!missing_services.run_evidence.public_criterion_met);
         assert!(!missing_services.full_spec_evidence_met);
@@ -2149,7 +2160,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let parsed = parse_public_testnet_evidence_manifest(&manifest).unwrap();
 
         assert_eq!(parsed, complete_public_evidence_bundle());
-        assert!(parsed.evaluate(&criteria, 6, true).full_spec_evidence_met);
+        assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
         let false_runtime =
             manifest.replace("libp2p_runtime_used=true", "libp2p_runtime_used=false");
@@ -2157,7 +2168,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!parsed_false_runtime.run.network_runtime.libp2p_runtime_used);
         assert!(
             !parsed_false_runtime
-                .evaluate(&criteria, 6, true)
+                .evaluate(&criteria, 6)
                 .full_spec_evidence_met
         );
 

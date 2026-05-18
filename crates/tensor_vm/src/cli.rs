@@ -161,7 +161,6 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
     let report = bundle.evaluate(
         &PublicTestnetCriteria::default(),
         ChainParams::default().block_time_seconds,
-        true,
     );
     Ok(format!(
         "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
@@ -653,6 +652,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("deployed_faucet_service=true"));
         assert!(report.contains("deployed_telemetry_service=true"));
         assert!(report.contains("deployed_public_services=true"));
+
+        let insufficient_operator_records = evidence_manifest().replace(
+            "operator_identity_attestation_records=3",
+            "operator_identity_attestation_records=2",
+        );
+        let insufficient_operator_report =
+            validate_public_evidence_manifest(&insufficient_operator_records).unwrap();
+        assert!(insufficient_operator_report.contains("operator_identity_attestations=false"));
+        assert!(insufficient_operator_report.contains("external_operator_evidence=false"));
+        assert!(insufficient_operator_report.contains("public_criterion=false"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }

@@ -33,7 +33,7 @@ The objective decomposes into these deliverables:
 | Recommended TensorVM modules exist | `api`, `chain`, `challenge`, `cli`, `error`, `explorer`, `faucet`, `jobs`, `merkle`, `miner`, `p2p`, `rpc`, `runtime`, `scheduler`, `storage`, `study`, `telemetry`, `tensor`, `tensor_server`, `testnet`, `txpool`, `types`, `validator`, `verify`, `vm`, `watcher` under `crates/tensor_vm/src` | Present |
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
-| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, and `tvmd public-evidence validate --manifest <path>` | Present |
+| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, operator-attestation-derived external-operator evidence, and `tvmd public-evidence validate --manifest <path>` | Present |
 | Miner and validator CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
@@ -81,8 +81,9 @@ These are not satisfied by local tests or manifests alone:
   records
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
-Local evidence validators reject localhost, private, link-local, and empty publication endpoints, so these
-blockers require real external infrastructure rather than loopback or private-network manifests.
+Local evidence validators reject localhost, private, link-local, and empty publication endpoints, and they
+derive external-operator evidence from manifest operator-attestation records. These blockers therefore
+require real external infrastructure rather than loopback, private-network, or out-of-band manifests.
 
 ## Completion Decision
 
