@@ -88,7 +88,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs and distinct from the manifest signer, a signed run-window record, block/finality history,
   signed operator identity attestations observed inside the signed run window
-  matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
+  matched to signed node-heartbeat records with no overreported operator-attestation counts, signed
+  production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, well-formed `ipfs://`/`ar://`
   content identifiers, and data-availability measurement records before full-spec evidence can be

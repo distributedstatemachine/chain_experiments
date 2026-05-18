@@ -2186,8 +2186,8 @@ impl PublicTestnetEvidenceBundle {
         let valid_operator_attestation_count =
             self.valid_operator_identity_attestation_count() as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
-            && self.operator_identity_attestation_records >= required_operator_attestations;
-        let has_operator_identity_attestations = has_operator_identity_attestations
+            && self.operator_identity_attestation_records >= required_operator_attestations
+            && self.operator_identity_attestation_records <= valid_operator_attestation_count
             && valid_operator_attestation_count >= required_operator_attestations;
         let run_evidence = self.run.evaluate(
             criteria,
@@ -4243,6 +4243,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 .public_criterion_met
         );
         assert!(!missing_operator_attestations.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.operator_identity_attestation_records = 4;
+        let overreported_operator_attestations = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_operator_attestations.has_operator_identity_attestations);
+        assert!(
+            !overreported_operator_attestations
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(!overreported_operator_attestations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestations[0].operator_signature = [8; 32];

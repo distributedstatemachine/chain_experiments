@@ -1774,7 +1774,9 @@ Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator
 with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
 identity URI bound to a node address, role, operator ID, and observation time. Counted operator
-attestations must be observed inside the signed run window.
+attestations must be observed inside the signed run window, and the
+`operator_identity_attestation_records` manifest count must not exceed the number of valid signed
+operator-attestation records that match live node-heartbeat evidence.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path

@@ -37,8 +37,9 @@ implementation artifacts and tests.
   signer, operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability
   counters, non-public IP literal rejection plus malformed HTTPS authority rejection for public endpoints,
-  well-formed `ipfs://`/`ar://` identifier validation, and deployed public-service reachability plus
-  content roots bound to external HTTPS URLs. A local launch preflight manifest is documented in
+  no overreported operator-attestation counts, well-formed `ipfs://`/`ar://` identifier validation, and
+  deployed public-service reachability plus content roots bound to external HTTPS URLs. A local launch
+  preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
   `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, signed public

@@ -66,10 +66,11 @@ end time, and observed block count. It verifies signed supporting-record roots f
 history, production libp2p observations, data-availability measurements, invalid-work rejections, and
 reward settlements. It also requires signed external artifact locators for the raw supporting records behind
 each summary root, and it derives `external_operator_evidence` from signed operator identity attestation
-records that match the signed node-heartbeat records. These local checks are still only evidence-format
-validation until an external run publishes real records. Run-level finality and data-availability counters
-must also be internally consistent: finalized blocks cannot exceed observed blocks, and available receipts
-cannot exceed checked receipts.
+records that match the signed node-heartbeat records. The operator identity attestation count cannot
+overstate those valid signed records. These local checks are still only evidence-format validation until an
+external run publishes real records. Run-level finality and data-availability counters must also be
+internally consistent: finalized blocks cannot exceed observed blocks, and available receipts cannot exceed
+checked receipts.
 
 ## Manifest Format
 
@@ -97,7 +98,9 @@ The service-health URL path must match the signed health path. Counted miner and
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
-attestations and service-content records must have observation timestamps inside the signed run window.
+attestations must have observation timestamps inside the signed run window, match live node-heartbeat
+records, and be at least as numerous as the `operator_identity_attestation_records` manifest count.
+Counted service-content records must have observation timestamps inside the signed run window.
 Every counted service health summary must likewise span the full observed block range and carry at least
 one reachable observation and one signed health check per observed block.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
@@ -232,8 +235,9 @@ only counts a node toward the public run when its signed heartbeat count covers 
 block count, and miner/validator operator IDs must be disjoint for the role minima to count independently.
 The operator-attestation command rejects zero node addresses, zero operator IDs, non-public or malformed
 identity URIs, and empty observation times; bundle validation only counts operator attestations observed
-inside the signed run window. Its output can be inserted directly as an `operator=...` line in the evidence
-manifest.
+inside the signed run window and matching signed live node-heartbeat records. The
+`operator_identity_attestation_records` count must not exceed those valid signed operator records. Its
+output can be inserted directly as an `operator=...` line in the evidence manifest.
 
 Operators can generate signed service-health and service-content manifest lines for RPC, explorer, faucet,
 or telemetry evidence:
