@@ -71,6 +71,14 @@ pub enum CliCommand {
         observed_at_unix_seconds: u64,
         min_content_bytes: u64,
     },
+    PublicEvidenceServiceContentFromBytes {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        observed_at_unix_seconds: u64,
+        content_hex: String,
+    },
     PublicEvidenceRecordSummary {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
@@ -278,6 +286,29 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             content_root: parse_hash_argument(content_root)?,
             observed_at_unix_seconds: parse_u64(observed_at)?,
             min_content_bytes: parse_u64(min_content_bytes)?,
+        }),
+        [
+            "public-evidence",
+            "service-content-from-bytes",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            endpoint_id,
+            "--public-url",
+            public_url,
+            "--content-path",
+            content_path,
+            "--observed-at",
+            observed_at,
+            "--content-hex",
+            content_hex,
+        ] => Ok(CliCommand::PublicEvidenceServiceContentFromBytes {
+            kind: parse_public_service_kind(kind)?,
+            endpoint_id: parse_hash_argument(endpoint_id)?,
+            public_url: (*public_url).to_owned(),
+            content_path: (*content_path).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at)?,
+            content_hex: (*content_hex).to_owned(),
         }),
         [
             "public-evidence",
@@ -551,6 +582,17 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_service_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceServiceContentFromBytes {
+            kind,
+            public_url,
+            content_path,
+            ..
+        } => {
+            format!(
+                "generate {} service content evidence from observed bytes public_url={public_url} content_path={content_path}",
+                public_service_kind_tag(*kind)
+            )
+        }
         CliCommand::PublicEvidenceRecordSummary {
             kind, record_count, ..
         } => {
@@ -746,6 +788,26 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *observed_at_unix_seconds,
             *min_content_bytes,
         ),
+        CliCommand::PublicEvidenceServiceContentFromBytes {
+            kind,
+            endpoint_id,
+            public_url,
+            content_path,
+            observed_at_unix_seconds,
+            content_hex,
+        } => {
+            let content_bytes = parse_hex_bytes_argument(content_hex)?;
+            let content_root = public_service_content_root(&content_bytes);
+            service_content_evidence_line(
+                *kind,
+                *endpoint_id,
+                public_url,
+                content_path,
+                content_root,
+                *observed_at_unix_seconds,
+                content_bytes.len() as u64,
+            )
+        }
         CliCommand::PublicEvidenceRecordSummary {
             kind,
             bundle_id,
@@ -961,6 +1023,13 @@ fn service_content_evidence_line(
         evidence.min_content_bytes,
         hex(&evidence.content_signature)
     ))
+}
+
+fn public_service_content_root(content_bytes: &[u8]) -> Hash {
+    hash_bytes(
+        b"tensor-vm-public-service-content-root-v1",
+        &[content_bytes],
+    )
 }
 
 fn publication_evidence_lines(
@@ -1671,12 +1740,30 @@ fn parse_hash_list_argument(value: &str) -> Result<Vec<Hash>> {
         .collect()
 }
 
+fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
+    let value = value.strip_prefix("0x").unwrap_or(value);
+    if value.is_empty() || !value.len().is_multiple_of(2) {
+        return Err(TvmError::InvalidReceipt("invalid hex bytes argument"));
+    }
+    let mut out = Vec::with_capacity(value.len() / 2);
+    for chunk in value.as_bytes().chunks_exact(2) {
+        let high = parse_hex_nibble(chunk[0])?;
+        let low = parse_hex_nibble(chunk[1])?;
+        out.push((high << 4) | low);
+    }
+    Ok(out)
+}
+
 fn parse_hash_nibble(value: u8) -> Result<u8> {
+    parse_hex_nibble(value).map_err(|_| TvmError::InvalidReceipt("invalid hash argument"))
+}
+
+fn parse_hex_nibble(value: u8) -> Result<u8> {
     match value {
         b'0'..=b'9' => Ok(value - b'0'),
         b'a'..=b'f' => Ok(value - b'a' + 10),
         b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(TvmError::InvalidReceipt("invalid hash argument")),
+        _ => Err(TvmError::InvalidReceipt("invalid hex bytes argument")),
     }
 }
 
@@ -2561,6 +2648,34 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 min_content_bytes: 64,
             }
         );
+        let content_hex = hex(&[42_u8; 64]);
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "service-content-from-bytes",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.net/chain/head",
+                "--content-path",
+                "/chain/head",
+                "--observed-at",
+                "1700000000",
+                "--content-hex",
+                &content_hex,
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex,
+            }
+        );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
             parse_cli_parts(&[
@@ -2852,6 +2967,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 min_content_bytes: 64,
             }),
             "generate explorer service content evidence public_url=https://explorer.tensorvm.net/explorer content_path=/explorer"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Faucet,
+                endpoint_id: hash_bytes(b"test", &[b"faucet-service"]),
+                public_url: "https://faucet.tensorvm.net/faucet/page".to_owned(),
+                content_path: "/faucet/page".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex: hex(&[1_u8; 64]),
+            }),
+            "generate faucet service content evidence from observed bytes public_url=https://faucet.tensorvm.net/faucet/page content_path=/faucet/page"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidencePublication {
@@ -3290,6 +3416,23 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             service_content,
             manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service")
+        );
+        let observed_content = vec![7_u8; 80];
+        let observed_content_root = public_service_content_root(&observed_content);
+        let service_content_from_bytes =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
+                content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex: hex(&observed_content),
+            })
+            .unwrap();
+        assert!(service_content_from_bytes.starts_with("service_content=rpc,"));
+        assert!(
+            service_content_from_bytes
+                .contains(&format!("{},1700000000,80,", hex(&observed_content_root)))
         );
 
         let peer_id = PeerId::random().to_string();
@@ -3990,6 +4133,39 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 1_700_000_000,
                 min_content_bytes: 63,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex: "zz".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex: "abc".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_hex: hex(&[1_u8; 63]),
             })
             .is_err()
         );

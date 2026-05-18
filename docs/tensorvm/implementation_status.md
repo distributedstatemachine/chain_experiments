@@ -130,7 +130,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
-  distinct content roots, and at least 64 observed bytes,
+  distinct content roots, and at least 64 observed bytes, plus
+  `tvmd public-evidence service-content-from-bytes ...` generation that derives those content roots from
+  exact captured response-body bytes,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
   single-label DNS rejection, plus manifest validation that binds one such signed raw record to every
@@ -174,9 +176,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.96% workspace line coverage
-- 7765/7847 workspace lines covered
+- 7818/7900 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7197/7197 `tensor_vm` lines covered
+- 7198/7198 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

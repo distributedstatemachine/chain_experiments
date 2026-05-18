@@ -302,6 +302,14 @@ tvmd public-evidence service-content \
   --content-root <content-root-hex> \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
+
+tvmd public-evidence service-content-from-bytes \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.tensorvm.net/chain/head \
+  --content-path /chain/head \
+  --observed-at <unix-seconds> \
+  --content-hex <captured-response-body-hex>
 ```
 
 The command rejects non-public service URLs, health URLs whose path does not exactly match the signed
@@ -313,6 +321,9 @@ line in the evidence manifest. The service-content command rejects non-public co
 endpoint IDs, content URLs whose path does not exactly match the required service surface, content URLs
 with query strings or fragments, zero content roots, empty observation times, and content proofs smaller
 than 64 observed bytes.
+`service-content-from-bytes` is the reproducible path from a captured response body to the same manifest
+line: it hashes the exact bytes with the TensorVM service-content-root domain, sets `min_content_bytes` to
+the captured byte length, and rejects malformed hex or captured bodies shorter than 64 bytes.
 Bundle validation only counts service-content records observed inside the signed run window and whose HTTPS
 authority matches the corresponding service-health URL for the same endpoint ID. Its output can be inserted
 directly as a `service_content=...` line in the evidence manifest. The public service gate requires both

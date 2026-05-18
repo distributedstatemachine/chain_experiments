@@ -1750,6 +1750,14 @@ tvmd public-evidence service-content \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
 
+tvmd public-evidence service-content-from-bytes \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.tensorvm.net/chain/head \
+  --content-path /chain/head \
+  --observed-at <unix-seconds> \
+  --content-hex <captured-response-body-hex>
+
 tvmd public-evidence network-observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
@@ -1814,6 +1822,10 @@ The `service-content` command emits the exact `service_content=...` manifest lin
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Counted
 service-content records must be observed inside the signed run window and prove at least 64 observed bytes.
+The `service-content-from-bytes` command derives the content root from the exact captured response body
+bytes using the TensorVM service-content-root domain and emits the same signed `service_content=...`
+manifest line with `min_content_bytes` set to the captured byte length. Operators should prefer it when
+turning raw public service observations into evidence.
 Deployed public service evidence must include both signed health and signed content records with matching
 endpoint IDs and matching HTTPS authorities for `/chain/head`, `/explorer`, `/faucet/page`, and
 `/telemetry/dashboard`. The RPC, explorer, faucet, and telemetry service surfaces must use distinct
