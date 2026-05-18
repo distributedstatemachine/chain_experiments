@@ -1741,7 +1741,8 @@ tvmd public-evidence record-summary-from-roots \
 
 The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operator-attestation` commands
 emit the signed manifest fields for the public evidence location, independent auditor records, wall-clock
-run duration, external operator node heartbeats, and operator identity attestations.
+run duration, external operator node heartbeats, and operator identity attestations. Counted node
+heartbeats must cover the manifest's full observed block count.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
@@ -1749,7 +1750,8 @@ identity URI bound to a node address, role, operator ID, and observation time.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path
-must match the signed health path.
+must match the signed health path. Counted service-health records must cover the manifest's full observed
+block count with both reachable observations and signed health checks.
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Deployed

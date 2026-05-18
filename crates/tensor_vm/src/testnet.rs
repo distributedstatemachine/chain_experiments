@@ -382,13 +382,16 @@ impl PublicServiceEvidence {
     pub fn has_reachable_endpoint_proof(&self) -> bool {
         self.endpoint_id != [0; 32]
             && self.endpoint().has_external_health_url()
+            && self.last_seen_block >= self.first_seen_block
             && self.reachable_observation_count > 0
             && self.signed_health_check_count > 0
             && self.signed_health_check_valid()
     }
 
     pub fn is_reachable_for_run(&self, observed_blocks: u64) -> bool {
-        self.covers_run(observed_blocks) && self.has_reachable_endpoint_proof()
+        self.covers_run(observed_blocks)
+            && self.has_reachable_endpoint_proof()
+            && self.has_run_health_coverage(observed_blocks)
     }
 
     fn endpoint(&self) -> PublicServiceEndpoint {
@@ -397,6 +400,12 @@ impl PublicServiceEvidence {
             public_url: self.public_url.clone(),
             health_path: self.health_path.clone(),
         }
+    }
+
+    fn has_run_health_coverage(&self, observed_blocks: u64) -> bool {
+        observed_blocks == 0
+            || (self.reachable_observation_count >= observed_blocks
+                && self.signed_health_check_count >= observed_blocks)
     }
 }
 
@@ -733,9 +742,17 @@ impl PublicNodeEvidence {
     }
 
     pub fn has_external_operator_proof(&self) -> bool {
-        self.operator_id != [0; 32]
+        self.address != [0; 32]
+            && self.operator_id != [0; 32]
+            && self.last_seen_block >= self.first_seen_block
             && self.signed_heartbeat_count > 0
             && self.heartbeat_signature_valid()
+    }
+
+    pub fn is_live_for_run(&self, observed_blocks: u64) -> bool {
+        self.covers_run(observed_blocks)
+            && self.has_external_operator_proof()
+            && self.has_run_heartbeat_coverage(observed_blocks)
     }
 
     pub fn heartbeat_signature_valid(&self) -> bool {
@@ -778,6 +795,10 @@ impl PublicNodeEvidence {
             signed_heartbeat_count,
             heartbeat_signature: sign(&address, &message),
         }
+    }
+
+    fn has_run_heartbeat_coverage(&self, observed_blocks: u64) -> bool {
+        observed_blocks == 0 || self.signed_heartbeat_count >= observed_blocks
     }
 }
 
@@ -2201,9 +2222,7 @@ impl PublicTestnetEvidenceBundle {
                 continue;
             }
             let matches_public_node = self.run.nodes.iter().any(|node| {
-                node.covers_run(self.run.observed_blocks)
-                    && node.has_external_operator_proof()
-                    && attestation.matches_node(node)
+                node.is_live_for_run(self.run.observed_blocks) && attestation.matches_node(node)
             });
             if matches_public_node {
                 valid_attestations.insert(hash_bytes(
@@ -2347,7 +2366,7 @@ impl PublicTestnetRunEvidence {
         let mut miners = BTreeSet::new();
         let mut validators = BTreeSet::new();
         for node in &self.nodes {
-            if !node.covers_run(self.observed_blocks) || !node.has_external_operator_proof() {
+            if !node.is_live_for_run(self.observed_blocks) {
                 continue;
             }
             match node.role {
@@ -3489,6 +3508,31 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(sufficient.has_deployed_public_services);
         assert!(sufficient.public_criterion_met);
 
+        let mut sparse_heartbeat = run.clone();
+        sparse_heartbeat.nodes[0] = PublicNodeEvidence::miner(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            0,
+            9,
+            9,
+        );
+        let sparse_heartbeat = sparse_heartbeat.evaluate(&criteria, 6, true);
+        assert_eq!(sparse_heartbeat.miner_count, 1);
+        assert!(!sparse_heartbeat.has_required_miners);
+        assert!(!sparse_heartbeat.public_criterion_met);
+
+        let mut zero_address = run.clone();
+        zero_address.nodes[0] = PublicNodeEvidence::miner(
+            [0; 32],
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            0,
+            9,
+            10,
+        );
+        let zero_address = zero_address.evaluate(&criteria, 6, true);
+        assert_eq!(zero_address.miner_count, 1);
+        assert!(!zero_address.public_criterion_met);
+
         let one_day_criteria = PublicTestnetCriteria {
             duration_days: 1,
             ..criteria.clone()
@@ -3669,6 +3713,42 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!bad_health_path.has_deployed_rpc_service);
         assert!(!bad_health_path.has_deployed_public_services);
         assert!(!bad_health_path.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"rpc-service"]),
+                public_service_url(PublicServiceKind::Rpc),
+                "/health",
+            ),
+            0,
+            9,
+            9,
+            10,
+        );
+        let sparse_rpc_reachability = run.evaluate(&criteria, 6, true);
+        assert!(!sparse_rpc_reachability.has_deployed_rpc_service);
+        assert!(!sparse_rpc_reachability.has_deployed_public_services);
+        assert!(!sparse_rpc_reachability.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"rpc-service"]),
+                public_service_url(PublicServiceKind::Rpc),
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            9,
+        );
+        let sparse_rpc_health_signatures = run.evaluate(&criteria, 6, true);
+        assert!(!sparse_rpc_health_signatures.has_deployed_rpc_service);
+        assert!(!sparse_rpc_health_signatures.has_deployed_public_services);
+        assert!(!sparse_rpc_health_signatures.public_criterion_met);
         run.services = deployed_public_services(9);
 
         run.network_runtime.request_response_observed = false;

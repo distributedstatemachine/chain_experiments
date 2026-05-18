@@ -78,11 +78,12 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
 - Typed public-testnet run evidence evaluation for distinct miner/validator operators,
-  signature-verified node heartbeat summaries, signed wall-clock run-window evidence, observed block
-  continuity, finality rate, data-availability rate, invalid-work rejection evidence, reward-settlement
-  records, production libp2p runtime evidence, and deployed RPC/explorer/faucet/telemetry service
-  reachability with signed health-check summaries and signed content-root observations bound to external
-  HTTPS service URLs and paths
+  signature-verified node heartbeat summaries that cover the observed block count, signed wall-clock
+  run-window evidence, observed block continuity, finality rate, data-availability rate, invalid-work
+  rejection evidence, reward-settlement records, production libp2p runtime evidence, and deployed
+  RPC/explorer/faucet/telemetry service reachability with reachable and signed health-check summaries that
+  cover the observed block count plus signed content-root observations bound to external HTTPS service URLs
+  and paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs, a signed run-window record, block/finality history, signed operator identity attestations
@@ -144,7 +145,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.86% workspace line coverage
-- 7126/7208 workspace lines covered
+- 7139/7221 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
