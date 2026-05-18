@@ -69,10 +69,10 @@ pub use storage::{
     SnapshotStore,
 };
 pub use study::{
-    CollusionSimulation, CollusionSimulationInput, DataWithholdingStudy, FreivaldsSecurity,
+    CollusionRiskAssessment, CollusionRiskInput, DataWithholdingStudy, FreivaldsSecurity,
     RandomnessAssessment, RandomnessSource, RowSamplingStudy, TensorWorkConcentrationStudy,
     ThreatActor, ThreatActorKind, ThreatModel, VerificationCostStudy, ZeroWorkLivenessStudy,
-    assess_randomness, collusion_simulation, data_withholding_study, freivalds_security,
+    assess_randomness, collusion_risk_assessment, data_withholding_study, freivalds_security,
     matmul_verification_cost_study, row_sampling_study, tensorwork_concentration,
     zero_work_liveness_study,
 };

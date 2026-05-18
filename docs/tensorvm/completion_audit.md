@@ -36,17 +36,17 @@ The objective decomposes into these deliverables:
 | AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, operator-attestation-derived external-operator evidence, `tvmd public-evidence validate --manifest <path>`, `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, `tvmd public-evidence node-heartbeat ...`, `tvmd public-evidence service-health ...` signed service-record generation, `tvmd public-evidence network-observation ...` signed libp2p observation-record generation, and `tvmd public-evidence record-summary ...` signed supporting-record generation | Present |
 | Miner, validator, and service CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, libp2p multiaddr validation for miner/validator nodes, required `tvmd service serve --p2p-listen <multiaddr>`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
-| GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
+| GPU miner backend | `runtime::GpuMinerBackend` reports the selected CUDA device and rejects execution when native CUDA kernels are not compiled; CPU execution remains a separate `runtime::CpuReferenceBackend` | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` | Present for field matmul |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
 | P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, background libp2p service runtime, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP and health-route tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 166 `tensor_vm` tests | Passed |
+| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 165 `tensor_vm` tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 180 instrumented tests | Passed |
+| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 179 instrumented tests | Passed |
 | TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage | Passed |
-| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 167 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
+| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 168 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 ## Acceptance Criteria Audit
 
@@ -61,7 +61,7 @@ The objective decomposes into these deliverables:
 | 7 | Invalid tensor outputs are rejected in dense and sparse corruption tests | TensorOp verifier corruption tests | Locally met |
 | 8 | LinearTrainingStep validates forward/backward/error/update structure | Linear verifier, VM, and job tests | Locally met |
 | 9 | Sparse corruptions in `dY` and `W_next` are rejected | Linear sparse poisoning tests | Locally met |
-| 10 | Honest miners produce identical output roots | CPU/GPU and CUDA edge tests | Locally met |
+| 10 | Honest miners produce identical output roots | CUDA-enabled CPU/GPU parity and CUDA edge tests | Locally met |
 | 11 | Validators spend materially less compute than recompute | Verification-cost study and telemetry | Locally met |
 | 12 | Tensor data availability exceeds 95% during active and retention windows | Tensor server, validator unavailable, and telemetry tests; public measurement remains external | Locally met, public proof missing |
 | 13 | Network runs 7 consecutive days with independent nodes | Preflight and evidence validators exist, but no external run evidence is present | Not complete |

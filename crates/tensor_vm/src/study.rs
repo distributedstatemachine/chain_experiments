@@ -259,7 +259,7 @@ pub fn matmul_verification_cost_study(
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CollusionSimulationInput {
+pub struct CollusionRiskInput {
     pub validator_stakes: Vec<u64>,
     pub colluding_validator_indices: Vec<usize>,
     pub miner_count: usize,
@@ -273,7 +273,7 @@ pub struct CollusionSimulationInput {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CollusionSimulation {
+pub struct CollusionRiskAssessment {
     pub total_validator_stake: u64,
     pub colluding_validator_stake: u64,
     pub validator_stake_share: f64,
@@ -284,10 +284,10 @@ pub struct CollusionSimulation {
     pub reaches_agreement_quorum: bool,
     pub can_finalize_invalid_block: bool,
     pub can_attest_invalid_receipt: bool,
-    pub can_fake_redundant_agreement: bool,
+    pub can_satisfy_redundant_agreement_with_collusion: bool,
 }
 
-pub fn collusion_simulation(input: CollusionSimulationInput) -> CollusionSimulation {
+pub fn collusion_risk_assessment(input: CollusionRiskInput) -> CollusionRiskAssessment {
     let total_validator_stake: u64 = input.validator_stakes.iter().copied().sum();
     let mut seen = std::collections::BTreeSet::new();
     let mut colluding_validator_stake = 0_u64;
@@ -316,7 +316,7 @@ pub fn collusion_simulation(input: CollusionSimulationInput) -> CollusionSimulat
     let reaches_agreement_quorum =
         input.colluding_miners.min(input.miner_count) >= input.agreement_quorum.max(1);
 
-    CollusionSimulation {
+    CollusionRiskAssessment {
         total_validator_stake,
         colluding_validator_stake,
         validator_stake_share: ratio_u64(colluding_validator_stake, total_validator_stake),
@@ -327,7 +327,7 @@ pub fn collusion_simulation(input: CollusionSimulationInput) -> CollusionSimulat
         reaches_agreement_quorum,
         can_finalize_invalid_block: reaches_finality_threshold,
         can_attest_invalid_receipt: reaches_attestation_threshold,
-        can_fake_redundant_agreement: reaches_agreement_quorum,
+        can_satisfy_redundant_agreement_with_collusion: reaches_agreement_quorum,
     }
 }
 
@@ -488,8 +488,8 @@ mod tests {
     }
 
     #[test]
-    fn collusion_simulation_reports_threshold_crossings() {
-        let empty = collusion_simulation(CollusionSimulationInput {
+    fn collusion_risk_assessment_reports_threshold_crossings() {
+        let empty = collusion_risk_assessment(CollusionRiskInput {
             validator_stakes: Vec::new(),
             colluding_validator_indices: vec![0],
             miner_count: 0,
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(empty.colluding_miners, 0);
         assert!(!empty.can_finalize_invalid_block);
 
-        let below = collusion_simulation(CollusionSimulationInput {
+        let below = collusion_risk_assessment(CollusionRiskInput {
             validator_stakes: vec![10, 10, 10, 10, 10],
             colluding_validator_indices: vec![0, 1],
             miner_count: 5,
@@ -520,9 +520,9 @@ mod tests {
         assert_eq!(below.colluding_validator_stake, 20);
         assert!(!below.can_finalize_invalid_block);
         assert!(!below.can_attest_invalid_receipt);
-        assert!(!below.can_fake_redundant_agreement);
+        assert!(!below.can_satisfy_redundant_agreement_with_collusion);
 
-        let above = collusion_simulation(CollusionSimulationInput {
+        let above = collusion_risk_assessment(CollusionRiskInput {
             validator_stakes: vec![10, 10, 10, 10, 10],
             colluding_validator_indices: vec![0, 1, 2, 3],
             miner_count: 5,
@@ -537,7 +537,7 @@ mod tests {
         assert_eq!(above.validator_stake_share, 0.8);
         assert!(above.can_finalize_invalid_block);
         assert!(above.can_attest_invalid_receipt);
-        assert!(above.can_fake_redundant_agreement);
+        assert!(above.can_satisfy_redundant_agreement_with_collusion);
     }
 
     #[test]

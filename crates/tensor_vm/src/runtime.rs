@@ -1,6 +1,4 @@
-use crate::error::Result;
-#[cfg(feature = "cuda-kernels")]
-use crate::error::TvmError;
+use crate::error::{Result, TvmError};
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepOutput, MatmulJob};
 use crate::tensor::Tensor;
 #[cfg(feature = "cuda-kernels")]
@@ -62,12 +60,17 @@ impl ExecutionBackend for GpuMinerBackend {
     }
 
     fn execute_matmul(&self, job: &MatmulJob) -> Result<(Tensor, Tensor, Tensor)> {
-        let (a, b) = job.input_tensors()?;
         #[cfg(feature = "cuda-kernels")]
-        let c = cuda::field_matmul(self.cuda_device_index()?, &a, &b)?;
+        {
+            let (a, b) = job.input_tensors()?;
+            let c = cuda::field_matmul(self.cuda_device_index()?, &a, &b)?;
+            Ok((a, b, c))
+        }
         #[cfg(not(feature = "cuda-kernels"))]
-        let c = a.matmul(&b)?;
-        Ok((a, b, c))
+        {
+            let _ = job;
+            Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
+        }
     }
 
     fn execute_linear_training_step(
@@ -99,7 +102,8 @@ impl ExecutionBackend for GpuMinerBackend {
         }
         #[cfg(not(feature = "cuda-kernels"))]
         {
-            job.execute(weights)
+            let _ = (job, weights);
+            Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
         }
     }
 }
@@ -225,6 +229,7 @@ mod tests {
 
     #[test]
     fn cuda_kernel_feature_flag_reports_availability() {
+        assert_eq!(CpuReferenceBackend.kind(), BackendKind::CpuReference);
         assert_eq!(cuda_kernels_compiled(), cfg!(feature = "cuda-kernels"));
         #[cfg(not(feature = "cuda-kernels"))]
         assert_eq!(cuda_device_count().unwrap(), 0);
@@ -232,6 +237,46 @@ mod tests {
         assert!(cuda_device_count().unwrap() > 0);
     }
 
+    #[test]
+    fn gpu_backend_reports_device_and_requires_cuda_kernels() {
+        let gpu = GpuMinerBackend::new("cuda:0");
+        assert_eq!(
+            gpu.kind(),
+            BackendKind::GpuMiner {
+                device: "cuda:0".to_owned()
+            }
+        );
+        assert_eq!(gpu.device(), "cuda:0");
+
+        #[cfg(not(feature = "cuda-kernels"))]
+        {
+            let beacon = hash_bytes(b"test", &[b"beacon"]);
+            let job = MatmulJob::synthetic(0, 0, 8, 4, 5, &beacon, 10);
+            assert!(matches!(
+                gpu.execute_matmul(&job),
+                Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
+            ));
+            let weights =
+                Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+            let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+                model_id: hash_bytes(b"test", &[b"model"]),
+                step: 0,
+                batch_seed: hash_bytes(b"test", &[b"batch"]),
+                weight_root_before: weights.commitment_root(),
+                input_shape: vec![4, 3],
+                weight_shape: vec![3, 2],
+                target_shape: vec![4, 2],
+                lr: 2,
+                deadline_block: 10,
+            });
+            assert!(matches!(
+                gpu.execute_linear_training_step(&linear_job, &weights),
+                Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
+            ));
+        }
+    }
+
+    #[cfg(feature = "cuda-kernels")]
     #[test]
     fn cpu_and_gpu_backends_match_canonical_matmul() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
@@ -251,6 +296,7 @@ mod tests {
         assert_eq!(cpu_out.commitment_root(), gpu_out.commitment_root());
     }
 
+    #[cfg(feature = "cuda-kernels")]
     #[test]
     fn cpu_and_gpu_backends_match_linear_step() {
         let weights =

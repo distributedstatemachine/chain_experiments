@@ -186,7 +186,7 @@ training
 RL rollouts
 model evaluation
 architecture search
-scientific simulation
+scientific workloads
 ```
 
 ---
@@ -203,7 +203,7 @@ full-output Freivalds for block-eligible matmul receipts, or a documented row-sa
 random-linear checks for full elementwise training relations
 bounded verifier bandwidth per job shape
 data retention through settlement and challenge windows
-adversarial simulations for sparse corruptions, colluding validators, and data withholding
+adversarial parameter studies for sparse corruptions, colluding validators, and data withholding
 ```
 
 Until these gates pass, v0 rewards should be capped and the network should be described as a research
@@ -1791,7 +1791,7 @@ Recommended languages:
 ```text
 Rust: node, state, commitments, consensus, P2P
 Rust/C++/CUDA: optimized TensorVM kernels
-Python: simulation and research harness
+Python: research harness
 ```
 
 Must include:
@@ -1850,7 +1850,7 @@ preserve the Cargo workspace structure and keep each chain design in its own cra
 do not make crates/tensor_vm depend on crates/pearl_chain
 prefer deterministic Rust reference implementations before optimized kernels
 add tests for every new consensus-critical branch
-run all relevant tests, study harnesses, simulations, and experiments before claiming any iteration is
+run all relevant tests, study harnesses, and experiments before claiming any iteration is
 complete
 update the coverage matrix when acceptance criteria move from incomplete to complete
 update the implementation status whenever the local/full-spec boundary changes
@@ -1938,7 +1938,7 @@ the evidence bundle is stored or linked from docs/tensorvm/implementation_status
 The agent must not report "fully complete" if any of these are missing:
 
 ```text
-CUDA/C++ kernels are still represented only by a deterministic Rust shim
+GPU miner execution lacks real CUDA/C++ kernels for any claimed GPU path
 independently checkable public-run evidence does not prove that the mandatory rust-libp2p runtime carried
 node discovery, gossip, request/response, and DoS-controlled network operation
 browser-facing services are still local-only handlers or static HTML responses
@@ -1956,12 +1956,12 @@ Deliverables:
 
 ```text
 miner/validator/proposer threat model
-row-sampling detection probability simulator
+row-sampling detection probability calculator
 Freivalds false-accept test harness
 validator randomness grindability analysis
-data withholding simulation
-TensorWork concentration simulation
-liveness fallback simulation for zero-work epochs
+data withholding availability study
+TensorWork concentration assessment
+liveness fallback harness for zero-work epochs
 ```
 
 Success criteria:
@@ -1970,23 +1970,23 @@ Success criteria:
 documented false-accept targets per job shape
 no row-sampled-only block eligibility unless target bounds are met
 validation randomness cannot be biased by the current proposer
-settled-epoch TensorWork selection is implemented in simulation
+settled-epoch TensorWork selection is implemented in the reference chain
 genesis and zero-work epochs still produce blocks via fallback proposer selection
 ```
 
 ---
 
-### Milestone 0: Local Simulation
+### Milestone 0: Local Reference Execution
 
 Deliverables:
 
 ```text
 job generator
 CPU TensorVM
-miner simulator
-validator simulator
+miner reference harness
+validator reference harness
 Freivalds checker
-reward simulator
+reward accounting harness
 ```
 
 Success criteria:
@@ -2157,7 +2157,7 @@ invalid receipts submitted
 invalid receipts accepted
 validator disagreement rate
 data withholding incidents
-collusion simulation results
+collusion risk assessment results
 ```
 
 Economic:
@@ -2213,11 +2213,11 @@ the required verification commands have been executed and their results are docu
 Do not count the full spec as complete if these remain true:
 
 ```text
-GPU mining is represented only by a deterministic CPU-equivalent shim
+GPU mining is claimed without real CUDA/C++ kernels
 public-run evidence does not prove that the mandatory rust-libp2p runtime carried network propagation
 browser/RPC surfaces exist only as local handlers or local HTML pages
 durable state is only a reference file store rather than a production database/service deployment
-7-day public-testnet evidence is inferred from local simulation rather than an external run
+7-day public-testnet evidence is inferred from a local harness rather than an external run
 ```
 
 Do not count the MVP as successful if:
