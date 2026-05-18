@@ -93,7 +93,8 @@ labels, invalid ports, missing HTTPS evidence paths, HTTPS evidence query string
 `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, private, link-local,
 documentation, shared-address, benchmarking,
 multicast, reserved, empty publication endpoints, and malformed `ipfs://`/`ar://` identifiers, and they verify manifest publication
-signatures with the current exact one-signature manifest count, signed run-window records, signed
+signatures with the current exact one-signature manifest count, reject duplicate scalar manifest fields,
+signed run-window records, signed
 block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
 network-observation roots covering counted public operators, signed external artifact locators for the raw records behind each summary root,
 signed service-health records bound to external HTTPS URLs, matching health paths, and observed-block

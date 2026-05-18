@@ -655,6 +655,7 @@ impl PublicEvidenceSupportingArtifact {
 
 pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
     let mut builder = PublicEvidenceManifestBuilder::default();
+    let mut scalar_fields = BTreeSet::new();
     for raw_line in input.lines() {
         let line = raw_line.trim_start();
         if line.is_empty() || line.starts_with('#') {
@@ -663,13 +664,22 @@ pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestn
         let (key, value) = raw_line
             .split_once('=')
             .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
-        builder.set(key.trim(), value)?;
+        let key = key.trim();
+        if !public_evidence_manifest_field_allows_repeated(key)
+            && !scalar_fields.insert(key.to_owned())
+        {
+            return Err(TvmError::InvalidReceipt(
+                "duplicate evidence manifest field",
+            ));
+        }
+        builder.set(key, value)?;
     }
     builder.finish()
 }
 
 pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTestnetPreflightPlan> {
     let mut builder = PublicTestnetPreflightManifestBuilder::default();
+    let mut scalar_fields = BTreeSet::new();
     for raw_line in input.lines() {
         let line = raw_line.trim_start();
         if line.is_empty() || line.starts_with('#') {
@@ -678,9 +688,22 @@ pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTest
         let (key, value) = raw_line.split_once('=').ok_or(TvmError::InvalidReceipt(
             "malformed preflight manifest line",
         ))?;
-        builder.set(key.trim(), value)?;
+        let key = key.trim();
+        if key != "service" && !scalar_fields.insert(key.to_owned()) {
+            return Err(TvmError::InvalidReceipt(
+                "duplicate preflight manifest field",
+            ));
+        }
+        builder.set(key, value)?;
     }
     builder.finish()
+}
+
+fn public_evidence_manifest_field_allows_repeated(key: &str) -> bool {
+    matches!(
+        key,
+        "auditor" | "record_artifact" | "operator" | "node" | "service" | "service_content"
+    )
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -4926,6 +4949,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             manifest_without_line(&manifest, "dos_controls_enabled="),
             manifest.replace("bundle_id=0x", "bundle_id=0x12"),
             manifest.replace("bundle_id=0x", "bundle_id=0xz"),
+            format!("{manifest}\nobserved_blocks=10"),
             manifest.replace("manifest_signature_count=1", "manifest_signature_count=abc"),
             manifest.replace("dos_controls_enabled=true", "dos_controls_enabled=maybe"),
             manifest.replace("node=miner", "node=archive"),
@@ -5268,6 +5292,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "cuda_kernels_available=true",
                 "cuda_kernels_available=maybe",
             ),
+            format!("{manifest}\nminer_count=10"),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace(
                 "service=rpc,",

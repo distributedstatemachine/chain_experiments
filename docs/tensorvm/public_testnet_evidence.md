@@ -85,10 +85,12 @@ validator operator.
 
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
-64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
-signature covers the bundle ID, public URI, manifest signature count, and independent auditor count. The
-current manifest format carries exactly one `manifest_signature` field, so `manifest_signature_count` must
-be `1`; claimed extra manifest signatures cannot count until multiple signature records are modeled.
+64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Scalar
+manifest fields must appear exactly once; repeated record fields are allowed only for `auditor`,
+`record_artifact`, `operator`, `node`, `service`, and `service_content`. The manifest signature covers the
+bundle ID, public URI, manifest signature count, and independent auditor count. The current manifest format
+carries exactly one `manifest_signature` field, so `manifest_signature_count` must be `1`; claimed extra
+manifest signatures cannot count until multiple signature records are modeled.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
 Counted auditor records must be observed at or after the signed run-window end so an audit cannot count
 before the public run has completed.

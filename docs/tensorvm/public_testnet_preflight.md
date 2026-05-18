@@ -31,6 +31,7 @@ ranges are also rejected.
 
 The parser is `parse_public_testnet_preflight_manifest`. Blank lines and `#` comments are ignored. Hash
 values are 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`.
+Scalar manifest fields must appear exactly once; `service=...` is the only repeated field.
 
 ```text
 version=tensor-vm-public-testnet-preflight-v1
