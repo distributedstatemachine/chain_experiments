@@ -19,6 +19,10 @@ The local preflight report checks:
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
 - service endpoint identifiers, health paths, auth, and rate limiting
 
+Public HTTPS service hosts must be externally reachable names or addresses. The local checker rejects
+localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
+IPv6 loopback literals.
+
 ## Manifest Format
 
 The parser is `parse_public_testnet_preflight_manifest`. Blank lines and `#` comments are ignored. Hash

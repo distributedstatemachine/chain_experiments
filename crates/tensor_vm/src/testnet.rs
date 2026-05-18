@@ -13,6 +13,7 @@ use crate::txpool::TxPool;
 use crate::types::{Address, Hash, Signature, address, hash_bytes, sign, verify_signature};
 use crate::validator::ValidatorNode;
 use std::collections::BTreeSet;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
 pub const PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-preflight-v1";
@@ -80,8 +81,7 @@ impl PublicDeploymentServicePlan {
         let Some(host) = public_https_host(&self.public_url) else {
             return false;
         };
-        !matches!(host, "localhost" | "127.0.0.1" | "0.0.0.0" | "[::1]")
-            && !host.ends_with(".local")
+        public_host_is_external(host)
     }
 
     pub fn is_ready_for_public_run(&self) -> bool {
@@ -328,9 +328,7 @@ impl PublicEvidencePublication {
     pub fn is_published_and_independently_checkable(&self) -> bool {
         let uri = self.public_uri.trim();
         self.bundle_id != [0; 32]
-            && (uri.starts_with("https://")
-                || uri.starts_with("ipfs://")
-                || uri.starts_with("ar://"))
+            && public_evidence_uri_is_external(uri)
             && self.manifest_signature_count > 0
             && self.independent_auditor_count > 0
     }
@@ -874,9 +872,53 @@ fn required_string(value: Option<String>) -> Result<String> {
 
 fn public_https_host(url: &str) -> Option<&str> {
     let rest = url.trim().strip_prefix("https://")?;
-    let host_with_port = rest.split('/').next().unwrap_or_default();
-    let host = host_with_port.split(':').next().unwrap_or(host_with_port);
+    let authority = rest.split('/').next().unwrap_or_default();
+    let host = if let Some(bracketed) = authority.strip_prefix('[') {
+        let end = bracketed.find(']')?;
+        &bracketed[..end]
+    } else {
+        authority.split(':').next().unwrap_or(authority)
+    };
     (!host.is_empty()).then_some(host)
+}
+
+fn public_host_is_external(host: &str) -> bool {
+    let host = host.trim_end_matches('.');
+    let lowercase_host = host.to_ascii_lowercase();
+    if lowercase_host == "localhost" || lowercase_host.ends_with(".local") {
+        return false;
+    }
+    match host.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => public_ipv4_is_external(ip),
+        Ok(IpAddr::V6(ip)) => public_ipv6_is_external(ip),
+        Err(_) => true,
+    }
+}
+
+fn public_ipv4_is_external(ip: Ipv4Addr) -> bool {
+    !(ip.is_loopback() || ip.is_unspecified() || ip.is_private() || ip.is_link_local())
+}
+
+fn public_ipv6_is_external(ip: Ipv6Addr) -> bool {
+    !(ip.is_loopback() || ip.is_unspecified() || ip.is_unique_local() || ip.is_unicast_link_local())
+}
+
+fn public_evidence_uri_is_external(uri: &str) -> bool {
+    if let Some(host) = public_https_host(uri) {
+        return public_host_is_external(host);
+    }
+    content_addressed_uri_has_identifier(uri, "ipfs://")
+        || content_addressed_uri_has_identifier(uri, "ar://")
+}
+
+fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
+    let Some(rest) = uri.strip_prefix(scheme) else {
+        return false;
+    };
+    rest.trim_matches('/')
+        .split('/')
+        .next()
+        .is_some_and(|identifier| !identifier.is_empty())
 }
 
 fn public_node_role_tag(role: PublicNodeRole) -> &'static [u8] {
@@ -2043,6 +2085,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!local_uri.full_spec_evidence_met);
 
         bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri = String::from("https://localhost/evidence.json");
+        let localhost_https_uri = bundle.evaluate(&criteria, 6, true);
+        assert!(!localhost_https_uri.has_published_evidence_bundle);
+        assert!(!localhost_https_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri = String::from("https://192.168.1.2/evidence.json");
+        let private_https_uri = bundle.evaluate(&criteria, 6, true);
+        assert!(!private_https_uri.has_published_evidence_bundle);
+        assert!(!private_https_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri = String::from("ipfs://");
+        let empty_ipfs_uri = bundle.evaluate(&criteria, 6, true);
+        assert!(!empty_ipfs_uri.has_published_evidence_bundle);
+        assert!(!empty_ipfs_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.block_history_records = 9;
         let missing_block_history = bundle.evaluate(&criteria, 6, true);
         assert!(!missing_block_history.has_block_history);
@@ -2179,11 +2239,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             public_https_host("https://rpc.tensorvm.example:443/health"),
             Some("rpc.tensorvm.example")
         );
+        assert_eq!(public_https_host("https://[::1]:443/health"), Some("::1"));
         assert!(rpc.is_public_https_endpoint());
         assert!(rpc.is_ready_for_public_run());
         let mut http_rpc = rpc.clone();
         http_rpc.public_url = String::from("http://rpc.tensorvm.example/health");
         assert!(!http_rpc.is_public_https_endpoint());
+
+        let mut ipv6_loopback_rpc = rpc.clone();
+        ipv6_loopback_rpc.public_url = String::from("https://[::1]:443/health");
+        assert!(!ipv6_loopback_rpc.is_public_https_endpoint());
+
+        let mut private_ip_rpc = rpc.clone();
+        private_ip_rpc.public_url = String::from("https://10.0.0.5/health");
+        assert!(!private_ip_rpc.is_public_https_endpoint());
 
         let local_rpc = manifest.replace(
             "https://rpc.tensorvm.example/health",

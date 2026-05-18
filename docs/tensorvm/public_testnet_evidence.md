@@ -26,6 +26,10 @@ A complete evidence bundle must include:
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
 - reachability records for deployed RPC, explorer, faucet, and telemetry services
 
+A public `https://` evidence URI must use an external host. The local validator rejects localhost, `.local`
+names, loopback, unspecified, private, and link-local IP addresses. `ipfs://` and `ar://` publication URIs
+must include a non-empty content identifier.
+
 ## Current Repository Evidence
 
 The local reference crate exposes typed validation for this future bundle through
@@ -36,8 +40,9 @@ The local reference crate exposes typed validation for this future bundle throug
   independently checkable supporting records
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
-validator requires signed node-heartbeat summaries and signed service-health summaries, but those local
-signature checks are only evidence-format validation until an external run publishes real records.
+validator requires signed node-heartbeat summaries, signed service-health summaries, and an external
+publication URI, but those local checks are only evidence-format validation until an external run publishes
+real records.
 
 ## Manifest Format
 
