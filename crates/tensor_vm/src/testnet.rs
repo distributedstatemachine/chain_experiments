@@ -320,16 +320,56 @@ impl PublicServiceEvidence {
 pub struct PublicEvidencePublication {
     pub bundle_id: Hash,
     pub public_uri: String,
+    pub manifest_signer: Address,
+    pub manifest_signature: Signature,
     pub manifest_signature_count: u64,
     pub independent_auditor_count: u64,
 }
 
 impl PublicEvidencePublication {
+    pub fn new(
+        bundle_id: Hash,
+        public_uri: String,
+        manifest_signer: Address,
+        manifest_signature_count: u64,
+        independent_auditor_count: u64,
+    ) -> Self {
+        let message = public_evidence_manifest_message(
+            &bundle_id,
+            &public_uri,
+            manifest_signature_count,
+            independent_auditor_count,
+        );
+        Self {
+            bundle_id,
+            public_uri,
+            manifest_signer,
+            manifest_signature: sign(&manifest_signer, &message),
+            manifest_signature_count,
+            independent_auditor_count,
+        }
+    }
+
+    pub fn manifest_signature_valid(&self) -> bool {
+        verify_signature(
+            &self.manifest_signer,
+            &public_evidence_manifest_message(
+                &self.bundle_id,
+                &self.public_uri,
+                self.manifest_signature_count,
+                self.independent_auditor_count,
+            ),
+            &self.manifest_signature,
+        )
+    }
+
     pub fn is_published_and_independently_checkable(&self) -> bool {
         let uri = self.public_uri.trim();
         self.bundle_id != [0; 32]
             && public_evidence_uri_is_external(uri)
+            && self.manifest_signer != [0; 32]
             && self.manifest_signature_count > 0
+            && self.manifest_signature_valid()
             && self.independent_auditor_count > 0
     }
 }
@@ -512,6 +552,8 @@ struct PublicEvidenceManifestBuilder {
     version_seen: bool,
     bundle_id: Option<Hash>,
     public_uri: Option<String>,
+    manifest_signer: Option<Address>,
+    manifest_signature: Option<Signature>,
     manifest_signature_count: Option<u64>,
     independent_auditor_count: Option<u64>,
     block_history_records: Option<u64>,
@@ -646,6 +688,8 @@ impl PublicEvidenceManifestBuilder {
             }
             "bundle_id" => self.bundle_id = Some(parse_hash_hex(value)?),
             "public_uri" => self.public_uri = Some(value.to_owned()),
+            "manifest_signer" => self.manifest_signer = Some(parse_hash_hex(value)?),
+            "manifest_signature" => self.manifest_signature = Some(parse_hash_hex(value)?),
             "manifest_signature_count" => {
                 self.manifest_signature_count = Some(parse_manifest_u64(value)?);
             }
@@ -720,11 +764,16 @@ impl PublicEvidenceManifestBuilder {
                 invalid_receipts_rejected: required_u64(self.invalid_receipts_rejected)?,
                 reward_settlement_records: required_u64(self.reward_settlement_records)?,
             },
-            publication: PublicEvidencePublication {
-                bundle_id: required_hash(self.bundle_id)?,
-                public_uri: required_string(self.public_uri)?,
-                manifest_signature_count: required_u64(self.manifest_signature_count)?,
-                independent_auditor_count: required_u64(self.independent_auditor_count)?,
+            publication: {
+                let mut publication = PublicEvidencePublication::new(
+                    required_hash(self.bundle_id)?,
+                    required_string(self.public_uri)?,
+                    required_hash(self.manifest_signer)?,
+                    required_u64(self.manifest_signature_count)?,
+                    required_u64(self.independent_auditor_count)?,
+                );
+                publication.manifest_signature = required_hash(self.manifest_signature)?;
+                publication
             },
             block_history_records: required_u64(self.block_history_records)?,
             finality_history_records: required_u64(self.finality_history_records)?,
@@ -909,6 +958,25 @@ fn public_evidence_uri_is_external(uri: &str) -> bool {
     }
     content_addressed_uri_has_identifier(uri, "ipfs://")
         || content_addressed_uri_has_identifier(uri, "ar://")
+}
+
+fn public_evidence_manifest_message(
+    bundle_id: &Hash,
+    public_uri: &str,
+    manifest_signature_count: u64,
+    independent_auditor_count: u64,
+) -> Hash {
+    let signature_count = manifest_signature_count.to_le_bytes();
+    let auditor_count = independent_auditor_count.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-evidence-manifest-v1",
+        &[
+            bundle_id,
+            public_uri.as_bytes(),
+            &signature_count,
+            &auditor_count,
+        ],
+    )
 }
 
 fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
@@ -1572,12 +1640,13 @@ mod tests {
     fn complete_public_evidence_bundle() -> PublicTestnetEvidenceBundle {
         PublicTestnetEvidenceBundle {
             run: complete_public_run_evidence(),
-            publication: PublicEvidencePublication {
-                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: String::from("https://example.test/tensorvm/public-evidence.json"),
-                manifest_signature_count: 1,
-                independent_auditor_count: 1,
-            },
+            publication: PublicEvidencePublication::new(
+                hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                String::from("https://example.test/tensorvm/public-evidence.json"),
+                address(b"public-evidence-publisher"),
+                1,
+                1,
+            ),
             block_history_records: 10,
             finality_history_records: 10,
             operator_identity_attestation_records: 3,
@@ -1591,6 +1660,17 @@ mod tests {
 
     fn manifest_address(label: &[u8]) -> String {
         hex(&address(label))
+    }
+
+    fn manifest_publication_signature() -> String {
+        let publication = PublicEvidencePublication::new(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            String::from("https://example.test/tensorvm/public-evidence.json"),
+            address(b"public-evidence-publisher"),
+            1,
+            1,
+        );
+        hex(&publication.manifest_signature)
     }
 
     fn manifest_node_signature(
@@ -1621,6 +1701,8 @@ version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
 
 bundle_id=0x{}
 public_uri=https://example.test/tensorvm/public-evidence.json
+manifest_signer={}
+manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=10
@@ -1648,6 +1730,8 @@ service=faucet,{},0,9,10,10,{}
 service=telemetry,{},0,9,10,10,{}
 ",
             manifest_hash(b"test", b"public-evidence-bundle"),
+            manifest_address(b"public-evidence-publisher"),
+            manifest_publication_signature(),
             manifest_address(b"miner-a"),
             manifest_hash(b"test", b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -2079,6 +2163,19 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.independently_checkable);
         assert!(complete.full_spec_evidence_met);
 
+        bundle.publication.manifest_signature = [9; 32];
+        let tampered_manifest_signature = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_manifest_signature.has_published_evidence_bundle);
+        assert!(!tampered_manifest_signature.independently_checkable);
+        assert!(!tampered_manifest_signature.full_spec_evidence_met);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.manifest_signer = [0; 32];
+        let missing_manifest_signer = bundle.evaluate(&criteria, 6);
+        assert!(!missing_manifest_signer.has_published_evidence_bundle);
+        assert!(!missing_manifest_signer.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("http://localhost:8545/evidence.json");
         let local_uri = bundle.evaluate(&criteria, 6);
         assert!(!local_uri.has_published_evidence_bundle);
@@ -2191,6 +2288,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ),
             manifest_without_line(&manifest, "bundle_id="),
             manifest_without_line(&manifest, "public_uri="),
+            manifest_without_line(&manifest, "manifest_signer="),
+            manifest_without_line(&manifest, "manifest_signature="),
             manifest_without_line(&manifest, "observed_blocks="),
             manifest_without_line(&manifest, "dos_controls_enabled="),
             manifest.replace("bundle_id=0x", "bundle_id=0x12"),

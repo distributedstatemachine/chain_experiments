@@ -274,7 +274,8 @@ mod tests {
     use crate::hash::hex;
     use crate::testnet::{
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
-        PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence, PublicServiceKind,
+        PublicEvidencePublication, PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence,
+        PublicServiceKind,
     };
     use crate::types::{address, hash_bytes};
 
@@ -307,12 +308,25 @@ mod tests {
         hex(&service.health_check_signature)
     }
 
+    fn manifest_publication_signature() -> String {
+        let publication = PublicEvidencePublication::new(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            String::from("https://example.test/tensorvm/public-evidence.json"),
+            address(b"public-evidence-publisher"),
+            1,
+            1,
+        );
+        hex(&publication.manifest_signature)
+    }
+
     fn evidence_manifest() -> String {
         format!(
             "\
 version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
 bundle_id={}
 public_uri=https://example.test/tensorvm/public-evidence.json
+manifest_signer={}
+manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=10
@@ -340,6 +354,8 @@ service=faucet,{},0,9,10,10,{}
 service=telemetry,{},0,9,10,10,{}
 ",
             manifest_hash(b"public-evidence-bundle"),
+            manifest_address(b"public-evidence-publisher"),
+            manifest_publication_signature(),
             manifest_address(b"miner-a"),
             manifest_hash(b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),

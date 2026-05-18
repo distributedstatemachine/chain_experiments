@@ -41,23 +41,27 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed service-health summaries, and an external
-publication URI. It also derives `external_operator_evidence` from the manifest's operator identity
-attestation record count rather than from a CLI flag. These local checks are still only evidence-format
-validation until an external run publishes real records.
+publication URI. It verifies a manifest publication signature over the bundle ID, public URI, manifest
+signature count, and independent auditor count, and it derives `external_operator_evidence` from the
+manifest's operator identity attestation record count rather than from a CLI flag. These local checks are
+still only evidence-format validation until an external run publishes real records.
 
 ## Manifest Format
 
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
-64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Heartbeat
-signatures cover the node role, address, operator ID, first/last observed block, and heartbeat count.
-Service-health signatures cover the service kind, endpoint ID, first/last observed block, reachable
+64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
+signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
+Heartbeat signatures cover the node role, address, operator ID, first/last observed block, and heartbeat
+count. Service-health signatures cover the service kind, endpoint ID, first/last observed block, reachable
 observation count, and signed health-check count.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
 bundle_id=0x<64-hex>
 public_uri=https://example.test/tensorvm/public-evidence.json
+manifest_signer=<address-hex>
+manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=100800
