@@ -115,6 +115,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - `tvmd` binary tests for the documented spec-path pending manifest commands, proving
   `tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight` reads the checked
   manifest and reports `public_testnet_preflight_ready=false`, while
+  a process-level generated external-addressed preflight manifest reports
+  `public_testnet_preflight_ready=true`, and
   `tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence` reads the checked
   manifest and reports `public_evidence_full_spec=false`
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
@@ -188,9 +190,10 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 - 14 in `pearl_chain`
 - 171 in `tensor_vm`
 
-`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 4 `tvmd` CLI integration
-tests for the documented spec-path pending manifest commands, a generated short-run evidence manifest
-round trip that reports `independently_checkable=true` and `public_evidence_full_spec=false`, plus a supervised
+`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
+tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
+round trip, a generated short-run evidence manifest round trip that reports `independently_checkable=true`
+and `public_evidence_full_spec=false`, plus a supervised
 `tvmd service init` / `tvmd service peer add` / bounded `tvmd service serve` lifecycle smoke
 test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,

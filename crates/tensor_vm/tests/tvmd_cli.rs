@@ -261,6 +261,51 @@ fn documented_public_testnet_preflight_command_reports_pending_status() {
 }
 
 #[test]
+fn generated_public_testnet_preflight_manifest_reports_ready() {
+    let data_dir = unique_test_dir("generated-public-preflight");
+    let manifest_path = data_dir.join("generated-public-testnet.preflight");
+    let manifest_path_text = manifest_path.to_string_lossy().into_owned();
+    let manifest = "\
+version=tensor-vm-public-testnet-preflight-v1
+miner_count=10
+validator_count=5
+miner_stake=100
+validator_stake=10000
+faucet_balance=1000000
+faucet_drip=100
+cuda_kernels_available=true
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+service=rpc,1111111111111111111111111111111111111111111111111111111111111111,https://rpc.tensorvm.net/health,/health,https://rpc.tensorvm.net/chain/head,/chain/head,true,true
+service=explorer,2222222222222222222222222222222222222222222222222222222222222222,https://explorer.tensorvm.net/health,/health,https://explorer.tensorvm.net/explorer,/explorer,true,true
+service=faucet,3333333333333333333333333333333333333333333333333333333333333333,https://faucet.tensorvm.net/health,/health,https://faucet.tensorvm.net/faucet/page,/faucet/page,true,true
+service=telemetry,4444444444444444444444444444444444444444444444444444444444444444,https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true
+";
+    std::fs::write(&manifest_path, manifest).expect("generated preflight manifest must be written");
+
+    let stdout = run_tvmd(&[
+        "public-testnet",
+        "preflight",
+        "--manifest",
+        &manifest_path_text,
+    ]);
+    assert!(stdout.contains("public_testnet_preflight_ready=true"));
+    assert!(stdout.contains("local_shape_ready=true"));
+    assert!(stdout.contains("deployment_plan_ready=true"));
+    assert!(stdout.contains("miners=10"));
+    assert!(stdout.contains("validators=5"));
+    assert!(stdout.contains("required_blocks=100800"));
+    assert!(stdout.contains("production_libp2p_runtime=true"));
+    assert!(stdout.contains("public_service_content_planned=true"));
+    assert!(stdout.contains("public_services_planned=true"));
+
+    std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+}
+
+#[test]
 fn documented_public_testnet_evidence_command_reports_non_full_spec_status() {
     let stdout = run_tvmd(&[
         "public-evidence",
