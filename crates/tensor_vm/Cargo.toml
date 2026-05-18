@@ -3,4 +3,7 @@ name = "tensor_vm"
 version = "0.1.0"
 edition.workspace = true
 
+[features]
+cuda-kernels = []
+
 [dependencies]

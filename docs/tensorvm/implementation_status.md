@@ -63,7 +63,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   formatting, generic HTTP request reading, socketed stdlib HTTP serving, and gateway
   auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands
-- CPU reference backend and deterministic GPU-miner backend shim
+- CPU reference backend and deterministic GPU-miner backend shim for portable default builds
+- Optional `cuda-kernels` feature that builds `kernels/cuda/field_matmul.cu` with `nvcc`, routes the
+  `GpuMinerBackend` matmul path and LinearTrainingStep matmul substeps through a native CUDA field-matmul
+  kernel, and checks CUDA outputs against canonical CPU outputs
 - Restartable `NodeStore` data directory that persists chain snapshots, append-only block logs, and the
   durable peer book with fixed-format encoding, checksum validation, parent-link checks, append-only sync,
   full-chain state snapshots for restart, and snapshot/block-log/state mismatch detection
@@ -72,7 +75,12 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
 - Typed public-testnet run evidence evaluation for distinct miner/validator operators, signed node
-  heartbeats, observed block continuity, finality rate, and data-availability rate
+  heartbeats, observed block continuity, finality rate, data-availability rate, invalid-work rejection
+  evidence, reward-settlement records, production libp2p runtime evidence, and deployed
+  RPC/explorer/faucet/telemetry service reachability
+- Typed public-testnet evidence-bundle evaluation that additionally requires a public manifest location,
+  signatures, independent auditor records, block/finality history, operator attestations, and
+  data-availability measurement records before full-spec evidence can be considered independently checkable
 
 ## Verified Gates
 
@@ -83,28 +91,42 @@ cargo fmt --check --all
 cargo test --workspace --release
 cargo clippy --workspace --all-targets -- -D warnings
 cargo tarpaulin
+cargo test -p tensor_vm --features cuda-kernels --release
+cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 175 passing library tests under Tarpaulin:
+The workspace currently has 178 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 161 in `tensor_vm`
+- 164 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.45% workspace line coverage
-- 5200/5282 workspace lines covered
+- 98.48% workspace line coverage
+- 5300/5382 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
+
+The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
+
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 165 TensorVM tests passed, including
+  `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
+- `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 
 ## Still Not A Production/Public Testnet
 
 These spec items require real deployment or non-reference infrastructure and are not complete:
 
-- actual CUDA/C++ GPU kernels; the current GPU backend is a deterministic consensus-preserving shim
+- production GPU-miner packaging and a broader optimized CUDA/C++ kernel suite; the current native kernel
+  coverage is an optional CUDA field-matmul path checked against canonical CPU outputs
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
-  treating local simulation as public proof
+  treating local simulation as public proof, and now requires invalid-work rejection plus reward-settlement
+  records, production libp2p runtime evidence, and deployed public-service reachability before public
+  evidence can satisfy the gate
+- published external public-testnet evidence bundle; the required bundle shape is documented in
+  [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is available
+  yet
 - actual libp2p transport runtime with production DoS controls; current implementation is a local
   libp2p-shaped simulation plus stdlib framed TCP message transport, durable peer-book persistence,
   Kademlia-style closest-peer directory/bootstrap, peer-count admission, score-based drops, and

@@ -57,7 +57,10 @@ pub use p2p::{
     write_framed_message,
 };
 pub use rpc::{RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, RpcRequest, RpcResponse};
-pub use runtime::{BackendKind, CpuReferenceBackend, ExecutionBackend, GpuMinerBackend};
+pub use runtime::{
+    BackendKind, CpuReferenceBackend, ExecutionBackend, GpuMinerBackend, cuda_device_count,
+    cuda_kernels_compiled,
+};
 pub use scheduler::{JobScheduler, MinerAssignment, ValidatorAssignment};
 pub use storage::{
     BlockLogStore, ChainSnapshot, ChainStateStore, NodeStore, NodeStoreStatus, PersistedNodeState,
@@ -74,7 +77,9 @@ pub use study::{
 pub use tensor::{DType, Layout, Tensor, TensorDescriptor, TensorOpening};
 pub use tensor_server::TensorServer;
 pub use testnet::{
-    LocalTestnet, PublicNodeEvidence, PublicNodeRole, PublicTestnetCriteria, PublicTestnetEvidence,
+    LocalTestnet, PublicEvidencePublication, PublicNetworkRuntimeEvidence, PublicNodeEvidence,
+    PublicNodeRole, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
+    PublicTestnetEvidence, PublicTestnetEvidenceBundle, PublicTestnetEvidenceBundleReport,
     PublicTestnetRunEvidence, TestnetConfig,
 };
 pub use txpool::TxPool;
