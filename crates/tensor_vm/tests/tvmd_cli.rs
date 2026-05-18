@@ -49,7 +49,13 @@ fn free_local_port() -> u16 {
         .port()
 }
 
-fn authenticated_request(port: u16, method: &str, path: &str, body: &str) -> String {
+fn service_request(
+    port: u16,
+    method: &str,
+    path: &str,
+    body: &str,
+    auth_token: Option<&str>,
+) -> String {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         match TcpStream::connect(("127.0.0.1", port)) {
@@ -57,8 +63,11 @@ fn authenticated_request(port: u16, method: &str, path: &str, body: &str) -> Str
                 stream
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .expect("read timeout must be set");
+                let auth_header = auth_token
+                    .map(|token| format!("x-tensorchain-auth: {token}\r\n"))
+                    .unwrap_or_default();
                 let request = format!(
-                    "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nx-tensorchain-auth: service-token\r\ncontent-length: {}\r\nConnection: close\r\n\r\n{body}",
+                    "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n{auth_header}content-length: {}\r\nConnection: close\r\n\r\n{body}",
                     body.len()
                 );
                 stream
@@ -79,8 +88,16 @@ fn authenticated_request(port: u16, method: &str, path: &str, body: &str) -> Str
     }
 }
 
+fn authenticated_request(port: u16, method: &str, path: &str, body: &str) -> String {
+    service_request(port, method, path, body, Some("service-token"))
+}
+
 fn authenticated_get_request(port: u16, path: &str) -> String {
     authenticated_request(port, "GET", path, "")
+}
+
+fn unauthenticated_get_request(port: u16, path: &str) -> String {
+    service_request(port, "GET", path, "", None)
 }
 
 #[test]
@@ -160,13 +177,17 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "18",
+            "19",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("tvmd service serve must spawn");
+
+    let unauthenticated_health = unauthenticated_get_request(rpc_port, "/health");
+    assert!(unauthenticated_health.contains("HTTP/1.1 401 Unauthorized"));
+    assert!(unauthenticated_health.contains("unauthorized"));
 
     let health = authenticated_get_request(rpc_port, "/health");
     assert!(health.contains("HTTP/1.1 200 OK"));
@@ -268,7 +289,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=18"));
+    assert!(stdout.contains("served_requests=19"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
