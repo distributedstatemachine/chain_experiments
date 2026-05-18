@@ -1824,6 +1824,8 @@ evidence:
 ```text
 real CUDA/C++ kernels exist for any claimed GPU mining path and are checked against canonical CPU outputs
 production libp2p runtime is used for node discovery, gossip, and request/response propagation
+production libp2p evidence includes signed network-observation records for discovery, gossip,
+request/response, and DoS controls
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes external HTTPS URLs and signed health-check summaries for those services
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
@@ -1838,8 +1840,8 @@ The agent must not report "fully complete" if any of these are missing:
 
 ```text
 CUDA/C++ kernels are still represented only by a deterministic Rust shim
-libp2p is still represented only by local simulation or stdlib socket tests instead of a real rust-libp2p
-runtime dependency
+independently checkable public-run evidence does not prove that the mandatory rust-libp2p runtime carried
+node discovery, gossip, request/response, and DoS-controlled network operation
 browser-facing services are still local-only handlers or static HTML responses
 the 7-day public testnet evidence has not actually happened
 the verification commands were not executed from the workspace root after the final change
@@ -2000,6 +2002,7 @@ telemetry dashboard
 public docs
 deployed public services for RPC, explorer, faucet, and telemetry
 signed service-health evidence bound to external HTTPS public service URLs
+signed production libp2p network-observation evidence
 real CUDA/C++ miner kernels where GPU acceleration is claimed
 external public-testnet evidence bundle
 signed public run-window evidence for the 7-day duration
@@ -2016,6 +2019,7 @@ independent external operator evidence
 invalid work rejected
 rewards paid by verified TensorWork
 production libp2p networking used for node propagation
+production libp2p operation is evidenced by signed network-observation records
 deployed services remain reachable during the public run
 deployed service reachability is evidenced by signed health checks bound to external HTTPS service URLs
 GPU kernel outputs match canonical deterministic CPU semantics
@@ -2097,6 +2101,7 @@ implementation:
 ```text
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
+production libp2p operation is supported by signed network-observation evidence
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes externally reachable HTTPS URLs and signed health-check summaries
 the public testnet runs for 7 consecutive days with independent external operators
@@ -2110,8 +2115,7 @@ Do not count the full spec as complete if these remain true:
 
 ```text
 GPU mining is represented only by a deterministic CPU-equivalent shim
-P2P is represented only by local simulation or stdlib test sockets instead of a real rust-libp2p runtime
-dependency
+public-run evidence does not prove that the mandatory rust-libp2p runtime carried network propagation
 browser/RPC surfaces exist only as local handlers or local HTML pages
 durable state is only a reference file store rather than a production database/service deployment
 7-day public-testnet evidence is inferred from local simulation rather than an external run

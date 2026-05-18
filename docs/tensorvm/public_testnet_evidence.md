@@ -21,6 +21,7 @@ A complete evidence bundle must include:
 - independent operator identity or attestation records
 - signed block-history summary root for the full 7-day run
 - signed finality-history summary root for the full 7-day run
+- signed production libp2p network-observation summary root
 - signed data-availability measurement summary root for checked tensor receipts
 - invalid-work submission and rejection evidence
 - reward-settlement records for verified TensorWork
@@ -46,7 +47,8 @@ validator requires signed node-heartbeat summaries, signed service-health summar
 publication URI. It verifies a manifest publication signature over the bundle ID, public URI, manifest
 signature count, and independent auditor count. It also verifies a signed run-window record over the
 manifest bundle ID, start time, end time, and observed block count. It verifies signed supporting-record
-roots for block history, finality history, and data-availability measurements, and it derives
+roots for block history, finality history, production libp2p observations, and data-availability
+measurements, and it derives
 `external_operator_evidence` from the manifest's operator identity attestation record count rather than from
 a CLI flag. These local checks are still only evidence-format validation until an external run publishes
 real records.
@@ -57,13 +59,13 @@ External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
 signature covers the bundle ID, public URI, manifest signature count, and independent auditor count. Block,
-finality, and data-availability signatures cover the bundle ID, record-set kind, record-set root, and record
-count. The run-window signature covers the bundle ID, Unix start time, Unix end time, and observed block
-count. Heartbeat signatures cover the node role, address, operator ID, first/last observed block, and
-heartbeat count. Service-health signatures cover the service kind, endpoint ID, public URL, health path,
-first/last observed block, reachable observation count, and signed health-check count. Service URLs must be
-external HTTPS endpoints; localhost, `.local`, loopback, private, link-local, and unspecified hosts are
-rejected.
+finality, network-runtime, and data-availability signatures cover the bundle ID, record-set kind,
+record-set root, and record count. The run-window signature covers the bundle ID, Unix start time, Unix end
+time, and observed block count. Heartbeat signatures cover the node role, address, operator ID, first/last
+observed block, and heartbeat count. Service-health signatures cover the service kind, endpoint ID, public
+URL, health path, first/last observed block, reachable observation count, and signed health-check count.
+Service URLs must be external HTTPS endpoints; localhost, `.local`, loopback, private, link-local, and
+unspecified hosts are rejected.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -80,6 +82,9 @@ finality_history_records=100800
 finality_history_root=<finality-root-hex>
 finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
+network_runtime_observation_records=4
+network_runtime_observation_root=<network-runtime-root-hex>
+network_runtime_observation_signature=<network-runtime-signature-hex>
 data_availability_measurement_records=1000
 data_availability_measurement_root=<da-root-hex>
 data_availability_measurement_signature=<da-signature-hex>
@@ -126,6 +131,7 @@ signed_run_window=true
 block_history=true
 finality_history=true
 operator_identity_attestations=true
+network_runtime_observations=true
 data_availability_measurements=true
 miners=2
 validators=1

@@ -33,7 +33,7 @@ The objective decomposes into these deliverables:
 | Recommended TensorVM modules exist | `api`, `chain`, `challenge`, `cli`, `error`, `explorer`, `faucet`, `jobs`, `merkle`, `miner`, `p2p`, `rpc`, `runtime`, `scheduler`, `storage`, `study`, `telemetry`, `tensor`, `tensor_server`, `testnet`, `txpool`, `types`, `validator`, `verify`, `vm`, `watcher` under `crates/tensor_vm/src` | Present |
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
-| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/data-availability summary roots, operator-attestation-derived external-operator evidence, and `tvmd public-evidence validate --manifest <path>` | Present |
+| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, operator-attestation-derived external-operator evidence, and `tvmd public-evidence validate --manifest <path>` | Present |
 | Miner and validator CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
@@ -78,15 +78,16 @@ These are not satisfied by local tests or manifests alone:
 - a public testnet must run for 7 consecutive days with independent external miner and validator operators
 - the public evidence bundle must include a signed wall-clock run window, signed node heartbeats,
   block/finality history, operator attestations, data-availability measurements, invalid-work rejection
-  evidence, reward-settlement records, and signed deployed-service health records bound to external HTTPS
-  URLs
+  evidence, reward-settlement records, signed production libp2p network-observation records, and signed
+  deployed-service health records bound to external HTTPS URLs
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
 Local evidence validators reject localhost, private, link-local, and empty publication endpoints, and they
 verify manifest publication signatures, signed run-window records, signed block/finality/data-availability
-summary roots, signed service-health records bound to external HTTPS URLs, and external-operator evidence
-derived from manifest operator-attestation records. These blockers therefore require real external
-infrastructure rather than loopback, private-network, unsigned, or out-of-band manifests.
+summary roots, signed production libp2p network-observation roots, signed service-health records bound to
+external HTTPS URLs, and external-operator evidence derived from manifest operator-attestation records.
+These blockers therefore require real external infrastructure rather than loopback, private-network,
+unsigned, or out-of-band manifests.
 
 ## Completion Decision
 

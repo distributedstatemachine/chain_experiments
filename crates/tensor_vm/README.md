@@ -21,7 +21,7 @@ The crate implements the deterministic local/testnet core:
 - rust-libp2p P2P runtime wiring with Gossipsub, Identify, Kademlia discovery, TCP/TLS/Yamux swarm
   construction, and JSON request-response protocols
 - durable libp2p peer-book storage for bootstrap peer IDs and multiaddrs
-- libp2p-primary networking with Iroh reserved for a later tensor/blob data plane
+- mandatory libp2p networking for consensus propagation and bounded tensor/program fetches
 - restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
 - explorer, telemetry, and local faucet RPC endpoints
 - local browser-facing explorer, telemetry, and faucet HTML pages

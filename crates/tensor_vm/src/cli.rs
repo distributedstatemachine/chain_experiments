@@ -163,7 +163,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
@@ -172,6 +172,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         report.has_block_history,
         report.has_finality_history,
         report.has_operator_identity_attestations,
+        report.has_network_runtime_observations,
         report.has_data_availability_measurements,
         report.run_evidence.miner_count,
         report.run_evidence.validator_count,
@@ -456,6 +457,8 @@ mod tests {
                 finality_history_records: 10,
                 finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
                 operator_identity_attestation_records: 3,
+                network_runtime_observation_records: 4,
+                network_runtime_observation_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 data_availability_measurement_records: 20,
                 data_availability_measurement_root: hash_bytes(
                     b"test",
@@ -482,6 +485,9 @@ finality_history_records=10
 finality_history_root={}
 finality_history_signature={}
 operator_identity_attestation_records=3
+network_runtime_observation_records=4
+network_runtime_observation_root={}
+network_runtime_observation_signature={}
 data_availability_measurement_records=20
 data_availability_measurement_root={}
 data_availability_measurement_signature={}
@@ -515,6 +521,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"finality-history-root"),
             hex(&manifest_bundle().finality_history_signature),
+            manifest_hash(b"network-runtime-root"),
+            hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
             hex(&manifest_bundle().run_window_signature),
@@ -806,6 +814,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("block_history=true"));
         assert!(report.contains("finality_history=true"));
         assert!(report.contains("operator_identity_attestations=true"));
+        assert!(report.contains("network_runtime_observations=true"));
         assert!(report.contains("data_availability_measurements=true"));
         assert!(report.contains("miners=2"));
         assert!(report.contains("validators=1"));

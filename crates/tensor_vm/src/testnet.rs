@@ -580,6 +580,8 @@ pub struct PublicEvidenceRecordSummaries {
     pub finality_history_records: u64,
     pub finality_history_root: Hash,
     pub operator_identity_attestation_records: u64,
+    pub network_runtime_observation_records: u64,
+    pub network_runtime_observation_root: Hash,
     pub data_availability_measurement_records: u64,
     pub data_availability_measurement_root: Hash,
 }
@@ -596,6 +598,9 @@ pub struct PublicTestnetEvidenceBundle {
     pub finality_history_root: Hash,
     pub finality_history_signature: Signature,
     pub operator_identity_attestation_records: u64,
+    pub network_runtime_observation_records: u64,
+    pub network_runtime_observation_root: Hash,
+    pub network_runtime_observation_signature: Signature,
     pub data_availability_measurement_records: u64,
     pub data_availability_measurement_root: Hash,
     pub data_availability_measurement_signature: Signature,
@@ -609,6 +614,7 @@ pub struct PublicTestnetEvidenceBundleReport {
     pub has_block_history: bool,
     pub has_finality_history: bool,
     pub has_operator_identity_attestations: bool,
+    pub has_network_runtime_observations: bool,
     pub has_data_availability_measurements: bool,
     pub independently_checkable: bool,
     pub full_spec_evidence_met: bool,
@@ -630,6 +636,9 @@ struct PublicEvidenceManifestBuilder {
     finality_history_root: Option<Hash>,
     finality_history_signature: Option<Signature>,
     operator_identity_attestation_records: Option<u64>,
+    network_runtime_observation_records: Option<u64>,
+    network_runtime_observation_root: Option<Hash>,
+    network_runtime_observation_signature: Option<Signature>,
     data_availability_measurement_records: Option<u64>,
     data_availability_measurement_root: Option<Hash>,
     data_availability_measurement_signature: Option<Signature>,
@@ -789,6 +798,15 @@ impl PublicEvidenceManifestBuilder {
             "operator_identity_attestation_records" => {
                 self.operator_identity_attestation_records = Some(parse_manifest_u64(value)?);
             }
+            "network_runtime_observation_records" => {
+                self.network_runtime_observation_records = Some(parse_manifest_u64(value)?);
+            }
+            "network_runtime_observation_root" => {
+                self.network_runtime_observation_root = Some(parse_hash_hex(value)?);
+            }
+            "network_runtime_observation_signature" => {
+                self.network_runtime_observation_signature = Some(parse_hash_hex(value)?);
+            }
             "data_availability_measurement_records" => {
                 self.data_availability_measurement_records = Some(parse_manifest_u64(value)?);
             }
@@ -883,6 +901,13 @@ impl PublicEvidenceManifestBuilder {
             finality_history_signature: required_hash(self.finality_history_signature)?,
             operator_identity_attestation_records: required_u64(
                 self.operator_identity_attestation_records,
+            )?,
+            network_runtime_observation_records: required_u64(
+                self.network_runtime_observation_records,
+            )?,
+            network_runtime_observation_root: required_hash(self.network_runtime_observation_root)?,
+            network_runtime_observation_signature: required_hash(
+                self.network_runtime_observation_signature,
             )?,
             data_availability_measurement_records: required_u64(
                 self.data_availability_measurement_records,
@@ -1095,6 +1120,7 @@ fn public_evidence_manifest_message(
 enum PublicEvidenceRecordKind {
     BlockHistory,
     FinalityHistory,
+    NetworkRuntimeObservations,
     DataAvailabilityMeasurements,
 }
 
@@ -1103,6 +1129,7 @@ impl PublicEvidenceRecordKind {
         match self {
             Self::BlockHistory => b"block-history",
             Self::FinalityHistory => b"finality-history",
+            Self::NetworkRuntimeObservations => b"network-runtime-observations",
             Self::DataAvailabilityMeasurements => b"data-availability-measurements",
         }
     }
@@ -1274,6 +1301,16 @@ impl PublicTestnetEvidenceBundle {
             ),
             operator_identity_attestation_records: record_summaries
                 .operator_identity_attestation_records,
+            network_runtime_observation_records: record_summaries
+                .network_runtime_observation_records,
+            network_runtime_observation_root: record_summaries.network_runtime_observation_root,
+            network_runtime_observation_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &record_summaries.network_runtime_observation_root,
+                record_summaries.network_runtime_observation_records,
+            ),
             data_availability_measurement_records: record_summaries
                 .data_availability_measurement_records,
             data_availability_measurement_root: record_summaries.data_availability_measurement_root,
@@ -1320,6 +1357,15 @@ impl PublicTestnetEvidenceBundle {
             block_time_seconds,
             has_operator_identity_attestations,
         );
+        let has_network_runtime_observations =
+            self.run.network_runtime.has_production_libp2p_runtime()
+                && self.network_runtime_observation_records >= 4
+                && self.public_record_signature_valid(
+                    PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                    &self.network_runtime_observation_root,
+                    self.network_runtime_observation_records,
+                    &self.network_runtime_observation_signature,
+                );
         let has_data_availability_measurements = self.run.checked_receipts > 0
             && self.data_availability_measurement_records >= self.run.checked_receipts
             && self.public_record_signature_valid(
@@ -1333,6 +1379,7 @@ impl PublicTestnetEvidenceBundle {
             && has_block_history
             && has_finality_history
             && has_operator_identity_attestations
+            && has_network_runtime_observations
             && has_data_availability_measurements
             && run_evidence.has_invalid_work_rejection_evidence
             && run_evidence.has_reward_settlement_records;
@@ -1344,6 +1391,7 @@ impl PublicTestnetEvidenceBundle {
             has_block_history,
             has_finality_history,
             has_operator_identity_attestations,
+            has_network_runtime_observations,
             has_data_availability_measurements,
             independently_checkable,
             full_spec_evidence_met,
@@ -2013,6 +2061,8 @@ mod tests {
                 finality_history_records: 10,
                 finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
                 operator_identity_attestation_records: 3,
+                network_runtime_observation_records: 4,
+                network_runtime_observation_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 data_availability_measurement_records: 20,
                 data_availability_measurement_root: hash_bytes(
                     b"test",
@@ -2084,6 +2134,9 @@ finality_history_records=10
 finality_history_root={}
 finality_history_signature={}
 operator_identity_attestation_records=3
+network_runtime_observation_records=4
+network_runtime_observation_root={}
+network_runtime_observation_signature={}
 data_availability_measurement_records=20
 data_availability_measurement_root={}
 data_availability_measurement_signature={}
@@ -2117,6 +2170,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"test", b"finality-history-root"),
             hex(&manifest_bundle().finality_history_signature),
+            manifest_hash(b"test", b"network-runtime-root"),
+            hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"test", b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
             hex(&manifest_bundle().run_window_signature),
@@ -2604,6 +2659,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.has_block_history);
         assert!(complete.has_finality_history);
         assert!(complete.has_operator_identity_attestations);
+        assert!(complete.has_network_runtime_observations);
         assert!(complete.has_data_availability_measurements);
         assert!(complete.independently_checkable);
         assert!(complete.full_spec_evidence_met);
@@ -2706,6 +2762,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_operator_attestations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observation_records = 3;
+        let missing_network_runtime_observations = bundle.evaluate(&criteria, 6);
+        assert!(!missing_network_runtime_observations.has_network_runtime_observations);
+        assert!(!missing_network_runtime_observations.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observation_signature = [3; 32];
+        let tampered_network_runtime_observations = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_network_runtime_observations.has_network_runtime_observations);
+        assert!(!tampered_network_runtime_observations.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.run.network_runtime.gossip_propagation_observed = false;
+        let no_network_runtime_observations = bundle.evaluate(&criteria, 6);
+        assert!(!no_network_runtime_observations.has_network_runtime_observations);
+        assert!(!no_network_runtime_observations.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.data_availability_measurement_records = 19;
         let missing_data_availability_measurements = bundle.evaluate(&criteria, 6);
         assert!(!missing_data_availability_measurements.has_data_availability_measurements);
@@ -2788,6 +2862,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest_without_line(&manifest, "block_history_signature="),
             manifest_without_line(&manifest, "finality_history_root="),
             manifest_without_line(&manifest, "finality_history_signature="),
+            manifest_without_line(&manifest, "network_runtime_observation_records="),
+            manifest_without_line(&manifest, "network_runtime_observation_root="),
+            manifest_without_line(&manifest, "network_runtime_observation_signature="),
             manifest_without_line(&manifest, "data_availability_measurement_root="),
             manifest_without_line(&manifest, "data_availability_measurement_signature="),
             manifest_without_line(&manifest, "run_started_at_unix_seconds="),

@@ -11,33 +11,25 @@ pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
 const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NetworkBackend {
-    Libp2p,
-    Iroh,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
-    pub primary: NetworkBackend,
-    pub control_plane: NetworkBackend,
-    pub tensor_data_plane: NetworkBackend,
-    pub future_tensor_blob_candidate: Option<NetworkBackend>,
+    pub libp2p_required: bool,
+    pub consensus_transport: &'static str,
+    pub tensor_fetch_transport: &'static str,
     pub rationale: Vec<&'static str>,
 }
 
 pub fn recommended_network_stack() -> NetworkStackRecommendation {
     NetworkStackRecommendation {
-        primary: NetworkBackend::Libp2p,
-        control_plane: NetworkBackend::Libp2p,
-        tensor_data_plane: NetworkBackend::Libp2p,
-        future_tensor_blob_candidate: Some(NetworkBackend::Iroh),
+        libp2p_required: true,
+        consensus_transport: "rust-libp2p gossipsub/identify/kademlia",
+        tensor_fetch_transport: "rust-libp2p request-response",
         rationale: vec![
-            "rust-libp2p is the default TensorVM P2P runtime dependency",
+            "rust-libp2p is the mandatory TensorVM P2P runtime dependency",
             "gossipsub carries block, job, receipt, attestation, and peer announcements",
             "identify advertises TensorVM protocol support to connected peers",
             "request-response streams carry tensor rows, tensor chunks, and program fetches",
-            "iroh is better kept as a later verified blob-transfer data plane once consensus networking is stable",
+            "the TensorVM MVP uses libp2p for both consensus propagation and bounded tensor/program fetches",
         ],
     }
 }
@@ -701,18 +693,14 @@ mod tests {
     fn libp2p_mapping_separates_gossip_and_request_response() {
         let h = hash_bytes(b"test", &[b"h"]);
         let recommendation = recommended_network_stack();
-        assert_eq!(recommendation.primary, NetworkBackend::Libp2p);
-        assert_eq!(recommendation.control_plane, NetworkBackend::Libp2p);
-        assert_eq!(recommendation.tensor_data_plane, NetworkBackend::Libp2p);
-        assert_eq!(
-            recommendation.future_tensor_blob_candidate,
-            Some(NetworkBackend::Iroh)
-        );
+        assert!(recommendation.libp2p_required);
+        assert!(recommendation.consensus_transport.contains("libp2p"));
+        assert!(recommendation.tensor_fetch_transport.contains("libp2p"));
         assert!(
             recommendation
                 .rationale
                 .iter()
-                .any(|reason| reason.contains("rust-libp2p"))
+                .any(|reason| reason.contains("mandatory"))
         );
         assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewBlock(h)),

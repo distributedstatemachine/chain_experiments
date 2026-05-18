@@ -56,8 +56,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
   tensor chunks, tensor rows, and program fetches, and durable libp2p bootstrap peer-book storage with
   checksum validation
-- Documented network-stack recommendation that chooses libp2p as the primary MVP control plane and keeps
-  Iroh as a later tensor/blob data-plane candidate
+- Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
+  propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, explorer/telemetry/faucet RPC endpoints, browser-facing
   explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
   formatting, generic HTTP request reading, socketed stdlib HTTP serving, and gateway
@@ -82,9 +82,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   reachability with signed health-check summaries bound to external HTTPS service URLs and health paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, independent auditor records, a signed run-window
-  record, block/finality history, operator attestations, signed block/finality/data-availability summary
-  roots, and data-availability measurement records, and derives external-operator evidence from the
-  operator attestation count before full-spec evidence can be considered independently checkable
+  record, block/finality history, operator attestations, signed production libp2p network-observation
+  records, signed block/finality/network-runtime/data-availability summary roots, and data-availability
+  measurement records, and derives external-operator evidence from the operator attestation count before
+  full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -113,7 +114,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.61% workspace line coverage
-- 5813/5895 workspace lines covered
+- 5837/5919 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -131,15 +132,16 @@ These spec items require real deployment or non-reference infrastructure and are
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
   treating a local test harness as public proof, and now requires a signed wall-clock run window,
-  invalid-work rejection plus reward-settlement records, production libp2p runtime evidence, and deployed
-  public-service reachability before public evidence can satisfy the gate
+  invalid-work rejection plus reward-settlement records, signed production libp2p runtime observation
+  records, and deployed public-service reachability before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is available
   yet
 - externally observed production libp2p operation during a public testnet; current implementation builds
   the rust-libp2p runtime locally with bounded Gossipsub payloads, request timeouts, concurrent stream
   limits, idle connection timeouts, Kademlia discovery/address registration, and durable bootstrap
-  peer-book persistence, but no independently checkable public-run network evidence is available yet
+  peer-book persistence, and the public evidence validator now requires signed network-observation records,
+  but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
   wrapper, in-process auth/body-size/rate-limit enforcement, and a restartable reference `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
