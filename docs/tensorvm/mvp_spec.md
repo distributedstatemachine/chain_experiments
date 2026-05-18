@@ -1647,6 +1647,13 @@ tvmd public-evidence publication \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
+tvmd public-evidence auditor-record \
+  --bundle-id <bundle-id-hex> \
+  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --auditor-id <auditor-address-hex> \
+  --audit-uri https://auditor.example.test/tensorvm/audit.json \
+  --observed-at <unix-seconds>
+
 tvmd public-evidence run-window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -1706,9 +1713,11 @@ tvmd public-evidence record-summary-from-roots \
   --record-roots <comma-separated-record-roots>
 ```
 
-The `publication`, `run-window`, `node-heartbeat`, and `operator-attestation` commands emit the signed
-manifest fields for the public evidence location, wall-clock run duration, external operator node
-heartbeats, and operator identity attestations.
+The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operator-attestation` commands
+emit the signed manifest fields for the public evidence location, independent auditor records, wall-clock
+run duration, external operator node heartbeats, and operator identity attestations.
+The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
+bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
 identity URI bound to a node address, role, operator ID, and observation time.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or

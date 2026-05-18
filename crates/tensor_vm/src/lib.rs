@@ -79,8 +79,8 @@ pub use study::{
 pub use tensor::{DType, Layout, Tensor, TensorDescriptor, TensorOpening};
 pub use tensor_server::TensorServer;
 pub use testnet::{
-    LocalTestnet, PublicDeploymentServicePlan, PublicEvidencePublication,
-    PublicNetworkRuntimeEvidence, PublicNodeEvidence, PublicNodeRole,
+    LocalTestnet, PublicDeploymentServicePlan, PublicEvidenceAuditorRecord,
+    PublicEvidencePublication, PublicNetworkRuntimeEvidence, PublicNodeEvidence, PublicNodeRole,
     PublicOperatorIdentityAttestation, PublicServiceEndpoint, PublicServiceEvidence,
     PublicServiceKind, PublicTestnetCriteria, PublicTestnetEvidence, PublicTestnetEvidenceBundle,
     PublicTestnetEvidenceBundleReport, PublicTestnetPreflightPlan, PublicTestnetPreflightReport,

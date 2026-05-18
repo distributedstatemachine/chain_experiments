@@ -2,10 +2,11 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
-    PublicEvidencePublication, PublicEvidenceRecordKind, PublicNodeEvidence, PublicNodeRole,
-    PublicOperatorIdentityAttestation, PublicServiceEndpoint, PublicServiceEvidence,
-    PublicServiceKind, PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
-    parse_public_testnet_preflight_manifest, sign_public_evidence_record, sign_public_run_window,
+    PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
+    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
+    PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
+    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
+    sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
@@ -87,6 +88,13 @@ pub enum CliCommand {
         manifest_signer: Address,
         manifest_signature_count: u64,
         independent_auditor_count: u64,
+    },
+    PublicEvidenceAuditorRecord {
+        bundle_id: Hash,
+        public_uri: String,
+        auditor_id: Address,
+        audit_uri: String,
+        observed_at_unix_seconds: u64,
     },
     PublicEvidenceRunWindow {
         bundle_id: Hash,
@@ -304,6 +312,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "auditor-record",
+            "--bundle-id",
+            bundle_id,
+            "--public-uri",
+            public_uri,
+            "--auditor-id",
+            auditor_id,
+            "--audit-uri",
+            audit_uri,
+            "--observed-at",
+            observed_at_unix_seconds,
+        ] => Ok(CliCommand::PublicEvidenceAuditorRecord {
+            bundle_id: parse_hash_argument(bundle_id)?,
+            public_uri: (*public_uri).to_owned(),
+            auditor_id: parse_hash_argument(auditor_id)?,
+            audit_uri: (*audit_uri).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at_unix_seconds)?,
+        }),
+        [
+            "public-evidence",
             "run-window",
             "--bundle-id",
             bundle_id,
@@ -444,6 +472,16 @@ pub fn describe_command(command: &CliCommand) -> String {
         }
         CliCommand::PublicEvidencePublication { public_uri, .. } => {
             format!("generate public evidence publication signature public_uri={public_uri}")
+        }
+        CliCommand::PublicEvidenceAuditorRecord {
+            auditor_id,
+            audit_uri,
+            ..
+        } => {
+            format!(
+                "generate public evidence auditor record auditor_id={} audit_uri={audit_uri}",
+                hex(auditor_id)
+            )
         }
         CliCommand::PublicEvidenceRunWindow {
             run_started_at_unix_seconds,
@@ -630,6 +668,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *manifest_signature_count,
             *independent_auditor_count,
         ),
+        CliCommand::PublicEvidenceAuditorRecord {
+            bundle_id,
+            public_uri,
+            auditor_id,
+            audit_uri,
+            observed_at_unix_seconds,
+        } => auditor_record_evidence_line(
+            *bundle_id,
+            public_uri,
+            *auditor_id,
+            audit_uri,
+            *observed_at_unix_seconds,
+        ),
         CliCommand::PublicEvidenceRunWindow {
             bundle_id,
             manifest_signer,
@@ -746,6 +797,34 @@ fn publication_evidence_lines(
         hex(&publication.manifest_signature),
         publication.manifest_signature_count,
         publication.independent_auditor_count
+    ))
+}
+
+fn auditor_record_evidence_line(
+    bundle_id: Hash,
+    public_uri: &str,
+    auditor_id: Address,
+    audit_uri: &str,
+    observed_at_unix_seconds: u64,
+) -> Result<String> {
+    let auditor = PublicEvidenceAuditorRecord::new(
+        &bundle_id,
+        public_uri,
+        auditor_id,
+        audit_uri.to_owned(),
+        observed_at_unix_seconds,
+    );
+    if !auditor.has_external_auditor_proof(&bundle_id, public_uri) {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence auditor record",
+        ));
+    }
+    Ok(format!(
+        "auditor={},{},{},{}",
+        hex(&auditor.auditor_id),
+        auditor.audit_uri,
+        auditor.observed_at_unix_seconds,
+        hex(&auditor.auditor_signature)
     ))
 }
 
@@ -1073,11 +1152,12 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
         report.has_published_evidence_bundle,
+        report.has_independent_auditor_records,
         report.has_signed_run_window,
         report.has_block_history,
         report.has_finality_history,
@@ -1410,6 +1490,25 @@ mod tests {
         )
     }
 
+    fn manifest_auditor_uri() -> String {
+        format!(
+            "https://auditors.tensorvm.example/{}/0",
+            manifest_hash(b"public-evidence-bundle")
+        )
+    }
+
+    fn manifest_auditor_signature() -> String {
+        let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+        let record = PublicEvidenceAuditorRecord::new(
+            &bundle_id,
+            "https://example.test/tensorvm/public-evidence.json",
+            address(b"public-evidence-auditor-0"),
+            manifest_auditor_uri(),
+            1_700_000_000,
+        );
+        hex(&record.auditor_signature)
+    }
+
     fn manifest_bundle() -> PublicTestnetEvidenceBundle {
         PublicTestnetEvidenceBundle::new(
             PublicTestnetRunEvidence {
@@ -1531,6 +1630,7 @@ manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
+auditor={},{},1700000000,{}
 block_history_records=10
 block_history_root={}
 block_history_signature={}
@@ -1573,6 +1673,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_hash(b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
             manifest_publication_signature(),
+            manifest_address(b"public-evidence-auditor-0"),
+            manifest_auditor_uri(),
+            manifest_auditor_signature(),
             manifest_hash(b"block-history-root"),
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"finality-history-root"),
@@ -1753,6 +1856,30 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "auditor-record",
+                "--bundle-id",
+                &bundle_id,
+                "--public-uri",
+                "https://example.test/tensorvm/public-evidence.json",
+                "--auditor-id",
+                &manifest_address(b"public-evidence-auditor-0"),
+                "--audit-uri",
+                &manifest_auditor_uri(),
+                "--observed-at",
+                "1700000000",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
             }
         );
         assert_eq!(
@@ -2103,6 +2230,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
         );
         assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
+            }),
+            format!(
+                "generate public evidence auditor record auditor_id={} audit_uri={}",
+                manifest_address(b"public-evidence-auditor-0"),
+                manifest_auditor_uri()
+            )
+        );
+        assert_eq!(
             describe_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
@@ -2310,6 +2451,25 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         )));
         assert!(publication.contains("manifest_signature_count=1"));
         assert!(publication.contains("independent_auditor_count=1"));
+
+        let auditor_record =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .unwrap();
+        assert_eq!(
+            auditor_record,
+            format!(
+                "auditor={},{},1700000000,{}",
+                manifest_address(b"public-evidence-auditor-0"),
+                manifest_auditor_uri(),
+                manifest_auditor_signature()
+            )
+        );
 
         let run_window = execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
@@ -2922,6 +3082,46 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             .is_err()
         );
         assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: [0; 32],
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://localhost/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: "https://localhost/audit.json".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 0,
+            })
+            .is_err()
+        );
+        assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
                 bundle_id: [0; 32],
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -3186,6 +3386,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("public_criterion=false"));
         assert!(report.contains("independently_checkable=true"));
         assert!(report.contains("published_evidence_bundle=true"));
+        assert!(report.contains("independent_auditor_records=true"));
         assert!(report.contains("signed_run_window=true"));
         assert!(report.contains("block_history=true"));
         assert!(report.contains("finality_history=true"));
@@ -3231,6 +3432,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(insufficient_operator_report.contains("operator_identity_attestations=false"));
         assert!(insufficient_operator_report.contains("external_operator_evidence=false"));
         assert!(insufficient_operator_report.contains("public_criterion=false"));
+
+        let missing_auditor_records = evidence_manifest()
+            .lines()
+            .filter(|line| !line.starts_with("auditor="))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let missing_auditor_report =
+            validate_public_evidence_manifest(&missing_auditor_records).unwrap();
+        assert!(missing_auditor_report.contains("published_evidence_bundle=true"));
+        assert!(missing_auditor_report.contains("independent_auditor_records=false"));
+        assert!(missing_auditor_report.contains("independently_checkable=false"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }

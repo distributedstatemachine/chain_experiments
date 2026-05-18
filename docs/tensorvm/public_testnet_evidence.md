@@ -15,7 +15,7 @@ A complete evidence bundle must include:
 
 - a public `https://`, `ipfs://`, or `ar://` location for the evidence manifest
 - manifest signature records
-- independent auditor or verifier records
+- signed independent auditor or verifier records
 - signed wall-clock run window covering the full 7-day run
 - signed miner and validator heartbeat history for the full run
 - independent operator identity or attestation records
@@ -44,29 +44,32 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
-service-health summaries, and an external publication URI. It verifies a manifest publication signature
-over the bundle ID, public URI, manifest signature count, and independent auditor count. It also verifies a
-signed run-window record over the manifest bundle ID, start time, end time, and observed block count. It
-verifies signed supporting-record roots for block history, finality history, production libp2p observations,
-and data-availability measurements, and it derives `external_operator_evidence` from signed operator
-identity attestation records that match the signed node-heartbeat records. These local checks are still
-only evidence-format validation until an external run publishes real records.
+service-health summaries, signed independent auditor records, and an external publication URI. It verifies
+a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
+auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
+auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
+end time, and observed block count. It verifies signed supporting-record roots for block history, finality
+history, production libp2p observations, and data-availability measurements, and it derives
+`external_operator_evidence` from signed operator identity attestation records that match the signed
+node-heartbeat records. These local checks are still only evidence-format validation until an external run
+publishes real records.
 
 ## Manifest Format
 
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
-signature covers the bundle ID, public URI, manifest signature count, and independent auditor count. Block,
-finality, network-runtime, and data-availability signatures cover the bundle ID, record-set kind,
+signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
+Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
+Block, finality, network-runtime, and data-availability signatures cover the bundle ID, record-set kind,
 record-set root, and record count. The run-window signature covers the bundle ID, Unix start time, Unix end
 time, and observed block count. Heartbeat signatures cover the node role, address, operator ID, first/last
 observed block, and heartbeat count. Operator identity signatures cover the node role, node address,
 operator ID, external identity URI, and observation time. Service-health signatures cover the service kind,
 endpoint ID, public URL, health path, first/last observed block, reachable observation count, and signed
-health-check count. Service URLs and operator identity HTTPS URIs must use external hosts; localhost,
-`.local`, loopback, private, link-local, and unspecified hosts are rejected. Operator identity URIs may also
-use non-empty `ipfs://` or `ar://` content identifiers.
+health-check count. Service URLs, auditor HTTPS URIs, and operator identity HTTPS URIs must use external
+hosts; localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Auditor and
+operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths.
@@ -79,6 +82,7 @@ manifest_signer=<address-hex>
 manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
+auditor=<auditor-address-hex>,https://auditor.example.test/tensorvm/audit.json,<unix-seconds>,<auditor-signature-hex>
 block_history_records=100800
 block_history_root=<history-root-hex>
 block_history_signature=<history-signature-hex>
@@ -134,6 +138,13 @@ tvmd public-evidence publication \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
+tvmd public-evidence auditor-record \
+  --bundle-id <bundle-id-hex> \
+  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --auditor-id <auditor-address-hex> \
+  --audit-uri https://auditor.example.test/tensorvm/audit.json \
+  --observed-at <unix-seconds>
+
 tvmd public-evidence run-window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -158,11 +169,13 @@ tvmd public-evidence operator-attestation \
 ```
 
 The publication command rejects local/private evidence URIs, zero bundle IDs, zero manifest signers, and
-zero signature or auditor counts. The run-window command rejects zero IDs/signers, inverted time windows,
-and empty block counts. The node-heartbeat command rejects zero node addresses, zero operator IDs,
-inverted block ranges, and unsigned heartbeat summaries. The operator-attestation command rejects zero node
-addresses, zero operator IDs, local/private identity URIs, and empty observation times. Its output can be
-inserted directly as an `operator=...` line in the evidence manifest.
+zero signature or auditor counts. The auditor-record command rejects zero bundle IDs, local/private public
+or audit URIs, zero auditor IDs, and empty observation times. Its output can be inserted directly as an
+`auditor=...` line in the evidence manifest. The run-window command rejects zero IDs/signers, inverted
+time windows, and empty block counts. The node-heartbeat command rejects zero node addresses, zero
+operator IDs, inverted block ranges, and unsigned heartbeat summaries. The operator-attestation command
+rejects zero node addresses, zero operator IDs, local/private identity URIs, and empty observation times.
+Its output can be inserted directly as an `operator=...` line in the evidence manifest.
 
 Operators can generate a signed service-health manifest line for RPC, explorer, faucet, or telemetry
 evidence:
@@ -240,6 +253,7 @@ public_evidence_full_spec=false
 public_criterion=false
 independently_checkable=true
 published_evidence_bundle=true
+independent_auditor_records=true
 signed_run_window=true
 block_history=true
 finality_history=true

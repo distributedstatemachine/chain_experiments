@@ -83,9 +83,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   records, production libp2p runtime evidence, and deployed RPC/explorer/faucet/telemetry service
   reachability with signed health-check summaries bound to external HTTPS service URLs and health paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
-  location, a verified manifest publication signature, independent auditor records, a signed run-window
-  record, block/finality history, signed operator identity attestations matched to signed node-heartbeat
-  records, signed production libp2p network-observation records, signed
+  location, a verified manifest publication signature, signed independent auditor records bound to external
+  audit URIs, a signed run-window record, block/finality history, signed operator identity attestations
+  matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability summary roots, and data-availability measurement records
   before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
@@ -97,9 +97,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
   `tvmd public-evidence validate --manifest <path>`, plus
-  `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, and
-  `tvmd public-evidence node-heartbeat ...` generation for signed publication, wall-clock run-window, and
-  external-operator heartbeat fields,
+  `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`,
+  `tvmd public-evidence run-window ...`, and
+  `tvmd public-evidence node-heartbeat ...` generation for signed publication, independent-auditor,
+  wall-clock run-window, and external-operator heartbeat fields,
   `tvmd public-evidence operator-attestation ...` generation for signed operator identity records bound to
   external identity URIs,
   `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
@@ -132,8 +133,8 @@ The workspace currently has 179 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.77% workspace line coverage
-- 6608/6690 workspace lines covered
+- 98.79% workspace line coverage
+- 6721/6803 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

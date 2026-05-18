@@ -421,6 +421,62 @@ impl PublicEvidencePublication {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicEvidenceAuditorRecord {
+    pub auditor_id: Address,
+    pub audit_uri: String,
+    pub observed_at_unix_seconds: u64,
+    pub auditor_signature: Signature,
+}
+
+impl PublicEvidenceAuditorRecord {
+    pub fn new(
+        bundle_id: &Hash,
+        public_uri: &str,
+        auditor_id: Address,
+        audit_uri: impl Into<String>,
+        observed_at_unix_seconds: u64,
+    ) -> Self {
+        let audit_uri = audit_uri.into();
+        let message = public_evidence_auditor_message(
+            bundle_id,
+            public_uri,
+            &auditor_id,
+            &audit_uri,
+            observed_at_unix_seconds,
+        );
+        Self {
+            auditor_id,
+            audit_uri,
+            observed_at_unix_seconds,
+            auditor_signature: sign(&auditor_id, &message),
+        }
+    }
+
+    pub fn auditor_signature_valid(&self, bundle_id: &Hash, public_uri: &str) -> bool {
+        verify_signature(
+            &self.auditor_id,
+            &public_evidence_auditor_message(
+                bundle_id,
+                public_uri,
+                &self.auditor_id,
+                &self.audit_uri,
+                self.observed_at_unix_seconds,
+            ),
+            &self.auditor_signature,
+        )
+    }
+
+    pub fn has_external_auditor_proof(&self, bundle_id: &Hash, public_uri: &str) -> bool {
+        self.auditor_id != [0; 32]
+            && *bundle_id != [0; 32]
+            && self.observed_at_unix_seconds > 0
+            && public_evidence_uri_is_external(public_uri)
+            && public_evidence_uri_is_external(&self.audit_uri)
+            && self.auditor_signature_valid(bundle_id, public_uri)
+    }
+}
+
 pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
     let mut builder = PublicEvidenceManifestBuilder::default();
     for raw_line in input.lines() {
@@ -656,6 +712,7 @@ pub struct PublicEvidenceRecordSummaries {
 pub struct PublicTestnetEvidenceBundle {
     pub run: PublicTestnetRunEvidence,
     pub publication: PublicEvidencePublication,
+    pub auditor_records: Vec<PublicEvidenceAuditorRecord>,
     pub run_window_signature: Signature,
     pub block_history_records: u64,
     pub block_history_root: Hash,
@@ -677,6 +734,7 @@ pub struct PublicTestnetEvidenceBundle {
 pub struct PublicTestnetEvidenceBundleReport {
     pub run_evidence: PublicTestnetEvidence,
     pub has_published_evidence_bundle: bool,
+    pub has_independent_auditor_records: bool,
     pub has_signed_run_window: bool,
     pub has_block_history: bool,
     pub has_finality_history: bool,
@@ -696,6 +754,7 @@ struct PublicEvidenceManifestBuilder {
     manifest_signature: Option<Signature>,
     manifest_signature_count: Option<u64>,
     independent_auditor_count: Option<u64>,
+    auditor_records: Vec<PublicEvidenceAuditorRecord>,
     block_history_records: Option<u64>,
     block_history_root: Option<Hash>,
     block_history_signature: Option<Signature>,
@@ -849,6 +908,9 @@ impl PublicEvidenceManifestBuilder {
             "independent_auditor_count" => {
                 self.independent_auditor_count = Some(parse_manifest_u64(value)?);
             }
+            "auditor" => self
+                .auditor_records
+                .push(parse_manifest_auditor_record(value)?),
             "block_history_records" => {
                 self.block_history_records = Some(parse_manifest_u64(value)?);
             }
@@ -963,6 +1025,7 @@ impl PublicEvidenceManifestBuilder {
                 publication.manifest_signature = required_hash(self.manifest_signature)?;
                 publication
             },
+            auditor_records: self.auditor_records,
             run_window_signature: required_hash(self.run_window_signature)?,
             block_history_records: required_u64(self.block_history_records)?,
             block_history_root: required_hash(self.block_history_root)?,
@@ -1053,6 +1116,19 @@ fn parse_manifest_operator_identity_attestation(
     );
     attestation.operator_signature = parse_hash_hex(fields[5])?;
     Ok(attestation)
+}
+
+fn parse_manifest_auditor_record(value: &str) -> Result<PublicEvidenceAuditorRecord> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 4 {
+        return Err(TvmError::InvalidReceipt("malformed auditor record"));
+    }
+    Ok(PublicEvidenceAuditorRecord {
+        auditor_id: parse_hash_hex(fields[0])?,
+        audit_uri: fields[1].to_owned(),
+        observed_at_unix_seconds: parse_manifest_u64(fields[2])?,
+        auditor_signature: parse_hash_hex(fields[3])?,
+    })
 }
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
@@ -1213,6 +1289,26 @@ fn public_evidence_manifest_message(
             public_uri.as_bytes(),
             &signature_count,
             &auditor_count,
+        ],
+    )
+}
+
+fn public_evidence_auditor_message(
+    bundle_id: &Hash,
+    public_uri: &str,
+    auditor_id: &Address,
+    audit_uri: &str,
+    observed_at_unix_seconds: u64,
+) -> Hash {
+    let observed_at = observed_at_unix_seconds.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-evidence-auditor-v1",
+        &[
+            bundle_id,
+            public_uri.as_bytes(),
+            auditor_id,
+            audit_uri.as_bytes(),
+            &observed_at,
         ],
     )
 }
@@ -1391,6 +1487,23 @@ impl PublicTestnetEvidenceBundle {
     ) -> Self {
         let signer = publication.manifest_signer;
         let bundle_id = publication.bundle_id;
+        let public_uri = publication.public_uri.clone();
+        let auditor_records = (0..publication.independent_auditor_count)
+            .map(|index| {
+                let auditor_label = format!("public-evidence-auditor-{index}");
+                PublicEvidenceAuditorRecord::new(
+                    &bundle_id,
+                    &public_uri,
+                    address(auditor_label.as_bytes()),
+                    format!(
+                        "https://auditors.tensorvm.example/{}/{}",
+                        hex(&bundle_id),
+                        index
+                    ),
+                    run.run_started_at_unix_seconds,
+                )
+            })
+            .collect();
         let operator_identity_attestations = run
             .nodes
             .iter()
@@ -1417,6 +1530,7 @@ impl PublicTestnetEvidenceBundle {
         Self {
             run,
             publication,
+            auditor_records,
             run_window_signature,
             block_history_records: record_summaries.block_history_records,
             block_history_root: record_summaries.block_history_root,
@@ -1469,6 +1583,9 @@ impl PublicTestnetEvidenceBundle {
     ) -> PublicTestnetEvidenceBundleReport {
         let has_published_evidence_bundle =
             self.publication.is_published_and_independently_checkable();
+        let valid_auditor_record_count = self.valid_auditor_record_count() as u64;
+        let has_independent_auditor_records = self.publication.independent_auditor_count > 0
+            && valid_auditor_record_count >= self.publication.independent_auditor_count;
         let has_signed_run_window = self.public_run_window_signature_valid();
         let has_block_history = self.run.observed_blocks > 0
             && self.block_history_records >= self.run.observed_blocks
@@ -1517,6 +1634,7 @@ impl PublicTestnetEvidenceBundle {
                 &self.data_availability_measurement_signature,
             );
         let independently_checkable = has_published_evidence_bundle
+            && has_independent_auditor_records
             && has_signed_run_window
             && has_block_history
             && has_finality_history
@@ -1529,6 +1647,7 @@ impl PublicTestnetEvidenceBundle {
         PublicTestnetEvidenceBundleReport {
             run_evidence,
             has_published_evidence_bundle,
+            has_independent_auditor_records,
             has_signed_run_window,
             has_block_history,
             has_finality_history,
@@ -1576,6 +1695,19 @@ impl PublicTestnetEvidenceBundle {
                 ),
                 &self.run_window_signature,
             )
+    }
+
+    fn valid_auditor_record_count(&self) -> usize {
+        let mut valid_auditors = BTreeSet::new();
+        for auditor in &self.auditor_records {
+            if auditor.has_external_auditor_proof(
+                &self.publication.bundle_id,
+                &self.publication.public_uri,
+            ) {
+                valid_auditors.insert(auditor.auditor_id);
+            }
+        }
+        valid_auditors.len()
     }
 
     fn valid_operator_identity_attestation_count(&self) -> usize {
@@ -2258,6 +2390,25 @@ mod tests {
         hex(&publication.manifest_signature)
     }
 
+    fn manifest_auditor_uri() -> String {
+        format!(
+            "https://auditors.tensorvm.example/{}/0",
+            manifest_hash(b"test", b"public-evidence-bundle")
+        )
+    }
+
+    fn manifest_auditor_signature() -> String {
+        let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+        let record = PublicEvidenceAuditorRecord::new(
+            &bundle_id,
+            "https://example.test/tensorvm/public-evidence.json",
+            address(b"public-evidence-auditor-0"),
+            manifest_auditor_uri(),
+            1_700_000_000,
+        );
+        hex(&record.auditor_signature)
+    }
+
     fn manifest_bundle() -> PublicTestnetEvidenceBundle {
         complete_public_evidence_bundle()
     }
@@ -2315,6 +2466,7 @@ manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
+auditor={},{},1700000000,{}
 block_history_records=10
 block_history_root={}
 block_history_signature={}
@@ -2357,6 +2509,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_hash(b"test", b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
             manifest_publication_signature(),
+            manifest_address(b"public-evidence-auditor-0"),
+            manifest_auditor_uri(),
+            manifest_auditor_signature(),
             manifest_hash(b"test", b"block-history-root"),
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"test", b"finality-history-root"),
@@ -2862,6 +3017,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let complete = bundle.evaluate(&criteria, 6);
         assert!(complete.run_evidence.public_criterion_met);
         assert!(complete.has_published_evidence_bundle);
+        assert!(complete.has_independent_auditor_records);
         assert!(complete.has_signed_run_window);
         assert!(complete.has_block_history);
         assert!(complete.has_finality_history);
@@ -2920,7 +3076,27 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         bundle.publication.public_uri = String::from("ipfs://");
         let empty_ipfs_uri = bundle.evaluate(&criteria, 6);
         assert!(!empty_ipfs_uri.has_published_evidence_bundle);
+        assert!(!empty_ipfs_uri.has_independent_auditor_records);
         assert!(!empty_ipfs_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.auditor_records.clear();
+        let missing_auditor_records = bundle.evaluate(&criteria, 6);
+        assert!(missing_auditor_records.has_published_evidence_bundle);
+        assert!(!missing_auditor_records.has_independent_auditor_records);
+        assert!(!missing_auditor_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.auditor_records[0].auditor_signature = [2; 32];
+        let tampered_auditor_record = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_auditor_record.has_independent_auditor_records);
+        assert!(!tampered_auditor_record.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.auditor_records[0].audit_uri = String::from("https://localhost/audit.json");
+        let local_auditor_record = bundle.evaluate(&criteria, 6);
+        assert!(!local_auditor_record.has_independent_auditor_records);
+        assert!(!local_auditor_record.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.block_history_records = 9;
@@ -3045,6 +3221,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let parsed = parse_public_testnet_evidence_manifest(&manifest).unwrap();
 
         assert_eq!(parsed, complete_public_evidence_bundle());
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .has_independent_auditor_records
+        );
         assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
         let false_runtime =
@@ -3075,6 +3256,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_operator_report.has_operator_identity_attestations);
         assert!(!missing_operator_report.independently_checkable);
         assert!(!missing_operator_report.full_spec_evidence_met);
+
+        let missing_auditor_lines = manifest_without_line(&manifest, "auditor=");
+        let parsed_missing_auditor_lines =
+            parse_public_testnet_evidence_manifest(&missing_auditor_lines).unwrap();
+        let missing_auditor_report = parsed_missing_auditor_lines.evaluate(&criteria, 6);
+        assert!(!missing_auditor_report.has_independent_auditor_records);
+        assert!(!missing_auditor_report.independently_checkable);
+        assert!(!missing_auditor_report.full_spec_evidence_met);
 
         let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
         assert_eq!(
@@ -3124,6 +3313,10 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest.replace(
                 "operator=miner,",
                 "operator=miner,too,few,fields\n# removed original operator=",
+            ),
+            manifest.replace(
+                "auditor=",
+                "auditor=too,few,fields\n# removed original auditor=",
             ),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace(
