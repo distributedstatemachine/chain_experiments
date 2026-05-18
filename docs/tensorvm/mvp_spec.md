@@ -1763,8 +1763,9 @@ HTTPS URL, content path, content root, observation time, and minimum observed co
 service-content records must be observed inside the signed run window. Deployed public service evidence
 must include both signed health and signed content records with matching endpoint IDs for `/chain/head`,
 `/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
-External public URLs must not use localhost, private, link-local, documentation, shared-address,
-benchmarking, multicast, or reserved IP literals.
+External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
+ports, malformed bracketed IPv6 authorities, localhost, private, link-local, documentation,
+shared-address, benchmarking, multicast, or reserved IP literals.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.

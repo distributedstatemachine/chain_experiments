@@ -19,7 +19,8 @@ The local preflight report checks:
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
 - service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
-Public HTTPS service hosts must be externally reachable names or addresses. The local checker rejects
+Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities.
+The local checker rejects userinfo, whitespace, invalid ports, malformed bracketed IPv6 authorities,
 localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
 IPv6 loopback literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or
 reserved ranges are also rejected.

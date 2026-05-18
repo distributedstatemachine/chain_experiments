@@ -1508,13 +1508,53 @@ fn required_string(value: Option<String>) -> Result<String> {
 fn public_https_host(url: &str) -> Option<&str> {
     let rest = url.trim().strip_prefix("https://")?;
     let authority = rest.split('/').next().unwrap_or_default();
-    let host = if let Some(bracketed) = authority.strip_prefix('[') {
+    public_https_authority_host(authority)
+}
+
+fn public_https_authority_host(authority: &str) -> Option<&str> {
+    if authority.is_empty()
+        || authority.contains('@')
+        || authority
+            .bytes()
+            .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+    {
+        return None;
+    }
+    if let Some(bracketed) = authority.strip_prefix('[') {
         let end = bracketed.find(']')?;
-        &bracketed[..end]
+        let host = &bracketed[..end];
+        let suffix = &bracketed[end + 1..];
+        if !suffix.is_empty() {
+            let port = suffix.strip_prefix(':')?;
+            if !public_https_port_is_valid(port) {
+                return None;
+            }
+        }
+        (!host.is_empty()).then_some(host)
     } else {
-        authority.split(':').next().unwrap_or(authority)
-    };
-    (!host.is_empty()).then_some(host)
+        let (host, port) = authority
+            .split_once(':')
+            .map_or((authority, None), |(host, port)| (host, Some(port)));
+        if host.is_empty()
+            || host.contains(['[', ']'])
+            || port.is_some_and(|port| port.contains(':'))
+        {
+            return None;
+        }
+        if let Some(port) = port
+            && !public_https_port_is_valid(port)
+        {
+            return None;
+        }
+        Some(host)
+    }
+}
+
+fn public_https_port_is_valid(port: &str) -> bool {
+    !port.is_empty()
+        && port.len() <= 5
+        && port.bytes().all(|byte| byte.is_ascii_digit())
+        && port.parse::<u16>().is_ok_and(|parsed| parsed != 0)
 }
 
 fn public_https_path(url: &str) -> Option<&str> {
@@ -3715,6 +3755,22 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!local_rpc_content.public_criterion_met);
         run.service_content = deployed_public_service_content();
 
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
+            "https://rpc.tensorvm.example@localhost/chain/head",
+            public_service_content_path(PublicServiceKind::Rpc),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_000,
+            64,
+        );
+        let obfuscated_local_rpc_content = run.evaluate(&criteria, 6, true);
+        assert!(!obfuscated_local_rpc_content.has_deployed_rpc_service);
+        assert!(!obfuscated_local_rpc_content.has_deployed_public_service_content);
+        assert!(!obfuscated_local_rpc_content.has_deployed_public_services);
+        assert!(!obfuscated_local_rpc_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
         run.service_content[0] =
             public_service_content(PublicServiceKind::Rpc, b"independent-rpc-content");
         let mismatched_rpc_content_endpoint = run.evaluate(&criteria, 6, true);
@@ -3788,6 +3844,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!local_rpc_url.has_deployed_rpc_service);
         assert!(!local_rpc_url.has_deployed_public_services);
         assert!(!local_rpc_url.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"obfuscated-local-rpc-service"]),
+                "https://rpc.tensorvm.example@localhost/health",
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
+        let obfuscated_local_rpc_url = run.evaluate(&criteria, 6, true);
+        assert!(!obfuscated_local_rpc_url.has_deployed_rpc_service);
+        assert!(!obfuscated_local_rpc_url.has_deployed_public_services);
+        assert!(!obfuscated_local_rpc_url.public_criterion_met);
         run.services = deployed_public_services(9);
 
         run.services[0] = PublicServiceEvidence::new(
@@ -3957,6 +4031,35 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let private_https_uri = bundle.evaluate(&criteria, 6);
         assert!(!private_https_uri.has_published_evidence_bundle);
         assert!(!private_https_uri.independently_checkable);
+
+        assert!(public_evidence_uri_is_external(
+            "https://evidence.tensorvm.example:443/public-evidence.json"
+        ));
+        assert!(public_evidence_uri_is_external(
+            "https://[2001:4860:4860::8888]/public-evidence.json"
+        ));
+        assert!(public_evidence_uri_is_external(
+            "https://[2001:4860:4860::8888]:443/public-evidence.json"
+        ));
+        for uri in [
+            "https://evidence.tensorvm.example@localhost/public-evidence.json",
+            "https://localhost@evidence.tensorvm.example/public-evidence.json",
+            "https://evidence.tensorvm.example /public-evidence.json",
+            "https://evidence.tensorvm.example:bad/public-evidence.json",
+            "https://evidence.tensorvm.example:0/public-evidence.json",
+            "https://[2001:db8::1]x/public-evidence.json",
+            "https://[2001:4860:4860::8888]:/public-evidence.json",
+            "https:///public-evidence.json",
+        ] {
+            assert!(!public_evidence_uri_is_external(uri));
+        }
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri =
+            String::from("https://evidence.tensorvm.example@localhost/public-evidence.json");
+        let userinfo_obfuscated_uri = bundle.evaluate(&criteria, 6);
+        assert!(!userinfo_obfuscated_uri.has_published_evidence_bundle);
+        assert!(!userinfo_obfuscated_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("ipfs://");
@@ -4435,10 +4538,31 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             .unwrap();
         assert_eq!(public_https_host("https:///missing-host"), None);
         assert_eq!(
+            public_https_host("https://rpc.tensorvm.example@localhost/health"),
+            None
+        );
+        assert_eq!(
+            public_https_host("https://rpc.tensorvm.example:bad/health"),
+            None
+        );
+        assert_eq!(
+            public_https_host("https://rpc.tensorvm.example /health"),
+            None
+        );
+        assert_eq!(public_https_host("https://rpc[bad]/health"), None);
+        assert_eq!(
+            public_https_host("https://2001:4860:4860::8888/health"),
+            None
+        );
+        assert_eq!(
             public_https_host("https://rpc.tensorvm.example:443/health"),
             Some("rpc.tensorvm.example")
         );
         assert_eq!(public_https_host("https://[::1]:443/health"), Some("::1"));
+        assert_eq!(
+            public_https_host("https://[2001:4860:4860::8888]:443/health"),
+            Some("2001:4860:4860::8888")
+        );
         assert!(rpc.is_public_https_endpoint());
         assert!(rpc.has_public_content_surface());
         assert!(rpc.is_ready_for_public_run());
@@ -4495,6 +4619,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!local_rpc_report.has_rpc_service_plan);
         assert!(!local_rpc_report.has_public_service_plan);
         assert!(!local_rpc_report.can_start_public_run);
+
+        let obfuscated_local_rpc = manifest.replace(
+            "https://rpc.tensorvm.example/health",
+            "https://rpc.tensorvm.example@localhost/health",
+        );
+        let obfuscated_local_rpc_report =
+            parse_public_testnet_preflight_manifest(&obfuscated_local_rpc)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!obfuscated_local_rpc_report.has_rpc_service_plan);
+        assert!(!obfuscated_local_rpc_report.has_public_service_plan);
+        assert!(!obfuscated_local_rpc_report.can_start_public_run);
 
         let bad_content_path = manifest.replace(
             "https://rpc.tensorvm.example/chain/head,/chain/head",

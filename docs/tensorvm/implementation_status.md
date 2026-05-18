@@ -95,8 +95,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
-  private, link-local, documentation, shared-address, benchmarking, multicast, and reserved hosts and
-  requiring the planned public content paths used by post-run evidence
+  private, link-local, documentation, shared-address, benchmarking, multicast, reserved, and malformed
+  HTTPS authorities and requiring the planned public content paths used by post-run evidence
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -147,8 +147,8 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.87% workspace line coverage
-- 7186/7268 workspace lines covered
+- 98.88% workspace line coverage
+- 7213/7295 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -186,7 +186,7 @@ These spec items require real deployment or non-reference infrastructure and are
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
   public evidence validation now rejects local, private, documentation, shared-address, benchmarking,
-  multicast, and reserved service URLs
+  multicast, reserved, and malformed service URLs
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims
