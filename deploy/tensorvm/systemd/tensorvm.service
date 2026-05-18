@@ -1,0 +1,29 @@
+[Unit]
+Description=TensorVM public testnet service
+Documentation=https://github.com/one-covenant/chain_experiments/tree/main/docs/tensorvm
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tensorvm
+Group=tensorvm
+EnvironmentFile=/etc/tensorvm/public-testnet.env
+ExecStartPre=/usr/local/bin/tvmd service init --data-dir ${TVMD_DATA_DIR}
+ExecStart=/usr/local/bin/tvmd service serve --listen ${TVMD_LISTEN} --p2p-listen ${TVMD_P2P_LISTEN} --data-dir ${TVMD_DATA_DIR} --auth-token ${TVMD_AUTH_TOKEN} --max-requests ${TVMD_MAX_REQUESTS}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/tensorvm
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

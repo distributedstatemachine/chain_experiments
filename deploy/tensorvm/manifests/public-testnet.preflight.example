@@ -1,0 +1,18 @@
+# Replace example IDs and hosts before using this for a public launch decision.
+version=tensor-vm-public-testnet-preflight-v1
+miner_count=10
+validator_count=5
+miner_stake=100
+validator_stake=10000
+faucet_balance=1000000
+faucet_drip=100
+cuda_kernels_available=true
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+service=rpc,1111111111111111111111111111111111111111111111111111111111111111,https://rpc.example.test/health,/health,true,true
+service=explorer,2222222222222222222222222222222222222222222222222222222222222222,https://explorer.example.test/health,/health,true,true
+service=faucet,3333333333333333333333333333333333333333333333333333333333333333,https://faucet.example.test/health,/health,true,true
+service=telemetry,4444444444444444444444444444444444444444444444444444444444444444,https://telemetry.example.test/health,/health,true,true

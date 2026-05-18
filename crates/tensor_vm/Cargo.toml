@@ -3,6 +3,10 @@ name = "tensor_vm"
 version = "0.1.0"
 edition.workspace = true
 
+[[bin]]
+name = "tvmd"
+path = "src/main.rs"
+
 [features]
 cuda-kernels = []
 

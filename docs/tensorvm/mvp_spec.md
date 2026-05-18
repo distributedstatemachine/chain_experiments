@@ -1624,6 +1624,10 @@ discovery, Gossipsub propagation, and tensor/program request-response protocols.
 `--max-requests 0` means serve continuously; positive values are for supervised smoke tests and controlled
 rollout checks.
 
+The `tvmd` executable must be an explicit Cargo binary target. Public deployment templates live under
+`deploy/tensorvm/` and must use `tvmd service serve` with a required libp2p listen multiaddr, external TLS
+termination, and the health endpoints required by the public preflight and post-run evidence validators.
+
 ### 31.4 Public Testnet Evidence CLI
 
 ```bash
@@ -1721,6 +1725,13 @@ chain/
       Cargo.toml
       README.md
       src/
+  deploy/
+    tensorvm/
+      README.md
+      env/
+      manifests/
+      nginx/
+      systemd/
   docs/
     README.md
     tensorvm/
@@ -1751,6 +1762,7 @@ each chain design must be a separate crate under crates/<name>/
 each crate must have its own README
 the root README must describe the workspace and link to crate-level READMEs
 protocol specs, papers, reviews, and reports must live under topic-specific docs/ subdirectories
+deployment templates and launch manifests must live under deploy/<name>/
 TensorVM implementation code must live under crates/tensor_vm/
 crates/tensor_vm/ must be self-contained and must not depend on the Pearl reference crate
 ```

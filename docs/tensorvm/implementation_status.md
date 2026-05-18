@@ -91,6 +91,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
+- Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
+  explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
+  hostnames, and a preflight manifest example validated through
+  `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
   `tvmd public-evidence validate --manifest <path>`, plus
   `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, and
@@ -156,8 +160,8 @@ These spec items require real deployment or non-reference infrastructure and are
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
   wrapper, `tvmd service init/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
-  block-log, full-chain state, and peer-book persistence, while public evidence validation now rejects
-  local or private service URLs
+  block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
+  public evidence validation now rejects local or private service URLs
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims

@@ -54,6 +54,21 @@ The CLI reads a manifest file and reports launch readiness:
 tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight
 ```
 
+A checked deployment scaffold is available under [`../../deploy/tensorvm`](../../deploy/tensorvm):
+
+- `systemd/tensorvm.service` runs the explicit `tvmd` binary target with required `--p2p-listen`
+- `env/public-testnet.env.example` records the service listen address, libp2p multiaddr, data directory,
+  auth token, and request limit
+- `nginx/tensorvm.conf` publishes RPC, explorer, faucet, and telemetry hostnames over external HTTPS
+- `manifests/public-testnet.preflight.example` is a concrete preflight manifest shape for replacement by
+  real public endpoint IDs and hostnames
+
+The example manifest can be checked from the repository root with:
+
+```bash
+cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
+```
+
 The reference service process can be prepared and launched with:
 
 ```bash
