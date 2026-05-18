@@ -54,7 +54,8 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/healt
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
-health path. The content URL path must match the required public surface for that service:
+health path exactly and must not include a query string or fragment. The content URL path must match the
+required public surface for that service exactly, also without a query string or fragment:
 `/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`. The content URL authority must
 match the health URL authority so a preflight manifest cannot combine health checks from one deployed
 service with content evidence from another host.

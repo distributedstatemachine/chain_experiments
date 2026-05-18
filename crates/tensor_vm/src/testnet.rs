@@ -1595,8 +1595,9 @@ fn public_https_path(url: &str) -> Option<&str> {
     let rest = url.trim().strip_prefix("https://")?;
     let path_start = rest.find('/')?;
     let path = &rest[path_start..];
-    let path_end = path.find(['?', '#']).unwrap_or(path.len());
-    let path = &path[..path_end];
+    if path.contains(['?', '#']) {
+        return None;
+    }
     (!path.is_empty()).then_some(path)
 }
 
@@ -3894,6 +3895,22 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         run.service_content[0] = PublicServiceContentEvidence::new(
             PublicServiceKind::Rpc,
             hash_bytes(b"test", &[b"rpc-service"]),
+            "https://rpc.tensorvm.net/chain/head?variant=raw",
+            public_service_content_path(PublicServiceKind::Rpc),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_000,
+            64,
+        );
+        let rpc_content_query = run.evaluate(&criteria, 6, true);
+        assert!(!rpc_content_query.has_deployed_rpc_service);
+        assert!(!rpc_content_query.has_deployed_public_service_content);
+        assert!(!rpc_content_query.has_deployed_public_services);
+        assert!(!rpc_content_query.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
             public_service_content_url(PublicServiceKind::Rpc),
             public_service_content_path(PublicServiceKind::Rpc),
             hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
@@ -3975,6 +3992,24 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!bad_health_path.has_deployed_rpc_service);
         assert!(!bad_health_path.has_deployed_public_services);
         assert!(!bad_health_path.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"rpc-service"]),
+                "https://rpc.tensorvm.net/health?probe=1",
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
+        let rpc_health_query = run.evaluate(&criteria, 6, true);
+        assert!(!rpc_health_query.has_deployed_rpc_service);
+        assert!(!rpc_health_query.has_deployed_public_services);
+        assert!(!rpc_health_query.public_criterion_met);
         run.services = deployed_public_services(9);
 
         run.services[0] = PublicServiceEvidence::new(
@@ -4677,6 +4712,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             public_https_host("https://rpc.tensorvm.net:443/health"),
             Some("rpc.tensorvm.net")
         );
+        assert_eq!(
+            public_https_path("https://rpc.tensorvm.net/health?probe=1"),
+            None
+        );
+        assert_eq!(
+            public_https_path("https://rpc.tensorvm.net/health#probe"),
+            None
+        );
         assert!(public_https_authorities_match(
             "https://rpc.tensorvm.net:443/health",
             "https://rpc.tensorvm.net/chain/head"
@@ -4795,6 +4838,29 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!bad_content_path_report.has_public_service_content_plan);
         assert!(!bad_content_path_report.has_public_service_plan);
         assert!(!bad_content_path_report.can_start_public_run);
+
+        let health_query = manifest.replace(
+            "https://rpc.tensorvm.net/health,/health",
+            "https://rpc.tensorvm.net/health?probe=1,/health",
+        );
+        let health_query_report = parse_public_testnet_preflight_manifest(&health_query)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!health_query_report.has_rpc_service_plan);
+        assert!(!health_query_report.has_public_service_plan);
+        assert!(!health_query_report.can_start_public_run);
+
+        let content_fragment = manifest.replace(
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            "https://rpc.tensorvm.net/chain/head#head,/chain/head",
+        );
+        let content_fragment_report = parse_public_testnet_preflight_manifest(&content_fragment)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!content_fragment_report.has_rpc_service_plan);
+        assert!(!content_fragment_report.has_public_service_content_plan);
+        assert!(!content_fragment_report.has_public_service_plan);
+        assert!(!content_fragment_report.can_start_public_run);
 
         let mismatched_content_authority = manifest.replace(
             "https://rpc.tensorvm.net/chain/head,/chain/head",

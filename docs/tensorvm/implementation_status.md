@@ -97,8 +97,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
-  multicast, reserved, and malformed HTTPS authorities and requiring the planned public content paths used
-  by post-run evidence
+  multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
+  requiring the planned public content paths used by post-run evidence
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -117,7 +117,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `service=...` manifest records bound to external HTTPS health URLs and observation counts,
   `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
-  matching service endpoint IDs, matching service-health HTTPS authorities, and content roots,
+  matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
+  and content roots,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with non-public multiaddr, malformed DNS-label, and single-label DNS rejection,
   `tvmd public-evidence record-summary ...` generation for signed
@@ -197,7 +198,8 @@ These spec items require real deployment or non-reference infrastructure and are
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,
-  shared-address, benchmarking, multicast, reserved, and malformed service URLs
+  shared-address, benchmarking, multicast, reserved, malformed service URLs, and service URLs with query
+  strings or fragments
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims

@@ -97,8 +97,10 @@ IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.inva
 domains, loopback, private, link-local, unspecified, documentation, shared-address, benchmarking,
 multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator identity URIs
 may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
-The service-health URL path must match the signed health path. Counted miner and validator operator sets
-must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
+The service-health URL path must match the signed health path exactly and must not include a query string
+or fragment. Public service-content URLs use the same exact-path rule for their required content path.
+Counted miner and validator operator sets must be disjoint; the same operator ID cannot satisfy both role
+minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
 attestations must have observation timestamps inside the signed run window, match live node-heartbeat
@@ -266,17 +268,19 @@ tvmd public-evidence service-content \
   --min-content-bytes 64
 ```
 
-The command rejects non-public service URLs, health URLs whose path does not match the signed health
-path, malformed endpoint IDs, invalid block ranges, and unsigned or unreachable service-health summaries.
+The command rejects non-public service URLs, health URLs whose path does not exactly match the signed
+health path, health URLs with query strings or fragments, malformed endpoint IDs, invalid block ranges,
+and unsigned or unreachable service-health summaries.
 Bundle validation only counts a service as deployed when both reachable observations and signed health
 checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
 line in the evidence manifest. The service-content command rejects non-public content URLs, malformed
-endpoint IDs, content URLs whose path does not match the required service surface, zero content roots,
-empty observation times, and empty content sizes. Bundle validation only counts service-content records
-observed inside the signed run window and whose HTTPS authority matches the corresponding service-health
-URL for the same endpoint ID. Its output can be inserted directly as a `service_content=...` line in the
-evidence manifest. The public service gate requires both lines for every RPC, explorer, faucet, and
-telemetry endpoint, with matching endpoint IDs and matching HTTPS authorities.
+endpoint IDs, content URLs whose path does not exactly match the required service surface, content URLs
+with query strings or fragments, zero content roots, empty observation times, and empty content sizes.
+Bundle validation only counts service-content records observed inside the signed run window and whose HTTPS
+authority matches the corresponding service-health URL for the same endpoint ID. Its output can be inserted
+directly as a `service_content=...` line in the evidence manifest. The public service gate requires both
+lines for every RPC, explorer, faucet, and telemetry endpoint, with matching endpoint IDs and matching
+HTTPS authorities.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:
