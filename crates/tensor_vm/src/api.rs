@@ -77,6 +77,11 @@ pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator status",
 ];
 
+pub const SERVICE_CLI_COMMANDS: &[&str] = &[
+    "tvmd service init --data-dir <path>",
+    "tvmd service serve --listen <addr> --data-dir <path> --auth-token <token> --max-requests <n>",
+];
+
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] =
     &["tvmd public-evidence validate --manifest <path>"];
 
@@ -106,6 +111,11 @@ mod tests {
             VALIDATOR_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("validator start"))
+        );
+        assert!(
+            SERVICE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("service serve"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS

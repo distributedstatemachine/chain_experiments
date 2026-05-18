@@ -54,6 +54,13 @@ The CLI reads a manifest file and reports launch readiness:
 tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight
 ```
 
+The reference service process can be prepared and launched with:
+
+```bash
+tvmd service init --data-dir /var/lib/tensorvm
+tvmd service serve --listen 0.0.0.0:8545 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
+```
+
 The output is a line-oriented readiness report. `public_testnet_preflight_ready=true` only means the
 planned run has the required local shape and deployment plan; it still does not prove an external run
 has happened. Failed launches can be diagnosed from the individual gate fields:

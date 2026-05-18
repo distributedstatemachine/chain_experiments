@@ -60,8 +60,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, explorer/telemetry/faucet RPC endpoints, browser-facing
   explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
-  formatting, generic HTTP request reading, socketed stdlib HTTP serving, and gateway
-  auth/body-size/rate-limit enforcement
+  formatting, generic HTTP request reading, socketed stdlib HTTP serving, `tvmd service init/serve`
+  launch configuration for a `NodeStore`-backed service process, and gateway auth/body-size/rate-limit
+  enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
   wallet, device, and node-endpoint validation plus structured readiness reports
 - CPU reference backend and deterministic GPU-miner backend shim for portable default builds
@@ -113,8 +114,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.61% workspace line coverage
-- 5837/5919 workspace lines covered
+- 98.63% workspace line coverage
+- 5889/5971 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -143,9 +144,10 @@ These spec items require real deployment or non-reference infrastructure and are
   peer-book persistence, and the public evidence validator now requires signed network-observation records,
   but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
-  wrapper, in-process auth/body-size/rate-limit enforcement, and a restartable reference `NodeStore` data
-  directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
-  persistence, while public evidence validation now rejects local or private service URLs
+  wrapper, `tvmd service init/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
+  restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
+  block-log, full-chain state, and peer-book persistence, while public evidence validation now rejects
+  local or private service URLs
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims

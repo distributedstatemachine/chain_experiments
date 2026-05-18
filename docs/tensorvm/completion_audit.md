@@ -34,12 +34,12 @@ The objective decomposes into these deliverables:
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
 | AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, operator-attestation-derived external-operator evidence, and `tvmd public-evidence validate --manifest <path>` | Present |
-| Miner and validator CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, and `tvmd` binary entrypoint | Reference implementation present |
+| Miner, validator, and service CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, `tvmd service init/serve`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` | Present for field matmul |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
-| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP tests, and public evidence service URLs rejected when local or private | Reference implementation present |
+| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 163 `tensor_vm` tests | Passed |

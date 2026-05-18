@@ -6,6 +6,7 @@ use crate::testnet::{
     parse_public_testnet_preflight_manifest,
 };
 use crate::types::address;
+use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -26,6 +27,15 @@ pub enum CliCommand {
         node: String,
     },
     ValidatorStatus,
+    ServiceInit {
+        data_dir: String,
+    },
+    ServiceServe {
+        listen: String,
+        data_dir: String,
+        auth_token: String,
+        max_requests: usize,
+    },
     PublicEvidenceValidate {
         manifest: String,
     },
@@ -69,6 +79,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             })
         }
         ["validator", "status"] => Ok(CliCommand::ValidatorStatus),
+        ["service", "init", "--data-dir", data_dir] => Ok(CliCommand::ServiceInit {
+            data_dir: (*data_dir).to_owned(),
+        }),
+        [
+            "service",
+            "serve",
+            "--listen",
+            listen,
+            "--data-dir",
+            data_dir,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::ServiceServe {
+            listen: (*listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
         ["public-evidence", "validate", "--manifest", manifest] => {
             Ok(CliCommand::PublicEvidenceValidate {
                 manifest: (*manifest).to_owned(),
@@ -97,6 +127,19 @@ pub fn describe_command(command: &CliCommand) -> String {
             format!("start validator wallet={wallet} node={node}")
         }
         CliCommand::ValidatorStatus => "show validator status".to_owned(),
+        CliCommand::ServiceInit { data_dir } => {
+            format!("initialize service node store data_dir={data_dir}")
+        }
+        CliCommand::ServiceServe {
+            listen,
+            data_dir,
+            auth_token: _,
+            max_requests,
+        } => {
+            format!(
+                "serve RPC explorer faucet telemetry listen={listen} data_dir={data_dir} max_requests={max_requests}"
+            )
+        }
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
         }
@@ -150,6 +193,25 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             "command=validator_status\nmin_stake={}\nreference_verifier_ready=true\nstatus_source=rpc_or_node_store_required",
             params.validator_min_stake
         )),
+        CliCommand::ServiceInit { data_dir } => {
+            ensure_data_dir(data_dir)?;
+            Ok(format!(
+                "command=service_init\ndata_dir={data_dir}\nnode_store_ready=true"
+            ))
+        }
+        CliCommand::ServiceServe {
+            listen,
+            data_dir,
+            auth_token,
+            max_requests,
+        } => {
+            ensure_listen_addr(listen)?;
+            ensure_data_dir(data_dir)?;
+            ensure_auth_token(auth_token)?;
+            Ok(format!(
+                "command=service_serve\nlisten={listen}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true"
+            ))
+        }
         CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
             Ok(describe_command(command))
         }
@@ -237,6 +299,12 @@ fn parse_u64(value: &str) -> Result<u64> {
         .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
 }
 
+fn parse_usize(value: &str) -> Result<usize> {
+    value
+        .parse()
+        .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
+}
+
 fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
     if stake < minimum {
         return Err(TvmError::InsufficientStake);
@@ -273,6 +341,27 @@ fn ensure_node_endpoint(node: &str) -> Result<()> {
         return Ok(());
     }
     Err(TvmError::InvalidReceipt("unsupported node endpoint"))
+}
+
+fn ensure_listen_addr(listen: &str) -> Result<()> {
+    listen
+        .parse::<SocketAddr>()
+        .map(|_| ())
+        .map_err(|_| TvmError::InvalidReceipt("invalid service listen address"))
+}
+
+fn ensure_data_dir(data_dir: &str) -> Result<()> {
+    if data_dir.trim().is_empty() {
+        return Err(TvmError::InvalidReceipt("data dir argument is empty"));
+    }
+    Ok(())
+}
+
+fn ensure_auth_token(auth_token: &str) -> Result<()> {
+    if auth_token.trim().is_empty() {
+        return Err(TvmError::InvalidReceipt("auth token argument is empty"));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -657,6 +746,33 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
             }
         );
+        assert_eq!(
+            parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+            CliCommand::ServiceInit {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
+                "serve",
+                "--listen",
+                "0.0.0.0:8545",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "0",
+            ])
+            .unwrap(),
+            CliCommand::ServiceServe {
+                listen: "0.0.0.0:8545".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                auth_token: "secret".to_owned(),
+                max_requests: 0,
+            }
+        );
     }
 
     #[test]
@@ -702,6 +818,21 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "start validator wallet=validator.key node=http://localhost:8545",
             ),
             (CliCommand::ValidatorStatus, "show validator status"),
+            (
+                CliCommand::ServiceInit {
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                },
+                "initialize service node store data_dir=/var/lib/tensorvm",
+            ),
+            (
+                CliCommand::ServiceServe {
+                    listen: "0.0.0.0:8545".to_owned(),
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                    auth_token: "secret".to_owned(),
+                    max_requests: 0,
+                },
+                "serve RPC explorer faucet telemetry listen=0.0.0.0:8545 data_dir=/var/lib/tensorvm max_requests=0",
+            ),
             (
                 CliCommand::PublicEvidenceValidate {
                     manifest: "evidence.txt".to_owned(),
@@ -763,6 +894,28 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(validator_status.contains("command=validator_status"));
         assert!(validator_status.contains("status_source=rpc_or_node_store_required"));
 
+        let service_init = execute_reference_cli_command(&CliCommand::ServiceInit {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+        })
+        .unwrap();
+        assert!(service_init.contains("command=service_init"));
+        assert!(service_init.contains("node_store_ready=true"));
+
+        let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
+            listen: "0.0.0.0:8545".to_owned(),
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            auth_token: "secret".to_owned(),
+            max_requests: 0,
+        })
+        .unwrap();
+        assert!(service_serve.contains("command=service_serve"));
+        assert!(service_serve.contains("auth_enabled=true"));
+        assert!(service_serve.contains("rpc_routes=enabled"));
+        assert!(service_serve.contains("explorer_routes=enabled"));
+        assert!(service_serve.contains("faucet_routes=enabled"));
+        assert!(service_serve.contains("telemetry_routes=enabled"));
+        assert!(service_serve.contains("node_store_required=true"));
+
         let public_command = CliCommand::PublicEvidenceValidate {
             manifest: "evidence.txt".to_owned(),
         };
@@ -799,6 +952,54 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 wallet: "validator.key".to_owned(),
                 node: "localhost:8545".to_owned(),
             })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceInit {
+                data_dir: " ".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceServe {
+                listen: "localhost:8545".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                auth_token: "secret".to_owned(),
+                max_requests: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceServe {
+                listen: "127.0.0.1:8545".to_owned(),
+                data_dir: " ".to_owned(),
+                auth_token: "secret".to_owned(),
+                max_requests: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceServe {
+                listen: "127.0.0.1:8545".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                auth_token: " ".to_owned(),
+                max_requests: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            parse_cli_parts(&[
+                "service",
+                "serve",
+                "--listen",
+                "127.0.0.1:8545",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "abc",
+            ])
             .is_err()
         );
     }

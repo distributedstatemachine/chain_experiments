@@ -26,6 +26,7 @@ The crate implements the deterministic local/testnet core:
 - explorer, telemetry, and local faucet RPC endpoints
 - local browser-facing explorer, telemetry, and faucet HTML pages
 - executable reference `tvmd` miner/validator CLI validation and readiness reports
+- `tvmd service init/serve` launch configuration for a NodeStore-backed RPC/explorer/faucet/telemetry process
 - watcher scans for invalid receipts, data withholding, validator misconduct, and settlement blockers
 - public-testnet evidence reporting that distinguishes local preflight shape from actual 7-day
   external-operator proof and checks distinct operators, signed heartbeats, finality, and data availability

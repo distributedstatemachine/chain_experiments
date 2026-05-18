@@ -113,6 +113,10 @@ impl RpcHttpServer {
         self.listener.local_addr()
     }
 
+    pub fn gateway(&self) -> &RpcGateway {
+        &self.gateway
+    }
+
     pub fn serve_next(&mut self) -> std::io::Result<()> {
         let (mut stream, peer_addr) = self.listener.accept()?;
         stream.set_read_timeout(Some(self.read_timeout))?;
@@ -1559,6 +1563,7 @@ mod tests {
             Err(error) if error.kind() == ErrorKind::PermissionDenied => return,
             Err(error) => panic!("failed to bind RPC HTTP server: {error}"),
         };
+        assert_eq!(server.gateway().request_count("unseen-client"), 0);
         let addr = server.local_addr().unwrap();
         let server_thread = std::thread::spawn(move || server.serve_next().unwrap());
 

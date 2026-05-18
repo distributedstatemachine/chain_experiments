@@ -1599,6 +1599,22 @@ tvmd validator start \
 tvmd validator status
 ```
 
+### 31.3 Service CLI
+
+```bash
+tvmd service init \
+  --data-dir /var/lib/tensorvm
+
+tvmd service serve \
+  --listen 0.0.0.0:8545 \
+  --data-dir /var/lib/tensorvm \
+  --auth-token service-token \
+  --max-requests 0
+```
+
+`--max-requests 0` means serve continuously; positive values are for supervised smoke tests and controlled
+rollout checks.
+
 ---
 
 ## 32. Reference Implementation
