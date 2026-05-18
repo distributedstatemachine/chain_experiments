@@ -1872,7 +1872,9 @@ For `record_artifact=`, the independently checkable public evidence gate still r
 line for each required supporting-record kind and rejects extra artifact locators.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
-IDs must differ from the manifest signer and must be observed at or after the signed run-window end.
+IDs must differ from the manifest signer and must be observed at or after the signed run-window end. The
+independently checkable evidence gate requires the number of valid signed `auditor=` lines to match
+`independent_auditor_count` exactly; missing, invalid, or extra auditor records do not satisfy the gate.
 Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator-identity URIs must start
 with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`, with no raw whitespace
 or control characters.

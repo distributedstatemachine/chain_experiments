@@ -2537,7 +2537,8 @@ impl PublicTestnetEvidenceBundle {
             self.publication.is_published_and_independently_checkable();
         let valid_auditor_record_count = self.valid_auditor_record_count() as u64;
         let has_independent_auditor_records = self.publication.independent_auditor_count > 0
-            && valid_auditor_record_count >= self.publication.independent_auditor_count;
+            && self.auditor_records.len() as u64 == self.publication.independent_auditor_count
+            && valid_auditor_record_count == self.publication.independent_auditor_count;
         let has_signed_run_window = self.public_run_window_signature_valid();
         let has_block_history = self.run.observed_blocks > 0
             && self.block_history_records == self.run.observed_blocks
@@ -5330,6 +5331,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let signer_as_auditor = bundle.evaluate(&criteria, 6);
         assert!(!signer_as_auditor.has_independent_auditor_records);
         assert!(!signer_as_auditor.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle
+            .auditor_records
+            .push(PublicEvidenceAuditorRecord::new(
+                &bundle.publication.bundle_id,
+                &bundle.publication.public_uri,
+                address(b"public-evidence-auditor-extra"),
+                "https://auditors.tensorvm.net/extra-audit.json",
+                bundle.run.run_ended_at_unix_seconds,
+            ));
+        let extra_auditor_record = bundle.evaluate(&criteria, 6);
+        assert!(!extra_auditor_record.has_independent_auditor_records);
+        assert!(!extra_auditor_record.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.block_history_records = 9;

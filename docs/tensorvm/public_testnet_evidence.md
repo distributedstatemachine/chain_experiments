@@ -105,7 +105,9 @@ signature count, and independent auditor count. The current manifest format carr
 cannot count until multiple signature records are modeled.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
 Counted auditor records must be observed at or after the signed run-window end so an audit cannot count
-before the public run has completed.
+before the public run has completed. The independently checkable evidence gate requires exactly
+`independent_auditor_count` valid signed `auditor=` records; missing, invalid, or extra auditor records
+do not satisfy the gate.
 Block, finality, network-runtime, data-availability, invalid-work, and reward-settlement signatures cover
 the bundle ID, record-set kind, record-set root, and record count. The run-window signature covers the
 bundle ID, Unix start time, Unix end time, and observed block count. Heartbeat signatures cover the node
@@ -285,8 +287,9 @@ query-free path, zero bundle IDs, zero manifest signers, manifest signature coun
 zero auditor counts. The
 auditor-record command rejects zero bundle IDs, non-public or malformed public or audit URIs, zero auditor
 IDs, and empty observation times; bundle validation only counts auditor records whose auditor ID differs
-from the manifest signer and whose observation timestamp is at or after the signed run-window end. Its
-output can be inserted directly as an `auditor=...` line in the evidence manifest. The run-window command
+from the manifest signer and whose observation timestamp is at or after the signed run-window end, and the
+valid signed auditor-record count must exactly match `independent_auditor_count`. Its output can be
+inserted directly as an `auditor=...` line in the evidence manifest. The run-window command
 rejects zero
 IDs/signers, inverted time windows, and empty block counts. The node-heartbeat command rejects zero node
 addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
