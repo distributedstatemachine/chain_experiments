@@ -41,10 +41,10 @@ A complete evidence bundle must include:
   observations for deployed RPC, explorer, faucet, and telemetry services
 
 A public `https://` evidence URI must use a well-formed external host authority. The local validator
-rejects userinfo, whitespace, invalid ports, malformed bracketed IPv6 authorities, localhost, `.local`
-names, loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast,
-and reserved IP addresses. `ipfs://` and `ar://` publication URIs must start with a well-formed content
-identifier segment using only ASCII alphanumerics, `-`, or `_`.
+rejects userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6
+authorities, localhost, `.local` names, loopback, unspecified, private, link-local, documentation,
+shared-address, benchmarking, multicast, and reserved IP addresses. `ipfs://` and `ar://` publication URIs
+must start with a well-formed content identifier segment using only ASCII alphanumerics, `-`, or `_`.
 
 ## Current Repository Evidence
 
@@ -89,10 +89,10 @@ bundle ID, record-set kind, external artifact URI, record root, and record count
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
 and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed external host authorities;
-userinfo, whitespace, invalid ports, malformed bracketed IPv6 authorities, localhost, `.local`, loopback,
-private, link-local, unspecified, documentation, shared-address, benchmarking, multicast, and reserved IP
-hosts are rejected. Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` or
-`ar://` identifiers with the same well-formed first-segment rule.
+userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
+localhost, `.local`, loopback, private, link-local, unspecified, documentation, shared-address,
+benchmarking, multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator
+identity URIs may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
@@ -106,9 +106,10 @@ public gate.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
-must bind the same endpoint IDs as the corresponding health records to deployed content roots for
-`GET /chain/head`, `GET /explorer`, `GET /faucet/page`, and `GET /telemetry/dashboard`; other content
-paths do not satisfy the deployed-service gate.
+must bind the same endpoint IDs and HTTPS authorities as the corresponding health records to deployed
+content roots for `GET /chain/head`, `GET /explorer`, `GET /faucet/page`, and
+`GET /telemetry/dashboard`; other content paths or cross-authority content URLs do not satisfy the
+deployed-service gate.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -265,9 +266,10 @@ checks cover the manifest's observed block count. Its output can be inserted dir
 line in the evidence manifest. The service-content command rejects non-public content URLs, malformed
 endpoint IDs, content URLs whose path does not match the required service surface, zero content roots,
 empty observation times, and empty content sizes. Bundle validation only counts service-content records
-observed inside the signed run window. Its output can be inserted directly as a `service_content=...` line
-in the evidence manifest. The public service gate requires both lines for every RPC, explorer, faucet, and
-telemetry endpoint, with matching endpoint IDs.
+observed inside the signed run window and whose HTTPS authority matches the corresponding service-health
+URL for the same endpoint ID. Its output can be inserted directly as a `service_content=...` line in the
+evidence manifest. The public service gate requires both lines for every RPC, explorer, faucet, and
+telemetry endpoint, with matching endpoint IDs and matching HTTPS authorities.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:

@@ -92,6 +92,7 @@ impl PublicDeploymentServicePlan {
             return false;
         };
         public_host_is_external(host)
+            && public_https_authorities_match(&self.public_url, &self.content_url)
             && self.content_path == self.kind.content_path()
             && public_https_path(&self.content_url) == Some(self.kind.content_path())
     }
@@ -1507,13 +1508,24 @@ fn required_string(value: Option<String>) -> Result<String> {
 
 fn public_https_host(url: &str) -> Option<&str> {
     let rest = url.trim().strip_prefix("https://")?;
-    let authority = rest.split('/').next().unwrap_or_default();
-    public_https_authority_host(authority)
+    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    public_https_authority_host(&rest[..authority_end])
+}
+
+fn public_https_authority(url: &str) -> Option<(&str, Option<u16>)> {
+    let rest = url.trim().strip_prefix("https://")?;
+    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    public_https_authority_parts(&rest[..authority_end])
 }
 
 fn public_https_authority_host(authority: &str) -> Option<&str> {
+    public_https_authority_parts(authority).map(|(host, _port)| host)
+}
+
+fn public_https_authority_parts(authority: &str) -> Option<(&str, Option<u16>)> {
     if authority.is_empty()
         || authority.contains('@')
+        || authority.contains(['/', '?', '#', '\\'])
         || authority
             .bytes()
             .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
@@ -1524,37 +1536,59 @@ fn public_https_authority_host(authority: &str) -> Option<&str> {
         let end = bracketed.find(']')?;
         let host = &bracketed[..end];
         let suffix = &bracketed[end + 1..];
-        if !suffix.is_empty() {
-            let port = suffix.strip_prefix(':')?;
-            if !public_https_port_is_valid(port) {
-                return None;
-            }
+        let port = if suffix.is_empty() {
+            None
+        } else {
+            Some(parse_public_https_port(suffix.strip_prefix(':')?)?)
+        };
+        if host.is_empty() || host.parse::<Ipv6Addr>().is_err() {
+            return None;
         }
-        (!host.is_empty()).then_some(host)
+        Some((host, port))
     } else {
         let (host, port) = authority
             .split_once(':')
             .map_or((authority, None), |(host, port)| (host, Some(port)));
         if host.is_empty()
-            || host.contains(['[', ']'])
+            || host.contains(['[', ']', ':'])
             || port.is_some_and(|port| port.contains(':'))
         {
             return None;
         }
-        if let Some(port) = port
-            && !public_https_port_is_valid(port)
-        {
+        let port = match port {
+            Some(port) => Some(parse_public_https_port(port)?),
+            None => None,
+        };
+        if host.parse::<Ipv4Addr>().is_err() && !public_dns_host_is_well_formed(host) {
             return None;
         }
-        Some(host)
+        Some((host, port))
     }
 }
 
-fn public_https_port_is_valid(port: &str) -> bool {
-    !port.is_empty()
-        && port.len() <= 5
-        && port.bytes().all(|byte| byte.is_ascii_digit())
-        && port.parse::<u16>().is_ok_and(|parsed| parsed != 0)
+fn parse_public_https_port(port: &str) -> Option<u16> {
+    if port.is_empty() || port.len() > 5 || !port.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    port.parse::<u16>().ok().filter(|parsed| *parsed != 0)
+}
+
+fn public_https_authorities_match(left: &str, right: &str) -> bool {
+    let Some((left_host, left_port)) = public_https_authority(left) else {
+        return false;
+    };
+    let Some((right_host, right_port)) = public_https_authority(right) else {
+        return false;
+    };
+    public_authority_host_key(left_host) == public_authority_host_key(right_host)
+        && left_port.unwrap_or(443) == right_port.unwrap_or(443)
+}
+
+fn public_authority_host_key(host: &str) -> String {
+    match host.parse::<IpAddr>() {
+        Ok(ip) => ip.to_string(),
+        Err(_) => host.trim_end_matches('.').to_ascii_lowercase(),
+    }
 }
 
 fn public_https_path(url: &str) -> Option<&str> {
@@ -1575,8 +1609,35 @@ fn public_host_is_external(host: &str) -> bool {
     match host.parse::<IpAddr>() {
         Ok(IpAddr::V4(ip)) => public_ipv4_is_external(ip),
         Ok(IpAddr::V6(ip)) => public_ipv6_is_external(ip),
-        Err(_) => true,
+        Err(_) => public_dns_host_is_well_formed(host),
     }
+}
+
+fn public_dns_host_is_well_formed(host: &str) -> bool {
+    let host = host.trim_end_matches('.');
+    if host.is_empty() || host.len() > 253 {
+        return false;
+    }
+    let mut labels = host.split('.').peekable();
+    while let Some(label) = labels.next() {
+        if label.is_empty() || label.len() > 63 {
+            return false;
+        }
+        let bytes = label.as_bytes();
+        if bytes.first() == Some(&b'-') || bytes.last() == Some(&b'-') {
+            return false;
+        }
+        if !bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
+        {
+            return false;
+        }
+        if labels.peek().is_none() && !bytes.iter().any(|byte| byte.is_ascii_alphabetic()) {
+            return false;
+        }
+    }
+    true
 }
 
 fn public_ipv4_is_external(ip: Ipv4Addr) -> bool {
@@ -2445,6 +2506,7 @@ impl PublicTestnetRunEvidence {
                     content.kind == kind
                         && content.endpoint_id == service.endpoint_id
                         && content.has_external_content_proof()
+                        && public_https_authorities_match(&service.public_url, &content.public_url)
                         && self.observation_is_within_run(content.observed_at_unix_seconds)
                 })
             })
@@ -3783,6 +3845,22 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         run.service_content[0] = PublicServiceContentEvidence::new(
             PublicServiceKind::Rpc,
             hash_bytes(b"test", &[b"rpc-service"]),
+            "https://rpc-content.tensorvm.example/chain/head",
+            public_service_content_path(PublicServiceKind::Rpc),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_000,
+            64,
+        );
+        let mismatched_rpc_content_authority = run.evaluate(&criteria, 6, true);
+        assert!(!mismatched_rpc_content_authority.has_deployed_rpc_service);
+        assert!(!mismatched_rpc_content_authority.has_deployed_public_service_content);
+        assert!(!mismatched_rpc_content_authority.has_deployed_public_services);
+        assert!(!mismatched_rpc_content_authority.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
             "https://rpc.tensorvm.example/wrong",
             "/wrong",
             hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
@@ -4546,10 +4624,23 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             None
         );
         assert_eq!(
+            public_https_host("https://bad_host.tensorvm.example/health"),
+            None
+        );
+        assert_eq!(
+            public_https_host("https://-bad.tensorvm.example/health"),
+            None
+        );
+        assert_eq!(
+            public_https_host("https://rpc.tensorvm.example\\evil/health"),
+            None
+        );
+        assert_eq!(
             public_https_host("https://rpc.tensorvm.example /health"),
             None
         );
         assert_eq!(public_https_host("https://rpc[bad]/health"), None);
+        assert_eq!(public_https_host("https://[not-ip]/health"), None);
         assert_eq!(
             public_https_host("https://2001:4860:4860::8888/health"),
             None
@@ -4558,6 +4649,26 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             public_https_host("https://rpc.tensorvm.example:443/health"),
             Some("rpc.tensorvm.example")
         );
+        assert!(public_https_authorities_match(
+            "https://rpc.tensorvm.example:443/health",
+            "https://rpc.tensorvm.example/chain/head"
+        ));
+        assert!(!public_https_authorities_match(
+            "https://rpc.tensorvm.example:444/health",
+            "https://rpc.tensorvm.example/chain/head"
+        ));
+        assert!(!public_https_authorities_match(
+            "https://rpc.tensorvm.example/health",
+            "http://rpc.tensorvm.example/chain/head"
+        ));
+        assert!(!public_https_authorities_match(
+            "https://rpc.tensorvm.example/health",
+            "https://rpc-content.tensorvm.example/chain/head"
+        ));
+        assert!(public_https_authorities_match(
+            "https://[2001:4860:4860::8888]/health",
+            "https://[2001:4860:4860:0:0:0:0:8888]/chain/head"
+        ));
         assert_eq!(public_https_host("https://[::1]:443/health"), Some("::1"));
         assert_eq!(
             public_https_host("https://[2001:4860:4860::8888]:443/health"),
@@ -4608,6 +4719,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         }
         assert!(public_host_is_external("8.8.8.8"));
         assert!(public_host_is_external("2001:4860:4860::8888"));
+        assert!(!public_host_is_external(""));
+        assert!(!public_host_is_external("bad..tensorvm.example"));
+        assert!(!public_host_is_external("123.456"));
 
         let local_rpc = manifest.replace(
             "https://rpc.tensorvm.example/health",
@@ -4643,6 +4757,19 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!bad_content_path_report.has_public_service_content_plan);
         assert!(!bad_content_path_report.has_public_service_plan);
         assert!(!bad_content_path_report.can_start_public_run);
+
+        let mismatched_content_authority = manifest.replace(
+            "https://rpc.tensorvm.example/chain/head,/chain/head",
+            "https://rpc-content.tensorvm.example/chain/head,/chain/head",
+        );
+        let mismatched_content_authority_report =
+            parse_public_testnet_preflight_manifest(&mismatched_content_authority)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!mismatched_content_authority_report.has_rpc_service_plan);
+        assert!(!mismatched_content_authority_report.has_public_service_content_plan);
+        assert!(!mismatched_content_authority_report.has_public_service_plan);
+        assert!(!mismatched_content_authority_report.can_start_public_run);
 
         let no_cuda = manifest.replace(
             "cuda_kernels_available=true",

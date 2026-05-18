@@ -19,8 +19,9 @@ The local preflight report checks:
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
 - service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
-Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities.
-The local checker rejects userinfo, whitespace, invalid ports, malformed bracketed IPv6 authorities,
+Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities,
+and each service's health and content URLs must use the same HTTPS authority. The local checker rejects
+userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
 localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
 IPv6 loopback literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or
 reserved ranges are also rejected.
@@ -53,7 +54,9 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/healt
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
 health path. The content URL path must match the required public surface for that service:
-`/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`.
+`/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`. The content URL authority must
+match the health URL authority so a preflight manifest cannot combine health checks from one deployed
+service with content evidence from another host.
 
 The CLI reads a manifest file and reports launch readiness:
 
