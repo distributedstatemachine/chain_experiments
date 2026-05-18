@@ -1768,7 +1768,9 @@ ports, malformed bracketed IPv6 authorities, localhost, private, link-local, doc
 shared-address, benchmarking, multicast, or reserved IP literals.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
-counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.
+counts, and DoS-control limits. The public libp2p multiaddr must not use localhost, `.local`, loopback,
+unspecified, private, link-local, documentation, shared-address, benchmarking, multicast, or reserved IP
+hosts. Those records are rolled into the `network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported

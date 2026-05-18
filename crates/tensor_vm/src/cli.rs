@@ -12,8 +12,7 @@ use crate::testnet::{
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
-use std::net::SocketAddr;
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -1311,33 +1310,82 @@ fn network_observation_root(
 }
 
 fn network_observation_multiaddr_is_public(address: &Multiaddr) -> bool {
-    address.iter().any(|protocol| match protocol {
-        Protocol::Ip4(ip) => public_ipv4(ip),
-        Protocol::Ip6(ip) => public_ipv6(ip),
-        Protocol::Dns(host) | Protocol::Dns4(host) | Protocol::Dns6(host) => {
-            public_dns_host(host.as_ref())
+    let mut saw_public_address = false;
+    for protocol in address.iter() {
+        match protocol {
+            Protocol::Ip4(ip) if public_ipv4(ip) => saw_public_address = true,
+            Protocol::Ip6(ip) if public_ipv6(ip) => saw_public_address = true,
+            Protocol::Dns(host) | Protocol::Dns4(host) | Protocol::Dns6(host)
+                if public_dns_host(host.as_ref()) =>
+            {
+                saw_public_address = true;
+            }
+            Protocol::Ip4(_)
+            | Protocol::Ip6(_)
+            | Protocol::Dns(_)
+            | Protocol::Dns4(_)
+            | Protocol::Dns6(_) => {
+                return false;
+            }
+            _ => {}
         }
-        _ => false,
-    })
+    }
+    saw_public_address
 }
 
 fn public_ipv4(ip: Ipv4Addr) -> bool {
-    !(ip.is_unspecified() || ip.is_loopback() || ip.is_private() || ip.is_link_local())
+    let [a, b, c, _d] = ip.octets();
+    let is_shared_address_space = a == 100 && (64..=127).contains(&b);
+    let is_protocol_assignment = a == 192 && b == 0 && c == 0;
+    let is_documentation = (a == 192 && b == 0 && c == 2)
+        || (a == 198 && b == 51 && c == 100)
+        || (a == 203 && b == 0 && c == 113);
+    let is_benchmarking = a == 198 && (b == 18 || b == 19);
+    let is_multicast = (224..=239).contains(&a);
+    let is_reserved_or_broadcast = (240..=255).contains(&a);
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_private()
+        || ip.is_link_local()
+        || is_shared_address_space
+        || is_protocol_assignment
+        || is_documentation
+        || is_benchmarking
+        || is_multicast
+        || is_reserved_or_broadcast)
 }
 
 fn public_ipv6(ip: Ipv6Addr) -> bool {
     let first_segment = ip.segments()[0];
     let unique_local = (first_segment & 0xfe00) == 0xfc00;
     let link_local = (first_segment & 0xffc0) == 0xfe80;
-    !(ip.is_unspecified() || ip.is_loopback() || unique_local || link_local)
+    let documentation = ip.segments()[0] == 0x2001 && ip.segments()[1] == 0x0db8;
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || unique_local
+        || link_local
+        || ip.is_multicast()
+        || documentation)
 }
 
 fn public_dns_host(host: &str) -> bool {
     let host = host.trim().trim_end_matches('.').to_ascii_lowercase();
-    !host.is_empty()
-        && host != "localhost"
-        && !host.ends_with(".localhost")
-        && !host.ends_with(".local")
+    if host.is_empty()
+        || host == "localhost"
+        || host.ends_with(".localhost")
+        || host.ends_with(".local")
+        || host.contains('@')
+        || host
+            .bytes()
+            .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+    {
+        return false;
+    }
+    match host.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => public_ipv4(ip),
+        Ok(IpAddr::V6(ip)) => public_ipv6(ip),
+        Err(_) => true,
+    }
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -3449,6 +3497,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 2,
                 1_048_576,
             ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/ip4/203.0.113.10/tcp/4001".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
         ] {
             assert!(execute_reference_cli_command(&invalid).is_err());
         }
@@ -4047,6 +4105,21 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!network_observation_multiaddr_is_public(
             &"/ip4/10.0.0.1/tcp/4001".parse().unwrap()
         ));
+        for address in [
+            "/ip4/100.64.0.1/tcp/4001",
+            "/ip4/192.0.0.1/tcp/4001",
+            "/ip4/192.0.2.10/tcp/4001",
+            "/ip4/198.18.0.1/tcp/4001",
+            "/ip4/198.51.100.10/tcp/4001",
+            "/ip4/203.0.113.10/tcp/4001",
+            "/ip4/224.0.0.1/tcp/4001",
+            "/ip4/240.0.0.1/tcp/4001",
+            "/ip4/255.255.255.255/tcp/4001",
+        ] {
+            assert!(!network_observation_multiaddr_is_public(
+                &address.parse().unwrap()
+            ));
+        }
         assert!(network_observation_multiaddr_is_public(
             &"/ip6/2001:4860:4860::8888/tcp/4001".parse().unwrap()
         ));
@@ -4059,6 +4132,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!network_observation_multiaddr_is_public(
             &"/ip6/fe80::1/tcp/4001".parse().unwrap()
         ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip6/2001:db8::1/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip6/ff02::1/tcp/4001".parse().unwrap()
+        ));
         assert!(network_observation_multiaddr_is_public(
             &"/dns/node.tensorvm.example/tcp/4001".parse().unwrap()
         ));
@@ -4068,6 +4147,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!network_observation_multiaddr_is_public(
             &"/dns/node.local/tcp/4001".parse().unwrap()
         ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/dns/203.0.113.10/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/dns4/10.0.0.1/tcp/4001".parse().unwrap()
+        ));
+        assert!(!public_dns_host("2001:db8::1"));
+        assert!(public_dns_host("2001:4860:4860::8888"));
     }
 
     #[test]

@@ -287,10 +287,12 @@ tvmd public-evidence network-observation \
   --idle-timeout-seconds 60
 ```
 
-The command rejects zero operator IDs, malformed peer IDs, local/private or malformed libp2p multiaddrs,
-missing discovery/bootstrap observations, missing gossip or request-response protocol counts, and missing
-DoS-control limits. Its output is a signed `network_runtime_observation=...` line suitable for external
-aggregation into the `network-runtime` record summary.
+The command rejects zero operator IDs, malformed peer IDs, malformed libp2p multiaddrs, and listen
+multiaddrs using localhost, `.local`, loopback, unspecified, private, link-local, documentation,
+shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects missing discovery/bootstrap
+observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its
+output is a signed `network_runtime_observation=...` line suitable for external aggregation into the
+`network-runtime` record summary.
 
 Operators can also generate signed supporting-record summary lines, including the production libp2p
 network-observation summary required by full-spec evidence:
