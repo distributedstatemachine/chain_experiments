@@ -35,7 +35,7 @@ The local reference crate exposes typed validation for this future bundle throug
 - `PublicTestnetEvidenceBundle`, which additionally checks publication, signatures, auditors, and
   independently checkable supporting records
 
-The current local simulation and docs do not satisfy this bundle requirement.
+The current local reference implementation and docs do not satisfy this bundle requirement.
 
 ## Manifest Format
 

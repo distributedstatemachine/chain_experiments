@@ -52,12 +52,11 @@ pub use jobs::{
 };
 pub use miner::MinerNode;
 pub use p2p::{
-    BroadcastReport, GossipTopic, Libp2pControlPlaneConfig, LocalNetwork, NetworkBackend,
-    NetworkStackRecommendation, P2pTcpServer, P2pTransportConfig, PeerAdvertisement, PeerBookStore,
-    PeerDirectory, PeerDirectoryConfig, PeerRecord, PeerState, RequestResponseProtocol,
-    decode_frame, encode_frame, gossip_topic_for_message, read_framed_message,
-    recommended_network_stack, request_response_protocol_for_message, send_framed_message,
-    write_framed_message,
+    GossipTopic, Libp2pControlPlaneConfig, NetworkBackend, NetworkStackRecommendation,
+    PeerBookStore, PeerRecord, RequestResponseProtocol, TensorVmLibp2pNode,
+    TensorVmNetworkBehaviour, build_libp2p_node, decode_message, encode_gossipsub_message,
+    encode_message, gossip_topic_for_message, gossipsub_ident_topic, recommended_network_stack,
+    request_response_protocol_for_message, request_response_stream_protocol,
 };
 pub use rpc::{RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, RpcRequest, RpcResponse};
 pub use runtime::{

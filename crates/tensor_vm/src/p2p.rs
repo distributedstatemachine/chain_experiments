@@ -1,18 +1,14 @@
 use crate::api::P2pMessage;
-use crate::error::{Result, TvmError};
-use crate::types::{Address, Hash};
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, VecDeque};
+use crate::error::{Result as TvmResult, TvmError};
+use crate::types::{Hash, hash_bytes};
+use libp2p::multiaddr::Protocol;
+use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
 use std::fs;
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
-pub const P2P_FRAME_MAGIC: [u8; 4] = *b"TCN1";
-const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_PEER_BOOK_V1\n";
-const PEER_RECORD_PAYLOAD_LEN: usize = 32 + 8 + 8 + 8;
+const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -37,9 +33,10 @@ pub fn recommended_network_stack() -> NetworkStackRecommendation {
         tensor_data_plane: NetworkBackend::Libp2p,
         future_tensor_blob_candidate: Some(NetworkBackend::Iroh),
         rationale: vec![
-            "gossipsub maps directly to block, job, receipt, attestation, and peer announcements",
-            "kademlia/identify/mdns cover the MVP discovery and bootstrap surface",
-            "request-response streams cover tensor rows, tensor chunks, and program fetches",
+            "rust-libp2p is the default TensorVM P2P runtime dependency",
+            "gossipsub carries block, job, receipt, attestation, and peer announcements",
+            "identify advertises TensorVM protocol support to connected peers",
+            "request-response streams carry tensor rows, tensor chunks, and program fetches",
             "iroh is better kept as a later verified blob-transfer data plane once consensus networking is stable",
         ],
     }
@@ -87,16 +84,12 @@ impl RequestResponseProtocol {
 pub struct Libp2pControlPlaneConfig {
     pub gossipsub_topics: Vec<GossipTopic>,
     pub request_response_protocols: Vec<RequestResponseProtocol>,
-    pub enable_identify: bool,
-    pub enable_kademlia: bool,
-    pub enable_mdns: bool,
-    pub max_inbox_messages: usize,
-    pub min_peer_score: i64,
-    pub max_peer_count: usize,
-    pub max_messages_per_window: u64,
-    pub valid_message_score_reward: i64,
-    pub rate_limit_score_penalty: i64,
-    pub rate_limit_backoff_windows: u64,
+    pub listen_addresses: Vec<String>,
+    pub bootstrap_addresses: Vec<String>,
+    pub max_gossipsub_transmit_bytes: usize,
+    pub request_timeout_seconds: u64,
+    pub max_concurrent_request_streams: usize,
+    pub idle_connection_timeout_seconds: u64,
 }
 
 impl Default for Libp2pControlPlaneConfig {
@@ -114,18 +107,143 @@ impl Default for Libp2pControlPlaneConfig {
                 RequestResponseProtocol::TensorRow,
                 RequestResponseProtocol::Program,
             ],
-            enable_identify: true,
-            enable_kademlia: true,
-            enable_mdns: true,
-            max_inbox_messages: 256,
-            min_peer_score: -100,
-            max_peer_count: 10_000,
-            max_messages_per_window: 1_024,
-            valid_message_score_reward: 1,
-            rate_limit_score_penalty: 25,
-            rate_limit_backoff_windows: 1,
+            listen_addresses: Vec::new(),
+            bootstrap_addresses: Vec::new(),
+            max_gossipsub_transmit_bytes: 1024 * 1024,
+            request_timeout_seconds: 10,
+            max_concurrent_request_streams: 128,
+            idle_connection_timeout_seconds: 60,
         }
     }
+}
+
+#[derive(libp2p::swarm::NetworkBehaviour)]
+pub struct TensorVmNetworkBehaviour {
+    pub gossipsub: libp2p::gossipsub::Behaviour,
+    pub identify: libp2p::identify::Behaviour,
+    pub kademlia: libp2p::kad::Behaviour<libp2p::kad::store::MemoryStore>,
+    pub request_response: libp2p::request_response::json::Behaviour<P2pMessage, P2pMessage>,
+}
+
+pub struct TensorVmLibp2pNode {
+    pub peer_id: PeerId,
+    pub swarm: Swarm<TensorVmNetworkBehaviour>,
+    pub identify_protocol: String,
+    pub subscribed_topics: Vec<String>,
+    pub request_response_protocols: Vec<String>,
+}
+
+pub fn build_libp2p_node(config: &Libp2pControlPlaneConfig) -> TvmResult<TensorVmLibp2pNode> {
+    let keypair = libp2p::identity::Keypair::generate_ed25519();
+    let peer_id = PeerId::from(keypair.public());
+    let behaviour = build_libp2p_behaviour(config, &keypair)?;
+    let identify_protocol = format!("{LIBP2P_PROTOCOL_PREFIX}/identify");
+    let subscribed_topics = config
+        .gossipsub_topics
+        .iter()
+        .map(|topic| topic.as_str().to_owned())
+        .collect();
+    let request_response_protocols = config
+        .request_response_protocols
+        .iter()
+        .map(|protocol| protocol.as_str().to_owned())
+        .collect();
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
+        .with_tcp(
+            libp2p::tcp::Config::default(),
+            libp2p::tls::Config::new,
+            libp2p::yamux::Config::default,
+        )
+        .map_err(|_| TvmError::InvalidReceipt("libp2p transport build failed"))?
+        .with_behaviour(|_| behaviour)
+        .map_err(|_| TvmError::InvalidReceipt("libp2p behaviour build failed"))?
+        .with_swarm_config(|swarm_config| {
+            swarm_config.with_idle_connection_timeout(Duration::from_secs(
+                config.idle_connection_timeout_seconds,
+            ))
+        })
+        .build();
+
+    for address in &config.listen_addresses {
+        swarm
+            .listen_on(parse_multiaddr(address)?)
+            .map_err(|_| TvmError::InvalidReceipt("libp2p listen address rejected"))?;
+    }
+    for address in &config.bootstrap_addresses {
+        let multiaddr = parse_multiaddr(address)?;
+        if let Some((peer_id, peer_address)) = bootstrap_peer_address(&multiaddr) {
+            swarm
+                .behaviour_mut()
+                .kademlia
+                .add_address(&peer_id, peer_address);
+        }
+        swarm
+            .dial(multiaddr)
+            .map_err(|_| TvmError::InvalidReceipt("libp2p bootstrap address rejected"))?;
+    }
+
+    Ok(TensorVmLibp2pNode {
+        peer_id,
+        swarm,
+        identify_protocol,
+        subscribed_topics,
+        request_response_protocols,
+    })
+}
+
+fn build_libp2p_behaviour(
+    config: &Libp2pControlPlaneConfig,
+    keypair: &libp2p::identity::Keypair,
+) -> TvmResult<TensorVmNetworkBehaviour> {
+    let mut gossipsub_config = libp2p::gossipsub::ConfigBuilder::default();
+    gossipsub_config
+        .max_transmit_size(config.max_gossipsub_transmit_bytes)
+        .validation_mode(libp2p::gossipsub::ValidationMode::Strict);
+    let mut gossipsub = libp2p::gossipsub::Behaviour::new(
+        libp2p::gossipsub::MessageAuthenticity::Signed(keypair.clone()),
+        gossipsub_config
+            .build()
+            .map_err(|_| TvmError::InvalidReceipt("invalid gossipsub configuration"))?,
+    )
+    .map_err(|_| TvmError::InvalidReceipt("gossipsub build failed"))?;
+    for topic in &config.gossipsub_topics {
+        let ident_topic = gossipsub_ident_topic(*topic);
+        gossipsub
+            .subscribe(&ident_topic)
+            .map_err(|_| TvmError::InvalidReceipt("gossipsub subscription failed"))?;
+    }
+
+    let identify = libp2p::identify::Behaviour::new(libp2p::identify::Config::new(
+        format!("{LIBP2P_PROTOCOL_PREFIX}/identify"),
+        keypair.public(),
+    ));
+    let local_peer_id = PeerId::from(keypair.public());
+    let kademlia_store = libp2p::kad::store::MemoryStore::new(local_peer_id);
+    let kademlia = libp2p::kad::Behaviour::new(local_peer_id, kademlia_store);
+    let request_protocols = config
+        .request_response_protocols
+        .iter()
+        .map(|protocol| {
+            Ok((
+                request_response_stream_protocol(*protocol)?,
+                libp2p::request_response::ProtocolSupport::Full,
+            ))
+        })
+        .collect::<TvmResult<Vec<_>>>()?;
+    let request_response = libp2p::request_response::json::Behaviour::new(
+        request_protocols,
+        libp2p::request_response::Config::default()
+            .with_request_timeout(Duration::from_secs(config.request_timeout_seconds))
+            .with_max_concurrent_streams(config.max_concurrent_request_streams),
+    );
+
+    Ok(TensorVmNetworkBehaviour {
+        gossipsub,
+        identify,
+        kademlia,
+        request_response,
+    })
 }
 
 pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
@@ -163,6 +281,26 @@ pub fn request_response_protocol_for_message(
         | P2pMessage::NewAttestation(_)
         | P2pMessage::PeerInfo { .. } => None,
     }
+}
+
+pub fn gossipsub_ident_topic(topic: GossipTopic) -> libp2p::gossipsub::IdentTopic {
+    libp2p::gossipsub::IdentTopic::new(topic.as_str())
+}
+
+pub fn request_response_stream_protocol(
+    protocol: RequestResponseProtocol,
+) -> TvmResult<StreamProtocol> {
+    StreamProtocol::try_from_owned(protocol.as_str().to_owned())
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p stream protocol"))
+}
+
+pub fn encode_gossipsub_message(
+    message: &P2pMessage,
+) -> TvmResult<(libp2p::gossipsub::IdentTopic, Vec<u8>)> {
+    let topic = gossip_topic_for_message(message).ok_or(TvmError::InvalidReceipt(
+        "message is not a gossipsub announcement",
+    ))?;
+    Ok((gossipsub_ident_topic(topic), encode_message(message)))
 }
 
 pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
@@ -243,7 +381,7 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
     out
 }
 
-pub fn decode_message(input: &[u8]) -> Result<P2pMessage> {
+pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
     let mut reader = Reader::new(input);
     let tag = reader.read_u8()?;
     let message = match tag {
@@ -295,577 +433,28 @@ pub fn decode_message(input: &[u8]) -> Result<P2pMessage> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct P2pTransportConfig {
-    pub max_frame_bytes: usize,
-    pub read_timeout_ms: u64,
-}
-
-impl Default for P2pTransportConfig {
-    fn default() -> Self {
-        Self {
-            max_frame_bytes: 1024 * 1024,
-            read_timeout_ms: 5_000,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct P2pTcpServer {
-    listener: TcpListener,
-    config: P2pTransportConfig,
-}
-
-impl P2pTcpServer {
-    pub fn bind(addr: &str, config: P2pTransportConfig) -> std::io::Result<Self> {
-        Ok(Self {
-            listener: TcpListener::bind(addr)?,
-            config,
-        })
-    }
-
-    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.listener.local_addr()
-    }
-
-    pub fn serve_next(&self) -> std::io::Result<P2pMessage> {
-        let (mut stream, _) = self.listener.accept()?;
-        stream.set_read_timeout(Some(Duration::from_millis(self.config.read_timeout_ms)))?;
-        read_framed_message(&mut stream, &self.config)
-    }
-
-    pub fn serve_n(&self, max_messages: usize) -> std::io::Result<Vec<P2pMessage>> {
-        let mut messages = Vec::with_capacity(max_messages);
-        for _ in 0..max_messages {
-            messages.push(self.serve_next()?);
-        }
-        Ok(messages)
-    }
-}
-
-pub fn send_framed_message(
-    addr: SocketAddr,
-    message: &P2pMessage,
-    config: &P2pTransportConfig,
-) -> std::io::Result<()> {
-    let mut stream = TcpStream::connect(addr)?;
-    write_framed_message(&mut stream, message, config)?;
-    stream.flush()
-}
-
-pub fn write_framed_message(
-    stream: &mut TcpStream,
-    message: &P2pMessage,
-    config: &P2pTransportConfig,
-) -> std::io::Result<()> {
-    write_framed_message_to(stream, message, config)
-}
-
-pub fn read_framed_message(
-    stream: &mut TcpStream,
-    config: &P2pTransportConfig,
-) -> std::io::Result<P2pMessage> {
-    read_framed_message_from(stream, config)
-}
-
-pub fn write_framed_message_to<W: Write>(
-    writer: &mut W,
-    message: &P2pMessage,
-    config: &P2pTransportConfig,
-) -> std::io::Result<()> {
-    writer.write_all(&encode_frame(message, config)?)
-}
-
-pub fn read_framed_message_from<R: Read>(
-    reader: &mut R,
-    config: &P2pTransportConfig,
-) -> std::io::Result<P2pMessage> {
-    let mut header = [0_u8; 8];
-    reader.read_exact(&mut header)?;
-    if header[..4] != P2P_FRAME_MAGIC {
-        return Err(invalid_data("invalid p2p frame magic"));
-    }
-    let payload_len = frame_payload_len(&header[4..8]);
-    if payload_len as usize > config.max_frame_bytes {
-        return Err(invalid_data("p2p frame exceeds configured maximum"));
-    }
-    let mut payload = vec![0_u8; payload_len as usize];
-    reader.read_exact(&mut payload)?;
-    decode_message(&payload).map_err(|_| invalid_data("invalid p2p message payload"))
-}
-
-pub fn encode_frame(message: &P2pMessage, config: &P2pTransportConfig) -> std::io::Result<Vec<u8>> {
-    let payload = encode_message(message);
-    if payload.len() > config.max_frame_bytes || payload.len() > u32::MAX as usize {
-        return Err(invalid_data("p2p frame exceeds configured maximum"));
-    }
-    let mut frame = Vec::with_capacity(8 + payload.len());
-    frame.extend_from_slice(&P2P_FRAME_MAGIC);
-    frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
-    frame.extend_from_slice(&payload);
-    Ok(frame)
-}
-
-pub fn decode_frame(input: &[u8], config: &P2pTransportConfig) -> std::io::Result<P2pMessage> {
-    if input.len() < 8 {
-        return Err(invalid_data("short p2p frame"));
-    }
-    if input[..4] != P2P_FRAME_MAGIC {
-        return Err(invalid_data("invalid p2p frame magic"));
-    }
-    let payload_len = frame_payload_len(&input[4..8]);
-    if payload_len as usize > config.max_frame_bytes {
-        return Err(invalid_data("p2p frame exceeds configured maximum"));
-    }
-    let expected_len = 8_usize
-        .checked_add(payload_len as usize)
-        .ok_or_else(|| invalid_data("p2p frame length overflow"))?;
-    if input.len() != expected_len {
-        return Err(invalid_data("p2p frame length mismatch"));
-    }
-    decode_message(&input[8..expected_len]).map_err(|_| invalid_data("invalid p2p message payload"))
-}
-
-fn invalid_data(message: &'static str) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::InvalidData, message)
-}
-
-fn frame_payload_len(bytes: &[u8]) -> u32 {
-    let mut len = [0_u8; 4];
-    len.copy_from_slice(bytes);
-    u32::from_le_bytes(len)
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PeerState {
-    pub address: Address,
-    pub score: i64,
-    pub dropped_messages: u64,
-    pub inbox_len: usize,
-    pub blocked_until_window: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PeerRecord {
-    pub address: Address,
-    pub score: i64,
-    pub dropped_messages: u64,
-    pub blocked_until_window: u64,
+    pub peer_id: String,
+    pub address: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PeerAdvertisement {
-    pub address: Address,
-    pub listen_addr: String,
-    pub protocols: Vec<String>,
-    pub observed_at_window: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PeerDirectoryConfig {
-    pub max_advertisements: usize,
-    pub max_listen_addr_len: usize,
-    pub max_protocols_per_peer: usize,
-    pub max_protocol_len: usize,
-}
-
-impl Default for PeerDirectoryConfig {
-    fn default() -> Self {
+impl PeerRecord {
+    pub fn new(peer_id: PeerId, address: Multiaddr) -> Self {
         Self {
-            max_advertisements: 10_000,
-            max_listen_addr_len: 256,
-            max_protocols_per_peer: 16,
-            max_protocol_len: 128,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PeerDirectory {
-    config: PeerDirectoryConfig,
-    advertisements: BTreeMap<Address, PeerAdvertisement>,
-}
-
-impl Default for PeerDirectory {
-    fn default() -> Self {
-        Self::with_config(PeerDirectoryConfig::default())
-    }
-}
-
-impl PeerDirectory {
-    pub fn with_config(config: PeerDirectoryConfig) -> Self {
-        Self {
-            config,
-            advertisements: BTreeMap::new(),
+            peer_id: peer_id.to_string(),
+            address: address.to_string(),
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.advertisements.len()
+    pub fn peer_id(&self) -> TvmResult<PeerId> {
+        self.peer_id
+            .parse()
+            .map_err(|_| TvmError::Storage("invalid peer id"))
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.advertisements.is_empty()
+    pub fn multiaddr(&self) -> TvmResult<Multiaddr> {
+        parse_multiaddr(&self.address)
     }
-
-    pub fn get(&self, address: &Address) -> Option<&PeerAdvertisement> {
-        self.advertisements.get(address)
-    }
-
-    pub fn advertise(&mut self, advertisement: PeerAdvertisement) -> Result<bool> {
-        self.validate(&advertisement)?;
-        match self.advertisements.get(&advertisement.address) {
-            Some(existing) if existing.observed_at_window > advertisement.observed_at_window => {
-                Ok(false)
-            }
-            Some(existing) if existing == &advertisement => Ok(false),
-            None if self.advertisements.len() >= self.config.max_advertisements => {
-                Err(TvmError::InvalidReceipt("peer directory full"))
-            }
-            _ => {
-                self.advertisements
-                    .insert(advertisement.address, advertisement);
-                Ok(true)
-            }
-        }
-    }
-
-    pub fn bootstrap(
-        &mut self,
-        advertisements: impl IntoIterator<Item = PeerAdvertisement>,
-    ) -> Result<usize> {
-        let mut accepted = 0;
-        for advertisement in advertisements {
-            if self.advertise(advertisement)? {
-                accepted += 1;
-            }
-        }
-        Ok(accepted)
-    }
-
-    pub fn closest_peers(&self, target: &Hash, limit: usize) -> Vec<PeerAdvertisement> {
-        let mut advertisements: Vec<_> = self.advertisements.values().cloned().collect();
-        advertisements
-            .sort_by(|left, right| compare_peer_distance(target, &left.address, &right.address));
-        advertisements.truncate(limit);
-        advertisements
-    }
-
-    fn validate(&self, advertisement: &PeerAdvertisement) -> Result<()> {
-        if advertisement.listen_addr.is_empty() {
-            return Err(TvmError::InvalidReceipt("empty peer listen address"));
-        }
-        if advertisement.listen_addr.len() > self.config.max_listen_addr_len {
-            return Err(TvmError::InvalidReceipt("peer listen address too long"));
-        }
-        if advertisement.protocols.len() > self.config.max_protocols_per_peer {
-            return Err(TvmError::InvalidReceipt("too many peer protocols"));
-        }
-        for protocol in &advertisement.protocols {
-            if protocol.is_empty() {
-                return Err(TvmError::InvalidReceipt("empty peer protocol"));
-            }
-            if protocol.len() > self.config.max_protocol_len {
-                return Err(TvmError::InvalidReceipt("peer protocol too long"));
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug)]
-struct PeerInbox {
-    score: i64,
-    dropped_messages: u64,
-    accepted_messages_in_window: u64,
-    window: u64,
-    blocked_until_window: u64,
-    inbox: VecDeque<Vec<u8>>,
-}
-
-impl PeerInbox {
-    fn new() -> Self {
-        Self {
-            score: 0,
-            dropped_messages: 0,
-            accepted_messages_in_window: 0,
-            window: 0,
-            blocked_until_window: 0,
-            inbox: VecDeque::new(),
-        }
-    }
-
-    fn from_record(record: PeerRecord) -> Self {
-        Self {
-            score: record.score,
-            dropped_messages: record.dropped_messages,
-            accepted_messages_in_window: 0,
-            window: 0,
-            blocked_until_window: record.blocked_until_window,
-            inbox: VecDeque::new(),
-        }
-    }
-
-    fn to_record(&self, address: Address) -> PeerRecord {
-        PeerRecord {
-            address,
-            score: self.score,
-            dropped_messages: self.dropped_messages,
-            blocked_until_window: self.blocked_until_window,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct BroadcastReport {
-    pub delivered: usize,
-    pub dropped: usize,
-    pub discovered: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct LocalNetwork {
-    config: Libp2pControlPlaneConfig,
-    directory: PeerDirectory,
-    peers: BTreeMap<Address, PeerInbox>,
-    current_window: u64,
-}
-
-impl Default for LocalNetwork {
-    fn default() -> Self {
-        Self::with_config(Libp2pControlPlaneConfig::default())
-    }
-}
-
-impl LocalNetwork {
-    pub fn with_config(config: Libp2pControlPlaneConfig) -> Self {
-        let directory = PeerDirectory::with_config(PeerDirectoryConfig {
-            max_advertisements: config.max_peer_count,
-            ..PeerDirectoryConfig::default()
-        });
-        Self {
-            config,
-            directory,
-            peers: BTreeMap::new(),
-            current_window: 0,
-        }
-    }
-
-    pub fn add_peer(&mut self, address: Address) {
-        let _ = self.try_add_peer(address);
-    }
-
-    pub fn try_add_peer(&mut self, address: Address) -> Result<bool> {
-        if self.peers.contains_key(&address) {
-            return Ok(false);
-        }
-        if self.peers.len() >= self.config.max_peer_count {
-            return Err(TvmError::InvalidReceipt("peer limit reached"));
-        }
-        self.peers.insert(address, PeerInbox::new());
-        Ok(true)
-    }
-
-    pub fn from_peer_records(
-        config: Libp2pControlPlaneConfig,
-        records: impl IntoIterator<Item = PeerRecord>,
-    ) -> Result<Self> {
-        let mut network = Self::with_config(config);
-        for record in records {
-            if network.peers.contains_key(&record.address) {
-                return Err(TvmError::Storage("duplicate peer record"));
-            }
-            if network.peers.len() >= network.config.max_peer_count {
-                return Err(TvmError::Storage("peer book exceeds peer limit"));
-            }
-            network
-                .peers
-                .insert(record.address, PeerInbox::from_record(record));
-        }
-        Ok(network)
-    }
-
-    pub fn advertise_peer(&mut self, advertisement: PeerAdvertisement) -> Result<bool> {
-        let address = advertisement.address;
-        if !self.peers.contains_key(&address) && self.peers.len() >= self.config.max_peer_count {
-            return Err(TvmError::InvalidReceipt("peer limit reached"));
-        }
-        let directory_updated = self.directory.advertise(advertisement)?;
-        let peer_added = self.try_add_peer(address)?;
-        Ok(directory_updated || peer_added)
-    }
-
-    pub fn bootstrap_peers(
-        &mut self,
-        advertisements: impl IntoIterator<Item = PeerAdvertisement>,
-    ) -> Result<usize> {
-        let mut accepted = 0;
-        for advertisement in advertisements {
-            if self.advertise_peer(advertisement)? {
-                accepted += 1;
-            }
-        }
-        Ok(accepted)
-    }
-
-    pub fn peer_advertisement(&self, address: &Address) -> Option<&PeerAdvertisement> {
-        self.directory.get(address)
-    }
-
-    pub fn closest_peers(&self, target: &Hash, limit: usize) -> Vec<PeerAdvertisement> {
-        self.directory.closest_peers(target, limit)
-    }
-
-    pub fn peer_count(&self) -> usize {
-        self.peers.len()
-    }
-
-    pub fn current_window(&self) -> u64 {
-        self.current_window
-    }
-
-    pub fn inbox_len(&self, address: &Address) -> Result<usize> {
-        self.peers
-            .get(address)
-            .map(|peer| peer.inbox.len())
-            .ok_or(TvmError::InvalidReceipt("unknown peer"))
-    }
-
-    pub fn peer_state(&self, address: &Address) -> Result<PeerState> {
-        let peer = self
-            .peers
-            .get(address)
-            .ok_or(TvmError::InvalidReceipt("unknown peer"))?;
-        Ok(PeerState {
-            address: *address,
-            score: peer.score,
-            dropped_messages: peer.dropped_messages,
-            inbox_len: peer.inbox.len(),
-            blocked_until_window: peer.blocked_until_window,
-        })
-    }
-
-    pub fn set_peer_score(&mut self, address: &Address, score: i64) -> Result<()> {
-        let peer = self
-            .peers
-            .get_mut(address)
-            .ok_or(TvmError::InvalidReceipt("unknown peer"))?;
-        peer.score = score;
-        Ok(())
-    }
-
-    pub fn peer_records(&self) -> Vec<PeerRecord> {
-        self.peers
-            .iter()
-            .map(|(address, peer)| peer.to_record(*address))
-            .collect()
-    }
-
-    pub fn advance_admission_window(&mut self) {
-        self.current_window = self.current_window.saturating_add(1);
-    }
-
-    pub fn broadcast(&mut self, from: Address, message: &P2pMessage) {
-        let _ = self.try_broadcast(from, message);
-    }
-
-    pub fn try_broadcast(
-        &mut self,
-        from: Address,
-        message: &P2pMessage,
-    ) -> Result<BroadcastReport> {
-        if !self.admit_inbound(&from)? {
-            return Ok(BroadcastReport {
-                delivered: 0,
-                dropped: self.peers.len().saturating_sub(1),
-                discovered: 0,
-            });
-        }
-        let discovered = self.discover_from_message(message);
-        let encoded = encode_message(message);
-        let mut delivered = 0;
-        let mut dropped = 0;
-        for (address, peer) in &mut self.peers {
-            if *address == from {
-                continue;
-            }
-            if peer.score < self.config.min_peer_score
-                || peer.inbox.len() >= self.config.max_inbox_messages
-            {
-                peer.dropped_messages = peer.dropped_messages.saturating_add(1);
-                dropped += 1;
-                continue;
-            }
-            peer.inbox.push_back(encoded.clone());
-            delivered += 1;
-        }
-        Ok(BroadcastReport {
-            delivered,
-            dropped,
-            discovered,
-        })
-    }
-
-    pub fn admit_inbound(&mut self, from: &Address) -> Result<bool> {
-        let peer = self
-            .peers
-            .get_mut(from)
-            .ok_or(TvmError::InvalidReceipt("unknown peer"))?;
-        if peer.window != self.current_window {
-            peer.window = self.current_window;
-            peer.accepted_messages_in_window = 0;
-        }
-        if self.current_window < peer.blocked_until_window
-            || peer.score < self.config.min_peer_score
-        {
-            peer.dropped_messages = peer.dropped_messages.saturating_add(1);
-            return Ok(false);
-        }
-        if peer.accepted_messages_in_window >= self.config.max_messages_per_window {
-            peer.score = peer
-                .score
-                .saturating_sub(self.config.rate_limit_score_penalty);
-            peer.blocked_until_window = self
-                .current_window
-                .saturating_add(self.config.rate_limit_backoff_windows);
-            peer.dropped_messages = peer.dropped_messages.saturating_add(1);
-            return Ok(false);
-        }
-        peer.accepted_messages_in_window = peer.accepted_messages_in_window.saturating_add(1);
-        peer.score = peer
-            .score
-            .saturating_add(self.config.valid_message_score_reward);
-        Ok(true)
-    }
-
-    pub fn recv(&mut self, address: &Address) -> Result<Option<P2pMessage>> {
-        let Some(inbox) = self.peers.get_mut(address) else {
-            return Err(TvmError::InvalidReceipt("unknown peer"));
-        };
-        inbox
-            .inbox
-            .pop_front()
-            .map(|bytes| decode_message(&bytes))
-            .transpose()
-    }
-
-    fn discover_from_message(&mut self, message: &P2pMessage) -> usize {
-        let P2pMessage::PeerInfo { address } = message else {
-            return 0;
-        };
-        usize::from(self.try_add_peer(*address).unwrap_or(false))
-    }
-}
-
-fn compare_peer_distance(target: &Hash, left: &Address, right: &Address) -> Ordering {
-    for (index, (left_byte, right_byte)) in left.iter().zip(right.iter()).enumerate() {
-        let left_distance = *left_byte ^ target[index];
-        let right_distance = *right_byte ^ target[index];
-        match left_distance.cmp(&right_distance) {
-            Ordering::Equal => continue,
-            ordering => return ordering,
-        }
-    }
-    left.cmp(right)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -882,11 +471,7 @@ impl PeerBookStore {
         &self.path
     }
 
-    pub fn save_network(&self, network: &LocalNetwork) -> Result<()> {
-        self.save_records(&network.peer_records())
-    }
-
-    pub fn save_records(&self, records: &[PeerRecord]) -> Result<()> {
+    pub fn save_records(&self, records: &[PeerRecord]) -> TvmResult<()> {
         if let Some(parent) = self.path.parent()
             && !parent.as_os_str().is_empty()
         {
@@ -898,27 +483,40 @@ impl PeerBookStore {
         Ok(())
     }
 
-    pub fn load_records(&self) -> Result<Vec<PeerRecord>> {
+    pub fn load_records(&self) -> TvmResult<Vec<PeerRecord>> {
         let bytes =
             fs::read(&self.path).map_err(|_| TvmError::Storage("failed to read peer book"))?;
         decode_peer_records(&bytes)
     }
 
-    pub fn load_network(&self, config: Libp2pControlPlaneConfig) -> Result<LocalNetwork> {
-        LocalNetwork::from_peer_records(config, self.load_records()?)
+    pub fn load_bootstrap_addresses(&self) -> TvmResult<Vec<String>> {
+        self.load_records()
+            .map(|records| records.into_iter().map(|record| record.address).collect())
+    }
+}
+
+fn parse_multiaddr(address: &str) -> TvmResult<Multiaddr> {
+    address
+        .parse()
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))
+}
+
+fn bootstrap_peer_address(address: &Multiaddr) -> Option<(PeerId, Multiaddr)> {
+    let mut peer_address = address.clone();
+    match peer_address.pop() {
+        Some(Protocol::P2p(peer_id)) => Some((peer_id, peer_address)),
+        _ => None,
     }
 }
 
 fn encode_peer_records(records: &[PeerRecord]) -> Vec<u8> {
-    let mut payload = Vec::with_capacity(8 + records.len() * PEER_RECORD_PAYLOAD_LEN);
+    let mut payload = Vec::new();
     write_u64(&mut payload, records.len() as u64);
     for record in records {
-        write_hash(&mut payload, &record.address);
-        payload.extend_from_slice(&record.score.to_le_bytes());
-        write_u64(&mut payload, record.dropped_messages);
-        write_u64(&mut payload, record.blocked_until_window);
+        write_string(&mut payload, &record.peer_id);
+        write_string(&mut payload, &record.address);
     }
-    let digest = crate::types::hash_bytes(b"tensor-vm-peer-book-v1", &[&payload]);
+    let digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&payload]);
     let mut encoded =
         Vec::with_capacity(PEER_BOOK_MAGIC.len() + payload.len() + PEER_BOOK_DIGEST_LEN);
     encoded.extend_from_slice(PEER_BOOK_MAGIC);
@@ -927,7 +525,7 @@ fn encode_peer_records(records: &[PeerRecord]) -> Vec<u8> {
     encoded
 }
 
-fn decode_peer_records(bytes: &[u8]) -> Result<Vec<PeerRecord>> {
+fn decode_peer_records(bytes: &[u8]) -> TvmResult<Vec<PeerRecord>> {
     if !bytes.starts_with(PEER_BOOK_MAGIC) {
         return Err(TvmError::Storage("invalid peer book magic"));
     }
@@ -938,41 +536,29 @@ fn decode_peer_records(bytes: &[u8]) -> Result<Vec<PeerRecord>> {
     let payload_start = PEER_BOOK_MAGIC.len();
     let payload_end = bytes.len() - PEER_BOOK_DIGEST_LEN;
     let payload = &bytes[payload_start..payload_end];
-    let expected_digest = crate::types::hash_bytes(b"tensor-vm-peer-book-v1", &[payload]);
+    let expected_digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[payload]);
     if bytes[payload_end..] != expected_digest {
         return Err(TvmError::Storage("peer book checksum mismatch"));
     }
 
     let mut offset = 0;
     let record_count = read_peer_u64(payload, &mut offset)? as usize;
-    let expected_payload_len = 8_usize
-        .checked_add(
-            record_count
-                .checked_mul(PEER_RECORD_PAYLOAD_LEN)
-                .ok_or(TvmError::Storage("peer book length overflow"))?,
-        )
-        .ok_or(TvmError::Storage("peer book length overflow"))?;
-    if payload.len() != expected_payload_len {
-        return Err(TvmError::Storage("invalid peer book length"));
-    }
-
     let mut records = Vec::with_capacity(record_count);
     for _ in 0..record_count {
-        let address = read_peer_hash(payload, &mut offset)?;
-        let score = read_peer_i64(payload, &mut offset)?;
-        let dropped_messages = read_peer_u64(payload, &mut offset)?;
-        let blocked_until_window = read_peer_u64(payload, &mut offset)?;
-        records.push(PeerRecord {
-            address,
-            score,
-            dropped_messages,
-            blocked_until_window,
-        });
+        let peer_id = read_peer_string(payload, &mut offset)?;
+        let address = read_peer_string(payload, &mut offset)?;
+        let record = PeerRecord { peer_id, address };
+        record.peer_id()?;
+        record.multiaddr()?;
+        records.push(record);
+    }
+    if offset != payload.len() {
+        return Err(TvmError::Storage("trailing peer book bytes"));
     }
     Ok(records)
 }
 
-fn read_peer_u64(bytes: &[u8], offset: &mut usize) -> Result<u64> {
+fn read_peer_u64(bytes: &[u8], offset: &mut usize) -> TvmResult<u64> {
     if bytes.len().saturating_sub(*offset) < 8 {
         return Err(TvmError::Storage("truncated peer book u64"));
     }
@@ -982,24 +568,16 @@ fn read_peer_u64(bytes: &[u8], offset: &mut usize) -> Result<u64> {
     Ok(u64::from_le_bytes(out))
 }
 
-fn read_peer_i64(bytes: &[u8], offset: &mut usize) -> Result<i64> {
-    if bytes.len().saturating_sub(*offset) < 8 {
-        return Err(TvmError::Storage("truncated peer book i64"));
-    }
-    let mut out = [0_u8; 8];
-    out.copy_from_slice(&bytes[*offset..*offset + 8]);
-    *offset += 8;
-    Ok(i64::from_le_bytes(out))
-}
-
-fn read_peer_hash(bytes: &[u8], offset: &mut usize) -> Result<Hash> {
-    if bytes.len().saturating_sub(*offset) < 32 {
-        return Err(TvmError::Storage("truncated peer book address"));
-    }
-    let mut out = [0_u8; 32];
-    out.copy_from_slice(&bytes[*offset..*offset + 32]);
-    *offset += 32;
-    Ok(out)
+fn read_peer_string(bytes: &[u8], offset: &mut usize) -> TvmResult<String> {
+    let len = read_peer_u64(bytes, offset)? as usize;
+    let end = offset
+        .checked_add(len)
+        .ok_or(TvmError::Storage("peer book string length overflow"))?;
+    let Some(raw) = bytes.get(*offset..end) else {
+        return Err(TvmError::Storage("truncated peer book string"));
+    };
+    *offset = end;
+    String::from_utf8(raw.to_vec()).map_err(|_| TvmError::Storage("invalid peer book utf8"))
 }
 
 fn write_hash(out: &mut Vec<u8>, hash: &Hash) {
@@ -1015,6 +593,11 @@ fn write_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(bytes);
 }
 
+fn write_string(out: &mut Vec<u8>, value: &str) {
+    write_u64(out, value.len() as u64);
+    out.extend_from_slice(value.as_bytes());
+}
+
 struct Reader<'a> {
     input: &'a [u8],
     offset: usize,
@@ -1025,7 +608,7 @@ impl<'a> Reader<'a> {
         Self { input, offset: 0 }
     }
 
-    fn read_u8(&mut self) -> Result<u8> {
+    fn read_u8(&mut self) -> TvmResult<u8> {
         let Some(byte) = self.input.get(self.offset).copied() else {
             return Err(TvmError::InvalidReceipt("short p2p message"));
         };
@@ -1033,26 +616,26 @@ impl<'a> Reader<'a> {
         Ok(byte)
     }
 
-    fn read_u64(&mut self) -> Result<u64> {
+    fn read_u64(&mut self) -> TvmResult<u64> {
         let bytes = self.read_exact(8)?;
         let mut out = [0_u8; 8];
         out.copy_from_slice(bytes);
         Ok(u64::from_le_bytes(out))
     }
 
-    fn read_hash(&mut self) -> Result<Hash> {
+    fn read_hash(&mut self) -> TvmResult<Hash> {
         let bytes = self.read_exact(32)?;
         let mut out = [0_u8; 32];
         out.copy_from_slice(bytes);
         Ok(out)
     }
 
-    fn read_bytes(&mut self) -> Result<Vec<u8>> {
+    fn read_bytes(&mut self) -> TvmResult<Vec<u8>> {
         let len = self.read_u64()? as usize;
         Ok(self.read_exact(len)?.to_vec())
     }
 
-    fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
+    fn read_exact(&mut self, len: usize) -> TvmResult<&'a [u8]> {
         let end = self
             .offset
             .checked_add(len)
@@ -1115,19 +698,6 @@ mod tests {
     }
 
     #[test]
-    fn local_network_broadcasts_to_other_peers() {
-        let a = address(b"a");
-        let b = address(b"b");
-        let h = hash_bytes(b"test", &[b"block"]);
-        let mut network = LocalNetwork::default();
-        network.add_peer(a);
-        network.add_peer(b);
-        network.broadcast(a, &P2pMessage::NewBlock(h));
-        assert_eq!(network.recv(&a).unwrap(), None);
-        assert_eq!(network.recv(&b).unwrap(), Some(P2pMessage::NewBlock(h)));
-    }
-
-    #[test]
     fn libp2p_mapping_separates_gossip_and_request_response() {
         let h = hash_bytes(b"test", &[b"h"]);
         let recommendation = recommended_network_stack();
@@ -1142,7 +712,7 @@ mod tests {
             recommendation
                 .rationale
                 .iter()
-                .any(|reason| reason.contains("gossipsub"))
+                .any(|reason| reason.contains("rust-libp2p"))
         );
         assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewBlock(h)),
@@ -1190,380 +760,103 @@ mod tests {
             request_response_protocol_for_message(&P2pMessage::NewBlock(h)),
             None
         );
-        assert_eq!(GossipTopic::Blocks.as_str(), "/tensorchain/1/blocks");
-        assert_eq!(GossipTopic::Jobs.as_str(), "/tensorchain/1/jobs");
-        assert_eq!(GossipTopic::Receipts.as_str(), "/tensorchain/1/receipts");
         assert_eq!(
-            GossipTopic::Attestations.as_str(),
-            "/tensorchain/1/attestations"
+            gossipsub_ident_topic(GossipTopic::Blocks).to_string(),
+            "/tensorchain/1/blocks"
         );
-        assert_eq!(GossipTopic::Peers.as_str(), "/tensorchain/1/peers");
         assert_eq!(
-            RequestResponseProtocol::TensorRow.as_str(),
+            request_response_stream_protocol(RequestResponseProtocol::TensorRow)
+                .unwrap()
+                .to_string(),
             "/tensorchain/1/tensor/row"
         );
-        assert_eq!(
-            RequestResponseProtocol::TensorChunk.as_str(),
-            "/tensorchain/1/tensor/chunk"
-        );
-        assert_eq!(
-            RequestResponseProtocol::Program.as_str(),
-            "/tensorchain/1/program"
-        );
+    }
+
+    #[test]
+    fn libp2p_node_builds_real_swarm_and_protocol_behaviour() {
         let config = Libp2pControlPlaneConfig::default();
-        assert!(config.enable_identify);
-        assert!(config.enable_kademlia);
-        assert!(config.enable_mdns);
+        let node = build_libp2p_node(&config).unwrap();
+        assert!(!node.peer_id.to_string().is_empty());
+        assert_eq!(node.subscribed_topics.len(), 5);
+        assert!(
+            node.subscribed_topics
+                .contains(&"/tensorchain/1/blocks".to_owned())
+        );
+        assert_eq!(node.request_response_protocols.len(), 3);
+        assert!(
+            node.request_response_protocols
+                .contains(&"/tensorchain/1/tensor/chunk".to_owned())
+        );
+        assert_eq!(node.identify_protocol, "/tensorchain/1/identify");
     }
 
     #[test]
-    fn local_network_applies_backpressure_and_peer_scores() {
-        let a = address(b"a");
-        let b = address(b"b");
-        let c = address(b"c");
-        let h = hash_bytes(b"test", &[b"block"]);
-        let mut network = LocalNetwork::with_config(Libp2pControlPlaneConfig {
-            max_inbox_messages: 1,
-            min_peer_score: -10,
+    fn libp2p_node_accepts_listen_and_bootstrap_multiaddrs() {
+        let bootstrap_peer = PeerId::random();
+        let bootstrap_address = format!("/ip4/127.0.0.1/tcp/4001/p2p/{bootstrap_peer}");
+        let (discovered_peer, discovered_address) =
+            bootstrap_peer_address(&bootstrap_address.parse().unwrap()).unwrap();
+        assert_eq!(discovered_peer, bootstrap_peer);
+        assert_eq!(discovered_address.to_string(), "/ip4/127.0.0.1/tcp/4001");
+        let plain_address: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        assert_eq!(bootstrap_peer_address(&plain_address), None);
+        let config = Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![bootstrap_address],
             ..Libp2pControlPlaneConfig::default()
+        };
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let node = build_libp2p_node(&config).unwrap();
+            assert!(!node.peer_id.to_string().is_empty());
         });
-        network.add_peer(a);
-        network.add_peer(b);
-        network.add_peer(c);
-        network.set_peer_score(&c, -20).unwrap();
-
-        let first = network.try_broadcast(a, &P2pMessage::NewBlock(h)).unwrap();
-        assert_eq!(
-            first,
-            BroadcastReport {
-                delivered: 1,
-                dropped: 1,
-                discovered: 0,
-            }
-        );
-        let second = network.try_broadcast(a, &P2pMessage::NewJob(h)).unwrap();
-        assert_eq!(second.delivered, 0);
-        assert_eq!(second.dropped, 2);
-        assert_eq!(network.inbox_len(&b).unwrap(), 1);
-        assert_eq!(network.peer_state(&b).unwrap().dropped_messages, 1);
-        assert_eq!(network.peer_state(&c).unwrap().dropped_messages, 2);
     }
 
     #[test]
-    fn local_network_rate_limits_and_backs_off_flooding_peer() {
-        let a = address(b"rate-limited-a");
-        let b = address(b"rate-limited-b");
-        let h = hash_bytes(b"test", &[b"rate-limited-block"]);
-        let mut network = LocalNetwork::with_config(Libp2pControlPlaneConfig {
-            max_messages_per_window: 1,
-            valid_message_score_reward: 0,
-            rate_limit_score_penalty: 7,
-            rate_limit_backoff_windows: 2,
-            ..Libp2pControlPlaneConfig::default()
-        });
-        network.add_peer(a);
-        network.add_peer(b);
-
-        let first = network.try_broadcast(a, &P2pMessage::NewBlock(h)).unwrap();
-        assert_eq!(first.delivered, 1);
-        assert_eq!(network.recv(&b).unwrap(), Some(P2pMessage::NewBlock(h)));
-
-        let second = network.try_broadcast(a, &P2pMessage::NewJob(h)).unwrap();
-        assert_eq!(
-            second,
-            BroadcastReport {
-                delivered: 0,
-                dropped: 1,
-                discovered: 0,
-            }
-        );
-        let penalized = network.peer_state(&a).unwrap();
-        assert_eq!(penalized.score, -7);
-        assert_eq!(penalized.dropped_messages, 1);
-        assert_eq!(penalized.blocked_until_window, 2);
-        assert_eq!(network.recv(&b).unwrap(), None);
-
-        network.advance_admission_window();
-        assert_eq!(network.current_window(), 1);
-        let blocked = network
-            .try_broadcast(a, &P2pMessage::NewReceipt(h))
-            .unwrap();
-        assert_eq!(blocked.delivered, 0);
-        assert_eq!(network.peer_state(&a).unwrap().dropped_messages, 2);
-
-        network.advance_admission_window();
-        let admitted = network
-            .try_broadcast(a, &P2pMessage::NewAttestation(h))
-            .unwrap();
-        assert_eq!(admitted.delivered, 1);
-        assert_eq!(
-            network.recv(&b).unwrap(),
-            Some(P2pMessage::NewAttestation(h))
-        );
-    }
-
-    #[test]
-    fn local_network_enforces_peer_limit_on_discovery() {
-        let a = address(b"peer-limit-a");
-        let b = address(b"peer-limit-b");
-        let c = address(b"peer-limit-c");
-        let mut network = LocalNetwork::with_config(Libp2pControlPlaneConfig {
-            max_peer_count: 2,
-            ..Libp2pControlPlaneConfig::default()
-        });
-        assert!(network.try_add_peer(a).unwrap());
-        assert!(!network.try_add_peer(a).unwrap());
-        assert!(network.try_add_peer(b).unwrap());
-        assert_eq!(
-            network.try_add_peer(c),
-            Err(TvmError::InvalidReceipt("peer limit reached"))
-        );
-
-        let report = network
-            .try_broadcast(a, &P2pMessage::PeerInfo { address: c })
-            .unwrap();
-        assert_eq!(report.discovered, 0);
-        assert_eq!(network.peer_count(), 2);
-        assert!(network.peer_state(&c).is_err());
-    }
-
-    #[test]
-    fn local_network_discovers_peers_from_peer_info() {
-        let a = address(b"a");
-        let discovered = address(b"discovered");
-        let mut network = LocalNetwork::default();
-        network.add_peer(a);
-        let report = network
-            .try_broadcast(
-                a,
-                &P2pMessage::PeerInfo {
-                    address: discovered,
-                },
-            )
-            .unwrap();
-        assert_eq!(report.discovered, 1);
-        assert_eq!(network.peer_count(), 2);
-        assert!(network.peer_state(&discovered).is_ok());
-    }
-
-    fn test_advertisement(address: Address, observed_at_window: u64) -> PeerAdvertisement {
-        PeerAdvertisement {
-            address,
-            listen_addr: format!("/ip4/127.0.0.1/tcp/{}", 10_000 + u16::from(address[0])),
-            protocols: vec![
-                LIBP2P_PROTOCOL_PREFIX.to_owned(),
-                GossipTopic::Blocks.as_str().to_owned(),
-            ],
-            observed_at_window,
+    fn gossipsub_encoding_rejects_request_response_messages() {
+        let h = hash_bytes(b"test", &[b"gossipsub-encode"]);
+        let (topic, payload) = encode_gossipsub_message(&P2pMessage::NewBlock(h)).unwrap();
+        assert_eq!(topic.to_string(), "/tensorchain/1/blocks");
+        assert_eq!(decode_message(&payload).unwrap(), P2pMessage::NewBlock(h));
+        match encode_gossipsub_message(&P2pMessage::RequestProgram(h)) {
+            Err(error) => assert_eq!(
+                error,
+                TvmError::InvalidReceipt("message is not a gossipsub announcement")
+            ),
+            Ok(_) => panic!("request-response message encoded as gossipsub"),
         }
     }
 
     #[test]
-    fn peer_directory_bootstraps_and_finds_kademlia_style_closest_peers() {
-        let mut target = [0_u8; 32];
-        target[0] = 0;
-        let mut near = [0_u8; 32];
-        near[0] = 1;
-        let mut mid = [0_u8; 32];
-        mid[0] = 2;
-        let mut far = [0_u8; 32];
-        far[0] = 200;
-
-        let mut directory = PeerDirectory::default();
-        assert!(directory.is_empty());
-        assert_eq!(
-            directory
-                .bootstrap([
-                    test_advertisement(far, 1),
-                    test_advertisement(mid, 1),
-                    test_advertisement(near, 1),
-                ])
-                .unwrap(),
-            3
-        );
-        assert_eq!(directory.len(), 3);
-        let closest = directory.closest_peers(&target, 2);
-        assert_eq!(
-            closest
-                .iter()
-                .map(|advertisement| advertisement.address)
-                .collect::<Vec<_>>(),
-            vec![near, mid]
-        );
-
-        let mut tie_left = [7_u8; 32];
-        tie_left[31] = 1;
-        let mut tie_right = [7_u8; 32];
-        tie_right[31] = 2;
-        let mut tie_directory = PeerDirectory::default();
-        tie_directory
-            .bootstrap([
-                test_advertisement(tie_right, 1),
-                test_advertisement(tie_left, 1),
-            ])
-            .unwrap();
-        assert_eq!(
-            tie_directory.closest_peers(&[0; 32], 2)[0].address,
-            tie_left
-        );
-        assert_eq!(
-            compare_peer_distance(&[0; 32], &tie_left, &tie_left),
-            std::cmp::Ordering::Equal
-        );
-
-        let mut stale = test_advertisement(near, 0);
-        stale.listen_addr = "/ip4/127.0.0.1/tcp/1".to_owned();
-        assert!(!directory.advertise(stale).unwrap());
-        assert_ne!(
-            directory.get(&near).unwrap().listen_addr,
-            "/ip4/127.0.0.1/tcp/1"
-        );
-
-        let mut newer = test_advertisement(near, 2);
-        newer.listen_addr = "/ip4/127.0.0.1/tcp/2".to_owned();
-        assert!(directory.advertise(newer).unwrap());
-        assert_eq!(
-            directory.get(&near).unwrap().listen_addr,
-            "/ip4/127.0.0.1/tcp/2"
-        );
-    }
-
-    #[test]
-    fn peer_directory_rejects_invalid_or_excessive_advertisements() {
-        let mut peer = [0_u8; 32];
-        peer[0] = 1;
-        let mut directory = PeerDirectory::with_config(PeerDirectoryConfig {
-            max_advertisements: 1,
-            max_listen_addr_len: 8,
-            max_protocols_per_peer: 1,
-            max_protocol_len: 8,
-        });
-
-        let mut empty_addr = test_advertisement(peer, 1);
-        empty_addr.listen_addr.clear();
-        assert_eq!(
-            directory.advertise(empty_addr),
-            Err(TvmError::InvalidReceipt("empty peer listen address"))
-        );
-
-        let mut long_addr = test_advertisement(peer, 1);
-        long_addr.listen_addr = "x".repeat(9);
-        assert_eq!(
-            directory.advertise(long_addr),
-            Err(TvmError::InvalidReceipt("peer listen address too long"))
-        );
-
-        let mut too_many_protocols = test_advertisement(peer, 1);
-        too_many_protocols.listen_addr = "addr".to_owned();
-        too_many_protocols.protocols = vec!["/a".to_owned(), "/b".to_owned()];
-        assert_eq!(
-            directory.advertise(too_many_protocols),
-            Err(TvmError::InvalidReceipt("too many peer protocols"))
-        );
-
-        let mut empty_protocol = test_advertisement(peer, 1);
-        empty_protocol.listen_addr = "addr".to_owned();
-        empty_protocol.protocols = vec![String::new()];
-        assert_eq!(
-            directory.advertise(empty_protocol),
-            Err(TvmError::InvalidReceipt("empty peer protocol"))
-        );
-
-        let mut long_protocol = test_advertisement(peer, 1);
-        long_protocol.listen_addr = "addr".to_owned();
-        long_protocol.protocols = vec!["x".repeat(9)];
-        assert_eq!(
-            directory.advertise(long_protocol),
-            Err(TvmError::InvalidReceipt("peer protocol too long"))
-        );
-
-        let mut accepted = test_advertisement(peer, 1);
-        accepted.listen_addr = "addr".to_owned();
-        accepted.protocols = vec!["/tc".to_owned()];
-        assert!(directory.advertise(accepted).unwrap());
-
-        let mut second = [0_u8; 32];
-        second[0] = 2;
-        let mut second_advertisement = test_advertisement(second, 1);
-        second_advertisement.listen_addr = "addr2".to_owned();
-        second_advertisement.protocols = vec!["/tc".to_owned()];
-        assert_eq!(
-            directory.advertise(second_advertisement),
-            Err(TvmError::InvalidReceipt("peer directory full"))
-        );
-    }
-
-    #[test]
-    fn local_network_bootstraps_advertisements_and_exposes_closest_peers() {
-        let mut a = [0_u8; 32];
-        a[0] = 1;
-        let mut b = [0_u8; 32];
-        b[0] = 2;
-        let mut c = [0_u8; 32];
-        c[0] = 3;
-        let mut target = [0_u8; 32];
-        target[0] = 0;
-        let mut network = LocalNetwork::with_config(Libp2pControlPlaneConfig {
-            max_peer_count: 2,
-            ..Libp2pControlPlaneConfig::default()
-        });
-
-        assert_eq!(
-            network
-                .bootstrap_peers([test_advertisement(b, 1), test_advertisement(a, 1)])
-                .unwrap(),
-            2
-        );
-        assert_eq!(network.peer_count(), 2);
-        assert_eq!(network.closest_peers(&target, 1)[0].address, a);
-        assert_eq!(
-            network.peer_advertisement(&b).unwrap().listen_addr,
-            test_advertisement(b, 1).listen_addr
-        );
-        assert_eq!(
-            network.bootstrap_peers([test_advertisement(a, 1)]).unwrap(),
-            0
-        );
-        assert_eq!(
-            network.advertise_peer(test_advertisement(c, 1)),
-            Err(TvmError::InvalidReceipt("peer limit reached"))
-        );
-    }
-
-    #[test]
-    fn peer_book_store_persists_scores_and_detects_tampering() {
-        let a = address(b"peer-book-a");
-        let b = address(b"peer-book-b");
-        let h = hash_bytes(b"test", &[b"peer-book"]);
-        let mut network = LocalNetwork::with_config(Libp2pControlPlaneConfig {
-            max_messages_per_window: 1,
-            rate_limit_score_penalty: 5,
-            rate_limit_backoff_windows: 3,
-            ..Libp2pControlPlaneConfig::default()
-        });
-        network.add_peer(a);
-        network.add_peer(b);
-        network.try_broadcast(a, &P2pMessage::NewBlock(h)).unwrap();
-        network.try_broadcast(a, &P2pMessage::NewJob(h)).unwrap();
-        network.set_peer_score(&b, -12).unwrap();
-
+    fn peer_book_store_persists_libp2p_bootstrap_records_and_detects_tampering() {
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        let address_a: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        let address_b: Multiaddr = "/dns/bootstrap.tensorvm.example/tcp/4001".parse().unwrap();
+        let records = vec![
+            PeerRecord::new(peer_a, address_a.clone()),
+            PeerRecord::new(peer_b, address_b.clone()),
+        ];
         let path = std::env::temp_dir().join(format!(
-            "tensor-vm-peer-book-{}-{}.bin",
+            "tensor-vm-libp2p-peer-book-{}-{}.bin",
             std::process::id(),
-            network.peer_count()
+            records.len()
         ));
         let store = PeerBookStore::new(path.clone());
-        store.save_network(&network).unwrap();
+        store.save_records(&records).unwrap();
         assert_eq!(store.path(), path.as_path());
 
-        let loaded = store
-            .load_network(Libp2pControlPlaneConfig::default())
-            .unwrap();
-        assert_eq!(loaded.peer_count(), 2);
-        assert_eq!(loaded.peer_state(&a).unwrap().score, -4);
-        assert_eq!(loaded.peer_state(&a).unwrap().dropped_messages, 1);
-        assert_eq!(loaded.peer_state(&a).unwrap().blocked_until_window, 3);
-        assert_eq!(loaded.peer_state(&b).unwrap().score, -12);
+        let loaded = store.load_records().unwrap();
+        assert_eq!(loaded, records);
+        assert_eq!(
+            store.load_bootstrap_addresses().unwrap(),
+            vec![address_a.to_string(), address_b.to_string()]
+        );
+        assert_eq!(loaded[0].peer_id().unwrap(), peer_a);
+        assert_eq!(loaded[1].multiaddr().unwrap(), address_b);
 
         let mut bytes = std::fs::read(&path).unwrap();
         bytes[PEER_BOOK_MAGIC.len() + 4] ^= 1;
@@ -1577,7 +870,7 @@ mod tests {
     }
 
     #[test]
-    fn peer_book_decode_rejects_malformed_records_and_limits() {
+    fn peer_book_decode_rejects_malformed_records() {
         assert_eq!(
             decode_peer_records(b"bad-peer-book"),
             Err(TvmError::Storage("invalid peer book magic"))
@@ -1590,71 +883,65 @@ mod tests {
             Err(TvmError::Storage("invalid peer book length"))
         );
 
-        let mut payload = Vec::new();
-        write_u64(&mut payload, 1);
-        let digest = crate::types::hash_bytes(b"tensor-vm-peer-book-v1", &[&payload]);
-        let mut bad_len = Vec::from(PEER_BOOK_MAGIC);
-        bad_len.extend_from_slice(&payload);
-        bad_len.extend_from_slice(&digest);
+        let mut trailing_payload = Vec::new();
+        write_u64(&mut trailing_payload, 0);
+        trailing_payload.push(1);
+        let trailing_digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&trailing_payload]);
+        let mut trailing = Vec::from(PEER_BOOK_MAGIC);
+        trailing.extend_from_slice(&trailing_payload);
+        trailing.extend_from_slice(&trailing_digest);
         assert_eq!(
-            decode_peer_records(&bad_len),
-            Err(TvmError::Storage("invalid peer book length"))
+            decode_peer_records(&trailing),
+            Err(TvmError::Storage("trailing peer book bytes"))
         );
 
-        let a = address(b"duplicate-peer-book-a");
-        let record = PeerRecord {
-            address: a,
-            score: 0,
-            dropped_messages: 0,
-            blocked_until_window: 0,
-        };
-        assert!(matches!(
-            LocalNetwork::from_peer_records(
-                Libp2pControlPlaneConfig::default(),
-                vec![record.clone(), record]
-            ),
-            Err(TvmError::Storage("duplicate peer record"))
-        ));
-        assert!(matches!(
-            LocalNetwork::from_peer_records(
-                Libp2pControlPlaneConfig {
-                    max_peer_count: 0,
-                    ..Libp2pControlPlaneConfig::default()
-                },
-                vec![PeerRecord {
-                    address: a,
-                    score: 0,
-                    dropped_messages: 0,
-                    blocked_until_window: 0,
-                }]
-            ),
-            Err(TvmError::Storage("peer book exceeds peer limit"))
-        ));
-
-        let mut truncated_u64_payload = Vec::new();
-        truncated_u64_payload.extend_from_slice(&1_u64.to_le_bytes());
-        truncated_u64_payload.extend_from_slice(&a);
-        let truncated_u64_digest =
-            crate::types::hash_bytes(b"tensor-vm-peer-book-v1", &[&truncated_u64_payload]);
-        let mut truncated_u64 = Vec::from(PEER_BOOK_MAGIC);
-        truncated_u64.extend_from_slice(&truncated_u64_payload);
-        truncated_u64.extend_from_slice(&truncated_u64_digest);
+        let mut bad_record_payload = Vec::new();
+        write_u64(&mut bad_record_payload, 1);
+        write_string(&mut bad_record_payload, "not-a-peer-id");
+        write_string(&mut bad_record_payload, "/ip4/127.0.0.1/tcp/4001");
+        let bad_record_digest =
+            hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&bad_record_payload]);
+        let mut bad_record = Vec::from(PEER_BOOK_MAGIC);
+        bad_record.extend_from_slice(&bad_record_payload);
+        bad_record.extend_from_slice(&bad_record_digest);
         assert_eq!(
-            decode_peer_records(&truncated_u64),
-            Err(TvmError::Storage("invalid peer book length"))
+            decode_peer_records(&bad_record),
+            Err(TvmError::Storage("invalid peer id"))
+        );
+
+        let mut truncated_string_payload = Vec::new();
+        write_u64(&mut truncated_string_payload, 1);
+        write_u64(&mut truncated_string_payload, 10);
+        truncated_string_payload.extend_from_slice(b"short");
+        let truncated_string_digest = hash_bytes(
+            b"tensor-vm-libp2p-peer-book-v1",
+            &[&truncated_string_payload],
+        );
+        let mut truncated_string = Vec::from(PEER_BOOK_MAGIC);
+        truncated_string.extend_from_slice(&truncated_string_payload);
+        truncated_string.extend_from_slice(&truncated_string_digest);
+        assert_eq!(
+            decode_peer_records(&truncated_string),
+            Err(TvmError::Storage("truncated peer book string"))
+        );
+
+        let peer = PeerId::random();
+        let mut bad_addr_payload = Vec::new();
+        write_u64(&mut bad_addr_payload, 1);
+        write_string(&mut bad_addr_payload, &peer.to_string());
+        write_string(&mut bad_addr_payload, "not-a-multiaddr");
+        let bad_addr_digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&bad_addr_payload]);
+        let mut bad_addr = Vec::from(PEER_BOOK_MAGIC);
+        bad_addr.extend_from_slice(&bad_addr_payload);
+        bad_addr.extend_from_slice(&bad_addr_digest);
+        assert_eq!(
+            decode_peer_records(&bad_addr),
+            Err(TvmError::InvalidReceipt("invalid libp2p multiaddr"))
         );
 
         assert_eq!(
             read_peer_u64(&[1, 2], &mut 0),
             Err(TvmError::Storage("truncated peer book u64"))
-        );
-        assert_eq!(
-            read_peer_i64(&[1, 2], &mut 0),
-            Err(TvmError::Storage("truncated peer book i64"))
-        );
-        assert_eq!(
-            read_peer_hash(&[1, 2], &mut 0),
-            Err(TvmError::Storage("truncated peer book address"))
         );
     }
 
@@ -1667,7 +954,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_malformed_payloads_and_unknown_peers() {
+    fn rejects_malformed_payloads() {
         let h = hash_bytes(b"test", &[b"malformed-p2p"]);
         assert_eq!(
             decode_message(&[]),
@@ -1694,212 +981,5 @@ mod tests {
             decode_message(&truncated_bytes),
             Err(TvmError::InvalidReceipt("short p2p message"))
         );
-
-        let unknown = address(b"unknown-peer");
-        let mut network = LocalNetwork::default();
-        assert_eq!(
-            network.recv(&unknown),
-            Err(TvmError::InvalidReceipt("unknown peer"))
-        );
-        assert_eq!(
-            network.inbox_len(&unknown),
-            Err(TvmError::InvalidReceipt("unknown peer"))
-        );
-        assert_eq!(
-            network.set_peer_score(&unknown, 7),
-            Err(TvmError::InvalidReceipt("unknown peer"))
-        );
-        assert_eq!(
-            network.try_broadcast(unknown, &P2pMessage::NewBlock(h)),
-            Err(TvmError::InvalidReceipt("unknown peer"))
-        );
-    }
-
-    #[test]
-    fn p2p_frames_roundtrip_and_enforce_limits() {
-        let h = hash_bytes(b"test", &[b"job"]);
-        let config = P2pTransportConfig::default();
-        let message = P2pMessage::NewJob(h);
-        let frame = encode_frame(&message, &config).unwrap();
-        assert_eq!(decode_frame(&frame, &config).unwrap(), message);
-
-        let mut bad_magic = frame.clone();
-        bad_magic[0] = 0;
-        assert_eq!(
-            decode_frame(&bad_magic, &config).unwrap_err().kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        let mut trailing = frame;
-        trailing.push(0);
-        assert_eq!(
-            decode_frame(&trailing, &config).unwrap_err().kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        let limited = P2pTransportConfig {
-            max_frame_bytes: 8,
-            ..P2pTransportConfig::default()
-        };
-        let large = P2pMessage::ProgramResponse {
-            program_hash: h,
-            bytes: vec![0; 32],
-        };
-        assert_eq!(
-            encode_frame(&large, &limited).unwrap_err().kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        let mut short = Vec::from(P2P_FRAME_MAGIC);
-        short.extend_from_slice(&1_u32.to_le_bytes());
-        short.push(255);
-        assert_eq!(
-            decode_frame(&short, &config).unwrap_err().kind(),
-            std::io::ErrorKind::InvalidData
-        );
-        assert_eq!(
-            decode_frame(&[1, 2, 3], &config).unwrap_err().kind(),
-            std::io::ErrorKind::InvalidData
-        );
-        let mut oversized_header = Vec::from(P2P_FRAME_MAGIC);
-        oversized_header.extend_from_slice(&9_u32.to_le_bytes());
-        assert_eq!(
-            decode_frame(&oversized_header, &limited)
-                .unwrap_err()
-                .kind(),
-            std::io::ErrorKind::InvalidData
-        );
-    }
-
-    #[test]
-    fn p2p_in_memory_frame_io_covers_transport_codec_edges() {
-        let h = hash_bytes(b"test", &[b"in-memory-frame"]);
-        let config = P2pTransportConfig::default();
-        let message = P2pMessage::NewAttestation(h);
-        let mut bytes = Vec::new();
-        write_framed_message_to(&mut bytes, &message, &config).unwrap();
-        assert_eq!(
-            read_framed_message_from(&mut std::io::Cursor::new(&bytes), &config).unwrap(),
-            message
-        );
-
-        let mut bad_magic = b"BAD!".to_vec();
-        bad_magic.extend_from_slice(&0_u32.to_le_bytes());
-        assert_eq!(
-            read_framed_message_from(&mut std::io::Cursor::new(&bad_magic), &config)
-                .unwrap_err()
-                .kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        let mut oversized = Vec::from(P2P_FRAME_MAGIC);
-        oversized.extend_from_slice(&9_u32.to_le_bytes());
-        assert_eq!(
-            read_framed_message_from(
-                &mut std::io::Cursor::new(&oversized),
-                &P2pTransportConfig {
-                    max_frame_bytes: 8,
-                    ..P2pTransportConfig::default()
-                },
-            )
-            .unwrap_err()
-            .kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        let mut invalid_payload = Vec::from(P2P_FRAME_MAGIC);
-        invalid_payload.extend_from_slice(&1_u32.to_le_bytes());
-        invalid_payload.push(255);
-        assert_eq!(
-            read_framed_message_from(&mut std::io::Cursor::new(&invalid_payload), &config)
-                .unwrap_err()
-                .kind(),
-            std::io::ErrorKind::InvalidData
-        );
-
-        assert_eq!(
-            read_framed_message_from(&mut std::io::Cursor::new([1, 2, 3]), &config)
-                .unwrap_err()
-                .kind(),
-            std::io::ErrorKind::UnexpectedEof
-        );
-    }
-
-    #[test]
-    fn p2p_tcp_server_receives_framed_message() {
-        use std::io::ErrorKind;
-
-        let config = P2pTransportConfig::default();
-        let server = match P2pTcpServer::bind("127.0.0.1:0", config.clone()) {
-            Ok(server) => server,
-            Err(error) if error.kind() == ErrorKind::PermissionDenied => return,
-            Err(error) => panic!("failed to bind P2P TCP server: {error}"),
-        };
-        let addr = server.local_addr().unwrap();
-        let h = hash_bytes(b"test", &[b"receipt"]);
-        let message = P2pMessage::NewReceipt(h);
-        let server_thread = std::thread::spawn(move || server.serve_n(1));
-
-        send_framed_message(addr, &message, &config).unwrap();
-        let received = server_thread.join().unwrap().unwrap();
-        assert_eq!(received, vec![message]);
-    }
-
-    #[test]
-    fn p2p_tcp_reader_rejects_malformed_socket_frames() {
-        use std::io::ErrorKind;
-
-        fn read_one_frame_from_client(
-            raw: Vec<u8>,
-            config: P2pTransportConfig,
-        ) -> Option<ErrorKind> {
-            let listener = match TcpListener::bind("127.0.0.1:0") {
-                Ok(listener) => listener,
-                Err(error) if error.kind() == ErrorKind::PermissionDenied => {
-                    return None;
-                }
-                Err(error) => panic!("failed to bind malformed frame listener: {error}"),
-            };
-            let addr = listener.local_addr().unwrap();
-            let server = std::thread::spawn(move || {
-                let (mut stream, _) = listener.accept().unwrap();
-                read_framed_message(&mut stream, &config)
-                    .unwrap_err()
-                    .kind()
-            });
-            let mut client = TcpStream::connect(addr).unwrap();
-            client.write_all(&raw).unwrap();
-            Some(server.join().unwrap())
-        }
-
-        let config = P2pTransportConfig::default();
-        let mut bad_magic = b"BAD!".to_vec();
-        bad_magic.extend_from_slice(&0_u32.to_le_bytes());
-        let Some(bad_magic_error) = read_one_frame_from_client(bad_magic, config.clone()) else {
-            return;
-        };
-        assert_eq!(bad_magic_error, ErrorKind::InvalidData);
-
-        let mut oversized = Vec::from(P2P_FRAME_MAGIC);
-        oversized.extend_from_slice(&9_u32.to_le_bytes());
-        let Some(oversized_error) = read_one_frame_from_client(
-            oversized,
-            P2pTransportConfig {
-                max_frame_bytes: 8,
-                ..P2pTransportConfig::default()
-            },
-        ) else {
-            return;
-        };
-        assert_eq!(oversized_error, ErrorKind::InvalidData);
-
-        let mut invalid_payload = Vec::from(P2P_FRAME_MAGIC);
-        invalid_payload.extend_from_slice(&1_u32.to_le_bytes());
-        invalid_payload.push(255);
-        let Some(invalid_payload_error) = read_one_frame_from_client(invalid_payload, config)
-        else {
-            return;
-        };
-        assert_eq!(invalid_payload_error, ErrorKind::InvalidData);
     }
 }

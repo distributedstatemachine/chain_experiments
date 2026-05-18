@@ -35,6 +35,14 @@ implementation artifacts and tests.
   [`public_testnet_preflight.md`](public_testnet_preflight.md), and the required post-run evidence-bundle
   shape is documented in [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete
   external bundle is linked yet.
-- Production libp2p transport, HTTP deployment, full durable database, and deployed browser web services remain outside the local reference crate. The crate has local libp2p-shaped P2P simulation, generic framed `Read`/`Write` codec, framed stdlib TCP P2P send/receive, Kademlia-style closest-peer directory/bootstrap, durable peer-book persistence, peer-count admission, score-based drops, deterministic rate-limit/backoff policy checks, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks, explorer/telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages, a documented libp2p-primary/Iroh-later networking choice, and a restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book persistence.
+- Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web
+  services remain outside the local reference crate. The crate has rust-libp2p runtime wiring with
+  TCP/TLS/Yamux swarm construction, Gossipsub subscriptions, Identify, Kademlia discovery/address
+  registration, JSON request-response protocols, durable bootstrap peer-book persistence, generic HTTP
+  request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
+  explorer/telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages, a
+  documented libp2p-primary/Iroh-later networking choice, and a restartable reference `NodeStore` data
+  directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
+  persistence.
 - Instrumented line coverage has been generated with Tarpaulin; see `tarpaulin_report.md`.
   Branch coverage is not reported because the installed Tarpaulin version lists branch coverage as not implemented.

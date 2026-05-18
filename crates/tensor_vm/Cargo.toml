@@ -7,3 +7,8 @@ edition.workspace = true
 cuda-kernels = []
 
 [dependencies]
+libp2p = { version = "0.54.1", default-features = false, features = ["ed25519", "gossipsub", "identify", "json", "kad", "macros", "request-response", "tcp", "tls", "tokio", "yamux"] }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["net", "rt"] }

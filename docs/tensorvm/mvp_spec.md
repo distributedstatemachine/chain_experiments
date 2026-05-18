@@ -1703,7 +1703,7 @@ GPU miner backend
 cross-machine determinism tests
 invalid-output test harness
 restartable node storage
-P2P/RPC codec and socket tests
+libp2p P2P runtime, P2P codec, RPC codec, and RPC socket tests
 ```
 
 Required local verification commands before sharing changes:
@@ -1808,7 +1808,8 @@ all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing te
 Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
 not yet complete
 crates/tensor_vm has no dependency on crates/pearl_chain
-cargo tree -p tensor_vm shows tensor_vm without pearl_chain beneath it
+cargo tree -p tensor_vm shows tensor_vm without pearl_chain beneath it; external runtime dependencies such
+as rust-libp2p are allowed when they are part of the TensorVM implementation
 cargo fmt --check --all passes
 cargo test --workspace --release passes
 cargo clippy --workspace --all-targets -- -D warnings passes
@@ -1834,7 +1835,8 @@ The agent must not report "fully complete" if any of these are missing:
 
 ```text
 CUDA/C++ kernels are still represented only by a deterministic Rust shim
-libp2p is still represented only by local simulation or stdlib socket tests
+libp2p is still represented only by local simulation or stdlib socket tests instead of a real rust-libp2p
+runtime dependency
 browser-facing services are still local-only handlers or static HTML responses
 the 7-day public testnet evidence has not actually happened
 the verification commands were not executed from the workspace root after the final change
@@ -2099,7 +2101,8 @@ Do not count the full spec as complete if these remain true:
 
 ```text
 GPU mining is represented only by a deterministic CPU-equivalent shim
-P2P is represented only by local simulation or stdlib test sockets
+P2P is represented only by local simulation or stdlib test sockets instead of a real rust-libp2p runtime
+dependency
 browser/RPC surfaces exist only as local handlers or local HTML pages
 durable state is only a reference file store rather than a production database/service deployment
 7-day public-testnet evidence is inferred from local simulation rather than an external run

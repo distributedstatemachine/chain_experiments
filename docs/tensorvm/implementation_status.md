@@ -6,8 +6,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 ## Implemented In `crates/tensor_vm`
 
 - Deterministic finite-field tensors and TensorVM operations
-- Self-contained TensorVM field arithmetic, SHA-256 hashing, and oracle RNG primitives; `tensor_vm` does
-  not depend on `pearl_chain`
+- TensorVM field arithmetic, SHA-256 hashing, oracle RNG primitives, and standalone consensus logic;
+  `tensor_vm` does not depend on `pearl_chain`
 - Bounds-checked tensor row/cell access and invalid-index rejection
 - Full direct TensorVM wrapper and program-hash variant coverage
 - Tensor descriptors, Merkle commitments, chunk openings, and row access
@@ -51,11 +51,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Tensor server for descriptors, rows, chunks, Merkle openings, and retention-window pruning
 - End-to-end local matmul round: schedule, mine, serve tensors, verify via tensor server, attest, settle, and produce block
 - End-to-end local LinearTrainingStep round: register model, mine, verify, attest, settle, update model state, and produce block
-- P2P message enum, byte codec, generic framed `Read`/`Write` codec, framed TCP send/receive transport,
-  libp2p-oriented topic/protocol mapping,
-  bounded local network simulation, peer discovery, Kademlia-style closest-peer directory/bootstrap,
-  durable peer-book storage, peer scoring, rate-limit backoff, peer-count admission, and
-  backpressure/drop accounting
+- P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
+  construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
+  Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
+  tensor chunks, tensor rows, and program fetches, and durable libp2p bootstrap peer-book storage with
+  checksum validation
 - Documented network-stack recommendation that chooses libp2p as the primary MVP control plane and keeps
   Iroh as a later tensor/blob data-plane candidate
 - Node/tensor RPC route handling, explorer/telemetry/faucet RPC endpoints, browser-facing
@@ -100,21 +100,21 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 186 passing library tests under Tarpaulin:
+The workspace currently has 177 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 172 in `tensor_vm`
+- 163 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.58% workspace line coverage
-- 5701/5783 workspace lines covered
+- 98.54% workspace line coverage
+- 5519/5601 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 173 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 164 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 
@@ -126,16 +126,16 @@ These spec items require real deployment or non-reference infrastructure and are
   coverage is an optional CUDA field-matmul path checked against canonical CPU outputs
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
-  treating local simulation as public proof, and now requires invalid-work rejection plus reward-settlement
+  treating a local test harness as public proof, and now requires invalid-work rejection plus reward-settlement
   records, production libp2p runtime evidence, and deployed public-service reachability before public
   evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is available
   yet
-- actual libp2p transport runtime with production DoS controls; current implementation is a local
-  libp2p-shaped simulation plus stdlib framed TCP message transport, durable peer-book persistence,
-  Kademlia-style closest-peer directory/bootstrap, peer-count admission, score-based drops, and
-  deterministic rate-limit/backoff policy checks
+- externally observed production libp2p operation during a public testnet; current implementation builds
+  the rust-libp2p runtime locally with bounded Gossipsub payloads, request timeouts, concurrent stream
+  limits, idle connection timeouts, Kademlia discovery/address registration, and durable bootstrap
+  peer-book persistence, but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
   wrapper, in-process auth/body-size/rate-limit enforcement, and a restartable reference `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
@@ -144,5 +144,5 @@ These spec items require real deployment or non-reference infrastructure and are
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims
 
-The current crate is a complete deterministic reference core and local simulation harness, not a production
+The current crate is a complete deterministic reference core and local test harness, not a production
 network release.

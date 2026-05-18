@@ -18,12 +18,12 @@ Host notes:
 Result:
 
 ```text
-186 tests passed under instrumentation:
+177 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 172 tensor_vm library tests
+- 163 tensor_vm library tests
 
-98.58% workspace line coverage
-5701/5783 workspace lines covered
+98.54% workspace line coverage
+5519/5601 workspace lines covered
 
 100.00% tensor_vm crate line coverage
 ```
@@ -33,7 +33,7 @@ the portable default feature set:
 
 ```text
 cargo test -p tensor_vm --features cuda-kernels --release
-173 tensor_vm tests passed, including native CUDA field-matmul checks against canonical CPU output
+164 tensor_vm tests passed, including native CUDA field-matmul checks against canonical CPU output
 ```
 
 Tarpaulin reports line coverage here. Its branch coverage flag is currently listed as not implemented by the installed tool.

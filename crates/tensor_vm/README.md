@@ -18,10 +18,10 @@ The crate implements the deterministic local/testnet core:
 - operator identity on miner state with operator-separated replication assignment
 - miner hardware-class and GPU utilization telemetry
 - local chain simulation for adversarial tests
-- generic framed P2P message codec and framed TCP transport
-- durable P2P peer-book storage with Kademlia-style closest-peer discovery, peer-count admission, and
-  rate-limit/backoff checks
-- libp2p-primary networking recommendation with Iroh reserved for a later tensor/blob data plane
+- rust-libp2p P2P runtime wiring with Gossipsub, Identify, Kademlia discovery, TCP/TLS/Yamux swarm
+  construction, and JSON request-response protocols
+- durable libp2p peer-book storage for bootstrap peer IDs and multiaddrs
+- libp2p-primary networking with Iroh reserved for a later tensor/blob data plane
 - restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
 - explorer, telemetry, and local faucet RPC endpoints
 - local browser-facing explorer, telemetry, and faucet HTML pages

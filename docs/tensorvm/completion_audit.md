@@ -29,7 +29,7 @@ The objective decomposes into these deliverables:
 | Requirement | Evidence | Status |
 | --- | --- | --- |
 | Required Cargo workspace structure | Root `Cargo.toml`, `crates/pearl_chain`, `crates/tensor_vm`, `docs/tensorvm`, and linked READMEs | Present |
-| TensorVM crate is self-contained | `crates/tensor_vm/Cargo.toml` has no dependencies; latest recorded `cargo tree -p tensor_vm` showed only `tensor_vm` | Present |
+| TensorVM crate is independent of Pearl Chain | `cargo tree -p tensor_vm` shows no `pearl_chain` dependency; rust-libp2p and serde are direct TensorVM runtime dependencies | Present |
 | Recommended TensorVM modules exist | `api`, `chain`, `challenge`, `cli`, `error`, `explorer`, `faucet`, `jobs`, `merkle`, `miner`, `p2p`, `rpc`, `runtime`, `scheduler`, `storage`, `study`, `telemetry`, `tensor`, `tensor_server`, `testnet`, `txpool`, `types`, `validator`, `verify`, `vm`, `watcher` under `crates/tensor_vm/src` | Present |
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
@@ -39,14 +39,14 @@ The objective decomposes into these deliverables:
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` | Present for field matmul |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
-| P2P/RPC codec and socket tests | `p2p` framed codec/TCP tests and `rpc` socketed HTTP tests | Reference implementation present |
+| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, and `rpc` socketed HTTP tests | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 172 `tensor_vm` tests | Passed |
+| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 163 `tensor_vm` tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 186 instrumented tests | Passed |
+| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 177 instrumented tests | Passed |
 | TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage | Passed |
-| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 173 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
+| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 164 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 ## Acceptance Criteria Audit
 
@@ -72,7 +72,8 @@ The objective decomposes into these deliverables:
 
 These are not satisfied by local tests or manifests alone:
 
-- production libp2p runtime must be used for discovery, gossip, and request/response propagation
+- independently checkable public-run evidence must show production libp2p was used for discovery, gossip,
+  and request/response propagation
 - RPC, explorer, faucet, and telemetry must be deployed outside the local harness
 - a public testnet must run for 7 consecutive days with independent external miner and validator operators
 - the public evidence bundle must include signed node heartbeats, block/finality history, operator
