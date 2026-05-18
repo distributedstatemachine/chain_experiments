@@ -41,8 +41,9 @@ A complete evidence bundle must include:
   observations for deployed RPC, explorer, faucet, and telemetry services
 
 A public `https://` evidence URI must use an external host. The local validator rejects localhost, `.local`
-names, loopback, unspecified, private, and link-local IP addresses. `ipfs://` and `ar://` publication URIs
-must include a non-empty content identifier.
+names, loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast,
+and reserved IP addresses. `ipfs://` and `ar://` publication URIs must include a non-empty content
+identifier.
 
 ## Current Repository Evidence
 
@@ -87,8 +88,9 @@ bundle ID, record-set kind, external artifact URI, record root, and record count
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
 and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
-localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Supporting artifact,
-auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
+localhost, `.local`, loopback, private, link-local, unspecified, documentation, shared-address,
+benchmarking, multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator
+identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full

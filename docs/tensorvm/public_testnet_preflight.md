@@ -21,7 +21,8 @@ The local preflight report checks:
 
 Public HTTPS service hosts must be externally reachable names or addresses. The local checker rejects
 localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
-IPv6 loopback literals.
+IPv6 loopback literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or
+reserved ranges are also rejected.
 
 ## Manifest Format
 

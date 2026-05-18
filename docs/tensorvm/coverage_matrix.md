@@ -36,8 +36,8 @@ implementation artifacts and tests.
   for raw supporting records, disjoint miner/validator operator IDs, auditor IDs distinct from the manifest
   signer, operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability
-  counters, and deployed public-service reachability plus content roots bound to external HTTPS URLs. A local
-  launch preflight manifest is documented in
+  counters, non-public IP literal rejection for public endpoints, and deployed public-service reachability
+  plus content roots bound to external HTTPS URLs. A local launch preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
   `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, and the

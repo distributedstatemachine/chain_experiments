@@ -40,7 +40,7 @@ The objective decomposes into these deliverables:
 | GPU miner backend | `runtime::GpuMinerBackend` reports the selected CUDA device and rejects execution when native CUDA kernels are not compiled; CPU execution remains a separate `runtime::CpuReferenceBackend` | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`, `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`, and `runtime::tests::cpu_and_gpu_backends_match_linear_step` | Present for matmul and linear-step tensor ops |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
-| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, background libp2p service runtime, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP and health-route tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
+| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, background libp2p service runtime, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP and health-route tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local, private, documentation, shared-address, benchmarking, multicast, or reserved | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 167 `tensor_vm` tests | Passed |
@@ -85,8 +85,9 @@ These are not satisfied by local tests or manifests alone:
   external HTTPS URLs
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
-Local evidence validators reject localhost, private, link-local, and empty publication endpoints, and they
-verify manifest publication signatures, signed run-window records, signed
+Local evidence validators reject localhost, private, link-local, documentation, shared-address,
+benchmarking, multicast, reserved, and empty publication endpoints, and they verify manifest publication
+signatures, signed run-window records, signed
 block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
 network-observation roots, signed external artifact locators for the raw records behind each summary root,
 signed service-health records bound to external HTTPS URLs, matching health paths, and observed-block
@@ -96,7 +97,7 @@ external audit URIs, signed service-content roots bound to external HTTPS URLs, 
 IDs, and required content paths, and external-operator evidence derived from signed manifest
 operator-attestation records plus node heartbeat counts that cover the observed block count.
 These blockers therefore require real external infrastructure rather than loopback, private-network,
-unsigned, or out-of-band manifests.
+reserved-range, unsigned, or out-of-band manifests.
 
 ## Completion Decision
 

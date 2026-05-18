@@ -1540,11 +1540,36 @@ fn public_host_is_external(host: &str) -> bool {
 }
 
 fn public_ipv4_is_external(ip: Ipv4Addr) -> bool {
-    !(ip.is_loopback() || ip.is_unspecified() || ip.is_private() || ip.is_link_local())
+    let [a, b, c, _d] = ip.octets();
+    let is_shared_address_space = a == 100 && (64..=127).contains(&b);
+    let is_protocol_assignment = a == 192 && b == 0 && c == 0;
+    let is_documentation = (a == 192 && b == 0 && c == 2)
+        || (a == 198 && b == 51 && c == 100)
+        || (a == 203 && b == 0 && c == 113);
+    let is_benchmarking = a == 198 && (b == 18 || b == 19);
+    let is_multicast = (224..=239).contains(&a);
+    let is_reserved_or_broadcast = (240..=255).contains(&a);
+    !(ip.is_loopback()
+        || ip.is_unspecified()
+        || ip.is_private()
+        || ip.is_link_local()
+        || is_shared_address_space
+        || is_protocol_assignment
+        || is_documentation
+        || is_benchmarking
+        || is_multicast
+        || is_reserved_or_broadcast)
 }
 
 fn public_ipv6_is_external(ip: Ipv6Addr) -> bool {
-    !(ip.is_loopback() || ip.is_unspecified() || ip.is_unique_local() || ip.is_unicast_link_local())
+    let segments = ip.segments();
+    let is_documentation = segments[0] == 0x2001 && segments[1] == 0x0db8;
+    !(ip.is_loopback()
+        || ip.is_unspecified()
+        || ip.is_unique_local()
+        || ip.is_unicast_link_local()
+        || ip.is_multicast()
+        || is_documentation)
 }
 
 fn public_evidence_uri_is_external(uri: &str) -> bool {
@@ -4412,6 +4437,23 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let mut private_ip_rpc = rpc.clone();
         private_ip_rpc.public_url = String::from("https://10.0.0.5/health");
         assert!(!private_ip_rpc.is_public_https_endpoint());
+        for host in [
+            "100.64.0.1",
+            "192.0.0.1",
+            "192.0.2.10",
+            "198.18.0.1",
+            "198.51.100.10",
+            "203.0.113.10",
+            "224.0.0.1",
+            "240.0.0.1",
+            "255.255.255.255",
+            "2001:db8::1",
+            "ff02::1",
+        ] {
+            assert!(!public_host_is_external(host));
+        }
+        assert!(public_host_is_external("8.8.8.8"));
+        assert!(public_host_is_external("2001:4860:4860::8888"));
 
         let local_rpc = manifest.replace(
             "https://rpc.tensorvm.example/health",
