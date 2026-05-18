@@ -1868,6 +1868,8 @@ manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
 scalar fields and whitespace-padded field keys; only explicitly repeated record fields such as `node=`,
 `service=`, `auditor=`, `record_artifact=`, `operator=`, and `service_content=` may appear more than once.
+For `record_artifact=`, the independently checkable public evidence gate still requires exactly one valid
+line for each required supporting-record kind and rejects extra artifact locators.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
 IDs must differ from the manifest signer and must be observed at or after the signed run-window end.
@@ -1946,7 +1948,9 @@ The `network-runtime` record count must equal the counted independent public min
 total; signed undercounts or overcounts cannot satisfy independently checkable evidence.
 The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
 artifact URI to the record kind, root, and count; independently checkable public evidence requires one
-valid artifact locator for every required supporting-record summary root.
+valid artifact locator for every required supporting-record summary root and exactly six supporting
+artifact locators total: block history, finality history, network runtime, data availability, invalid work,
+and reward settlement.
 The `record-artifact-from-roots` command derives the same aggregate root and count as
 `record-summary-from-roots` before signing the artifact locator, so the summary line and artifact locator
 can be generated from the same raw record-root list.

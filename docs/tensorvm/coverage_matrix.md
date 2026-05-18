@@ -56,8 +56,8 @@ deployment gate.
   run-window evidence, invalid-work rejection evidence, reward-settlement records, production libp2p
   runtime use with signed per-operator network-observation records exactly matching counted public
   operators and aggregating to the signed network-runtime root,
-  an exact one-signature manifest publication count for the current manifest format, signed external
-  artifact locators for raw supporting records, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
+  an exact one-signature manifest publication count for the current manifest format, exactly one signed
+  external artifact locator for each required raw supporting-record kind, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
   from the manifest signer with auditor observations at or after the signed run end,
   operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability

@@ -40,8 +40,8 @@ A complete evidence bundle must include:
 - signed data-availability measurement summary root for checked tensor receipts
 - signed invalid-work submission and rejection evidence
 - signed reward-settlement records for verified TensorWork
-- signed external artifact locators for the raw supporting records behind each block/finality/libp2p/data
-  availability/invalid-work/reward-settlement summary root
+- exactly one signed external artifact locator for the raw supporting records behind each
+  block/finality/libp2p/data-availability/invalid-work/reward-settlement summary root
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation,
   with one signed observation record per counted public miner or validator operator
 - external HTTPS URLs, health paths, reachability records, content paths, and signed content-root
@@ -97,8 +97,10 @@ External evidence can be represented as a line-oriented manifest parsed by
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Field names
 must be exact with no leading or trailing whitespace around the key before `=`. Scalar manifest fields must
 appear exactly once; repeated record fields are allowed only for `auditor`, `record_artifact`, `operator`,
-`network_runtime_observation`, `node`, `service`, and `service_content`. The manifest signature covers the bundle ID, public URI,
-manifest signature count, and independent auditor count. The current manifest format carries exactly one
+`network_runtime_observation`, `node`, `service`, and `service_content`. For `record_artifact`, the full
+independently checkable gate requires exactly one valid line for each required supporting-record kind and
+rejects extra artifact locators. The manifest signature covers the bundle ID, public URI, manifest
+signature count, and independent auditor count. The current manifest format carries exactly one
 `manifest_signature` field, so `manifest_signature_count` must be `1`; claimed extra manifest signatures
 cannot count until multiple signature records are modeled.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
@@ -465,7 +467,9 @@ Supported record kinds are `block-history`, `finality-history`, `network-runtime
 checks.
 The `record-artifact` command emits a signed `record_artifact=...` manifest line that binds an external
 raw-record artifact URI to the same record kind, root, and count. The full independently checkable gate
-requires one valid artifact locator for every required supporting-record summary root.
+requires one valid artifact locator for every required supporting-record summary root and exactly six
+supporting artifact locators total: block history, finality history, network runtime, data availability,
+invalid work, and reward settlement.
 The `record-summary-from-roots` and `record-artifact-from-roots` variants derive a deterministic aggregate
 root and record count from unique provided supporting-record roots before signing the summary fields or
 artifact locator; duplicate roots are rejected so a summary count cannot be padded by repeating the same raw

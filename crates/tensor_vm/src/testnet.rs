@@ -2608,32 +2608,49 @@ impl PublicTestnetEvidenceBundle {
                 self.run.reward_settlement_records,
                 &self.reward_settlement_signature,
             );
-        let has_public_supporting_record_artifacts =
-            self.has_public_supporting_record_artifact(
+        let required_supporting_artifacts = [
+            (
                 PublicEvidenceRecordKind::BlockHistory,
                 &self.block_history_root,
                 self.block_history_records,
-            ) && self.has_public_supporting_record_artifact(
+            ),
+            (
                 PublicEvidenceRecordKind::FinalityHistory,
                 &self.finality_history_root,
                 self.finality_history_records,
-            ) && self.has_public_supporting_record_artifact(
+            ),
+            (
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 &self.network_runtime_observation_root,
                 self.network_runtime_observation_records,
-            ) && self.has_public_supporting_record_artifact(
+            ),
+            (
                 PublicEvidenceRecordKind::DataAvailabilityMeasurements,
                 &self.data_availability_measurement_root,
                 self.data_availability_measurement_records,
-            ) && self.has_public_supporting_record_artifact(
+            ),
+            (
                 PublicEvidenceRecordKind::InvalidWorkRejections,
                 &self.invalid_work_rejection_root,
                 self.invalid_work_rejection_records,
-            ) && self.has_public_supporting_record_artifact(
+            ),
+            (
                 PublicEvidenceRecordKind::RewardSettlements,
                 &self.reward_settlement_root,
                 self.run.reward_settlement_records,
-            );
+            ),
+        ];
+        let has_public_supporting_record_artifacts = self.supporting_artifacts.len()
+            == required_supporting_artifacts.len()
+            && required_supporting_artifacts
+                .iter()
+                .all(|(kind, record_root, record_count)| {
+                    self.has_exact_public_supporting_record_artifact(
+                        *kind,
+                        record_root,
+                        *record_count,
+                    )
+                });
         let independently_checkable = has_published_evidence_bundle
             && has_independent_auditor_records
             && has_signed_run_window
@@ -2666,21 +2683,26 @@ impl PublicTestnetEvidenceBundle {
         }
     }
 
-    fn has_public_supporting_record_artifact(
+    fn has_exact_public_supporting_record_artifact(
         &self,
         kind: PublicEvidenceRecordKind,
         record_root: &Hash,
         record_count: u64,
     ) -> bool {
-        self.supporting_artifacts.iter().any(|artifact| {
-            artifact.kind == kind
-                && artifact.record_root == *record_root
-                && artifact.record_count == record_count
-                && artifact.is_public_and_signed(
-                    &self.publication.bundle_id,
-                    &self.publication.manifest_signer,
-                )
-        })
+        self.supporting_artifacts
+            .iter()
+            .filter(|artifact| {
+                artifact.kind == kind
+                    && artifact.record_root == *record_root
+                    && artifact.record_count == record_count
+                    && artifact.is_public_and_signed(
+                        &self.publication.bundle_id,
+                        &self.publication.manifest_signer,
+                    )
+            })
+            .take(2)
+            .count()
+            == 1
     }
 
     fn public_record_signature_valid(
@@ -5590,6 +5612,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let local_supporting_artifact = bundle.evaluate(&criteria, 6);
         assert!(!local_supporting_artifact.has_public_supporting_record_artifacts);
         assert!(!local_supporting_artifact.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle
+            .supporting_artifacts
+            .push(bundle.supporting_artifacts[0].clone());
+        let duplicate_supporting_artifact = bundle.evaluate(&criteria, 6);
+        assert!(!duplicate_supporting_artifact.has_public_supporting_record_artifacts);
+        assert!(!duplicate_supporting_artifact.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.run.services.clear();

@@ -95,7 +95,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   matched to signed node-heartbeat records with no overreported operator-attestation counts, signed
   per-operator production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
-  external artifact locators for the raw records behind each summary root, well-formed whitespace-free
+  external artifact locators for the raw records behind each summary root with exactly one locator for
+  each required supporting-record kind, well-formed whitespace-free
   `ipfs://`/`ar://` content identifiers, HTTPS evidence URI path enforcement with query/fragment
   rejection, exact untrimmed URI/path manifest-field validation, duplicate scalar manifest-field
   rejection, whitespace-padded field-key rejection, and
@@ -232,9 +233,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.03% workspace line coverage
-- 8337/8419 workspace lines covered
+- 8344/8426 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7769/7769 `tensor_vm` lines covered
+- 7776/7776 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

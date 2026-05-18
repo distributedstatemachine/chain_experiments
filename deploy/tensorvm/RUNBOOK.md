@@ -189,7 +189,7 @@ publication must include:
 
 - the validated manifest
 - raw supporting records used to derive each summary root
-- signed artifact locator lines for every raw supporting-record artifact
+- exactly one signed artifact locator line for each required raw supporting-record kind
 - independent auditor records and audit artifacts
 - operator identity artifacts
 - public service health artifacts, including the raw observation files used with `service-health-from-file`

@@ -45,7 +45,8 @@ can be generated directly from captured `tvmd service serve` logs with
 can be aggregated from the saved raw-record file with `record-summary-from-file` and
 `record-artifact-from-file`. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
-the raw records behind that root.
+the raw records behind that root; publish exactly one artifact locator for each of those six supporting
+record kinds.
 For block, finality, data-availability, invalid-work, and reward evidence, the saved raw-record file can
 contain exact `block_history_record=...`, `finality_history_record=...`,
 `data_availability_measurement=...`, `invalid_work_rejection=...`, and `reward_settlement=...` lines; the
