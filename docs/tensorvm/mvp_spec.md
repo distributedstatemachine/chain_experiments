@@ -201,6 +201,10 @@ canonical CPU semantics and the mandatory libp2p node runtime; it cannot be sati
 simulations, local-only networking shims, in-memory propagation substitutes, or single-participant
 shortcuts.
 
+Gate 0 is also the first executable gate for every new or resumed MVP implementation iteration. Context
+gathering may happen before it, but no later gate, implementation slice, or completion claim counts until
+the CPU local multi-participant testnet command below passes against the current codebase.
+
 Required Gate 0 command from the repository root:
 
 ```bash
@@ -1986,6 +1990,7 @@ prefer deterministic Rust reference implementations before optimized kernels
 add tests for every new consensus-critical branch
 run all relevant tests, study harnesses, and experiments before claiming any iteration is
 complete
+run Gate 0 as the first executable acceptance gate in every new or resumed MVP implementation iteration
 update the coverage matrix when acceptance criteria move from incomplete to complete
 update the implementation status whenever the local/full-spec boundary changes
 update the Tarpaulin report after every coverage-changing implementation pass
@@ -1997,8 +2002,8 @@ The agent should execute this loop until the contract is satisfied:
 ```text
 1. compare code and docs against Sections 32, 33, and 35
 2. list missing local-reference items and missing deployment-gated items
-3. run the Gate 0 CPU local-testnet command as the first acceptance gate before any other local,
-   CUDA, public preflight, public evidence, or deployment-gated work can count
+3. run the Gate 0 CPU local-testnet command as the first executable acceptance gate before any other
+   local, CUDA, public preflight, public evidence, or deployment-gated work can count
 4. implement one coherent missing local-reference slice
 5. add or update focused tests for that slice
 6. run cargo fmt --check --all
