@@ -1621,6 +1621,9 @@ tvmd service serve \
 Miner and validator `--node` values are libp2p multiaddrs. The RPC listener remains HTTP for
 operator APIs, but `tvmd service serve` must start the mandatory rust-libp2p control plane for node
 discovery, Gossipsub propagation, and tensor/program request-response protocols.
+libp2p is a normal, unconditional TensorVM runtime dependency: no TensorVM feature flag may disable it,
+no shim or in-memory substitute may satisfy node propagation, and `default-features = false` on the
+upstream `libp2p` crate is only allowed to narrow the explicit protocol surface compiled into TensorVM.
 `--max-requests 0` means serve continuously; positive values are for supervised smoke tests and controlled
 rollout checks.
 
@@ -1659,6 +1662,13 @@ tvmd public-evidence node-heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
+tvmd public-evidence operator-attestation \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --identity-uri https://operator-a.example.test/tensorvm.json \
+  --observed-at <unix-seconds>
+
 tvmd public-evidence service-health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
@@ -1690,8 +1700,11 @@ tvmd public-evidence record-summary \
   --record-count 4
 ```
 
-The `publication`, `run-window`, and `node-heartbeat` commands emit the signed manifest fields for the
-public evidence location, wall-clock run duration, and external operator node heartbeats.
+The `publication`, `run-window`, `node-heartbeat`, and `operator-attestation` commands emit the signed
+manifest fields for the public evidence location, wall-clock run duration, external operator node
+heartbeats, and operator identity attestations.
+The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
+identity URI bound to a node address, role, operator ID, and observation time.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count.

@@ -2,6 +2,7 @@ use crate::chain::{BlockVote, ChainParams, JobState, LocalChain, TensorBlock, Tr
 use crate::error::{Result, TvmError};
 use crate::explorer::ExplorerSummary;
 use crate::faucet::Faucet;
+use crate::hash::hex;
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec};
 use crate::miner::MinerNode;
 use crate::runtime::CpuReferenceBackend;
@@ -558,6 +559,71 @@ impl PublicNodeEvidence {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicOperatorIdentityAttestation {
+    pub role: PublicNodeRole,
+    pub address: Address,
+    pub operator_id: Hash,
+    pub identity_uri: String,
+    pub observed_at_unix_seconds: u64,
+    pub operator_signature: Signature,
+}
+
+impl PublicOperatorIdentityAttestation {
+    pub fn new(
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        identity_uri: impl Into<String>,
+        observed_at_unix_seconds: u64,
+    ) -> Self {
+        let identity_uri = identity_uri.into();
+        let message = public_operator_identity_message(
+            role,
+            &address,
+            &operator_id,
+            &identity_uri,
+            observed_at_unix_seconds,
+        );
+        Self {
+            role,
+            address,
+            operator_id,
+            identity_uri,
+            observed_at_unix_seconds,
+            operator_signature: sign(&operator_id, &message),
+        }
+    }
+
+    pub fn operator_signature_valid(&self) -> bool {
+        verify_signature(
+            &self.operator_id,
+            &public_operator_identity_message(
+                self.role,
+                &self.address,
+                &self.operator_id,
+                &self.identity_uri,
+                self.observed_at_unix_seconds,
+            ),
+            &self.operator_signature,
+        )
+    }
+
+    pub fn has_external_identity_proof(&self) -> bool {
+        self.address != [0; 32]
+            && self.operator_id != [0; 32]
+            && self.observed_at_unix_seconds > 0
+            && public_evidence_uri_is_external(&self.identity_uri)
+            && self.operator_signature_valid()
+    }
+
+    fn matches_node(&self, node: &PublicNodeEvidence) -> bool {
+        self.role == node.role
+            && self.address == node.address
+            && self.operator_id == node.operator_id
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PublicTestnetRunEvidence {
     pub nodes: Vec<PublicNodeEvidence>,
     pub network_runtime: PublicNetworkRuntimeEvidence,
@@ -598,6 +664,7 @@ pub struct PublicTestnetEvidenceBundle {
     pub finality_history_root: Hash,
     pub finality_history_signature: Signature,
     pub operator_identity_attestation_records: u64,
+    pub operator_identity_attestations: Vec<PublicOperatorIdentityAttestation>,
     pub network_runtime_observation_records: u64,
     pub network_runtime_observation_root: Hash,
     pub network_runtime_observation_signature: Signature,
@@ -636,6 +703,7 @@ struct PublicEvidenceManifestBuilder {
     finality_history_root: Option<Hash>,
     finality_history_signature: Option<Signature>,
     operator_identity_attestation_records: Option<u64>,
+    operator_identity_attestations: Vec<PublicOperatorIdentityAttestation>,
     network_runtime_observation_records: Option<u64>,
     network_runtime_observation_root: Option<Hash>,
     network_runtime_observation_signature: Option<Signature>,
@@ -798,6 +866,9 @@ impl PublicEvidenceManifestBuilder {
             "operator_identity_attestation_records" => {
                 self.operator_identity_attestation_records = Some(parse_manifest_u64(value)?);
             }
+            "operator" => self
+                .operator_identity_attestations
+                .push(parse_manifest_operator_identity_attestation(value)?),
             "network_runtime_observation_records" => {
                 self.network_runtime_observation_records = Some(parse_manifest_u64(value)?);
             }
@@ -902,6 +973,7 @@ impl PublicEvidenceManifestBuilder {
             operator_identity_attestation_records: required_u64(
                 self.operator_identity_attestation_records,
             )?,
+            operator_identity_attestations: self.operator_identity_attestations,
             network_runtime_observation_records: required_u64(
                 self.network_runtime_observation_records,
             )?,
@@ -952,6 +1024,35 @@ fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
     };
     evidence.heartbeat_signature = heartbeat_signature;
     Ok(evidence)
+}
+
+fn parse_manifest_operator_identity_attestation(
+    value: &str,
+) -> Result<PublicOperatorIdentityAttestation> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 6 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed operator identity attestation",
+        ));
+    }
+    let role = match fields[0] {
+        "miner" => PublicNodeRole::Miner,
+        "validator" => PublicNodeRole::Validator,
+        _ => {
+            return Err(TvmError::InvalidReceipt(
+                "unknown operator attestation role",
+            ));
+        }
+    };
+    let mut attestation = PublicOperatorIdentityAttestation::new(
+        role,
+        parse_hash_hex(fields[1])?,
+        parse_hash_hex(fields[2])?,
+        fields[3].to_owned(),
+        parse_manifest_u64(fields[4])?,
+    );
+    attestation.operator_signature = parse_hash_hex(fields[5])?;
+    Ok(attestation)
 }
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
@@ -1235,6 +1336,26 @@ fn public_node_heartbeat_message(
     )
 }
 
+fn public_operator_identity_message(
+    role: PublicNodeRole,
+    address: &Address,
+    operator_id: &Hash,
+    identity_uri: &str,
+    observed_at_unix_seconds: u64,
+) -> Hash {
+    let observed_at = observed_at_unix_seconds.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-operator-identity-v1",
+        &[
+            public_node_role_tag(role),
+            address,
+            operator_id,
+            identity_uri.as_bytes(),
+            &observed_at,
+        ],
+    )
+}
+
 fn public_service_health_message(
     kind: PublicServiceKind,
     endpoint: &PublicServiceEndpoint,
@@ -1270,6 +1391,22 @@ impl PublicTestnetEvidenceBundle {
     ) -> Self {
         let signer = publication.manifest_signer;
         let bundle_id = publication.bundle_id;
+        let operator_identity_attestations = run
+            .nodes
+            .iter()
+            .map(|node| {
+                PublicOperatorIdentityAttestation::new(
+                    node.role,
+                    node.address,
+                    node.operator_id,
+                    format!(
+                        "https://operators.tensorvm.example/{}",
+                        hex(&node.operator_id)
+                    ),
+                    run.run_started_at_unix_seconds,
+                )
+            })
+            .collect();
         let run_window_signature = sign_public_run_window(
             &signer,
             &bundle_id,
@@ -1301,6 +1438,7 @@ impl PublicTestnetEvidenceBundle {
             ),
             operator_identity_attestation_records: record_summaries
                 .operator_identity_attestation_records,
+            operator_identity_attestations,
             network_runtime_observation_records: record_summaries
                 .network_runtime_observation_records,
             network_runtime_observation_root: record_summaries.network_runtime_observation_root,
@@ -1350,8 +1488,12 @@ impl PublicTestnetEvidenceBundle {
             );
         let (miner_count, validator_count) = self.run.independent_operator_counts();
         let required_operator_attestations = (miner_count + validator_count) as u64;
+        let valid_operator_attestation_count =
+            self.valid_operator_identity_attestation_count() as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
             && self.operator_identity_attestation_records >= required_operator_attestations;
+        let has_operator_identity_attestations = has_operator_identity_attestations
+            && valid_operator_attestation_count >= required_operator_attestations;
         let run_evidence = self.run.evaluate(
             criteria,
             block_time_seconds,
@@ -1434,6 +1576,31 @@ impl PublicTestnetEvidenceBundle {
                 ),
                 &self.run_window_signature,
             )
+    }
+
+    fn valid_operator_identity_attestation_count(&self) -> usize {
+        let mut valid_attestations = BTreeSet::new();
+        for attestation in &self.operator_identity_attestations {
+            if !attestation.has_external_identity_proof() {
+                continue;
+            }
+            let matches_public_node = self.run.nodes.iter().any(|node| {
+                node.covers_run(self.run.observed_blocks)
+                    && node.has_external_operator_proof()
+                    && attestation.matches_node(node)
+            });
+            if matches_public_node {
+                valid_attestations.insert(hash_bytes(
+                    b"tensor-vm-public-operator-attestation-key-v1",
+                    &[
+                        public_node_role_tag(attestation.role),
+                        &attestation.address,
+                        &attestation.operator_id,
+                    ],
+                ));
+            }
+        }
+        valid_attestations.len()
     }
 }
 
@@ -2111,6 +2278,27 @@ mod tests {
         hex(&node.heartbeat_signature)
     }
 
+    fn manifest_operator_identity_uri(operator_id: &Hash) -> String {
+        format!("https://operators.tensorvm.example/{}", hex(operator_id))
+    }
+
+    fn manifest_operator_signature(
+        role: PublicNodeRole,
+        address_label: &[u8],
+        operator_label: &[u8],
+    ) -> String {
+        let node_address = address(address_label);
+        let operator_id = hash_bytes(b"test", &[operator_label]);
+        let attestation = PublicOperatorIdentityAttestation::new(
+            role,
+            node_address,
+            operator_id,
+            manifest_operator_identity_uri(&operator_id),
+            1_700_000_000,
+        );
+        hex(&attestation.operator_signature)
+    }
+
     fn manifest_service_signature(kind: PublicServiceKind, label: &[u8]) -> String {
         hex(&public_service(kind, label, 0, 9).health_check_signature)
     }
@@ -2134,6 +2322,9 @@ finality_history_records=10
 finality_history_root={}
 finality_history_signature={}
 operator_identity_attestation_records=3
+operator=miner,{},{},{},1700000000,{}
+operator=miner,{},{},{},1700000000,{}
+operator=validator,{},{},{},1700000000,{}
 network_runtime_observation_records=4
 network_runtime_observation_root={}
 network_runtime_observation_signature={}
@@ -2170,6 +2361,22 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"test", b"finality-history-root"),
             hex(&manifest_bundle().finality_history_signature),
+            manifest_address(b"miner-a"),
+            manifest_hash(b"test", b"miner-a-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"miner-a-operator"])),
+            manifest_operator_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
+            manifest_address(b"miner-b"),
+            manifest_hash(b"test", b"miner-b-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"miner-b-operator"])),
+            manifest_operator_signature(PublicNodeRole::Miner, b"miner-b", b"miner-b-operator"),
+            manifest_address(b"validator-a"),
+            manifest_hash(b"test", b"validator-a-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"validator-a-operator"])),
+            manifest_operator_signature(
+                PublicNodeRole::Validator,
+                b"validator-a",
+                b"validator-a-operator"
+            ),
             manifest_hash(b"test", b"network-runtime-root"),
             hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"test", b"data-availability-root"),
@@ -2762,6 +2969,30 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_operator_attestations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.operator_identity_attestations[0].operator_signature = [8; 32];
+        let tampered_operator_attestation = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_operator_attestation.has_operator_identity_attestations);
+        assert!(
+            !tampered_operator_attestation
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(!tampered_operator_attestation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.operator_identity_attestations[0].identity_uri =
+            String::from("https://localhost/operator.json");
+        let local_operator_attestation = bundle.evaluate(&criteria, 6);
+        assert!(!local_operator_attestation.has_operator_identity_attestations);
+        assert!(!local_operator_attestation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.operator_identity_attestations.clear();
+        let missing_signed_operator_records = bundle.evaluate(&criteria, 6);
+        assert!(!missing_signed_operator_records.has_operator_identity_attestations);
+        assert!(!missing_signed_operator_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.network_runtime_observation_records = 3;
         let missing_network_runtime_observations = bundle.evaluate(&criteria, 6);
         assert!(!missing_network_runtime_observations.has_network_runtime_observations);
@@ -2837,6 +3068,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!local_rpc_report.run_evidence.has_deployed_public_services);
         assert!(!local_rpc_report.full_spec_evidence_met);
 
+        let missing_operator_lines = manifest_without_line(&manifest, "operator=");
+        let parsed_missing_operator_lines =
+            parse_public_testnet_evidence_manifest(&missing_operator_lines).unwrap();
+        let missing_operator_report = parsed_missing_operator_lines.evaluate(&criteria, 6);
+        assert!(!missing_operator_report.has_operator_identity_attestations);
+        assert!(!missing_operator_report.independently_checkable);
+        assert!(!missing_operator_report.full_spec_evidence_met);
+
         let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
         assert_eq!(
             parse_hash_hex(&uppercase_hash).unwrap(),
@@ -2880,6 +3119,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest.replace(
                 "node=miner,",
                 "node=miner,too,few,fields\n# removed original node=",
+            ),
+            manifest.replace("operator=miner", "operator=archive"),
+            manifest.replace(
+                "operator=miner,",
+                "operator=miner,too,few,fields\n# removed original operator=",
             ),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace(

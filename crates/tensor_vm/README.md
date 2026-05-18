@@ -17,7 +17,7 @@ The crate implements the deterministic local/testnet core:
 - settled TensorWork proposer selection and reward settlement
 - operator identity on miner state with operator-separated replication assignment
 - miner hardware-class and GPU utilization telemetry
-- local chain simulation for adversarial tests
+- deterministic local-chain execution harness for adversarial tests
 - rust-libp2p P2P runtime wiring with Gossipsub, Identify, Kademlia discovery, TCP/TLS/Yamux swarm
   construction, JSON request-response protocols, and a service runtime started by `tvmd service serve`
 - durable libp2p peer-book storage for bootstrap peer IDs and multiaddrs

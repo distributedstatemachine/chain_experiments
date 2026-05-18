@@ -3,9 +3,9 @@ use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
     PublicEvidencePublication, PublicEvidenceRecordKind, PublicNodeEvidence, PublicNodeRole,
-    PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
-    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
-    sign_public_evidence_record, sign_public_run_window,
+    PublicOperatorIdentityAttestation, PublicServiceEndpoint, PublicServiceEvidence,
+    PublicServiceKind, PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest, sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
@@ -96,6 +96,13 @@ pub enum CliCommand {
         first_seen_block: u64,
         last_seen_block: u64,
         signed_heartbeat_count: u64,
+    },
+    PublicEvidenceOperatorAttestation {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        identity_uri: String,
+        observed_at_unix_seconds: u64,
     },
     PublicTestnetPreflight {
         manifest: String,
@@ -315,6 +322,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             last_seen_block: parse_u64(last_seen_block)?,
             signed_heartbeat_count: parse_u64(signed_heartbeat_count)?,
         }),
+        [
+            "public-evidence",
+            "operator-attestation",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--identity-uri",
+            identity_uri,
+            "--observed-at",
+            observed_at_unix_seconds,
+        ] => Ok(CliCommand::PublicEvidenceOperatorAttestation {
+            role: parse_public_node_role(role)?,
+            address: parse_hash_argument(address)?,
+            operator_id: parse_hash_argument(operator_id)?,
+            identity_uri: (*identity_uri).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at_unix_seconds)?,
+        }),
         ["public-testnet", "preflight", "--manifest", manifest] => {
             Ok(CliCommand::PublicTestnetPreflight {
                 manifest: (*manifest).to_owned(),
@@ -399,6 +426,18 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::PublicEvidenceNodeHeartbeat { role, address, .. } => {
             format!(
                 "generate {} node heartbeat evidence address={}",
+                public_node_role_tag(*role),
+                hex(address)
+            )
+        }
+        CliCommand::PublicEvidenceOperatorAttestation {
+            role,
+            address,
+            identity_uri,
+            ..
+        } => {
+            format!(
+                "generate {} operator identity attestation address={} identity_uri={identity_uri}",
                 public_node_role_tag(*role),
                 hex(address)
             )
@@ -572,6 +611,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *last_seen_block,
             *signed_heartbeat_count,
         ),
+        CliCommand::PublicEvidenceOperatorAttestation {
+            role,
+            address,
+            operator_id,
+            identity_uri,
+            observed_at_unix_seconds,
+        } => operator_identity_attestation_evidence_line(
+            *role,
+            *address,
+            *operator_id,
+            identity_uri,
+            *observed_at_unix_seconds,
+        ),
         CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
             Ok(describe_command(command))
         }
@@ -729,6 +781,36 @@ fn node_heartbeat_evidence_line(
         node.last_seen_block,
         node.signed_heartbeat_count,
         hex(&node.heartbeat_signature)
+    ))
+}
+
+fn operator_identity_attestation_evidence_line(
+    role: PublicNodeRole,
+    address: Address,
+    operator_id: Hash,
+    identity_uri: &str,
+    observed_at_unix_seconds: u64,
+) -> Result<String> {
+    let attestation = PublicOperatorIdentityAttestation::new(
+        role,
+        address,
+        operator_id,
+        identity_uri.to_owned(),
+        observed_at_unix_seconds,
+    );
+    if !attestation.has_external_identity_proof() {
+        return Err(TvmError::InvalidReceipt(
+            "invalid operator identity attestation",
+        ));
+    }
+    Ok(format!(
+        "operator={},{},{},{},{},{}",
+        public_node_role_tag(attestation.role),
+        hex(&attestation.address),
+        hex(&attestation.operator_id),
+        attestation.identity_uri,
+        attestation.observed_at_unix_seconds,
+        hex(&attestation.operator_signature)
     ))
 }
 
@@ -1149,8 +1231,9 @@ mod tests {
     use crate::testnet::{
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
         PublicEvidencePublication, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
-        PublicNodeEvidence, PublicNodeRole, PublicServiceEndpoint, PublicServiceEvidence,
-        PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
+        PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
+        PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
+        PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
     };
     use crate::types::{address, hash_bytes};
 
@@ -1176,6 +1259,27 @@ mod tests {
             }
         };
         hex(&node.heartbeat_signature)
+    }
+
+    fn manifest_operator_identity_uri(operator_id: &Hash) -> String {
+        format!("https://operators.tensorvm.example/{}", hex(operator_id))
+    }
+
+    fn manifest_operator_signature(
+        role: PublicNodeRole,
+        address_label: &[u8],
+        operator_label: &[u8],
+    ) -> String {
+        let node_address = address(address_label);
+        let operator_id = hash_bytes(b"test", &[operator_label]);
+        let attestation = PublicOperatorIdentityAttestation::new(
+            role,
+            node_address,
+            operator_id,
+            manifest_operator_identity_uri(&operator_id),
+            1_700_000_000,
+        );
+        hex(&attestation.operator_signature)
     }
 
     fn public_service_url(kind: PublicServiceKind) -> &'static str {
@@ -1352,6 +1456,9 @@ finality_history_records=10
 finality_history_root={}
 finality_history_signature={}
 operator_identity_attestation_records=3
+operator=miner,{},{},{},1700000000,{}
+operator=miner,{},{},{},1700000000,{}
+operator=validator,{},{},{},1700000000,{}
 network_runtime_observation_records=4
 network_runtime_observation_root={}
 network_runtime_observation_signature={}
@@ -1388,6 +1495,22 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"finality-history-root"),
             hex(&manifest_bundle().finality_history_signature),
+            manifest_address(b"miner-a"),
+            manifest_hash(b"miner-a-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"miner-a-operator"])),
+            manifest_operator_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
+            manifest_address(b"miner-b"),
+            manifest_hash(b"miner-b-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"miner-b-operator"])),
+            manifest_operator_signature(PublicNodeRole::Miner, b"miner-b", b"miner-b-operator"),
+            manifest_address(b"validator-a"),
+            manifest_hash(b"validator-a-operator"),
+            manifest_operator_identity_uri(&hash_bytes(b"test", &[b"validator-a-operator"])),
+            manifest_operator_signature(
+                PublicNodeRole::Validator,
+                b"validator-a",
+                b"validator-a-operator"
+            ),
             manifest_hash(b"network-runtime-root"),
             hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"data-availability-root"),
@@ -1599,6 +1722,30 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 first_seen_block: 0,
                 last_seen_block: 9,
                 signed_heartbeat_count: 10,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "operator-attestation",
+                "--role",
+                "miner",
+                "--address",
+                &manifest_address(b"miner-a"),
+                "--operator-id",
+                &manifest_hash(b"miner-a-operator"),
+                "--identity-uri",
+                "https://operators.tensorvm.example/miner-a",
+                "--observed-at",
+                "1700000000",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
             }
         );
         let endpoint_id = manifest_hash(b"rpc-service");
@@ -1890,6 +2037,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             );
         }
 
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            }),
+            format!(
+                "generate miner operator identity attestation address={} identity_uri=https://operators.tensorvm.example/miner-a",
+                manifest_address(b"miner-a")
+            )
+        );
+
         let record_kinds = [
             (
                 PublicEvidenceRecordKind::BlockHistory,
@@ -2078,6 +2239,27 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 operator_label
             )));
         }
+
+        let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
+        let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
+        let operator_attestation =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id,
+                identity_uri: operator_identity_uri.clone(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .unwrap();
+        assert_eq!(
+            operator_attestation,
+            format!(
+                "operator=miner,{},{},{operator_identity_uri},1700000000,{}",
+                manifest_address(b"miner-a"),
+                manifest_hash(b"miner-a-operator"),
+                manifest_operator_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator")
+            )
+        );
 
         let service_health =
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
@@ -2664,6 +2846,46 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 first_seen_block: 0,
                 last_seen_block: 9,
                 signed_heartbeat_count: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: [0; 32],
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: [0; 32],
+                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://localhost/miner-a".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                observed_at_unix_seconds: 0,
             })
             .is_err()
         );

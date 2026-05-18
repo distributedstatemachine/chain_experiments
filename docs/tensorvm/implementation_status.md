@@ -84,10 +84,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   reachability with signed health-check summaries bound to external HTTPS service URLs and health paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, independent auditor records, a signed run-window
-  record, block/finality history, operator attestations, signed production libp2p network-observation
-  records, signed block/finality/network-runtime/data-availability summary roots, and data-availability
-  measurement records, and derives external-operator evidence from the operator attestation count before
-  full-spec evidence can be considered independently checkable
+  record, block/finality history, signed operator identity attestations matched to signed node-heartbeat
+  records, signed production libp2p network-observation records, signed
+  block/finality/network-runtime/data-availability summary roots, and data-availability measurement records
+  before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -100,6 +100,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, and
   `tvmd public-evidence node-heartbeat ...` generation for signed publication, wall-clock run-window, and
   external-operator heartbeat fields,
+  `tvmd public-evidence operator-attestation ...` generation for signed operator identity records bound to
+  external identity URIs,
   `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service=...` manifest records bound to external HTTPS health URLs and observation counts,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
@@ -128,8 +130,8 @@ The workspace currently has 179 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.74% workspace line coverage
-- 6424/6506 workspace lines covered
+- 98.77% workspace line coverage
+- 6560/6642 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

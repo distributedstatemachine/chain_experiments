@@ -43,15 +43,14 @@ The local reference crate exposes typed validation for this future bundle throug
   independently checkable supporting records
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
-validator requires signed node-heartbeat summaries, signed service-health summaries, and an external
-publication URI. It verifies a manifest publication signature over the bundle ID, public URI, manifest
-signature count, and independent auditor count. It also verifies a signed run-window record over the
-manifest bundle ID, start time, end time, and observed block count. It verifies signed supporting-record
-roots for block history, finality history, production libp2p observations, and data-availability
-measurements, and it derives
-`external_operator_evidence` from the manifest's operator identity attestation record count rather than from
-a CLI flag. These local checks are still only evidence-format validation until an external run publishes
-real records.
+validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
+service-health summaries, and an external publication URI. It verifies a manifest publication signature
+over the bundle ID, public URI, manifest signature count, and independent auditor count. It also verifies a
+signed run-window record over the manifest bundle ID, start time, end time, and observed block count. It
+verifies signed supporting-record roots for block history, finality history, production libp2p observations,
+and data-availability measurements, and it derives `external_operator_evidence` from signed operator
+identity attestation records that match the signed node-heartbeat records. These local checks are still
+only evidence-format validation until an external run publishes real records.
 
 ## Manifest Format
 
@@ -62,10 +61,12 @@ signature covers the bundle ID, public URI, manifest signature count, and indepe
 finality, network-runtime, and data-availability signatures cover the bundle ID, record-set kind,
 record-set root, and record count. The run-window signature covers the bundle ID, Unix start time, Unix end
 time, and observed block count. Heartbeat signatures cover the node role, address, operator ID, first/last
-observed block, and heartbeat count. Service-health signatures cover the service kind, endpoint ID, public
-URL, health path, first/last observed block, reachable observation count, and signed health-check count.
-Service URLs must be external HTTPS endpoints; localhost, `.local`, loopback, private, link-local, and
-unspecified hosts are rejected.
+observed block, and heartbeat count. Operator identity signatures cover the node role, node address,
+operator ID, external identity URI, and observation time. Service-health signatures cover the service kind,
+endpoint ID, public URL, health path, first/last observed block, reachable observation count, and signed
+health-check count. Service URLs and operator identity HTTPS URIs must use external hosts; localhost,
+`.local`, loopback, private, link-local, and unspecified hosts are rejected. Operator identity URIs may also
+use non-empty `ipfs://` or `ar://` content identifiers.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths.
@@ -85,6 +86,8 @@ finality_history_records=100800
 finality_history_root=<finality-root-hex>
 finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
+operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.example.test/tensorvm.json,<unix-seconds>,<operator-signature-hex>
+operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.example.test/tensorvm.json,<unix-seconds>,<operator-signature-hex>
 network_runtime_observation_records=4
 network_runtime_observation_root=<network-runtime-root-hex>
 network_runtime_observation_signature=<network-runtime-signature-hex>
@@ -120,7 +123,8 @@ The CLI reads a manifest file and reports the default full-spec evidence status:
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
 ```
 
-Operators can generate the signed publication, run-window, and node-heartbeat manifest fields:
+Operators can generate the signed publication, run-window, node-heartbeat, and operator-attestation
+manifest fields:
 
 ```bash
 tvmd public-evidence publication \
@@ -144,12 +148,21 @@ tvmd public-evidence node-heartbeat \
   --first-block 0 \
   --last-block 100799 \
   --heartbeat-count 100800
+
+tvmd public-evidence operator-attestation \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --identity-uri https://operator-a.example.test/tensorvm.json \
+  --observed-at <unix-seconds>
 ```
 
 The publication command rejects local/private evidence URIs, zero bundle IDs, zero manifest signers, and
 zero signature or auditor counts. The run-window command rejects zero IDs/signers, inverted time windows,
 and empty block counts. The node-heartbeat command rejects zero node addresses, zero operator IDs,
-inverted block ranges, and unsigned heartbeat summaries.
+inverted block ranges, and unsigned heartbeat summaries. The operator-attestation command rejects zero node
+addresses, zero operator IDs, local/private identity URIs, and empty observation times. Its output can be
+inserted directly as an `operator=...` line in the evidence manifest.
 
 Operators can generate a signed service-health manifest line for RPC, explorer, faucet, or telemetry
 evidence:
@@ -211,8 +224,8 @@ Supported record kinds are `block-history`, `finality-history`, `network-runtime
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
 `public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true
-only when enough signed node evidence and operator identity attestation records are present. The individual
-fields identify which post-run artifact or protocol observation is missing:
+only when enough signed node evidence and matching signed operator identity attestation records are present.
+The individual fields identify which post-run artifact or protocol observation is missing:
 
 ```text
 public_evidence_full_spec=false

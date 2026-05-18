@@ -92,6 +92,7 @@ pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence publication --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
     "tvmd public-evidence run-window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
     "tvmd public-evidence node-heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
+    "tvmd public-evidence operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
     "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
     "tvmd public-evidence network-observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
     "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
@@ -158,6 +159,11 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("node-heartbeat"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("operator-attestation"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS

@@ -18,6 +18,8 @@ exposes JSON request-response protocols for tensor/program fetches, and persists
 records. `tvmd service serve` must start that rust-libp2p control plane through a required
 `--p2p-listen` multiaddr. The disabled upstream `default-features` setting in `Cargo.toml` only narrows
 rust-libp2p to the explicit protocols TensorVM uses; it is not a TensorVM feature gate.
+There is no TensorVM feature flag, shim transport, or local-only network substitute for consensus
+propagation; every node path uses libp2p multiaddrs and the rust-libp2p runtime.
 
 ## Practical Path
 
@@ -26,6 +28,7 @@ rust-libp2p to the explicit protocols TensorVM uses; it is not a TensorVM featur
 3. Implement Kademlia-backed bootstrap/discovery for independent nodes.
 4. Implement request-response for tensor rows/chunks and program fetches.
 5. Keep tensor payloads bounded for v0 with connection and stream limits in the libp2p runtime config.
+6. Do not add a TensorVM feature gate or fallback transport that bypasses libp2p.
 
 Primary references:
 
