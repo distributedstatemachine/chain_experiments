@@ -79,6 +79,14 @@ pub enum CliCommand {
         observed_at_unix_seconds: u64,
         content_hex: String,
     },
+    PublicEvidenceServiceContentFromFile {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        observed_at_unix_seconds: u64,
+        content_file: String,
+    },
     PublicEvidenceRecordSummary {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
@@ -309,6 +317,29 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             content_path: (*content_path).to_owned(),
             observed_at_unix_seconds: parse_u64(observed_at)?,
             content_hex: (*content_hex).to_owned(),
+        }),
+        [
+            "public-evidence",
+            "service-content-from-file",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            endpoint_id,
+            "--public-url",
+            public_url,
+            "--content-path",
+            content_path,
+            "--observed-at",
+            observed_at,
+            "--content-file",
+            content_file,
+        ] => Ok(CliCommand::PublicEvidenceServiceContentFromFile {
+            kind: parse_public_service_kind(kind)?,
+            endpoint_id: parse_hash_argument(endpoint_id)?,
+            public_url: (*public_url).to_owned(),
+            content_path: (*content_path).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at)?,
+            content_file: (*content_file).to_owned(),
         }),
         [
             "public-evidence",
@@ -593,6 +624,18 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_service_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceServiceContentFromFile {
+            kind,
+            public_url,
+            content_path,
+            content_file,
+            ..
+        } => {
+            format!(
+                "generate {} service content evidence from captured file content_file={content_file} public_url={public_url} content_path={content_path}",
+                public_service_kind_tag(*kind)
+            )
+        }
         CliCommand::PublicEvidenceRecordSummary {
             kind, record_count, ..
         } => {
@@ -797,15 +840,32 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             content_hex,
         } => {
             let content_bytes = parse_hex_bytes_argument(content_hex)?;
-            let content_root = public_service_content_root(&content_bytes);
-            service_content_evidence_line(
+            service_content_evidence_line_from_bytes(
                 *kind,
                 *endpoint_id,
                 public_url,
                 content_path,
-                content_root,
                 *observed_at_unix_seconds,
-                content_bytes.len() as u64,
+                &content_bytes,
+            )
+        }
+        CliCommand::PublicEvidenceServiceContentFromFile {
+            kind,
+            endpoint_id,
+            public_url,
+            content_path,
+            observed_at_unix_seconds,
+            content_file,
+        } => {
+            let content_bytes = std::fs::read(content_file)
+                .map_err(|_| TvmError::Storage("failed to read service content file"))?;
+            service_content_evidence_line_from_bytes(
+                *kind,
+                *endpoint_id,
+                public_url,
+                content_path,
+                *observed_at_unix_seconds,
+                &content_bytes,
             )
         }
         CliCommand::PublicEvidenceRecordSummary {
@@ -1029,6 +1089,25 @@ fn public_service_content_root(content_bytes: &[u8]) -> Hash {
     hash_bytes(
         b"tensor-vm-public-service-content-root-v1",
         &[content_bytes],
+    )
+}
+
+fn service_content_evidence_line_from_bytes(
+    kind: PublicServiceKind,
+    endpoint_id: Hash,
+    public_url: &str,
+    content_path: &str,
+    observed_at_unix_seconds: u64,
+    content_bytes: &[u8],
+) -> Result<String> {
+    service_content_evidence_line(
+        kind,
+        endpoint_id,
+        public_url,
+        content_path,
+        public_service_content_root(content_bytes),
+        observed_at_unix_seconds,
+        content_bytes.len() as u64,
     )
 }
 
@@ -2676,6 +2755,33 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 content_hex,
             }
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "service-content-from-file",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.net/chain/head",
+                "--content-path",
+                "/chain/head",
+                "--observed-at",
+                "1700000000",
+                "--content-file",
+                "artifacts/rpc-chain-head.body",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceServiceContentFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_file: "artifacts/rpc-chain-head.body".to_owned(),
+            }
+        );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
             parse_cli_parts(&[
@@ -2978,6 +3084,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 content_hex: hex(&[1_u8; 64]),
             }),
             "generate faucet service content evidence from observed bytes public_url=https://faucet.tensorvm.net/faucet/page content_path=/faucet/page"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+                kind: PublicServiceKind::Telemetry,
+                endpoint_id: hash_bytes(b"test", &[b"telemetry-service"]),
+                public_url: "https://telemetry.tensorvm.net/telemetry/dashboard".to_owned(),
+                content_path: "/telemetry/dashboard".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_file: "artifacts/telemetry-dashboard.body".to_owned(),
+            }),
+            "generate telemetry service content evidence from captured file content_file=artifacts/telemetry-dashboard.body public_url=https://telemetry.tensorvm.net/telemetry/dashboard content_path=/telemetry/dashboard"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidencePublication {
@@ -3434,6 +3551,24 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             service_content_from_bytes
                 .contains(&format!("{},1700000000,80,", hex(&observed_content_root)))
         );
+        let content_file = std::env::temp_dir().join(format!(
+            "tensor-vm-service-content-{}-{}.body",
+            std::process::id(),
+            observed_content_root[0]
+        ));
+        std::fs::write(&content_file, &observed_content).unwrap();
+        let service_content_from_file =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
+                content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_file: content_file.to_string_lossy().into_owned(),
+            })
+            .unwrap();
+        std::fs::remove_file(&content_file).unwrap();
+        assert_eq!(service_content_from_file, service_content_from_bytes);
 
         let peer_id = PeerId::random().to_string();
         let network_observation =
@@ -4166,6 +4301,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 content_path: "/chain/head".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 content_hex: hex(&[1_u8; 63]),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                content_file: std::env::temp_dir()
+                    .join("tensor-vm-missing-service-content-file.body")
+                    .to_string_lossy()
+                    .into_owned(),
             })
             .is_err()
         );
