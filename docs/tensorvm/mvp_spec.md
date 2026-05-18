@@ -1775,6 +1775,8 @@ valid artifact locator for every required supporting-record summary root.
 The `record-summary-from-roots` command deterministically aggregates comma-separated supporting-record
 roots, derives the record count, and emits the same signed manifest summary fields so operators do not
 need an out-of-band root-signing tool for post-run bundles.
+Run-level counters must be internally consistent before the public evidence gate can pass: finalized
+blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 
 ---
 

@@ -66,8 +66,9 @@ tvmd public-evidence record-summary-from-roots ...
 The collected records must cover the full 7-day window, not only a final snapshot. The final node
 heartbeat count and each public service's reachable and signed health-check counts must be at least the
 manifest's observed block count. Operator-attestation and service-content observation times must fall
-inside the signed run window. Every `record-summary` root must have a matching signed `record-artifact`
-locator for the external raw-record artifact. Preserve raw supporting records for:
+inside the signed run window. Finalized blocks must not exceed observed blocks, and available tensor
+receipts must not exceed checked tensor receipts. Every `record-summary` root must have a matching signed
+`record-artifact` locator for the external raw-record artifact. Preserve raw supporting records for:
 
 - block history
 - finality history

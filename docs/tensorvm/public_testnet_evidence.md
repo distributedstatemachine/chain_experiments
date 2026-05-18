@@ -65,7 +65,9 @@ history, production libp2p observations, data-availability measurements, invalid
 reward settlements. It also requires signed external artifact locators for the raw supporting records behind
 each summary root, and it derives `external_operator_evidence` from signed operator identity attestation
 records that match the signed node-heartbeat records. These local checks are still only evidence-format
-validation until an external run publishes real records.
+validation until an external run publishes real records. Run-level finality and data-availability counters
+must also be internally consistent: finalized blocks cannot exceed observed blocks, and available receipts
+cannot exceed checked receipts.
 
 ## Manifest Format
 
@@ -94,6 +96,9 @@ observed block range and carry at least one signed heartbeat per observed block.
 attestations and service-content records must have observation timestamps inside the signed run window.
 Every counted service health summary must likewise span the full observed block range and carry at least
 one reachable observation and one signed health check per observed block.
+Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
+checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
+public gate.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations

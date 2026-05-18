@@ -2270,6 +2270,9 @@ impl PublicTestnetRunEvidence {
         let finality_rate_bps = ratio_parts_to_bps(self.finalized_blocks, self.observed_blocks);
         let data_availability_bps =
             ratio_parts_to_bps(self.available_receipts, self.checked_receipts);
+        let has_consistent_finality_counts = self.finalized_blocks <= self.observed_blocks;
+        let has_consistent_data_availability_counts =
+            self.available_receipts <= self.checked_receipts;
         let invalid_work_rejection_rate_bps = ratio_parts_to_bps(
             self.invalid_receipts_rejected,
             self.invalid_receipts_submitted,
@@ -2279,9 +2282,10 @@ impl PublicTestnetRunEvidence {
         let has_required_run_duration =
             has_valid_run_window && observed_duration_seconds >= required_duration_seconds;
         let has_required_block_count = self.observed_blocks >= required_blocks;
-        let has_required_finality = finality_rate_bps >= criteria.min_finality_rate_bps;
-        let has_required_data_availability =
-            data_availability_bps >= criteria.min_data_availability_bps;
+        let has_required_finality =
+            has_consistent_finality_counts && finality_rate_bps >= criteria.min_finality_rate_bps;
+        let has_required_data_availability = has_consistent_data_availability_counts
+            && data_availability_bps >= criteria.min_data_availability_bps;
         let has_invalid_work_rejection_evidence = self.invalid_receipts_submitted
             >= criteria.min_invalid_work_rejections
             && self.invalid_receipts_rejected >= criteria.min_invalid_work_rejections
@@ -3524,6 +3528,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(sufficient.has_deployed_public_services);
         assert!(sufficient.public_criterion_met);
 
+        let mut over_finalized = run.clone();
+        over_finalized.finalized_blocks = over_finalized.observed_blocks + 1;
+        let over_finalized = over_finalized.evaluate(&criteria, 6, true);
+        assert_eq!(over_finalized.finality_rate_bps, 10_000);
+        assert!(!over_finalized.has_required_finality);
+        assert!(!over_finalized.public_criterion_met);
+
+        let mut over_available = run.clone();
+        over_available.available_receipts = over_available.checked_receipts + 1;
+        let over_available = over_available.evaluate(&criteria, 6, true);
+        assert_eq!(over_available.data_availability_bps, 10_000);
+        assert!(!over_available.has_required_data_availability);
+        assert!(!over_available.public_criterion_met);
+
         let mut shared_cross_role_operator = run.clone();
         shared_cross_role_operator.nodes[2] =
             PublicNodeEvidence::validator(address(b"validator-a"), shared_operator, 0, 9, 10);
@@ -4547,6 +4565,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert_eq!(report.data_availability_bps, 0);
         assert_eq!(report.invalid_work_rejection_rate_bps, 0);
         assert!(!report.external_operator_evidence);
+        assert!(!report.has_required_finality);
         assert!(!report.has_required_run_duration);
         assert!(!report.has_production_libp2p_runtime);
         assert!(!report.has_deployed_rpc_service);

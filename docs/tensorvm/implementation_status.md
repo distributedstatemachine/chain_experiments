@@ -80,10 +80,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Typed public-testnet run evidence evaluation for disjoint distinct miner/validator operators,
   signature-verified node heartbeat summaries that cover the observed block count, signed wall-clock
   run-window evidence, observed block continuity, finality rate, data-availability rate, invalid-work
-  rejection evidence, reward-settlement records, production libp2p runtime evidence, and deployed
-  RPC/explorer/faucet/telemetry service reachability with reachable and signed health-check summaries that
-  cover the observed block count plus signed content-root observations bound to external HTTPS service URLs
-  and paths
+  rejection evidence, reward-settlement records, production libp2p runtime evidence, internally consistent
+  finalized-block and available-receipt counters, and deployed RPC/explorer/faucet/telemetry service
+  reachability with reachable and signed health-check summaries that cover the observed block count plus
+  signed content-root observations bound to external HTTPS service URLs and paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs and distinct from the manifest signer, a signed run-window record, block/finality history,
@@ -146,7 +146,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.87% workspace line coverage
-- 7150/7232 workspace lines covered
+- 7154/7236 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

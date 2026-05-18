@@ -35,8 +35,8 @@ implementation artifacts and tests.
   runtime use with signed network-observation records and summary roots, signed external artifact locators
   for raw supporting records, disjoint miner/validator operator IDs, auditor IDs distinct from the manifest
   signer, operator-attestation and service-content timestamps inside the signed run window, observed-block
-  coverage for node heartbeat and service health counts, and deployed public-service reachability plus
-  content roots bound to external HTTPS URLs. A local
+  coverage for node heartbeat and service health counts, internally consistent finality/data-availability
+  counters, and deployed public-service reachability plus content roots bound to external HTTPS URLs. A local
   launch preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
