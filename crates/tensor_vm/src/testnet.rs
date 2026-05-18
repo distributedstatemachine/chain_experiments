@@ -5817,6 +5817,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
     fn deployed_public_testnet_evidence_example_is_parseable_but_not_full_spec() {
         let manifest =
             include_str!("../../../deploy/tensorvm/manifests/public-testnet.evidence.example");
+        assert_public_testnet_evidence_manifest_is_pending(manifest);
+    }
+
+    #[test]
+    fn docs_public_testnet_evidence_manifest_is_parseable_but_not_full_spec() {
+        let manifest = include_str!("../../../docs/tensorvm/public-testnet.evidence");
+        assert_public_testnet_evidence_manifest_is_pending(manifest);
+    }
+
+    fn assert_public_testnet_evidence_manifest_is_pending(manifest: &str) {
         let parsed = parse_public_testnet_evidence_manifest(manifest).unwrap();
         let report = parsed.evaluate(
             &PublicTestnetCriteria::default(),
@@ -6225,6 +6235,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
     fn deployed_public_testnet_preflight_example_rejects_placeholder_domains() {
         let manifest =
             include_str!("../../../deploy/tensorvm/manifests/public-testnet.preflight.example");
+        assert_public_testnet_preflight_manifest_is_pending(manifest);
+    }
+
+    #[test]
+    fn docs_public_testnet_preflight_manifest_rejects_placeholder_domains() {
+        let manifest = include_str!("../../../docs/tensorvm/public-testnet.preflight");
+        assert_public_testnet_preflight_manifest_is_pending(manifest);
+    }
+
+    fn assert_public_testnet_preflight_manifest_is_pending(manifest: &str) {
         let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
         let report = plan.evaluate(ChainParams::default().block_time_seconds);
 

@@ -1685,6 +1685,12 @@ recorded in `deploy/tensorvm/RUNBOOK.md`.
 
 ### 31.4 Public Testnet Evidence CLI
 
+The `docs/tensorvm/public-testnet.preflight` and `docs/tensorvm/public-testnet.evidence` paths must exist
+as checked pending manifests for the commands below. They are parser/readiness fixtures until replaced
+with owned public endpoint IDs, externally reachable HTTPS services, and real records from a 7-day public
+run; they must not be counted as full public-testnet evidence while they contain placeholder hosts or short
+run data.
+
 ```bash
 tvmd public-testnet preflight \
   --manifest docs/tensorvm/public-testnet.preflight

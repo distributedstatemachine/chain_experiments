@@ -12,6 +12,11 @@ preflight report is not a substitute for this post-run evidence bundle.
 A deployment runbook for collecting, validating, and publishing the external-run evidence lives at
 [`../../deploy/tensorvm/RUNBOOK.md`](../../deploy/tensorvm/RUNBOOK.md).
 
+[`public-testnet.evidence`](public-testnet.evidence) is checked in at the spec-referenced validation path
+as a pending manifest. It parses and reports fields for a placeholder short run, but it must remain
+`public_evidence_full_spec=false` until every ID, URI, root, count, and signature is replaced with records
+from a real external 7-day public run.
+
 A checked example manifest lives at
 [`../../deploy/tensorvm/manifests/public-testnet.evidence.example`](../../deploy/tensorvm/manifests/public-testnet.evidence.example).
 It is useful for validating the post-run manifest shape, signature domains, and reporting fields, but it is

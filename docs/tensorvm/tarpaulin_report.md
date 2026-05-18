@@ -18,9 +18,9 @@ Host notes:
 Result:
 
 ```text
-183 tests passed under instrumentation:
+185 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 169 tensor_vm library tests
+- 171 tensor_vm library tests
 
 98.97% workspace line coverage
 7897/7979 workspace lines covered

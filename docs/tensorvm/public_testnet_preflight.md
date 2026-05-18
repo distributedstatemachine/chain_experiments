@@ -70,6 +70,10 @@ The CLI reads a manifest file and reports launch readiness:
 tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight
 ```
 
+[`public-testnet.preflight`](public-testnet.preflight) is checked into docs at the spec-referenced
+path. It intentionally uses reserved placeholder hosts and must report `deployment_plan_ready=false` until
+owned public HTTPS hosts and endpoint IDs replace it.
+
 A checked deployment scaffold is available under [`../../deploy/tensorvm`](../../deploy/tensorvm):
 
 - `systemd/tensorvm.service` runs the explicit `tvmd` binary target with required `--p2p-listen`

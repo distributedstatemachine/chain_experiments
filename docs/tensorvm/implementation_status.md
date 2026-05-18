@@ -115,8 +115,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
   example that parses but does not report launch readiness until special-use placeholder hosts are
-  replaced, and a checked post-run evidence manifest example that validates structurally while still
-  reporting `public_evidence_full_spec=false`
+  replaced, checked spec-path pending manifests at `docs/tensorvm/public-testnet.preflight` and
+  `docs/tensorvm/public-testnet.evidence` that parse from the documented CLI paths while intentionally
+  reporting not-ready/non-full-spec until replaced by owned public infrastructure and real run records, and
+  a checked post-run evidence manifest example that validates structurally while still reporting
+  `public_evidence_full_spec=false`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
   `tvmd public-evidence validate --manifest <path>`, plus
   `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`,
@@ -170,10 +173,10 @@ preflight, public evidence, or deployment-gated work can count:
   LinearTrainingStep state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 183 passing library tests under Tarpaulin:
+The workspace currently has 185 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 169 in `tensor_vm`
+- 171 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
@@ -206,8 +209,9 @@ These spec items require real deployment or non-reference infrastructure and are
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), and
   `deploy/tensorvm/RUNBOOK.md` records the external collection and publication flow, while
-  `deploy/tensorvm/manifests/public-testnet.evidence.example` is checked as a non-full-spec format
-  example, but no complete external bundle is available yet
+  `docs/tensorvm/public-testnet.evidence` and
+  `deploy/tensorvm/manifests/public-testnet.evidence.example` are checked as non-full-spec format
+  examples, but no complete external bundle is available yet
 - externally observed production libp2p operation during a public testnet; current implementation starts
   the mandatory rust-libp2p service runtime locally with bounded Gossipsub payloads, request timeouts,
   concurrent stream limits, idle connection timeouts, Kademlia discovery/address registration, and durable
