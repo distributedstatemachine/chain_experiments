@@ -231,10 +231,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.02% workspace line coverage
-- 8312/8394 workspace lines covered
+- 99.03% workspace line coverage
+- 8337/8419 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7744/7744 `tensor_vm` lines covered
+- 7769/7769 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
