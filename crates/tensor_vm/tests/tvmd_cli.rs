@@ -155,7 +155,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "5",
+            "9",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
@@ -167,6 +167,18 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(health.contains("HTTP/1.1 200 OK"));
     assert!(health.contains("\"status\":\"ok\""));
     assert!(health.contains("\"service\":\"all\""));
+
+    for (path, service) in [
+        ("/rpc/health", "rpc"),
+        ("/explorer/health", "explorer"),
+        ("/faucet/health", "faucet"),
+        ("/telemetry/health", "telemetry"),
+    ] {
+        let response = authenticated_get_request(rpc_port, path);
+        assert!(response.contains("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"status\":\"ok\""));
+        assert!(response.contains(&format!("\"service\":\"{service}\"")));
+    }
 
     let chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert!(chain_head.contains("HTTP/1.1 200 OK"));
@@ -200,7 +212,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=5"));
+    assert!(stdout.contains("served_requests=9"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
