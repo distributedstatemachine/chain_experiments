@@ -531,9 +531,8 @@ impl PublicEvidencePublication {
     }
 
     pub fn is_published_and_independently_checkable(&self) -> bool {
-        let uri = self.public_uri.trim();
         self.bundle_id != [0; 32]
-            && public_evidence_uri_is_external(uri)
+            && public_evidence_uri_is_external(&self.public_uri)
             && self.manifest_signer != [0; 32]
             && self.manifest_signature_count > 0
             && self.manifest_signature_valid()
@@ -4176,6 +4175,30 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let private_https_uri = bundle.evaluate(&criteria, 6);
         assert!(!private_https_uri.has_published_evidence_bundle);
         assert!(!private_https_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication = PublicEvidencePublication::new(
+            bundle.publication.bundle_id,
+            " https://evidence.tensorvm.net/public-evidence.json".to_owned(),
+            bundle.publication.manifest_signer,
+            bundle.publication.manifest_signature_count,
+            bundle.publication.independent_auditor_count,
+        );
+        let leading_space_publication_uri = bundle.evaluate(&criteria, 6);
+        assert!(!leading_space_publication_uri.has_published_evidence_bundle);
+        assert!(!leading_space_publication_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication = PublicEvidencePublication::new(
+            bundle.publication.bundle_id,
+            "https://evidence.tensorvm.net/public-evidence.json ".to_owned(),
+            bundle.publication.manifest_signer,
+            bundle.publication.manifest_signature_count,
+            bundle.publication.independent_auditor_count,
+        );
+        let trailing_space_publication_uri = bundle.evaluate(&criteria, 6);
+        assert!(!trailing_space_publication_uri.has_published_evidence_bundle);
+        assert!(!trailing_space_publication_uri.independently_checkable);
 
         assert!(public_evidence_uri_is_external(
             "https://evidence.tensorvm.net:443/public-evidence.json"
