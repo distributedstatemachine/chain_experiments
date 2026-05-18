@@ -185,8 +185,9 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 3 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands plus a supervised
-`tvmd service init` / `tvmd service peer add` / `tvmd service serve --max-requests 1` lifecycle smoke
-test that starts the mandatory libp2p service path and serves authenticated `/health` once.
+`tvmd service init` / `tvmd service peer add` / bounded `tvmd service serve` lifecycle smoke
+test that starts the mandatory libp2p service path and serves authenticated `/health`, `/chain/head`,
+`/explorer`, `/faucet/page`, and `/telemetry/dashboard` from the process-level service.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

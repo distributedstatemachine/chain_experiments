@@ -49,7 +49,7 @@ fn free_local_port() -> u16 {
         .port()
 }
 
-fn authenticated_health_request(port: u16) -> String {
+fn authenticated_get_request(port: u16, path: &str) -> String {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         match TcpStream::connect(("127.0.0.1", port)) {
@@ -57,10 +57,11 @@ fn authenticated_health_request(port: u16) -> String {
                 stream
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .expect("read timeout must be set");
+                let request = format!(
+                    "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nx-tensorchain-auth: service-token\r\nConnection: close\r\n\r\n"
+                );
                 stream
-                    .write_all(
-                        b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nx-tensorchain-auth: service-token\r\nConnection: close\r\n\r\n",
-                    )
+                    .write_all(request.as_bytes())
                     .expect("health request must write");
                 let mut response = String::new();
                 stream
@@ -113,7 +114,7 @@ fn documented_public_testnet_evidence_command_reports_non_full_spec_status() {
 }
 
 #[test]
-fn service_cli_lifecycle_starts_libp2p_and_serves_health_once() {
+fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let data_dir = unique_test_dir("service-cli-lifecycle");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
@@ -154,7 +155,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_health_once() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "1",
+            "5",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
@@ -162,10 +163,27 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_health_once() {
         .spawn()
         .expect("tvmd service serve must spawn");
 
-    let response = authenticated_health_request(rpc_port);
-    assert!(response.contains("HTTP/1.1 200 OK"));
-    assert!(response.contains("\"status\":\"ok\""));
-    assert!(response.contains("\"service\":\"all\""));
+    let health = authenticated_get_request(rpc_port, "/health");
+    assert!(health.contains("HTTP/1.1 200 OK"));
+    assert!(health.contains("\"status\":\"ok\""));
+    assert!(health.contains("\"service\":\"all\""));
+
+    let chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(chain_head.contains("HTTP/1.1 200 OK"));
+    assert!(chain_head.contains("\"height\""));
+    assert!(chain_head.contains("\"block_count\""));
+
+    let explorer = authenticated_get_request(rpc_port, "/explorer");
+    assert!(explorer.contains("HTTP/1.1 200 OK"));
+    assert!(explorer.contains("TensorVM Explorer"));
+
+    let faucet = authenticated_get_request(rpc_port, "/faucet/page");
+    assert!(faucet.contains("HTTP/1.1 200 OK"));
+    assert!(faucet.contains("TensorVM Faucet"));
+
+    let telemetry = authenticated_get_request(rpc_port, "/telemetry/dashboard");
+    assert!(telemetry.contains("HTTP/1.1 200 OK"));
+    assert!(telemetry.contains("TensorVM Telemetry"));
 
     let output = child.wait_with_output().expect("service process must exit");
     assert!(
@@ -182,7 +200,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_health_once() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=1"));
+    assert!(stdout.contains("served_requests=5"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
