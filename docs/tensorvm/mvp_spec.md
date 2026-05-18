@@ -2360,6 +2360,7 @@ the public testnet runs for 7 consecutive days with independent external operato
 evidence for the 7-day run is published and independently checkable
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
 the evidence includes signed external artifact locators for the raw supporting records behind summary roots
+run-derived block/finality/data-availability/invalid-work summary counts match the signed run counters exactly
 the required Cargo workspace structure is present
 the required verification commands have been executed and their results are documented
 ```

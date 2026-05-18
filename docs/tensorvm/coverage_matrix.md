@@ -57,7 +57,8 @@ and the explicit separation between local evidence and the 7-day public deployme
   for raw supporting records, disjoint miner/validator operator IDs, auditor IDs distinct from the manifest
   signer, operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability
-  counters, non-public IP literal rejection, special-use DNS and single-label DNS rejection, plus
+  counters, exact run-derived supporting-record summary counts, non-public IP literal rejection,
+  special-use DNS and single-label DNS rejection, plus
   malformed HTTPS authority rejection for public endpoints, raw-whitespace rejection for external evidence
   URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, exact service
   URL path matching with query and fragment rejection, no overreported operator-attestation counts,

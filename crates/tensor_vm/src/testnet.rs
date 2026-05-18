@@ -2206,7 +2206,7 @@ impl PublicTestnetEvidenceBundle {
             && valid_auditor_record_count >= self.publication.independent_auditor_count;
         let has_signed_run_window = self.public_run_window_signature_valid();
         let has_block_history = self.run.observed_blocks > 0
-            && self.block_history_records >= self.run.observed_blocks
+            && self.block_history_records == self.run.observed_blocks
             && self.public_record_signature_valid(
                 PublicEvidenceRecordKind::BlockHistory,
                 &self.block_history_root,
@@ -2214,7 +2214,7 @@ impl PublicTestnetEvidenceBundle {
                 &self.block_history_signature,
             );
         let has_finality_history = self.run.observed_blocks > 0
-            && self.finality_history_records >= self.run.observed_blocks
+            && self.finality_history_records == self.run.observed_blocks
             && self.public_record_signature_valid(
                 PublicEvidenceRecordKind::FinalityHistory,
                 &self.finality_history_root,
@@ -2244,7 +2244,7 @@ impl PublicTestnetEvidenceBundle {
                     &self.network_runtime_observation_signature,
                 );
         let has_data_availability_measurements = self.run.checked_receipts > 0
-            && self.data_availability_measurement_records >= self.run.checked_receipts
+            && self.data_availability_measurement_records == self.run.checked_receipts
             && self.public_record_signature_valid(
                 PublicEvidenceRecordKind::DataAvailabilityMeasurements,
                 &self.data_availability_measurement_root,
@@ -2252,7 +2252,7 @@ impl PublicTestnetEvidenceBundle {
                 &self.data_availability_measurement_signature,
             );
         let has_invalid_work_rejection_records = run_evidence.has_invalid_work_rejection_evidence
-            && self.invalid_work_rejection_records >= self.run.invalid_receipts_submitted
+            && self.invalid_work_rejection_records == self.run.invalid_receipts_submitted
             && self.public_record_signature_valid(
                 PublicEvidenceRecordKind::InvalidWorkRejections,
                 &self.invalid_work_rejection_root,
@@ -3268,6 +3268,66 @@ mod tests {
             record_count,
             hex(&signature)
         )
+    }
+
+    fn resign_record_summary_and_artifact(
+        bundle: &mut PublicTestnetEvidenceBundle,
+        kind: PublicEvidenceRecordKind,
+        record_root: Hash,
+        record_count: u64,
+    ) {
+        let bundle_id = bundle.publication.bundle_id;
+        let signer = bundle.publication.manifest_signer;
+        let summary_signature =
+            sign_public_evidence_record(&signer, &bundle_id, kind, &record_root, record_count);
+        match kind {
+            PublicEvidenceRecordKind::BlockHistory => {
+                bundle.block_history_records = record_count;
+                bundle.block_history_root = record_root;
+                bundle.block_history_signature = summary_signature;
+            }
+            PublicEvidenceRecordKind::FinalityHistory => {
+                bundle.finality_history_records = record_count;
+                bundle.finality_history_root = record_root;
+                bundle.finality_history_signature = summary_signature;
+            }
+            PublicEvidenceRecordKind::NetworkRuntimeObservations => {
+                bundle.network_runtime_observation_records = record_count;
+                bundle.network_runtime_observation_root = record_root;
+                bundle.network_runtime_observation_signature = summary_signature;
+            }
+            PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+                bundle.data_availability_measurement_records = record_count;
+                bundle.data_availability_measurement_root = record_root;
+                bundle.data_availability_measurement_signature = summary_signature;
+            }
+            PublicEvidenceRecordKind::InvalidWorkRejections => {
+                bundle.invalid_work_rejection_records = record_count;
+                bundle.invalid_work_rejection_root = record_root;
+                bundle.invalid_work_rejection_signature = summary_signature;
+            }
+            PublicEvidenceRecordKind::RewardSettlements => {
+                bundle.reward_settlement_root = record_root;
+                bundle.reward_settlement_signature = summary_signature;
+            }
+        }
+        if let Some(artifact) = bundle
+            .supporting_artifacts
+            .iter_mut()
+            .find(|artifact| artifact.kind == kind)
+        {
+            artifact.record_root = record_root;
+            artifact.record_count = record_count;
+            let artifact_uri = artifact.artifact_uri.clone();
+            artifact.artifact_signature = sign_public_evidence_artifact(
+                &signer,
+                &bundle_id,
+                kind,
+                &artifact_uri,
+                &record_root,
+                record_count,
+            );
+        }
     }
 
     fn complete_public_evidence_manifest_text() -> String {
@@ -4312,6 +4372,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!missing_block_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        let block_history_root = bundle.block_history_root;
+        let overreported_block_history_count = bundle.run.observed_blocks + 1;
+        resign_record_summary_and_artifact(
+            &mut bundle,
+            PublicEvidenceRecordKind::BlockHistory,
+            block_history_root,
+            overreported_block_history_count,
+        );
+        let overreported_block_history = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_block_history.has_block_history);
+        assert!(overreported_block_history.has_public_supporting_record_artifacts);
+        assert!(!overreported_block_history.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.block_history_signature = [6; 32];
         let tampered_block_history = bundle.evaluate(&criteria, 6);
         assert!(!tampered_block_history.has_block_history);
@@ -4328,6 +4402,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let missing_finality_history = bundle.evaluate(&criteria, 6);
         assert!(!missing_finality_history.has_finality_history);
         assert!(!missing_finality_history.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let finality_history_root = bundle.finality_history_root;
+        let overreported_finality_history_count = bundle.run.observed_blocks + 1;
+        resign_record_summary_and_artifact(
+            &mut bundle,
+            PublicEvidenceRecordKind::FinalityHistory,
+            finality_history_root,
+            overreported_finality_history_count,
+        );
+        let overreported_finality_history = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_finality_history.has_finality_history);
+        assert!(overreported_finality_history.has_public_supporting_record_artifacts);
+        assert!(!overreported_finality_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.finality_history_signature = [5; 32];
@@ -4429,6 +4517,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!missing_data_availability_measurements.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        let data_availability_root = bundle.data_availability_measurement_root;
+        let overreported_data_availability_count = bundle.run.checked_receipts + 1;
+        resign_record_summary_and_artifact(
+            &mut bundle,
+            PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+            data_availability_root,
+            overreported_data_availability_count,
+        );
+        let overreported_data_availability_measurements = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_data_availability_measurements.has_data_availability_measurements);
+        assert!(overreported_data_availability_measurements.has_public_supporting_record_artifacts);
+        assert!(!overreported_data_availability_measurements.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.data_availability_measurement_signature = [4; 32];
         let tampered_data_availability_measurements = bundle.evaluate(&criteria, 6);
         assert!(!tampered_data_availability_measurements.has_data_availability_measurements);
@@ -4445,6 +4547,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let missing_invalid_work_records = bundle.evaluate(&criteria, 6);
         assert!(!missing_invalid_work_records.has_invalid_work_rejection_records);
         assert!(!missing_invalid_work_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let invalid_work_root = bundle.invalid_work_rejection_root;
+        let overreported_invalid_work_count = bundle.run.invalid_receipts_submitted + 1;
+        resign_record_summary_and_artifact(
+            &mut bundle,
+            PublicEvidenceRecordKind::InvalidWorkRejections,
+            invalid_work_root,
+            overreported_invalid_work_count,
+        );
+        let overreported_invalid_work_records = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_invalid_work_records.has_invalid_work_rejection_records);
+        assert!(overreported_invalid_work_records.has_public_supporting_record_artifacts);
+        assert!(!overreported_invalid_work_records.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.reward_settlement_signature = [1; 32];

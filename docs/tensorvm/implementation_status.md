@@ -93,8 +93,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, well-formed whitespace-free
   `ipfs://`/`ar://` content identifiers, exact untrimmed URI/path manifest-field validation, and
-  data-availability measurement records before full-spec evidence can be considered independently
-  checkable
+  exact run-derived block/finality/data-availability/invalid-work summary counts before full-spec evidence
+  can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
