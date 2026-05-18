@@ -1,8 +1,10 @@
 use crate::error::{Result, TvmError};
+#[cfg(feature = "cuda-kernels")]
+use crate::field::Elem;
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepOutput, MatmulJob};
 use crate::tensor::Tensor;
 #[cfg(feature = "cuda-kernels")]
-use crate::vm;
+use crate::types::{Hash, hash_bytes};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BackendKind {
@@ -86,10 +88,12 @@ impl ExecutionBackend for GpuMinerBackend {
             let (x, target) = job.batch_tensors()?;
             let device_index = self.cuda_device_index()?;
             let y = cuda::field_matmul(device_index, &x, weights)?;
-            let dy = y.sub(&target)?;
-            let grad_w = cuda::field_matmul(device_index, &x.transpose()?, &dy)?;
-            let weight_after = weights.sub(&grad_w.scalar_mul(job.lr)?)?;
-            let loss_commitment = vm::mse_loss(&y, &target)?;
+            let dy = cuda::field_sub(device_index, &y, &target)?;
+            let x_t = cuda::field_transpose(device_index, &x)?;
+            let grad_w = cuda::field_matmul(device_index, &x_t, &dy)?;
+            let scaled_grad = cuda::field_scalar_mul(device_index, &grad_w, job.lr)?;
+            let weight_after = cuda::field_sub(device_index, weights, &scaled_grad)?;
+            let loss_commitment = cuda::field_mse_loss(device_index, &y, &target)?;
             Ok(LinearTrainingStepOutput {
                 x,
                 target,
@@ -148,6 +152,34 @@ mod cuda {
             inner: u64,
             cols: u64,
         ) -> i32;
+        fn tensor_vm_cuda_field_sub(
+            device_index: u32,
+            lhs: *const u64,
+            rhs: *const u64,
+            out: *mut u64,
+            len: u64,
+        ) -> i32;
+        fn tensor_vm_cuda_field_scalar_mul(
+            device_index: u32,
+            input: *const u64,
+            out: *mut u64,
+            len: u64,
+            scalar: u64,
+        ) -> i32;
+        fn tensor_vm_cuda_field_transpose(
+            device_index: u32,
+            input: *const u64,
+            out: *mut u64,
+            rows: u64,
+            cols: u64,
+        ) -> i32;
+        fn tensor_vm_cuda_field_squared_error_sum(
+            device_index: u32,
+            lhs: *const u64,
+            rhs: *const u64,
+            out: *mut u64,
+            len: u64,
+        ) -> i32;
     }
 
     pub fn device_count() -> Result<u32> {
@@ -189,6 +221,86 @@ mod cuda {
         Tensor::from_vec(vec![rows, cols], lhs.dtype(), out)
     }
 
+    pub fn field_sub(device_index: u32, lhs: &Tensor, rhs: &Tensor) -> Result<Tensor> {
+        require_same_shape(lhs, rhs)?;
+        let mut out = vec![0; lhs.len()];
+        let code = unsafe {
+            tensor_vm_cuda_field_sub(
+                device_index,
+                lhs.as_slice().as_ptr(),
+                rhs.as_slice().as_ptr(),
+                out.as_mut_ptr(),
+                lhs.len() as u64,
+            )
+        };
+        if code != 0 {
+            return Err(cuda_error(code));
+        }
+        Tensor::from_vec(lhs.shape().to_vec(), lhs.dtype(), out)
+    }
+
+    pub fn field_scalar_mul(device_index: u32, input: &Tensor, scalar: Elem) -> Result<Tensor> {
+        let mut out = vec![0; input.len()];
+        let code = unsafe {
+            tensor_vm_cuda_field_scalar_mul(
+                device_index,
+                input.as_slice().as_ptr(),
+                out.as_mut_ptr(),
+                input.len() as u64,
+                scalar,
+            )
+        };
+        if code != 0 {
+            return Err(cuda_error(code));
+        }
+        Tensor::from_vec(input.shape().to_vec(), input.dtype(), out)
+    }
+
+    pub fn field_transpose(device_index: u32, input: &Tensor) -> Result<Tensor> {
+        let rows = input.rows()?;
+        let cols = input.cols()?;
+        let mut out = vec![0; input.len()];
+        let code = unsafe {
+            tensor_vm_cuda_field_transpose(
+                device_index,
+                input.as_slice().as_ptr(),
+                out.as_mut_ptr(),
+                rows as u64,
+                cols as u64,
+            )
+        };
+        if code != 0 {
+            return Err(cuda_error(code));
+        }
+        Tensor::from_vec(vec![cols, rows], input.dtype(), out)
+    }
+
+    pub fn field_squared_error_sum(device_index: u32, lhs: &Tensor, rhs: &Tensor) -> Result<Elem> {
+        require_same_shape(lhs, rhs)?;
+        let mut out = 0;
+        let code = unsafe {
+            tensor_vm_cuda_field_squared_error_sum(
+                device_index,
+                lhs.as_slice().as_ptr(),
+                rhs.as_slice().as_ptr(),
+                &mut out,
+                lhs.len() as u64,
+            )
+        };
+        if code != 0 {
+            return Err(cuda_error(code));
+        }
+        Ok(out)
+    }
+
+    pub fn field_mse_loss(device_index: u32, y: &Tensor, target: &Tensor) -> Result<Hash> {
+        let sum = field_squared_error_sum(device_index, y, target)?;
+        Ok(hash_bytes(
+            b"tensor-vm-mse-loss-v1",
+            &[&sum.to_le_bytes(), &(y.len() as u64).to_le_bytes()],
+        ))
+    }
+
     trait CudaMatmulShape {
         fn require_rank_for_cuda_matmul(&self) -> Result<()>;
     }
@@ -202,6 +314,17 @@ mod cuda {
                     rank: self.shape().len(),
                 })
             }
+        }
+    }
+
+    fn require_same_shape(lhs: &Tensor, rhs: &Tensor) -> Result<()> {
+        if lhs.shape() == rhs.shape() {
+            Ok(())
+        } else {
+            Err(TvmError::DimensionMismatch {
+                left: lhs.shape().to_vec(),
+                right: rhs.shape().to_vec(),
+            })
         }
     }
 
@@ -316,10 +439,17 @@ mod tests {
         let gpu = GpuMinerBackend::new("cuda:0");
         let cpu_out = cpu.execute_linear_training_step(&job, &weights).unwrap();
         let gpu_out = gpu.execute_linear_training_step(&job, &weights).unwrap();
+        assert_eq!(cpu_out.y.commitment_root(), gpu_out.y.commitment_root());
+        assert_eq!(cpu_out.dy.commitment_root(), gpu_out.dy.commitment_root());
+        assert_eq!(
+            cpu_out.grad_w.commitment_root(),
+            gpu_out.grad_w.commitment_root()
+        );
         assert_eq!(
             cpu_out.weight_after.commitment_root(),
             gpu_out.weight_after.commitment_root()
         );
+        assert_eq!(cpu_out.loss_commitment, gpu_out.loss_commitment);
     }
 
     #[cfg(feature = "cuda-kernels")]
@@ -343,5 +473,37 @@ mod tests {
         let actual = cuda::field_matmul(0, &lhs, &rhs).unwrap();
         assert_eq!(actual.as_slice(), expected.as_slice());
         assert_eq!(actual.commitment_root(), expected.commitment_root());
+    }
+
+    #[cfg(feature = "cuda-kernels")]
+    #[test]
+    fn cuda_kernels_match_canonical_linear_tensor_ops() {
+        let lhs = Tensor::from_vec(
+            vec![2, 3],
+            DType::FieldElement,
+            vec![MODULUS - 1, 0, 5, 11, MODULUS - 3, 9],
+        )
+        .unwrap();
+        let rhs = Tensor::from_vec(
+            vec![2, 3],
+            DType::FieldElement,
+            vec![2, 3, MODULUS - 2, 7, 8, MODULUS - 5],
+        )
+        .unwrap();
+
+        let sub = cuda::field_sub(0, &lhs, &rhs).unwrap();
+        assert_eq!(sub, lhs.sub(&rhs).unwrap());
+
+        let scaled = cuda::field_scalar_mul(0, &lhs, MODULUS + 2).unwrap();
+        assert_eq!(scaled, lhs.scalar_mul(MODULUS + 2).unwrap());
+
+        let transposed = cuda::field_transpose(0, &lhs).unwrap();
+        assert_eq!(transposed, lhs.transpose().unwrap());
+
+        let squared_error_sum = cuda::field_squared_error_sum(0, &lhs, &rhs).unwrap();
+        assert_eq!(squared_error_sum, lhs.squared_error_sum(&rhs).unwrap());
+
+        let loss = cuda::field_mse_loss(0, &lhs, &rhs).unwrap();
+        assert_eq!(loss, crate::vm::mse_loss(&lhs, &rhs).unwrap());
     }
 }

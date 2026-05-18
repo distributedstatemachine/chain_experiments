@@ -68,8 +68,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Optional `cuda-kernels` feature that builds `kernels/cuda/field_matmul.cu` with `nvcc`, routes the
-  `GpuMinerBackend` matmul path and LinearTrainingStep matmul substeps through a native CUDA field-matmul
-  kernel, and checks CUDA outputs against canonical CPU outputs
+  `GpuMinerBackend` matmul path and LinearTrainingStep forward, backward, error, update, transpose, and
+  loss substeps through native CUDA kernels, and checks CUDA outputs against canonical CPU outputs
 - Restartable `NodeStore` data directory that persists chain snapshots, append-only block logs, and the
   durable peer book with fixed-format encoding, checksum validation, parent-link checks, append-only sync,
   full-chain state snapshots for restart, and snapshot/block-log/state mismatch detection
@@ -136,8 +136,9 @@ The current instrumented Tarpaulin line coverage is documented in
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 168 TensorVM tests passed, including
-  `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 169 TensorVM tests passed, including
+  `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
+  `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 
 ## Still Not A Production/Public Testnet
@@ -145,7 +146,8 @@ The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 These spec items require real deployment or non-reference infrastructure and are not complete:
 
 - production GPU-miner packaging and a broader optimized CUDA/C++ kernel suite; the current native kernel
-  coverage is an optional CUDA field-matmul path checked against canonical CPU outputs
+  coverage includes CUDA field-matmul plus linear-step sub/scalar/transpose/squared-error kernels checked
+  against canonical CPU outputs
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
   treating a local test harness as public proof, and now requires a signed wall-clock run window,

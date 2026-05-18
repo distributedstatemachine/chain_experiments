@@ -33,7 +33,8 @@ the portable default feature set:
 
 ```text
 cargo test -p tensor_vm --features cuda-kernels --release
-168 tensor_vm tests passed, including native CUDA field-matmul checks against canonical CPU output
+169 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
+canonical CPU output
 ```
 
 Tarpaulin reports line coverage here. Its branch coverage flag is currently listed as not implemented by the installed tool.
