@@ -1116,8 +1116,8 @@ fn public_evidence_manifest_message(
     )
 }
 
-#[derive(Clone, Copy)]
-enum PublicEvidenceRecordKind {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicEvidenceRecordKind {
     BlockHistory,
     FinalityHistory,
     NetworkRuntimeObservations,
@@ -1148,7 +1148,7 @@ fn public_evidence_record_message(
     )
 }
 
-fn sign_public_evidence_record(
+pub fn sign_public_evidence_record(
     signer: &Address,
     bundle_id: &Hash,
     kind: PublicEvidenceRecordKind,

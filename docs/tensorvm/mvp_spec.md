@@ -1638,11 +1638,21 @@ tvmd public-evidence service-health \
   --last-block 100799 \
   --reachable-count 100800 \
   --signed-health-check-count 100800
+
+tvmd public-evidence record-summary \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-root <network-runtime-root-hex> \
+  --record-count 4
 ```
 
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count.
+The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
+`<record>_signature` manifest lines for block history, finality history, production libp2p network
+observations, or data-availability measurements.
 
 ---
 

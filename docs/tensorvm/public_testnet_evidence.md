@@ -139,6 +139,22 @@ The command rejects local/private service URLs, malformed endpoint IDs, invalid 
 or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
 the evidence manifest.
 
+Operators can also generate signed supporting-record summary lines, including the production libp2p
+network-observation summary required by full-spec evidence:
+
+```bash
+tvmd public-evidence record-summary \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-root <network-runtime-root-hex> \
+  --record-count 4
+```
+
+Supported record kinds are `block-history`, `finality-history`, `network-runtime`, and
+`data-availability`. The command emits the corresponding `<record>_records`, `<record>_root`, and
+`<record>_signature` manifest fields using the same signature domain the validator checks.
+
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
 `public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true
 only when enough signed node evidence and operator identity attestation records are present. The individual

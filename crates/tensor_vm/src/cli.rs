@@ -2,10 +2,11 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
-    PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
-    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
+    PublicEvidenceRecordKind, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
+    PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest, sign_public_evidence_record,
 };
-use crate::types::{Hash, address};
+use crate::types::{Address, Hash, address};
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +49,13 @@ pub enum CliCommand {
         last_seen_block: u64,
         reachable_observation_count: u64,
         signed_health_check_count: u64,
+    },
+    PublicEvidenceRecordSummary {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_root: Hash,
+        record_count: u64,
     },
     PublicTestnetPreflight {
         manifest: String,
@@ -143,6 +151,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             reachable_observation_count: parse_u64(reachable_observation_count)?,
             signed_health_check_count: parse_u64(signed_health_check_count)?,
         }),
+        [
+            "public-evidence",
+            "record-summary",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--record-root",
+            record_root,
+            "--record-count",
+            record_count,
+        ] => Ok(CliCommand::PublicEvidenceRecordSummary {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            record_root: parse_hash_argument(record_root)?,
+            record_count: parse_u64(record_count)?,
+        }),
         ["public-testnet", "preflight", "--manifest", manifest] => {
             Ok(CliCommand::PublicTestnetPreflight {
                 manifest: (*manifest).to_owned(),
@@ -191,6 +219,14 @@ pub fn describe_command(command: &CliCommand) -> String {
             format!(
                 "generate {} service health evidence public_url={public_url} health_path={health_path}",
                 public_service_kind_tag(*kind)
+            )
+        }
+        CliCommand::PublicEvidenceRecordSummary {
+            kind, record_count, ..
+        } => {
+            format!(
+                "generate {} public evidence record summary records={record_count}",
+                public_evidence_record_kind_tag(*kind)
             )
         }
         CliCommand::PublicTestnetPreflight { manifest } => {
@@ -281,6 +317,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             reachable_observation_count: *reachable_observation_count,
             signed_health_check_count: *signed_health_check_count,
         }),
+        CliCommand::PublicEvidenceRecordSummary {
+            kind,
+            bundle_id,
+            manifest_signer,
+            record_root,
+            record_count,
+        } => record_summary_evidence_lines(
+            *kind,
+            *bundle_id,
+            *manifest_signer,
+            *record_root,
+            *record_count,
+        ),
         CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
             Ok(describe_command(command))
         }
@@ -326,6 +375,42 @@ fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>) -> Result<
         evidence.reachable_observation_count,
         evidence.signed_health_check_count,
         hex(&evidence.health_check_signature)
+    ))
+}
+
+fn record_summary_evidence_lines(
+    kind: PublicEvidenceRecordKind,
+    bundle_id: Hash,
+    manifest_signer: Address,
+    record_root: Hash,
+    record_count: u64,
+) -> Result<String> {
+    if bundle_id == [0; 32] {
+        return Err(TvmError::InvalidReceipt("bundle id argument is empty"));
+    }
+    if manifest_signer == [0; 32] {
+        return Err(TvmError::InvalidReceipt(
+            "manifest signer argument is empty",
+        ));
+    }
+    if record_root == [0; 32] {
+        return Err(TvmError::InvalidReceipt("record root argument is empty"));
+    }
+    if record_count == 0 {
+        return Err(TvmError::InvalidReceipt("record count argument is empty"));
+    }
+    let field_prefix = public_evidence_record_field_prefix(kind);
+    let signature = sign_public_evidence_record(
+        &manifest_signer,
+        &bundle_id,
+        kind,
+        &record_root,
+        record_count,
+    );
+    Ok(format!(
+        "{field_prefix}_records={record_count}\n{field_prefix}_root={}\n{field_prefix}_signature={}",
+        hex(&record_root),
+        hex(&signature)
     ))
 }
 
@@ -432,6 +517,36 @@ fn public_service_kind_tag(kind: PublicServiceKind) -> &'static str {
         PublicServiceKind::Explorer => "explorer",
         PublicServiceKind::Faucet => "faucet",
         PublicServiceKind::Telemetry => "telemetry",
+    }
+}
+
+fn parse_public_evidence_record_kind(value: &str) -> Result<PublicEvidenceRecordKind> {
+    match value {
+        "block-history" => Ok(PublicEvidenceRecordKind::BlockHistory),
+        "finality-history" => Ok(PublicEvidenceRecordKind::FinalityHistory),
+        "network-runtime" => Ok(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+        "data-availability" => Ok(PublicEvidenceRecordKind::DataAvailabilityMeasurements),
+        _ => Err(TvmError::InvalidReceipt(
+            "invalid public evidence record kind",
+        )),
+    }
+}
+
+fn public_evidence_record_kind_tag(kind: PublicEvidenceRecordKind) -> &'static str {
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => "block-history",
+        PublicEvidenceRecordKind::FinalityHistory => "finality-history",
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => "network-runtime",
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => "data-availability",
+    }
+}
+
+fn public_evidence_record_field_prefix(kind: PublicEvidenceRecordKind) -> &'static str {
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => "block_history",
+        PublicEvidenceRecordKind::FinalityHistory => "finality_history",
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => "network_runtime_observation",
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => "data_availability_measurement",
     }
 }
 
@@ -933,6 +1048,33 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 signed_health_check_count: 10,
             }
         );
+        let bundle_id = manifest_hash(b"public-evidence-bundle");
+        let manifest_signer = manifest_address(b"public-evidence-publisher");
+        let record_root = manifest_hash(b"network-runtime-root");
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--record-root",
+                &record_root,
+                "--record-count",
+                "4",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            }
+        );
         assert_eq!(
             parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
             CliCommand::ServiceInit {
@@ -1050,6 +1192,37 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             }),
             "generate rpc service health evidence public_url=https://rpc.tensorvm.example/health health_path=/health"
         );
+
+        let record_kinds = [
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                "generate block-history public evidence record summary records=10",
+            ),
+            (
+                PublicEvidenceRecordKind::FinalityHistory,
+                "generate finality-history public evidence record summary records=10",
+            ),
+            (
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                "generate network-runtime public evidence record summary records=10",
+            ),
+            (
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                "generate data-availability public evidence record summary records=10",
+            ),
+        ];
+        for (kind, expected) in record_kinds {
+            assert_eq!(
+                describe_command(&CliCommand::PublicEvidenceRecordSummary {
+                    kind,
+                    bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                    manifest_signer: address(b"public-evidence-publisher"),
+                    record_root: hash_bytes(b"test", &[b"record-root"]),
+                    record_count: 10,
+                }),
+                expected
+            );
+        }
     }
 
     #[test]
@@ -1168,6 +1341,54 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             assert!(line.contains(public_service_url(kind)));
             assert!(line.ends_with(&manifest_service_signature(kind, label)));
         }
+
+        let record_cases: [(PublicEvidenceRecordKind, &[u8], u64, &str, String); 4] = [
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                b"block-history-root",
+                10,
+                "block_history",
+                hex(&manifest_bundle().block_history_signature),
+            ),
+            (
+                PublicEvidenceRecordKind::FinalityHistory,
+                b"finality-history-root",
+                10,
+                "finality_history",
+                hex(&manifest_bundle().finality_history_signature),
+            ),
+            (
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                b"network-runtime-root",
+                4,
+                "network_runtime_observation",
+                hex(&manifest_bundle().network_runtime_observation_signature),
+            ),
+            (
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                b"data-availability-root",
+                20,
+                "data_availability_measurement",
+                hex(&manifest_bundle().data_availability_measurement_signature),
+            ),
+        ];
+        for (kind, root_label, count, field_prefix, expected_signature) in record_cases {
+            let root = manifest_hash(root_label);
+            let line = execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[root_label]),
+                record_count: count,
+            })
+            .unwrap();
+            assert_eq!(
+                line,
+                format!(
+                    "{field_prefix}_records={count}\n{field_prefix}_root={root}\n{field_prefix}_signature={expected_signature}"
+                )
+            );
+        }
     }
 
     #[test]
@@ -1248,6 +1469,23 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             .is_err()
         );
         assert!(parse_public_service_kind("archive").is_err());
+        assert_eq!(
+            parse_public_evidence_record_kind("block-history").unwrap(),
+            PublicEvidenceRecordKind::BlockHistory
+        );
+        assert_eq!(
+            parse_public_evidence_record_kind("finality-history").unwrap(),
+            PublicEvidenceRecordKind::FinalityHistory
+        );
+        assert_eq!(
+            parse_public_evidence_record_kind("network-runtime").unwrap(),
+            PublicEvidenceRecordKind::NetworkRuntimeObservations
+        );
+        assert_eq!(
+            parse_public_evidence_record_kind("data-availability").unwrap(),
+            PublicEvidenceRecordKind::DataAvailabilityMeasurements
+        );
+        assert!(parse_public_evidence_record_kind("operator-identity").is_err());
         assert!(parse_hash_argument("12").is_err());
         assert!(parse_hash_argument(&"g".repeat(64)).is_err());
         assert!(
@@ -1312,6 +1550,71 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 last_seen_block: 9,
                 reachable_observation_count: 0,
                 signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary",
+                "--kind",
+                "operator-identity",
+                "--bundle-id",
+                &manifest_hash(b"public-evidence-bundle"),
+                "--manifest-signer",
+                &manifest_address(b"public-evidence-publisher"),
+                "--record-root",
+                &manifest_hash(b"network-runtime-root"),
+                "--record-count",
+                "4",
+            ])
+            .is_err()
+        );
+        let valid_record_summary = CliCommand::PublicEvidenceRecordSummary {
+            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            manifest_signer: address(b"public-evidence-publisher"),
+            record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+            record_count: 4,
+        };
+        assert!(execute_reference_cli_command(&valid_record_summary).is_ok());
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: [0; 32],
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: [0; 32],
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: [0; 32],
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 0,
             })
             .is_err()
         );

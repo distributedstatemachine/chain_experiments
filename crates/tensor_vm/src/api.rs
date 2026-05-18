@@ -90,6 +90,7 @@ pub const SERVICE_CLI_COMMANDS: &[&str] = &[
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence validate --manifest <path>",
     "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
+    "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
 ];
 
 pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] =
@@ -138,6 +139,11 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("service-health"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("record-summary"))
         );
         assert!(
             PUBLIC_TESTNET_CLI_COMMANDS
