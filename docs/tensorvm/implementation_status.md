@@ -189,7 +189,8 @@ tests for the documented spec-path pending manifest commands plus a supervised
 test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
-`/telemetry/dashboard` from the process-level service.
+`/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
+`/attestation` submissions with reference payloads.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

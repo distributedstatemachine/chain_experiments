@@ -49,7 +49,7 @@ fn free_local_port() -> u16 {
         .port()
 }
 
-fn authenticated_get_request(port: u16, path: &str) -> String {
+fn authenticated_request(port: u16, method: &str, path: &str, body: &str) -> String {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         match TcpStream::connect(("127.0.0.1", port)) {
@@ -58,24 +58,29 @@ fn authenticated_get_request(port: u16, path: &str) -> String {
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .expect("read timeout must be set");
                 let request = format!(
-                    "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nx-tensorchain-auth: service-token\r\nConnection: close\r\n\r\n"
+                    "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nx-tensorchain-auth: service-token\r\ncontent-length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
                 );
                 stream
                     .write_all(request.as_bytes())
-                    .expect("health request must write");
+                    .expect("service request must write");
                 let mut response = String::new();
                 stream
                     .read_to_string(&mut response)
-                    .expect("health response must read");
+                    .expect("service response must read");
                 return response;
             }
             Err(error) if Instant::now() < deadline => {
                 let _ = error;
                 std::thread::sleep(Duration::from_millis(50));
             }
-            Err(error) => panic!("service did not accept health request: {error}"),
+            Err(error) => panic!("service did not accept request: {error}"),
         }
     }
+}
+
+fn authenticated_get_request(port: u16, path: &str) -> String {
+    authenticated_request(port, "GET", path, "")
 }
 
 #[test]
@@ -155,7 +160,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "12",
+            "15",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
@@ -197,6 +202,24 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(genesis_block.contains("HTTP/1.1 404 Not Found"));
     assert!(genesis_block.contains("block not found"));
 
+    let miner_address = "11".repeat(32);
+    let tx = authenticated_request(
+        rpc_port,
+        "POST",
+        "/tx",
+        &format!("register_miner {miner_address}"),
+    );
+    assert!(tx.contains("HTTP/1.1 202 Accepted"));
+    assert!(tx.contains("\"accepted\":true"));
+
+    let receipt = authenticated_request(rpc_port, "POST", "/receipt", &"22".repeat(32));
+    assert!(receipt.contains("HTTP/1.1 202 Accepted"));
+    assert!(receipt.contains("\"accepted\":true"));
+
+    let attestation = authenticated_request(rpc_port, "POST", "/attestation", &"33".repeat(32));
+    assert!(attestation.contains("HTTP/1.1 202 Accepted"));
+    assert!(attestation.contains("\"accepted\":true"));
+
     let explorer = authenticated_get_request(rpc_port, "/explorer");
     assert!(explorer.contains("HTTP/1.1 200 OK"));
     assert!(explorer.contains("TensorVM Explorer"));
@@ -224,7 +247,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=12"));
+    assert!(stdout.contains("served_requests=15"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
