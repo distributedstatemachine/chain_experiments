@@ -196,9 +196,10 @@ unauthenticated request rejection. The same process-level smoke test now capture
 `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard` response bodies and verifies that
 `tvmd public-evidence service-content-from-bytes` and
 `tvmd public-evidence service-content-from-file` emit identical signed service-content evidence for the
-captured bodies. It also derives the local libp2p peer ID and protocol counts from service stdout and
-verifies that `tvmd public-evidence network-observation` rejects the loopback listen address instead of
-counting local service startup as public network evidence.
+captured bodies, while generating signed `tvmd public-evidence service-health` lines from reached
+RPC/explorer/faucet/telemetry health responses. It also derives the local libp2p peer ID and protocol
+counts from service stdout and verifies that `tvmd public-evidence network-observation` rejects the
+loopback listen address instead of counting local service startup as public network evidence.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

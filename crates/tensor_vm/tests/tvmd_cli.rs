@@ -137,6 +137,40 @@ fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
         .expect("expected service stdout field")
 }
 
+fn assert_service_health_evidence_from_response(
+    kind: &str,
+    endpoint_id: &str,
+    public_url: &str,
+    response: &str,
+) {
+    assert!(response.contains("HTTP/1.1 200 OK"));
+    assert!(response.contains("\"status\":\"ok\""));
+    assert!(response.contains(&format!("\"service\":\"{kind}\"")));
+    let health = run_tvmd(&[
+        "public-evidence",
+        "service-health",
+        "--kind",
+        kind,
+        "--endpoint-id",
+        endpoint_id,
+        "--public-url",
+        public_url,
+        "--health-path",
+        "/health",
+        "--first-block",
+        "0",
+        "--last-block",
+        "9",
+        "--reachable-count",
+        "10",
+        "--signed-health-check-count",
+        "10",
+    ]);
+    assert!(health.starts_with(&format!("service={kind},")));
+    assert!(health.contains(endpoint_id));
+    assert!(health.contains(&format!("{public_url},/health,0,9,10,10")));
+}
+
 fn assert_service_content_evidence_from_response(
     data_dir: &Path,
     kind: &str,
@@ -289,16 +323,42 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(health.contains("\"status\":\"ok\""));
     assert!(health.contains("\"service\":\"all\""));
 
-    for (path, service) in [
-        ("/rpc/health", "rpc"),
-        ("/explorer/health", "explorer"),
-        ("/faucet/health", "faucet"),
-        ("/telemetry/health", "telemetry"),
+    for (path, service, endpoint_id, public_url) in [
+        (
+            "/rpc/health",
+            "rpc",
+            "55",
+            "https://rpc.tensorvm.net/health",
+        ),
+        (
+            "/explorer/health",
+            "explorer",
+            "66",
+            "https://explorer.tensorvm.net/health",
+        ),
+        (
+            "/faucet/health",
+            "faucet",
+            "77",
+            "https://faucet.tensorvm.net/health",
+        ),
+        (
+            "/telemetry/health",
+            "telemetry",
+            "88",
+            "https://telemetry.tensorvm.net/health",
+        ),
     ] {
         let response = authenticated_get_request(rpc_port, path);
         assert!(response.contains("HTTP/1.1 200 OK"));
         assert!(response.contains("\"status\":\"ok\""));
         assert!(response.contains(&format!("\"service\":\"{service}\"")));
+        assert_service_health_evidence_from_response(
+            service,
+            &endpoint_id.repeat(32),
+            public_url,
+            &response,
+        );
     }
 
     let chain_head = authenticated_get_request(rpc_port, "/chain/head");
