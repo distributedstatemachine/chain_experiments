@@ -1725,6 +1725,96 @@ any remaining uncovered lines must be outside TensorVM or explicitly documented
 branch coverage should be reported when the installed coverage tool supports it
 ```
 
+### 32.1 Autonomous Agent Completion Contract
+
+This spec is intended to be executable by an autonomous coding agent. The agent must treat the document as
+a completion contract, not as background reading. It must continue implementation, verification, and
+documentation until every local and deployment-gated acceptance item below is either complete with evidence
+or explicitly marked blocked by missing external infrastructure.
+
+Codex goal command from the repository root:
+
+```bash
+codex exec -C . --sandbox workspace-write --ask-for-approval on-request \
+  "Goal: fully complete docs/tensorvm/mvp_spec.md for TensorVM (TVM). Implement every incomplete local reference item in crates/tensor_vm, keep tensor_vm self-contained and independent of pearl_chain, update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and docs/tensorvm/tarpaulin_report.md, run cargo fmt --check --all, cargo test --workspace --release, cargo clippy --workspace --all-targets -- -D warnings, and cargo tarpaulin from the workspace root, and do not declare full-spec completion unless real CUDA/C++ kernels, production libp2p runtime, deployed RPC/explorer/faucet/telemetry services, and independently checkable 7-day public-testnet evidence are present and documented."
+```
+
+If the local wrapper is named `docex` instead of `codex`, use the same command with only the binary name
+changed.
+
+Autonomous agent operating rules:
+
+```text
+read this spec, docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
+docs/tensorvm/tarpaulin_report.md before editing code
+preserve the Cargo workspace structure and keep each chain design in its own crate
+do not make crates/tensor_vm depend on crates/pearl_chain
+prefer deterministic Rust reference implementations before optimized kernels
+add tests for every new consensus-critical branch
+update the coverage matrix when acceptance criteria move from incomplete to complete
+update the implementation status whenever the local/full-spec boundary changes
+update the Tarpaulin report after every coverage-changing implementation pass
+leave unrelated docs, papers, and Pearl experiments intact
+```
+
+The agent should execute this loop until the contract is satisfied:
+
+```text
+1. compare code and docs against Sections 32, 33, and 35
+2. list missing local-reference items and missing deployment-gated items
+3. implement one coherent missing local-reference slice
+4. add or update focused tests for that slice
+5. run cargo fmt --check --all
+6. run cargo test --workspace --release
+7. run cargo clippy --workspace --all-targets -- -D warnings
+8. run cargo tarpaulin when line coverage or test count changes
+9. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
+   docs/tensorvm/tarpaulin_report.md
+10. repeat until no local-reference gaps remain
+11. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
+    available
+```
+
+Local reference completion requires:
+
+```text
+all modules listed in the recommended internal module structure exist or have documented replacements
+all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing tests
+Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
+not yet complete
+crates/tensor_vm has no dependency on crates/pearl_chain
+cargo tree -p tensor_vm shows tensor_vm without pearl_chain beneath it
+cargo fmt --check --all passes
+cargo test --workspace --release passes
+cargo clippy --workspace --all-targets -- -D warnings passes
+cargo tarpaulin passes
+crates/tensor_vm/src has 100% line coverage or every uncovered TensorVM line is justified in
+docs/tensorvm/tarpaulin_report.md
+```
+
+Full-spec completion requires all local reference completion items plus externally verifiable deployment
+evidence:
+
+```text
+real CUDA/C++ kernels exist for any claimed GPU mining path and are checked against canonical CPU outputs
+production libp2p runtime is used for node discovery, gossip, and request/response propagation
+RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
+a public testnet runs for 7 consecutive days with independent external miner and validator operators
+the evidence bundle includes signed node heartbeats, block/finality history, operator identities or
+attestations, data-availability measurements, invalid-work rejection evidence, and reward-settlement records
+the evidence bundle is stored or linked from docs/tensorvm/implementation_status.md
+```
+
+The agent must not report "fully complete" if any of these are missing:
+
+```text
+CUDA/C++ kernels are still represented only by a deterministic Rust shim
+libp2p is still represented only by local simulation or stdlib socket tests
+browser-facing services are still local-only handlers or static HTML responses
+the 7-day public testnet evidence has not actually happened
+the verification commands were not executed from the workspace root after the final change
+```
+
 ---
 
 ## 33. Development Milestones
