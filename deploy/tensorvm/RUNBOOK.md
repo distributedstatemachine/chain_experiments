@@ -54,6 +54,7 @@ tvmd public-evidence run-window ...
 tvmd public-evidence node-heartbeat ...
 tvmd public-evidence operator-attestation ...
 tvmd public-evidence service-health ...
+tvmd public-evidence service-content ...
 tvmd public-evidence network-observation ...
 tvmd public-evidence record-summary ...
 tvmd public-evidence record-artifact ...
@@ -71,6 +72,8 @@ artifact. Preserve raw supporting records for:
 - invalid-work submissions and rejections
 - reward-settlement records
 - public service health observations for RPC, explorer, faucet, and telemetry
+- public service content observations for `/chain/head`, `/explorer`, `/faucet/page`, and
+  `/telemetry/dashboard`
 
 ## Daily Checks
 
@@ -79,6 +82,7 @@ final summaries must cover the full observed block range and the full wall-clock
 
 - node heartbeats for every active miner and validator
 - service-health records for every public service
+- service-content records for every public service
 - libp2p network-observation records from independent observers
 - finalized block count and finality rate
 - tensor receipt availability sample count and available count
@@ -86,7 +90,7 @@ final summaries must cover the full observed block range and the full wall-clock
 - reward settlements paid from verified TensorWork
 
 Any outage or operator replacement must be reflected in the final evidence bundle. Do not backfill
-operator identities or service-health records after the fact.
+operator identities, service-health records, or service-content records after the fact.
 
 ## Post-Run Validation
 
@@ -105,6 +109,7 @@ public_evidence_full_spec=true
 public_criterion=true
 independently_checkable=true
 production_libp2p_runtime=true
+deployed_public_service_content=true
 deployed_public_services=true
 required_miners=true
 required_validators=true
@@ -129,6 +134,7 @@ validator. The publication must include:
 - independent auditor records and audit artifacts
 - operator identity artifacts
 - public service health artifacts
+- public service content artifacts and content-root observations
 - libp2p network-observation artifacts
 
 After validation returns `public_evidence_full_spec=true`, link the published bundle from

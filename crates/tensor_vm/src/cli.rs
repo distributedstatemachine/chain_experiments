@@ -4,9 +4,10 @@ use crate::hash::hex;
 use crate::testnet::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
     PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
-    PublicOperatorIdentityAttestation, PublicServiceEndpoint, PublicServiceEvidence,
-    PublicServiceKind, PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
-    parse_public_testnet_preflight_manifest, sign_public_evidence_record, sign_public_run_window,
+    PublicOperatorIdentityAttestation, PublicServiceContentEvidence, PublicServiceEndpoint,
+    PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
+    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
+    sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
@@ -55,6 +56,15 @@ pub enum CliCommand {
         last_seen_block: u64,
         reachable_observation_count: u64,
         signed_health_check_count: u64,
+    },
+    PublicEvidenceServiceContent {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        content_root: Hash,
+        observed_at_unix_seconds: u64,
+        min_content_bytes: u64,
     },
     PublicEvidenceRecordSummary {
         kind: PublicEvidenceRecordKind,
@@ -222,6 +232,32 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             last_seen_block: parse_u64(last_seen_block)?,
             reachable_observation_count: parse_u64(reachable_observation_count)?,
             signed_health_check_count: parse_u64(signed_health_check_count)?,
+        }),
+        [
+            "public-evidence",
+            "service-content",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            endpoint_id,
+            "--public-url",
+            public_url,
+            "--content-path",
+            content_path,
+            "--content-root",
+            content_root,
+            "--observed-at",
+            observed_at,
+            "--min-content-bytes",
+            min_content_bytes,
+        ] => Ok(CliCommand::PublicEvidenceServiceContent {
+            kind: parse_public_service_kind(kind)?,
+            endpoint_id: parse_hash_argument(endpoint_id)?,
+            public_url: (*public_url).to_owned(),
+            content_path: (*content_path).to_owned(),
+            content_root: parse_hash_argument(content_root)?,
+            observed_at_unix_seconds: parse_u64(observed_at)?,
+            min_content_bytes: parse_u64(min_content_bytes)?,
         }),
         [
             "public-evidence",
@@ -475,6 +511,17 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_service_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceServiceContent {
+            kind,
+            public_url,
+            content_path,
+            ..
+        } => {
+            format!(
+                "generate {} service content evidence public_url={public_url} content_path={content_path}",
+                public_service_kind_tag(*kind)
+            )
+        }
         CliCommand::PublicEvidenceRecordSummary {
             kind, record_count, ..
         } => {
@@ -641,6 +688,23 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             reachable_observation_count: *reachable_observation_count,
             signed_health_check_count: *signed_health_check_count,
         }),
+        CliCommand::PublicEvidenceServiceContent {
+            kind,
+            endpoint_id,
+            public_url,
+            content_path,
+            content_root,
+            observed_at_unix_seconds,
+            min_content_bytes,
+        } => service_content_evidence_line(
+            *kind,
+            *endpoint_id,
+            public_url,
+            content_path,
+            *content_root,
+            *observed_at_unix_seconds,
+            *min_content_bytes,
+        ),
         CliCommand::PublicEvidenceRecordSummary {
             kind,
             bundle_id,
@@ -821,6 +885,40 @@ fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>) -> Result<
         evidence.reachable_observation_count,
         evidence.signed_health_check_count,
         hex(&evidence.health_check_signature)
+    ))
+}
+
+fn service_content_evidence_line(
+    kind: PublicServiceKind,
+    endpoint_id: Hash,
+    public_url: &str,
+    content_path: &str,
+    content_root: Hash,
+    observed_at_unix_seconds: u64,
+    min_content_bytes: u64,
+) -> Result<String> {
+    let evidence = PublicServiceContentEvidence::new(
+        kind,
+        endpoint_id,
+        public_url,
+        content_path,
+        content_root,
+        observed_at_unix_seconds,
+        min_content_bytes,
+    );
+    if !evidence.has_external_content_proof() {
+        return Err(TvmError::InvalidReceipt("invalid service content evidence"));
+    }
+    Ok(format!(
+        "service_content={},{},{},{},{},{},{},{}",
+        public_service_kind_tag(kind),
+        hex(&evidence.endpoint_id),
+        evidence.public_url,
+        evidence.content_path,
+        hex(&evidence.content_root),
+        evidence.observed_at_unix_seconds,
+        evidence.min_content_bytes,
+        hex(&evidence.content_signature)
     ))
 }
 
@@ -1249,7 +1347,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nsigned_invalid_work_rejection_records={}\nsigned_reward_settlement_records={}\nsupporting_record_artifacts={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nsigned_invalid_work_rejection_records={}\nsigned_reward_settlement_records={}\nsupporting_record_artifacts={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_service_content={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
@@ -1292,6 +1390,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         report.run_evidence.has_deployed_explorer_service,
         report.run_evidence.has_deployed_faucet_service,
         report.run_evidence.has_deployed_telemetry_service,
+        report.run_evidence.has_deployed_public_service_content,
         report.run_evidence.has_deployed_public_services,
     ))
 }
@@ -1500,8 +1599,8 @@ mod tests {
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
         PublicEvidencePublication, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
         PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
-        PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
-        PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
+        PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence,
+        PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
     };
     use crate::types::{address, hash_bytes};
 
@@ -1573,6 +1672,56 @@ mod tests {
             10,
         );
         hex(&service.health_check_signature)
+    }
+
+    fn public_service_content_url(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/chain/head",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/explorer",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/faucet/page",
+            PublicServiceKind::Telemetry => {
+                "https://telemetry.tensorvm.example/telemetry/dashboard"
+            }
+        }
+    }
+
+    fn public_service_content_path(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "/chain/head",
+            PublicServiceKind::Explorer => "/explorer",
+            PublicServiceKind::Faucet => "/faucet/page",
+            PublicServiceKind::Telemetry => "/telemetry/dashboard",
+        }
+    }
+
+    fn public_service_content(
+        kind: PublicServiceKind,
+        label: &[u8],
+    ) -> PublicServiceContentEvidence {
+        PublicServiceContentEvidence::new(
+            kind,
+            hash_bytes(b"test", &[label]),
+            public_service_content_url(kind),
+            public_service_content_path(kind),
+            hash_bytes(b"test", &[label, b"content-root"]),
+            1_700_000_000,
+            64,
+        )
+    }
+
+    fn manifest_service_content_line(kind: PublicServiceKind, label: &[u8]) -> String {
+        let content = public_service_content(kind, label);
+        format!(
+            "service_content={},{},{},{},{},{},{},{}",
+            public_service_kind_tag(kind),
+            hex(&content.endpoint_id),
+            content.public_url,
+            content.content_path,
+            hex(&content.content_root),
+            content.observed_at_unix_seconds,
+            content.min_content_bytes,
+            hex(&content.content_signature)
+        )
     }
 
     fn manifest_publication_signature() -> String {
@@ -1728,6 +1877,12 @@ mod tests {
                         10,
                     ),
                 ],
+                service_content: vec![
+                    public_service_content(PublicServiceKind::Rpc, b"rpc-service"),
+                    public_service_content(PublicServiceKind::Explorer, b"explorer-service"),
+                    public_service_content(PublicServiceKind::Faucet, b"faucet-service"),
+                    public_service_content(PublicServiceKind::Telemetry, b"telemetry-service"),
+                ],
                 run_started_at_unix_seconds: 1_700_000_000,
                 run_ended_at_unix_seconds: 1_700_000_060,
                 observed_blocks: 10,
@@ -1819,6 +1974,10 @@ service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
 service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
 service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
 service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
+{}
+{}
+{}
+{}
 ",
             manifest_hash(b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
@@ -1906,6 +2065,10 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_service_signature(PublicServiceKind::Faucet, b"faucet-service"),
             manifest_hash(b"telemetry-service"),
             manifest_service_signature(PublicServiceKind::Telemetry, b"telemetry-service"),
+            manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service"),
+            manifest_service_content_line(PublicServiceKind::Explorer, b"explorer-service"),
+            manifest_service_content_line(PublicServiceKind::Faucet, b"faucet-service"),
+            manifest_service_content_line(PublicServiceKind::Telemetry, b"telemetry-service"),
         )
     }
 
@@ -2175,6 +2338,37 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 signed_health_check_count: 10,
             }
         );
+        let content_root = manifest_hash(b"rpc-service-content");
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "service-content",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.example/chain/head",
+                "--content-path",
+                "/chain/head",
+                "--content-root",
+                &content_root,
+                "--observed-at",
+                "1700000000",
+                "--min-content-bytes",
+                "64",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service-content"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            }
+        );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
             parse_cli_parts(&[
@@ -2419,6 +2613,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 signed_health_check_count: 10,
             }),
             "generate rpc service health evidence public_url=https://rpc.tensorvm.example/health health_path=/health"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Explorer,
+                endpoint_id: hash_bytes(b"test", &[b"explorer-service"]),
+                public_url: "https://explorer.tensorvm.example/explorer".to_owned(),
+                content_path: "/explorer".to_owned(),
+                content_root: hash_bytes(b"test", &[b"explorer-service-content"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            }),
+            "generate explorer service content evidence public_url=https://explorer.tensorvm.example/explorer content_path=/explorer"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidencePublication {
@@ -2829,6 +3035,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             assert!(line.contains(public_service_url(kind)));
             assert!(line.ends_with(&manifest_service_signature(kind, label)));
         }
+
+        let service_content =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
+                content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .unwrap();
+        assert!(service_content.starts_with("service_content=rpc,"));
+        assert!(service_content.contains("https://rpc.tensorvm.example/chain/head,/chain/head"));
+        assert_eq!(
+            service_content,
+            manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service")
+        );
 
         let peer_id = PeerId::random().to_string();
         let network_observation =
@@ -3330,6 +3554,54 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             .is_err()
         );
         assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://localhost/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                content_path: "chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: [0; 32],
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 0,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 public_uri: "http://127.0.0.1/public-evidence.json".to_owned(),
@@ -3805,6 +4077,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("deployed_explorer_service=true"));
         assert!(report.contains("deployed_faucet_service=true"));
         assert!(report.contains("deployed_telemetry_service=true"));
+        assert!(report.contains("deployed_public_service_content=true"));
         assert!(report.contains("deployed_public_services=true"));
 
         let insufficient_operator_records = evidence_manifest().replace(
@@ -3837,6 +4110,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             validate_public_evidence_manifest(&missing_artifacts).unwrap();
         assert!(missing_artifacts_report.contains("supporting_record_artifacts=false"));
         assert!(missing_artifacts_report.contains("independently_checkable=false"));
+
+        let missing_service_content = evidence_manifest()
+            .lines()
+            .filter(|line| !line.starts_with("service_content="))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let missing_service_content_report =
+            validate_public_evidence_manifest(&missing_service_content).unwrap();
+        assert!(missing_service_content_report.contains("deployed_public_service_content=false"));
+        assert!(missing_service_content_report.contains("deployed_public_services=false"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }

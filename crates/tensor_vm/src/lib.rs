@@ -81,11 +81,12 @@ pub use tensor_server::TensorServer;
 pub use testnet::{
     LocalTestnet, PublicDeploymentServicePlan, PublicEvidenceAuditorRecord,
     PublicEvidencePublication, PublicEvidenceSupportingArtifact, PublicNetworkRuntimeEvidence,
-    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
-    PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria, PublicTestnetEvidence,
-    PublicTestnetEvidenceBundle, PublicTestnetEvidenceBundleReport, PublicTestnetPreflightPlan,
-    PublicTestnetPreflightReport, PublicTestnetRunEvidence, TestnetConfig,
-    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
+    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
+    PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
+    PublicTestnetCriteria, PublicTestnetEvidence, PublicTestnetEvidenceBundle,
+    PublicTestnetEvidenceBundleReport, PublicTestnetPreflightPlan, PublicTestnetPreflightReport,
+    PublicTestnetRunEvidence, TestnetConfig, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest,
 };
 pub use txpool::TxPool;
 pub use types::{Address, Hash, Signature};

@@ -200,6 +200,7 @@ pub struct PublicTestnetEvidence {
     pub has_deployed_explorer_service: bool,
     pub has_deployed_faucet_service: bool,
     pub has_deployed_telemetry_service: bool,
+    pub has_deployed_public_service_content: bool,
     pub has_deployed_public_services: bool,
     pub has_required_miners: bool,
     pub has_required_validators: bool,
@@ -360,6 +361,79 @@ impl PublicServiceEvidence {
             public_url: self.public_url.clone(),
             health_path: self.health_path.clone(),
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicServiceContentEvidence {
+    pub kind: PublicServiceKind,
+    pub endpoint_id: Hash,
+    pub public_url: String,
+    pub content_path: String,
+    pub content_root: Hash,
+    pub observed_at_unix_seconds: u64,
+    pub min_content_bytes: u64,
+    pub content_signature: Signature,
+}
+
+impl PublicServiceContentEvidence {
+    pub fn new(
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: impl Into<String>,
+        content_path: impl Into<String>,
+        content_root: Hash,
+        observed_at_unix_seconds: u64,
+        min_content_bytes: u64,
+    ) -> Self {
+        let public_url = public_url.into();
+        let content_path = content_path.into();
+        let message = public_service_content_message(
+            kind,
+            &endpoint_id,
+            &public_url,
+            &content_path,
+            &content_root,
+            observed_at_unix_seconds,
+            min_content_bytes,
+        );
+        Self {
+            kind,
+            endpoint_id,
+            public_url,
+            content_path,
+            content_root,
+            observed_at_unix_seconds,
+            min_content_bytes,
+            content_signature: sign(&endpoint_id, &message),
+        }
+    }
+
+    pub fn content_signature_valid(&self) -> bool {
+        verify_signature(
+            &self.endpoint_id,
+            &public_service_content_message(
+                self.kind,
+                &self.endpoint_id,
+                &self.public_url,
+                &self.content_path,
+                &self.content_root,
+                self.observed_at_unix_seconds,
+                self.min_content_bytes,
+            ),
+            &self.content_signature,
+        )
+    }
+
+    pub fn has_external_content_proof(&self) -> bool {
+        self.endpoint_id != [0; 32]
+            && self.content_root != [0; 32]
+            && self.observed_at_unix_seconds > 0
+            && self.min_content_bytes > 0
+            && public_https_host(&self.public_url).is_some_and(public_host_is_external)
+            && self.content_path.starts_with('/')
+            && self.content_path.len() > 1
+            && self.content_signature_valid()
     }
 }
 
@@ -741,6 +815,7 @@ pub struct PublicTestnetRunEvidence {
     pub nodes: Vec<PublicNodeEvidence>,
     pub network_runtime: PublicNetworkRuntimeEvidence,
     pub services: Vec<PublicServiceEvidence>,
+    pub service_content: Vec<PublicServiceContentEvidence>,
     pub run_started_at_unix_seconds: u64,
     pub run_ended_at_unix_seconds: u64,
     pub observed_blocks: u64,
@@ -854,6 +929,7 @@ struct PublicEvidenceManifestBuilder {
     dos_controls_enabled: Option<bool>,
     nodes: Vec<PublicNodeEvidence>,
     services: Vec<PublicServiceEvidence>,
+    service_content: Vec<PublicServiceContentEvidence>,
     observed_blocks: Option<u64>,
     finalized_blocks: Option<u64>,
     checked_receipts: Option<u64>,
@@ -1060,6 +1136,9 @@ impl PublicEvidenceManifestBuilder {
             "dos_controls_enabled" => self.dos_controls_enabled = Some(parse_manifest_bool(value)?),
             "node" => self.nodes.push(parse_manifest_node(value)?),
             "service" => self.services.push(parse_manifest_service(value)?),
+            "service_content" => self
+                .service_content
+                .push(parse_manifest_service_content(value)?),
             "observed_blocks" => self.observed_blocks = Some(parse_manifest_u64(value)?),
             "finalized_blocks" => self.finalized_blocks = Some(parse_manifest_u64(value)?),
             "checked_receipts" => self.checked_receipts = Some(parse_manifest_u64(value)?),
@@ -1095,6 +1174,7 @@ impl PublicEvidenceManifestBuilder {
                     dos_controls_enabled: required_bool(self.dos_controls_enabled)?,
                 },
                 services: self.services,
+                service_content: self.service_content,
                 run_started_at_unix_seconds: required_u64(self.run_started_at_unix_seconds)?,
                 run_ended_at_unix_seconds: required_u64(self.run_ended_at_unix_seconds)?,
                 observed_blocks: required_u64(self.observed_blocks)?,
@@ -1266,6 +1346,26 @@ fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
         signed_health_check_count,
     );
     evidence.health_check_signature = parse_hash_hex(fields[8])?;
+    Ok(evidence)
+}
+
+fn parse_manifest_service_content(value: &str) -> Result<PublicServiceContentEvidence> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 8 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed service content evidence",
+        ));
+    }
+    let mut evidence = PublicServiceContentEvidence::new(
+        parse_service_kind(fields[0])?,
+        parse_hash_hex(fields[1])?,
+        fields[2].to_owned(),
+        fields[3].to_owned(),
+        parse_hash_hex(fields[4])?,
+        parse_manifest_u64(fields[5])?,
+        parse_manifest_u64(fields[6])?,
+    );
+    evidence.content_signature = parse_hash_hex(fields[7])?;
     Ok(evidence)
 }
 
@@ -1662,6 +1762,31 @@ fn public_service_health_message(
             &last_seen,
             &reachable_count,
             &signed_count,
+        ],
+    )
+}
+
+fn public_service_content_message(
+    kind: PublicServiceKind,
+    endpoint_id: &Hash,
+    public_url: &str,
+    content_path: &str,
+    content_root: &Hash,
+    observed_at_unix_seconds: u64,
+    min_content_bytes: u64,
+) -> Hash {
+    let observed_at = observed_at_unix_seconds.to_le_bytes();
+    let min_bytes = min_content_bytes.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-service-content-v1",
+        &[
+            kind.evidence_tag(),
+            endpoint_id,
+            public_url.as_bytes(),
+            content_path.as_bytes(),
+            content_root,
+            &observed_at,
+            &min_bytes,
         ],
     )
 }
@@ -2092,11 +2217,20 @@ impl PublicTestnetRunEvidence {
         let external_operator_evidence =
             external_operator_evidence && miner_count > 0 && validator_count > 0;
         let has_production_libp2p_runtime = self.network_runtime.has_production_libp2p_runtime();
-        let has_deployed_rpc_service = self.has_reachable_service(PublicServiceKind::Rpc);
-        let has_deployed_explorer_service = self.has_reachable_service(PublicServiceKind::Explorer);
-        let has_deployed_faucet_service = self.has_reachable_service(PublicServiceKind::Faucet);
+        let has_rpc_content = self.has_service_content(PublicServiceKind::Rpc);
+        let has_explorer_content = self.has_service_content(PublicServiceKind::Explorer);
+        let has_faucet_content = self.has_service_content(PublicServiceKind::Faucet);
+        let has_telemetry_content = self.has_service_content(PublicServiceKind::Telemetry);
+        let has_deployed_public_service_content =
+            has_rpc_content && has_explorer_content && has_faucet_content && has_telemetry_content;
+        let has_deployed_rpc_service =
+            self.has_reachable_service(PublicServiceKind::Rpc) && has_rpc_content;
+        let has_deployed_explorer_service =
+            self.has_reachable_service(PublicServiceKind::Explorer) && has_explorer_content;
+        let has_deployed_faucet_service =
+            self.has_reachable_service(PublicServiceKind::Faucet) && has_faucet_content;
         let has_deployed_telemetry_service =
-            self.has_reachable_service(PublicServiceKind::Telemetry);
+            self.has_reachable_service(PublicServiceKind::Telemetry) && has_telemetry_content;
         let has_deployed_public_services = has_deployed_rpc_service
             && has_deployed_explorer_service
             && has_deployed_faucet_service
@@ -2133,6 +2267,7 @@ impl PublicTestnetRunEvidence {
             has_deployed_explorer_service,
             has_deployed_faucet_service,
             has_deployed_telemetry_service,
+            has_deployed_public_service_content,
             has_deployed_public_services,
             has_required_miners,
             has_required_validators,
@@ -2150,6 +2285,12 @@ impl PublicTestnetRunEvidence {
         self.services.iter().any(|service| {
             service.kind == kind && service.is_reachable_for_run(self.observed_blocks)
         })
+    }
+
+    fn has_service_content(&self, kind: PublicServiceKind) -> bool {
+        self.service_content
+            .iter()
+            .any(|content| content.kind == kind && content.has_external_content_proof())
     }
 
     fn independent_operator_counts(&self) -> (usize, usize) {
@@ -2433,6 +2574,7 @@ impl LocalTestnet {
         let has_deployed_explorer_service = false;
         let has_deployed_faucet_service = false;
         let has_deployed_telemetry_service = false;
+        let has_deployed_public_service_content = false;
         let has_deployed_public_services = false;
         let public_criterion_met = false;
         PublicTestnetEvidence {
@@ -2456,6 +2598,7 @@ impl LocalTestnet {
             has_deployed_explorer_service,
             has_deployed_faucet_service,
             has_deployed_telemetry_service,
+            has_deployed_public_service_content,
             has_deployed_public_services,
             has_required_miners,
             has_required_validators,
@@ -2593,6 +2736,65 @@ mod tests {
         }
     }
 
+    fn public_service_content_url(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/chain/head",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/explorer",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/faucet/page",
+            PublicServiceKind::Telemetry => {
+                "https://telemetry.tensorvm.example/telemetry/dashboard"
+            }
+        }
+    }
+
+    fn public_service_content_path(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "/chain/head",
+            PublicServiceKind::Explorer => "/explorer",
+            PublicServiceKind::Faucet => "/faucet/page",
+            PublicServiceKind::Telemetry => "/telemetry/dashboard",
+        }
+    }
+
+    fn public_service_content(
+        kind: PublicServiceKind,
+        label: &[u8],
+    ) -> PublicServiceContentEvidence {
+        PublicServiceContentEvidence::new(
+            kind,
+            hash_bytes(b"test", &[label]),
+            public_service_content_url(kind),
+            public_service_content_path(kind),
+            hash_bytes(b"test", &[label, b"content-root"]),
+            1_700_000_000,
+            64,
+        )
+    }
+
+    fn manifest_service_content_line(kind: PublicServiceKind, label: &[u8]) -> String {
+        let content = public_service_content(kind, label);
+        format!(
+            "service_content={},{},{},{},{},{},{},{}",
+            service_kind_tag(kind),
+            hex(&content.endpoint_id),
+            content.public_url,
+            content.content_path,
+            hex(&content.content_root),
+            content.observed_at_unix_seconds,
+            content.min_content_bytes,
+            hex(&content.content_signature)
+        )
+    }
+
+    fn service_kind_tag(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "rpc",
+            PublicServiceKind::Explorer => "explorer",
+            PublicServiceKind::Faucet => "faucet",
+            PublicServiceKind::Telemetry => "telemetry",
+        }
+    }
+
     fn deployed_public_services(last_seen_block: u64) -> Vec<PublicServiceEvidence> {
         vec![
             public_service(PublicServiceKind::Rpc, b"rpc-service", 0, last_seen_block),
@@ -2614,6 +2816,15 @@ mod tests {
                 0,
                 last_seen_block,
             ),
+        ]
+    }
+
+    fn deployed_public_service_content() -> Vec<PublicServiceContentEvidence> {
+        vec![
+            public_service_content(PublicServiceKind::Rpc, b"rpc-service"),
+            public_service_content(PublicServiceKind::Explorer, b"explorer-service"),
+            public_service_content(PublicServiceKind::Faucet, b"faucet-service"),
+            public_service_content(PublicServiceKind::Telemetry, b"telemetry-service"),
         ]
     }
 
@@ -2644,6 +2855,7 @@ mod tests {
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            service_content: deployed_public_service_content(),
             run_started_at_unix_seconds: 1_700_000_000,
             run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
@@ -2857,6 +3069,10 @@ service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
 service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
 service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
 service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
+{}
+{}
+{}
+{}
 ",
             manifest_hash(b"test", b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
@@ -2944,6 +3160,10 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_service_signature(PublicServiceKind::Faucet, b"faucet-service"),
             manifest_hash(b"test", b"telemetry-service"),
             manifest_service_signature(PublicServiceKind::Telemetry, b"telemetry-service"),
+            manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service"),
+            manifest_service_content_line(PublicServiceKind::Explorer, b"explorer-service"),
+            manifest_service_content_line(PublicServiceKind::Faucet, b"faucet-service"),
+            manifest_service_content_line(PublicServiceKind::Telemetry, b"telemetry-service"),
         )
     }
 
@@ -3003,6 +3223,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!public_evidence.has_required_block_count);
         assert!(!public_evidence.external_operator_evidence);
         assert!(!public_evidence.has_production_libp2p_runtime);
+        assert!(!public_evidence.has_deployed_public_service_content);
         assert!(!public_evidence.has_deployed_public_services);
         assert!(!public_evidence.public_criterion_met);
     }
@@ -3166,6 +3387,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            service_content: deployed_public_service_content(),
             run_started_at_unix_seconds: 1_700_000_000,
             run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
@@ -3283,6 +3505,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            service_content: deployed_public_service_content(),
             run_started_at_unix_seconds: 1_700_000_000,
             run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
@@ -3301,8 +3524,34 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.has_deployed_explorer_service);
         assert!(complete.has_deployed_faucet_service);
         assert!(complete.has_deployed_telemetry_service);
+        assert!(complete.has_deployed_public_service_content);
         assert!(complete.has_deployed_public_services);
         assert!(complete.public_criterion_met);
+
+        run.service_content[0].content_signature = [8; 32];
+        let tampered_rpc_content = run.evaluate(&criteria, 6, true);
+        assert!(!tampered_rpc_content.has_deployed_rpc_service);
+        assert!(!tampered_rpc_content.has_deployed_public_service_content);
+        assert!(!tampered_rpc_content.has_deployed_public_services);
+        assert!(!tampered_rpc_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0].public_url = String::from("https://localhost/chain/head");
+        let local_rpc_content = run.evaluate(&criteria, 6, true);
+        assert!(!local_rpc_content.has_deployed_rpc_service);
+        assert!(!local_rpc_content.has_deployed_public_service_content);
+        assert!(!local_rpc_content.has_deployed_public_services);
+        assert!(!local_rpc_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content
+            .retain(|content| content.kind != PublicServiceKind::Faucet);
+        let missing_faucet_content = run.evaluate(&criteria, 6, true);
+        assert!(!missing_faucet_content.has_deployed_faucet_service);
+        assert!(!missing_faucet_content.has_deployed_public_service_content);
+        assert!(!missing_faucet_content.has_deployed_public_services);
+        assert!(!missing_faucet_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
 
         run.services[0].health_check_signature = [8; 32];
         let tampered_rpc_health = run.evaluate(&criteria, 6, true);
@@ -3629,6 +3878,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(missing_services.independently_checkable);
         assert!(!missing_services.run_evidence.public_criterion_met);
         assert!(!missing_services.full_spec_evidence_met);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.run.service_content.clear();
+        let missing_service_content = bundle.evaluate(&criteria, 6);
+        assert!(missing_service_content.independently_checkable);
+        assert!(
+            !missing_service_content
+                .run_evidence
+                .has_deployed_public_service_content
+        );
+        assert!(!missing_service_content.run_evidence.public_criterion_met);
+        assert!(!missing_service_content.full_spec_evidence_met);
     }
 
     #[test]
@@ -3665,6 +3926,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             parsed
                 .evaluate(&criteria, 6)
                 .has_public_supporting_record_artifacts
+        );
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .run_evidence
+                .has_deployed_public_service_content
         );
         assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
@@ -3713,6 +3980,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_artifact_report.independently_checkable);
         assert!(!missing_artifact_report.full_spec_evidence_met);
 
+        let missing_service_content_lines = manifest_without_line(&manifest, "service_content=");
+        let parsed_missing_service_content =
+            parse_public_testnet_evidence_manifest(&missing_service_content_lines).unwrap();
+        let missing_service_content_report = parsed_missing_service_content.evaluate(&criteria, 6);
+        assert!(
+            !missing_service_content_report
+                .run_evidence
+                .has_deployed_public_service_content
+        );
+        assert!(!missing_service_content_report.full_spec_evidence_met);
+
         let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
         assert_eq!(
             parse_hash_hex(&uppercase_hash).unwrap(),
@@ -3742,6 +4020,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.has_invalid_work_rejection_records);
         assert!(report.has_reward_settlement_record_summary);
         assert!(report.has_public_supporting_record_artifacts);
+        assert!(report.run_evidence.has_deployed_public_service_content);
         assert!(report.independently_checkable);
         assert!(!report.run_evidence.public_criterion_met);
         assert!(!report.run_evidence.has_required_miners);
@@ -3810,6 +4089,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest.replace(
                 "service=rpc,",
                 "service=rpc,too,few,fields\n# removed original service=",
+            ),
+            manifest.replace("service_content=rpc", "service_content=archive"),
+            manifest.replace(
+                "service_content=rpc,",
+                "service_content=rpc,too,few,fields\n# removed original service_content=",
             ),
             manifest.replace("reward_settlement_records=1", "unknown_field=1"),
             manifest.replace("reward_settlement_records=1", "malformed-line"),
@@ -3982,6 +4266,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: PublicNetworkRuntimeEvidence::default(),
             services: Vec::new(),
+            service_content: Vec::new(),
             run_started_at_unix_seconds: 1_700_000_000,
             run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,

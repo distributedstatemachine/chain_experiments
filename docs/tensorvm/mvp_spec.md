@@ -1694,6 +1694,15 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
+tvmd public-evidence service-content \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.example.test/chain/head \
+  --content-path /chain/head \
+  --content-root <content-root-hex> \
+  --observed-at <unix-seconds> \
+  --min-content-bytes 64
+
 tvmd public-evidence network-observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
@@ -1739,6 +1748,11 @@ identity URI bound to a node address, role, operator ID, and observation time.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count.
+The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
+faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
+HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Deployed
+public service evidence must include both signed health and signed content records for `/chain/head`,
+`/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.
@@ -1990,7 +2004,8 @@ production libp2p runtime is used for node discovery, gossip, and request/respon
 production libp2p evidence includes signed network-observation records for discovery, gossip,
 request/response, and DoS controls
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
-public service evidence includes external HTTPS URLs and signed health-check summaries for those services
+public service evidence includes external HTTPS URLs, signed health-check summaries, and signed
+service-content roots for those services
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
 the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
 block-count evidence
@@ -2008,6 +2023,8 @@ independently checkable public-run evidence does not prove that the mandatory ru
 node discovery, gossip, request/response, and DoS-controlled network operation
 independently checkable public-run evidence lacks signed external artifact locators for raw supporting
 records behind summary roots
+independently checkable public-run evidence lacks signed service-content roots for deployed public
+services
 browser-facing services are still local-only handlers or static HTML responses
 the 7-day public testnet evidence has not actually happened
 the verification commands were not executed from the workspace root after the final change
@@ -2168,6 +2185,7 @@ telemetry dashboard
 public docs
 deployed public services for RPC, explorer, faucet, and telemetry
 signed service-health evidence bound to external HTTPS public service URLs
+signed service-content evidence bound to external HTTPS public service URLs and content roots
 signed production libp2p network-observation evidence
 real CUDA/C++ miner kernels where GPU acceleration is claimed
 external public-testnet evidence bundle
@@ -2189,6 +2207,7 @@ production libp2p networking used for node propagation
 production libp2p operation is evidenced by signed network-observation records
 deployed services remain reachable during the public run
 deployed service reachability is evidenced by signed health checks bound to external HTTPS service URLs
+deployed service content is evidenced by signed content roots bound to external HTTPS service URLs
 raw supporting-record artifacts are externally linked and signed against their summary roots
 GPU kernel outputs match canonical deterministic CPU semantics
 ```
@@ -2271,7 +2290,8 @@ real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
 production libp2p operation is supported by signed network-observation evidence
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
-public service evidence includes externally reachable HTTPS URLs and signed health-check summaries
+public service evidence includes externally reachable HTTPS URLs, signed health-check summaries, and
+signed service-content roots
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
@@ -2286,6 +2306,7 @@ Do not count the full spec as complete if these remain true:
 GPU mining is claimed without real CUDA/C++ kernels
 public-run evidence does not prove that the mandatory rust-libp2p runtime carried network propagation
 public-run evidence summarizes supporting records without signed external raw-record artifact locators
+public-run evidence lacks signed service-content roots for deployed public service URLs
 browser/RPC surfaces exist only as local handlers or local HTML pages
 durable state is only a reference file store rather than a production database/service deployment
 7-day public-testnet evidence is inferred from a local harness rather than an external run

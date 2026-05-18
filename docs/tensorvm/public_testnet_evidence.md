@@ -37,8 +37,8 @@ A complete evidence bundle must include:
 - signed external artifact locators for the raw supporting records behind each block/finality/libp2p/data
   availability/invalid-work/reward-settlement summary root
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
-- external HTTPS URLs, health paths, and reachability records for deployed RPC, explorer, faucet, and
-  telemetry services
+- external HTTPS URLs, health paths, reachability records, content paths, and signed content-root
+  observations for deployed RPC, explorer, faucet, and telemetry services
 
 A public `https://` evidence URI must use an external host. The local validator rejects localhost, `.local`
 names, loopback, unspecified, private, and link-local IP addresses. `ipfs://` and `ar://` publication URIs
@@ -55,7 +55,8 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
-service-health summaries, signed independent auditor records, and an external publication URI. It verifies
+service-health summaries, signed public service-content summaries, signed independent auditor records,
+and an external publication URI. It verifies
 a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
 auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
@@ -80,13 +81,17 @@ role, address, operator ID, first/last observed block, and heartbeat count. Oper
 cover the node role, node address, operator ID, external identity URI, and observation time.
 Service-health signatures cover the service kind, endpoint ID, public URL, health path, first/last observed
 block, reachable observation count, and signed health-check count. Supporting-artifact signatures cover the
-bundle ID, record-set kind, external artifact URI, record root, and record count. Service URLs, supporting
-artifact HTTPS URIs, auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
+bundle ID, record-set kind, external artifact URI, record root, and record count. Service-content
+signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
+and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
+auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
 localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Supporting artifact,
 auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
-when operators publish distinct public service hostnames or paths.
+when operators publish distinct public service hostnames or paths. Public service-content observations
+must bind the same endpoint IDs to deployed content roots for `GET /chain/head`, `GET /explorer`,
+`GET /faucet/page`, and `GET /telemetry/dashboard`.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -144,6 +149,10 @@ service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,0,100799,<
 service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
 service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
 service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service_content=rpc,<endpoint-id-hex>,https://rpc.example.test/chain/head,/chain/head,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=explorer,<endpoint-id-hex>,https://explorer.example.test/explorer,/explorer,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=faucet,<endpoint-id-hex>,https://faucet.example.test/faucet/page,/faucet/page,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=telemetry,<endpoint-id-hex>,https://telemetry.example.test/telemetry/dashboard,/telemetry/dashboard,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
 ```
 
 The CLI reads a manifest file and reports the default full-spec evidence status:
@@ -203,8 +212,8 @@ operator IDs, inverted block ranges, and unsigned heartbeat summaries. The opera
 rejects zero node addresses, zero operator IDs, local/private identity URIs, and empty observation times.
 Its output can be inserted directly as an `operator=...` line in the evidence manifest.
 
-Operators can generate a signed service-health manifest line for RPC, explorer, faucet, or telemetry
-evidence:
+Operators can generate signed service-health and service-content manifest lines for RPC, explorer, faucet,
+or telemetry evidence:
 
 ```bash
 tvmd public-evidence service-health \
@@ -216,11 +225,23 @@ tvmd public-evidence service-health \
   --last-block 100799 \
   --reachable-count 100800 \
   --signed-health-check-count 100800
+
+tvmd public-evidence service-content \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.example.test/chain/head \
+  --content-path /chain/head \
+  --content-root <content-root-hex> \
+  --observed-at <unix-seconds> \
+  --min-content-bytes 64
 ```
 
 The command rejects local/private service URLs, malformed endpoint IDs, invalid block ranges, and unsigned
 or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
-the evidence manifest.
+the evidence manifest. The service-content command rejects local/private content URLs, malformed endpoint
+IDs, non-absolute content paths, zero content roots, empty observation times, and empty content sizes. Its
+output can be inserted directly as a `service_content=...` line in the evidence manifest. The public
+service gate requires both lines for every RPC, explorer, faucet, and telemetry endpoint.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:
@@ -329,5 +350,6 @@ deployed_rpc_service=true
 deployed_explorer_service=true
 deployed_faucet_service=true
 deployed_telemetry_service=true
+deployed_public_service_content=true
 deployed_public_services=true
 ```
