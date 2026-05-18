@@ -473,7 +473,12 @@ record root.
 The `record-summary-from-file` and `record-artifact-from-file` variants derive those same fields from a
 saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic raw-record files use
 `record_root=<hex>` lines, and network-runtime files can contain the exact signed
-`network_runtime_observation=...` lines emitted by the network-observation commands.
+`network_runtime_observation=...` lines emitted by the network-observation commands. Non-network
+supporting-record files can contain exact `block_history_record=...`, `finality_history_record=...`,
+`data_availability_measurement=...`, `invalid_work_rejection=...`, or `reward_settlement=...` raw record
+lines. These typed lines are hashed with the record kind and exact line bytes before aggregation, so saved
+raw artifacts can produce matching summary roots and artifact locators without hand-copying individual
+`record_root=<hex>` values. Whitespace-padded record lines are rejected.
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires the default
 public-testnet criteria or stricter criteria, `public_criterion=true`, and `independently_checkable=true`.

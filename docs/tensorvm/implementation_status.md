@@ -173,7 +173,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   record-summary-from-roots ...` deterministic root aggregation for post-run supporting records with
   duplicate-root rejection, plus `tvmd public-evidence record-summary-from-file ...` and
   `tvmd public-evidence record-artifact-from-file ...` generation from saved raw-record files containing
-  `record_root=...` lines or signed `network_runtime_observation=...` lines; a process-level `tvmd`
+  `record_root=...` lines, signed `network_runtime_observation=...` lines, or typed
+  `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
+  `invalid_work_rejection=...`, and `reward_settlement=...` supporting-record lines with exact-line hashing
+  and whitespace-padded record rejection; a process-level `tvmd`
   integration test now assembles a short
   external-addressed evidence manifest entirely from the signed generator subcommands, validates it from
   disk, and proves it is independently checkable without allowing the default full-spec flag to pass

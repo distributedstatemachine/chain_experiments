@@ -116,6 +116,21 @@ record file instead of manually copying comma-separated roots. Preserve raw supp
 - public service content observations for `/chain/head`, `/explorer`, `/faucet/page`, and
   `/telemetry/dashboard`, each proving at least 64 observed bytes
 
+For block, finality, data-availability, invalid-work, and reward summaries, the saved raw-record file may
+contain exact typed lines:
+
+```text
+block_history_record=...
+finality_history_record=...
+data_availability_measurement=...
+invalid_work_rejection=...
+reward_settlement=...
+```
+
+`record-summary-from-file` and `record-artifact-from-file` hash each exact typed line with the selected
+record kind before aggregation. Do not trim or pad those lines; whitespace-padded record lines are
+rejected.
+
 ## Daily Checks
 
 During the run, preserve signed checkpoint batches for every operator and public service each day. The

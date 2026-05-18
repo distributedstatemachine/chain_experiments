@@ -1957,7 +1957,12 @@ The `record-summary-from-file` and `record-artifact-from-file` commands derive t
 count from a saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic
 supporting-record root files use `record_root=<hex>` lines, and network-runtime files may contain the
 exact signed `network_runtime_observation=...` lines emitted by `network-observation` or
-`network-observation-from-service-log`.
+`network-observation-from-service-log`. Non-network supporting-record files may contain exact
+`block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
+`invalid_work_rejection=...`, or `reward_settlement=...` raw record lines. Those typed raw lines are
+hashed with the record kind and exact line bytes before aggregation, so operators can derive summary roots
+and artifact locators from captured records without precomputing each `record_root=<hex>` by hand.
+Whitespace-padded record lines are rejected.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 `public_evidence_full_spec=true` is reserved for default-or-stricter public-testnet criteria; shortened or

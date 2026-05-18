@@ -78,7 +78,9 @@ deployment gate.
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
   from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level
   network-runtime observation roots can be summarized and artifact-bound from external-addressed records or
-  saved raw-record files, `run-window-from-file` derives signed run-window manifest lines from saved
+  saved raw-record files, and file-derived block/finality/data-availability/invalid-work/reward supporting
+  record summaries can hash exact typed raw-record lines while rejecting whitespace-padded records,
+  `run-window-from-file` derives signed run-window manifest lines from saved
   contiguous per-block observation files while rejecting duplicate blocks, gaps, zero timestamps,
   decreasing timestamps, unsupported lines, and whitespace-padded records, `node-heartbeat-from-file`
   derives signed node-heartbeat manifest lines from saved contiguous per-block observation files while

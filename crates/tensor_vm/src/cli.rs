@@ -2049,10 +2049,15 @@ fn public_evidence_record_roots_from_file(
     let contents = std::fs::read_to_string(record_file)
         .map_err(|_| TvmError::Storage("failed to read public evidence record file"))?;
     let mut roots = Vec::new();
-    for line in contents.lines() {
-        let line = line.trim();
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
+        }
+        if line != raw_line {
+            return Err(TvmError::InvalidReceipt(
+                "public evidence record line has leading or trailing whitespace",
+            ));
         }
         roots.push(public_evidence_record_root_from_line(kind, line)?);
     }
@@ -2074,8 +2079,48 @@ fn public_evidence_record_root_from_line(
     {
         return network_observation_root_from_record_line(record);
     }
+    if let Some(prefix) = supporting_record_line_prefix(kind)
+        && line.starts_with(prefix)
+    {
+        return supporting_record_root_from_line(kind, line, prefix);
+    }
     Err(TvmError::InvalidReceipt(
         "unsupported public evidence record line",
+    ))
+}
+
+fn supporting_record_line_prefix(kind: PublicEvidenceRecordKind) -> Option<&'static str> {
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => Some("block_history_record="),
+        PublicEvidenceRecordKind::FinalityHistory => Some("finality_history_record="),
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => None,
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+            Some("data_availability_measurement=")
+        }
+        PublicEvidenceRecordKind::InvalidWorkRejections => Some("invalid_work_rejection="),
+        PublicEvidenceRecordKind::RewardSettlements => Some("reward_settlement="),
+    }
+}
+
+fn supporting_record_root_from_line(
+    kind: PublicEvidenceRecordKind,
+    line: &str,
+    prefix: &str,
+) -> Result<Hash> {
+    let payload = line.strip_prefix(prefix).ok_or(TvmError::InvalidReceipt(
+        "unsupported public evidence record line",
+    ))?;
+    if payload.is_empty() || payload.trim() != payload {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    Ok(hash_bytes(
+        b"tensor-vm-public-evidence-supporting-record-root-v1",
+        &[
+            public_evidence_record_kind_tag(kind).as_bytes(),
+            line.as_bytes(),
+        ],
     ))
 }
 
@@ -5028,6 +5073,128 @@ p2p_idle_timeout_seconds=60
         );
         std::fs::remove_file(&record_file).unwrap();
         assert_eq!(
+            supporting_record_line_prefix(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            None
+        );
+
+        let supporting_record_cases = [
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                "block_history_record=0,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "block_history",
+            ),
+            (
+                PublicEvidenceRecordKind::FinalityHistory,
+                "finality_history_record=0,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,finalized",
+                "finality_history",
+            ),
+            (
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                "data_availability_measurement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,available,0",
+                "data_availability_measurement",
+            ),
+            (
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                "invalid_work_rejection=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,rejected,0",
+                "invalid_work_rejection",
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                "reward_settlement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,miner,validator,0",
+                "reward_settlement",
+            ),
+        ];
+        for (kind, raw_line, field_prefix) in supporting_record_cases {
+            let raw_root = supporting_record_root_from_line(
+                kind,
+                raw_line,
+                supporting_record_line_prefix(kind).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                public_evidence_record_root_from_line(kind, raw_line).unwrap(),
+                raw_root
+            );
+            let extra_root =
+                hash_bytes(b"test", &[public_evidence_record_kind_tag(kind).as_bytes()]);
+            let roots = vec![raw_root, extra_root];
+            let aggregate_root = aggregate_public_evidence_record_roots(kind, &roots).unwrap();
+            let raw_record_file = std::env::temp_dir().join(format!(
+                "tensor-vm-{}-records-{}-{}.records",
+                public_evidence_record_kind_tag(kind),
+                std::process::id(),
+                aggregate_root[0]
+            ));
+            std::fs::write(
+                &raw_record_file,
+                format!(
+                    "# raw supporting records\n{raw_line}\nrecord_root={}\n",
+                    hex(&extra_root)
+                ),
+            )
+            .unwrap();
+            let raw_record_file_path = raw_record_file.to_string_lossy().into_owned();
+            assert_eq!(
+                public_evidence_record_roots_from_file(kind, &raw_record_file_path).unwrap(),
+                roots
+            );
+            let summary =
+                execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+                    kind,
+                    bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                    manifest_signer: address(b"public-evidence-publisher"),
+                    record_file: raw_record_file_path.clone(),
+                })
+                .unwrap();
+            let signature = sign_public_evidence_record(
+                &address(b"public-evidence-publisher"),
+                &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                kind,
+                &aggregate_root,
+                roots.len() as u64,
+            );
+            assert_eq!(
+                summary,
+                format!(
+                    "{field_prefix}_records=2\n{field_prefix}_root={}\n{field_prefix}_signature={}",
+                    hex(&aggregate_root),
+                    hex(&signature)
+                )
+            );
+            let artifact_uri = format!(
+                "https://evidence.tensorvm.net/{}.json",
+                public_evidence_record_kind_tag(kind)
+            );
+            let artifact =
+                execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+                    kind,
+                    bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                    manifest_signer: address(b"public-evidence-publisher"),
+                    artifact_uri: artifact_uri.clone(),
+                    record_file: raw_record_file_path,
+                })
+                .unwrap();
+            let artifact_signature = crate::testnet::sign_public_evidence_artifact(
+                &address(b"public-evidence-publisher"),
+                &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                kind,
+                &artifact_uri,
+                &aggregate_root,
+                roots.len() as u64,
+            );
+            assert_eq!(
+                artifact,
+                format!(
+                    "record_artifact={},{},{},2,{}",
+                    public_evidence_record_kind_tag(kind),
+                    artifact_uri,
+                    hex(&aggregate_root),
+                    hex(&artifact_signature)
+                )
+            );
+            std::fs::remove_file(&raw_record_file).unwrap();
+        }
+        assert_eq!(
             public_evidence_record_roots_from_file(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 &record_file_path,
@@ -5082,6 +5249,31 @@ p2p_idle_timeout_seconds=60
             .to_string(),
             "invalid receipt: invalid network observation record line"
         );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::BlockHistory,
+                "block_history_record= ",
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid public evidence supporting record line"
+        );
+        let whitespace_record_file = std::env::temp_dir().join(format!(
+            "tensor-vm-whitespace-record-{}.records",
+            std::process::id()
+        ));
+        std::fs::write(&whitespace_record_file, " block_history_record=0\n").unwrap();
+        let whitespace_record_path = whitespace_record_file.to_string_lossy().into_owned();
+        assert_eq!(
+            public_evidence_record_roots_from_file(
+                PublicEvidenceRecordKind::BlockHistory,
+                &whitespace_record_path,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: public evidence record line has leading or trailing whitespace"
+        );
+        std::fs::remove_file(&whitespace_record_file).unwrap();
     }
 
     #[test]

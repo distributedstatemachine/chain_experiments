@@ -46,6 +46,10 @@ can be aggregated from the saved raw-record file with `record-summary-from-file`
 `record-artifact-from-file`. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
 the raw records behind that root.
+For block, finality, data-availability, invalid-work, and reward evidence, the saved raw-record file can
+contain exact `block_history_record=...`, `finality_history_record=...`,
+`data_availability_measurement=...`, `invalid_work_rejection=...`, and `reward_settlement=...` lines; the
+file-derived commands hash those exact typed lines before aggregating the record root.
 Run-window records can be derived from saved per-block observation files with
 `run_window_observation=<block>,<unix-seconds>` lines using `run-window-from-file`.
 Service-health records can likewise be derived from saved per-block observation files with
