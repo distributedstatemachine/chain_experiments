@@ -3,6 +3,25 @@
 This maps [`mvp_spec.md`](mvp_spec.md) acceptance criteria to concrete
 implementation artifacts and tests.
 
+## Gate 0
+
+The first spec gate is the default-feature CPU local multi-participant testnet. It is checked with:
+
+```bash
+cargo test -p tensor_vm local_testnet --release
+```
+
+That filtered test run covers:
+
+- `testnet::tests::local_testnet_bootstraps_required_public_shape`
+- `testnet::tests::local_testnet_runs_full_matmul_receipt_attestation_settlement_round`
+- `testnet::tests::local_testnet_runs_linear_training_receipt_state_transition_round`
+
+These tests exercise the CPU reference path with the default local 10-miner/5-validator shape, local block
+production, matmul receipt validation/attestation/settlement/rewards, LinearTrainingStep validation and
+state transition, local tensor-server availability, and the explicit separation between local evidence and
+the 7-day public deployment gate.
+
 ## Acceptance Criteria
 
 | # | Criterion | Evidence |

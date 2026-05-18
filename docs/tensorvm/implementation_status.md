@@ -132,6 +132,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 Current local verification commands:
 
 ```bash
+cargo test -p tensor_vm local_testnet --release
 cargo fmt --check --all
 cargo test --workspace --release
 cargo clippy --workspace --all-targets -- -D warnings
@@ -139,6 +140,13 @@ cargo tarpaulin
 cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
+
+Gate 0 is the CPU local multi-participant testnet required before CUDA, public preflight, public evidence,
+or deployment-gated work can count:
+
+- `cargo test -p tensor_vm local_testnet --release`: 3 TensorVM tests passed, covering the local
+  10-miner/5-validator bootstrap shape, matmul settlement/rewards, LinearTrainingStep state transition,
+  tensor-server availability, and the explicit non-public-run evidence boundary
 
 The workspace currently has 181 passing library tests under Tarpaulin:
 

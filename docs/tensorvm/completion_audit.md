@@ -15,14 +15,15 @@ The objective decomposes into these deliverables:
 1. Preserve the required Cargo workspace and TensorVM crate structure.
 2. Keep `crates/tensor_vm` self-contained and independent of `crates/pearl_chain`.
 3. Implement and test all local behavior needed for Acceptance Criteria 1-12, 14, and 15.
-4. Provide a local preflight harness and evidence validator for Acceptance Criterion 13.
-5. Run and document the required workspace verification commands.
-6. Maintain 100% line coverage for `crates/tensor_vm/src` or document justified uncovered lines.
-7. Provide real CUDA/C++ kernels for any claimed GPU path and verify them against CPU semantics.
-8. Use production libp2p for node discovery, gossip, and request/response propagation.
-9. Deploy RPC, explorer, faucet, and telemetry services outside the local test harness.
-10. Run a 7-day public testnet with independent external operators.
-11. Publish independently checkable evidence for the public run and link it from implementation status.
+4. Pass Gate 0: the default-feature CPU local multi-participant testnet.
+5. Provide a local preflight harness and evidence validator for Acceptance Criterion 13.
+6. Run and document the required workspace verification commands.
+7. Maintain 100% line coverage for `crates/tensor_vm/src` or document justified uncovered lines.
+8. Provide real CUDA/C++ kernels for any claimed GPU path and verify them against CPU semantics.
+9. Use production libp2p for node discovery, gossip, and request/response propagation.
+10. Deploy RPC, explorer, faucet, and telemetry services outside the local test harness.
+11. Run a 7-day public testnet with independent external operators.
+12. Publish independently checkable evidence for the public run and link it from implementation status.
 
 ## Prompt-To-Artifact Checklist
 
@@ -31,6 +32,7 @@ The objective decomposes into these deliverables:
 | Required Cargo workspace structure | Root `Cargo.toml`, `crates/pearl_chain`, `crates/tensor_vm`, `docs/tensorvm`, and linked READMEs | Present |
 | TensorVM crate is independent of Pearl Chain | `cargo tree -p tensor_vm` shows no `pearl_chain` dependency; rust-libp2p and serde are direct TensorVM runtime dependencies | Present |
 | Recommended TensorVM modules exist | `api`, `chain`, `challenge`, `cli`, `error`, `explorer`, `faucet`, `jobs`, `merkle`, `miner`, `p2p`, `rpc`, `runtime`, `scheduler`, `storage`, `study`, `telemetry`, `tensor`, `tensor_server`, `testnet`, `txpool`, `types`, `validator`, `verify`, `vm`, `watcher` under `crates/tensor_vm/src` | Present |
+| Gate 0 CPU local multi-participant testnet | `cargo test -p tensor_vm local_testnet --release` covers bootstrap shape, local matmul settlement/rewards, LinearTrainingStep state transition, tensor-server availability, and non-public-run evidence separation | Passed |
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, checked health/content surface plans, and `tvmd public-testnet preflight --manifest <path>` | Present |
 | Public deployment scaffold | `deploy/tensorvm/` contains systemd, nginx, environment, operator runbook, preflight-manifest, and post-run evidence-manifest templates; the checked preflight example reports launch readiness, and the checked evidence example validates structurally while intentionally reporting `public_evidence_full_spec=false` | Present as scaffold and non-full-spec example |
