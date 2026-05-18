@@ -93,6 +93,7 @@ The reference service process can be prepared and launched with:
 
 ```bash
 tvmd service init --data-dir /var/lib/tensorvm
+tvmd service peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
 tvmd service serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
 ```
 

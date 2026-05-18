@@ -9,6 +9,7 @@ artifacts for launching a service that can later produce independently checkable
 - `env/public-testnet.env.example` - environment file consumed by the systemd unit
 - `RUNBOOK.md` - operator runbook for launch, evidence collection, validation, and publication
 - `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration
+  and startup from the durable libp2p peer book
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
 - `manifests/public-testnet.preflight.example` - manifest shape accepted by the parser, but not launch-ready
   until the special-use example hosts, IDs, and public content URLs are replaced
@@ -53,12 +54,14 @@ sudo install -d -o tensorvm -g tensorvm /var/lib/tensorvm
 sudo install -d /etc/tensorvm
 sudo install -m 0640 deploy/tensorvm/env/public-testnet.env.example /etc/tensorvm/public-testnet.env
 sudo install -m 0644 deploy/tensorvm/systemd/tensorvm.service /etc/systemd/system/tensorvm.service
+# On non-bootstrap nodes, seed at least one reachable libp2p peer before starting:
+sudo -u tensorvm /usr/local/bin/tvmd service peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
 sudo systemctl daemon-reload
 sudo systemctl enable --now tensorvm.service
 ```
 
-Before advertising the run, replace all example hostnames, tokens, and IDs, publish HTTPS with valid TLS,
-and run:
+Before advertising the run, replace all example hostnames, tokens, peer IDs, and service IDs, publish HTTPS
+with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:
 
 ```bash
 tvmd public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example

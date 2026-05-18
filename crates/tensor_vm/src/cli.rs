@@ -37,6 +37,11 @@ pub enum CliCommand {
     ServiceInit {
         data_dir: String,
     },
+    ServicePeerAdd {
+        data_dir: String,
+        peer_id: String,
+        address: String,
+    },
     ServiceServe {
         listen: String,
         p2p_listen: String,
@@ -178,6 +183,21 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         ["validator", "status"] => Ok(CliCommand::ValidatorStatus),
         ["service", "init", "--data-dir", data_dir] => Ok(CliCommand::ServiceInit {
             data_dir: (*data_dir).to_owned(),
+        }),
+        [
+            "service",
+            "peer",
+            "add",
+            "--data-dir",
+            data_dir,
+            "--peer-id",
+            peer_id,
+            "--address",
+            address,
+        ] => Ok(CliCommand::ServicePeerAdd {
+            data_dir: (*data_dir).to_owned(),
+            peer_id: (*peer_id).to_owned(),
+            address: (*address).to_owned(),
         }),
         [
             "service",
@@ -486,6 +506,15 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::ServiceInit { data_dir } => {
             format!("initialize service node store data_dir={data_dir}")
         }
+        CliCommand::ServicePeerAdd {
+            data_dir,
+            peer_id,
+            address,
+        } => {
+            format!(
+                "add libp2p bootstrap peer data_dir={data_dir} peer_id={peer_id} address={address}"
+            )
+        }
         CliCommand::ServiceServe {
             listen,
             p2p_listen,
@@ -652,6 +681,18 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             ensure_data_dir(data_dir)?;
             Ok(format!(
                 "command=service_init\ndata_dir={data_dir}\nnode_store_ready=true"
+            ))
+        }
+        CliCommand::ServicePeerAdd {
+            data_dir,
+            peer_id,
+            address,
+        } => {
+            ensure_data_dir(data_dir)?;
+            let record = crate::p2p::PeerRecord::from_strings(peer_id, address)?;
+            let peer_id = record.peer_id()?;
+            Ok(format!(
+                "command=service_peer_add\ndata_dir={data_dir}\npeer_id={peer_id}\naddress={address}\npeer_book_ready=true"
             ))
         }
         CliCommand::ServiceServe {
@@ -2650,6 +2691,26 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 data_dir: "/var/lib/tensorvm".to_owned(),
             }
         );
+        let bootstrap_peer = PeerId::random().to_string();
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
+                "peer",
+                "add",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--peer-id",
+                &bootstrap_peer,
+                "--address",
+                "/dns/bootstrap.tensorvm.net/tcp/4001",
+            ])
+            .unwrap(),
+            CliCommand::ServicePeerAdd {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                peer_id: bootstrap_peer.clone(),
+                address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
+            }
+        );
         assert_eq!(
             parse_cli_parts(&[
                 "service",
@@ -2692,6 +2753,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         ];
         let command = parse_cli_args(&args).unwrap();
         assert_eq!(command, CliCommand::MinerRegister { stake: 250 });
+        let bootstrap_peer = PeerId::random().to_string();
 
         let commands = [
             (
@@ -2726,6 +2788,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "initialize service node store data_dir=/var/lib/tensorvm",
             ),
             (
+                CliCommand::ServicePeerAdd {
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                    peer_id: bootstrap_peer.clone(),
+                    address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
+                },
+                "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id=",
+            ),
+            (
                 CliCommand::ServiceServe {
                     listen: "0.0.0.0:8545".to_owned(),
                     p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
@@ -2749,7 +2819,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             ),
         ];
         for (command, description) in commands {
-            assert_eq!(describe_command(&command), description);
+            let actual = describe_command(&command);
+            if matches!(command, CliCommand::ServicePeerAdd { .. }) {
+                assert!(actual.starts_with(description));
+                assert!(actual.contains("address=/dns/bootstrap.tensorvm.net/tcp/4001"));
+            } else {
+                assert_eq!(actual, description);
+            }
         }
 
         assert_eq!(
@@ -2995,6 +3071,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         .unwrap();
         assert!(service_init.contains("command=service_init"));
         assert!(service_init.contains("node_store_ready=true"));
+
+        let bootstrap_peer = PeerId::random().to_string();
+        let service_peer_add = execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            peer_id: bootstrap_peer.clone(),
+            address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
+        })
+        .unwrap();
+        assert!(service_peer_add.contains("command=service_peer_add"));
+        assert!(service_peer_add.contains(&format!("peer_id={bootstrap_peer}")));
+        assert!(service_peer_add.contains("peer_book_ready=true"));
 
         let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
@@ -3429,6 +3516,32 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(
             execute_reference_cli_command(&CliCommand::ServiceInit {
                 data_dir: " ".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                peer_id: "not-a-peer-id".to_owned(),
+                address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                peer_id: PeerId::random().to_string(),
+                address: "not-a-multiaddr".to_owned(),
+            })
+            .is_err()
+        );
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                peer_id: peer_a.to_string(),
+                address: format!("/dns/bootstrap.tensorvm.net/tcp/4001/p2p/{peer_b}"),
             })
             .is_err()
         );

@@ -526,6 +526,15 @@ impl PeerRecord {
         }
     }
 
+    pub fn from_strings(peer_id: &str, address: &str) -> TvmResult<Self> {
+        let record = Self {
+            peer_id: peer_id.to_owned(),
+            address: address.to_owned(),
+        };
+        record.bootstrap_multiaddr()?;
+        Ok(record)
+    }
+
     pub fn peer_id(&self) -> TvmResult<PeerId> {
         self.peer_id
             .parse()
@@ -534,6 +543,22 @@ impl PeerRecord {
 
     pub fn multiaddr(&self) -> TvmResult<Multiaddr> {
         parse_multiaddr(&self.address)
+    }
+
+    pub fn bootstrap_multiaddr(&self) -> TvmResult<Multiaddr> {
+        let peer_id = self.peer_id()?;
+        let mut address = self.multiaddr()?;
+        if !multiaddr_has_nonzero_tcp(&address) {
+            return Err(TvmError::Storage("peer book address missing tcp port"));
+        }
+        if let Some((embedded_peer_id, _)) = bootstrap_peer_address(&address) {
+            if embedded_peer_id != peer_id {
+                return Err(TvmError::Storage("peer book address peer id mismatch"));
+            }
+            return Ok(address);
+        }
+        address.push(Protocol::P2p(peer_id));
+        Ok(address)
     }
 }
 
@@ -563,6 +588,24 @@ impl PeerBookStore {
         Ok(())
     }
 
+    pub fn upsert_record(&self, record: PeerRecord) -> TvmResult<Vec<PeerRecord>> {
+        let mut records = if self.path.exists() {
+            self.load_records()?
+        } else {
+            Vec::new()
+        };
+        if let Some(existing) = records
+            .iter_mut()
+            .find(|existing| existing.peer_id == record.peer_id)
+        {
+            *existing = record;
+        } else {
+            records.push(record);
+        }
+        self.save_records(&records)?;
+        Ok(records)
+    }
+
     pub fn load_records(&self) -> TvmResult<Vec<PeerRecord>> {
         let bytes =
             fs::read(&self.path).map_err(|_| TvmError::Storage("failed to read peer book"))?;
@@ -570,8 +613,10 @@ impl PeerBookStore {
     }
 
     pub fn load_bootstrap_addresses(&self) -> TvmResult<Vec<String>> {
-        self.load_records()
-            .map(|records| records.into_iter().map(|record| record.address).collect())
+        self.load_records()?
+            .into_iter()
+            .map(|record| Ok(record.bootstrap_multiaddr()?.to_string()))
+            .collect()
     }
 }
 
@@ -587,6 +632,12 @@ fn bootstrap_peer_address(address: &Multiaddr) -> Option<(PeerId, Multiaddr)> {
         Some(Protocol::P2p(peer_id)) => Some((peer_id, peer_address)),
         _ => None,
     }
+}
+
+fn multiaddr_has_nonzero_tcp(address: &Multiaddr) -> bool {
+    address
+        .iter()
+        .any(|protocol| matches!(protocol, Protocol::Tcp(port) if port != 0))
 }
 
 fn encode_peer_records(records: &[PeerRecord]) -> Vec<u8> {
@@ -956,7 +1007,10 @@ mod tests {
         assert_eq!(loaded, records);
         assert_eq!(
             store.load_bootstrap_addresses().unwrap(),
-            vec![address_a.to_string(), address_b.to_string()]
+            vec![
+                format!("{address_a}/p2p/{peer_a}"),
+                format!("{address_b}/p2p/{peer_b}")
+            ]
         );
         assert_eq!(loaded[0].peer_id().unwrap(), peer_a);
         assert_eq!(loaded[1].multiaddr().unwrap(), address_b);
@@ -967,6 +1021,64 @@ mod tests {
         assert_eq!(
             store.load_records(),
             Err(TvmError::Storage("peer book checksum mismatch"))
+        );
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn peer_book_store_upserts_bootstrap_records_with_peer_ids() {
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        let address_a: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        let address_a_updated: Multiaddr = "/ip4/127.0.0.1/tcp/4002".parse().unwrap();
+        let address_b = format!("/ip4/127.0.0.1/tcp/4003/p2p/{peer_b}");
+        let path = std::env::temp_dir().join(format!(
+            "tensor-vm-libp2p-peer-book-upsert-{}-{}.bin",
+            std::process::id(),
+            peer_a
+        ));
+        let store = PeerBookStore::new(path.clone());
+
+        let records = store
+            .upsert_record(PeerRecord::new(peer_a, address_a))
+            .unwrap();
+        assert_eq!(records.len(), 1);
+        let records = store
+            .upsert_record(PeerRecord::from_strings(&peer_b.to_string(), &address_b).unwrap())
+            .unwrap();
+        assert_eq!(records.len(), 2);
+        let records = store
+            .upsert_record(PeerRecord::new(peer_a, address_a_updated.clone()))
+            .unwrap();
+        assert_eq!(records.len(), 2);
+
+        assert_eq!(
+            store.load_bootstrap_addresses().unwrap(),
+            vec![
+                format!("{address_a_updated}/p2p/{peer_a}"),
+                address_b.clone()
+            ]
+        );
+
+        let mismatched_peer = PeerId::random();
+        let mismatch = PeerRecord::from_strings(
+            &mismatched_peer.to_string(),
+            &format!("/ip4/127.0.0.1/tcp/4004/p2p/{peer_a}"),
+        );
+        assert_eq!(
+            mismatch,
+            Err(TvmError::Storage("peer book address peer id mismatch"))
+        );
+        let missing_tcp = PeerRecord::from_strings(&peer_a.to_string(), &format!("/p2p/{peer_a}"));
+        assert_eq!(
+            missing_tcp,
+            Err(TvmError::Storage("peer book address missing tcp port"))
+        );
+        let zero_tcp = PeerRecord::from_strings(&peer_a.to_string(), "/ip4/127.0.0.1/tcp/0");
+        assert_eq!(
+            zero_tcp,
+            Err(TvmError::Storage("peer book address missing tcp port"))
         );
 
         let _ = std::fs::remove_file(path);

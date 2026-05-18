@@ -54,13 +54,14 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
-  tensor chunks, tensor rows, and program fetches, `tvmd service serve` startup of the mandatory libp2p
-  control-plane runtime, and durable libp2p bootstrap peer-book storage with checksum validation
+  tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
+  `tvmd service serve` startup of the mandatory libp2p control-plane runtime, and durable libp2p bootstrap
+  peer-book storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, service and per-surface health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing
   explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
-  formatting, generic HTTP request reading, socketed stdlib HTTP serving, `tvmd service init/serve`
+  formatting, generic HTTP request reading, socketed stdlib HTTP serving, `tvmd service init/peer add/serve`
   launch configuration for a `NodeStore`-backed service process with mandatory rust-libp2p listen
   configuration, and gateway auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
@@ -164,18 +165,18 @@ preflight, public evidence, or deployment-gated work can count:
   LinearTrainingStep state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 182 passing library tests under Tarpaulin:
+The workspace currently has 183 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 168 in `tensor_vm`
+- 169 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.95% workspace line coverage
-- 7711/7793 workspace lines covered
+- 98.96% workspace line coverage
+- 7765/7847 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7143/7143 `tensor_vm` lines covered
+- 7197/7197 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
@@ -205,10 +206,10 @@ These spec items require real deployment or non-reference infrastructure and are
 - externally observed production libp2p operation during a public testnet; current implementation starts
   the mandatory rust-libp2p service runtime locally with bounded Gossipsub payloads, request timeouts,
   concurrent stream limits, idle connection timeouts, Kademlia discovery/address registration, and durable
-  bootstrap peer-book persistence, and the public evidence validator now requires signed
+  bootstrap peer-book persistence loaded as peer-ID-preserving dial multiaddrs, and the public evidence validator now requires signed
   network-observation records, but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
-  wrapper, `tvmd service init/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
+  wrapper, `tvmd service init/peer add/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,

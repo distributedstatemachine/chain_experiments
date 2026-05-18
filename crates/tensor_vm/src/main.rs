@@ -1,7 +1,7 @@
 use std::path::Path;
 use tensor_vm::{
-    CliCommand, Faucet, Libp2pControlPlaneConfig, LocalChain, NodeStore, RpcGateway, RpcHttpServer,
-    RpcNode, RpcPolicy,
+    CliCommand, Faucet, Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord, RpcGateway,
+    RpcHttpServer, RpcNode, RpcPolicy,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
@@ -44,6 +44,14 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
         CliCommand::ServiceInit { data_dir } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             init_service_store(data_dir)
+        }
+        CliCommand::ServicePeerAdd {
+            data_dir,
+            peer_id,
+            address,
+        } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            add_service_peer(data_dir, peer_id, address)
         }
         CliCommand::ServiceServe {
             listen,
@@ -94,6 +102,28 @@ fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
     ))
 }
 
+fn add_service_peer(
+    data_dir: &str,
+    peer_id: &str,
+    address: &str,
+) -> std::result::Result<String, String> {
+    let store = NodeStore::open(data_dir);
+    let record = PeerRecord::from_strings(peer_id, address)
+        .map_err(|error| format!("invalid libp2p bootstrap peer: {error}"))?;
+    let bootstrap_address = record
+        .bootstrap_multiaddr()
+        .map_err(|error| format!("invalid libp2p bootstrap peer: {error}"))?
+        .to_string();
+    let records = store
+        .peer_book_store()
+        .upsert_record(record)
+        .map_err(|error| format!("failed to update libp2p peer book {data_dir}: {error}"))?;
+    Ok(format!(
+        "command=service_peer_add\ndata_dir={data_dir}\npeer_id={peer_id}\naddress={address}\nbootstrap_address={bootstrap_address}\nbootstrap_peers={}",
+        records.len()
+    ))
+}
+
 fn serve_service(
     listen: &str,
     p2p_listen: &str,
@@ -113,6 +143,7 @@ fn serve_service(
     } else {
         Vec::new()
     };
+    let bootstrap_peer_count = bootstrap_addresses.len();
     let p2p_service = spawn_libp2p_service(Libp2pControlPlaneConfig {
         listen_addresses: vec![p2p_listen.to_owned()],
         bootstrap_addresses,
@@ -146,6 +177,6 @@ fn serve_service(
         served_requests = served_requests.saturating_add(1);
     }
     Ok(format!(
-        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\ndata_dir={data_dir}\nserved_requests={served_requests}"
+        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\ndata_dir={data_dir}\nserved_requests={served_requests}"
     ))
 }

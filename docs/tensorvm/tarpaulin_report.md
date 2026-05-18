@@ -18,15 +18,15 @@ Host notes:
 Result:
 
 ```text
-182 tests passed under instrumentation:
+183 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 168 tensor_vm library tests
+- 169 tensor_vm library tests
 
-98.95% workspace line coverage
-7711/7793 workspace lines covered
+98.96% workspace line coverage
+7765/7847 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-7143/7143 tensor_vm lines covered
+7197/7197 tensor_vm lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps

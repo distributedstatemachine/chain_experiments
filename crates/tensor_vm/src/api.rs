@@ -84,6 +84,7 @@ pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
 
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
     "tvmd service init --data-dir <path>",
+    "tvmd service peer add --data-dir <path> --peer-id <peer-id> --address <libp2p-multiaddr>",
     "tvmd service serve --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
 ];
 

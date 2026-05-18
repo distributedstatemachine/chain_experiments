@@ -1647,6 +1647,11 @@ tvmd validator status
 tvmd service init \
   --data-dir /var/lib/tensorvm
 
+tvmd service peer add \
+  --data-dir /var/lib/tensorvm \
+  --peer-id "$BOOTSTRAP_PEER_ID" \
+  --address /dns/bootstrap.tensorvm.net/tcp/4001
+
 tvmd service serve \
   --listen 0.0.0.0:8545 \
   --p2p-listen /ip4/0.0.0.0/tcp/4001 \
@@ -1658,6 +1663,10 @@ tvmd service serve \
 Miner and validator `--node` values are libp2p multiaddrs. The RPC listener remains HTTP for
 operator APIs, but `tvmd service serve` must start the mandatory rust-libp2p control plane for node
 discovery, Gossipsub propagation, and tensor/program request-response protocols.
+`tvmd service peer add` persists durable bootstrap peer records under the node data directory; service
+startup must load those records, preserve the peer IDs in `/p2p/<peer-id>` dial multiaddrs, and pass them
+to the mandatory libp2p Kademlia/bootstrap path. Non-bootstrap public nodes must seed at least one
+reachable TCP bootstrap peer before starting the public run.
 libp2p is a normal, unconditional TensorVM runtime dependency: no TensorVM feature flag may disable it,
 no shim or in-memory substitute may satisfy node propagation, and `default-features = false` on the
 upstream `libp2p` crate is only allowed to narrow the explicit protocol surface compiled into TensorVM.
