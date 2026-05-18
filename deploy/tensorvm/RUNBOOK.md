@@ -61,6 +61,7 @@ tvmd public-evidence run-window ...
 tvmd public-evidence node-heartbeat ...
 tvmd public-evidence operator-attestation ...
 tvmd public-evidence service-health ...
+tvmd public-evidence service-health-from-file ...
 tvmd public-evidence service-content ...
 tvmd public-evidence service-content-from-bytes ...
 tvmd public-evidence service-content-from-file ...
@@ -85,6 +86,11 @@ operator, with each observation using a public libp2p listen multiaddr and an ob
 the signed run window. Prefer `network-observation-from-service-log` when the raw `tvmd service serve`
 stdout/stderr log is available, so the peer ID, protocol counts, bootstrap-peer count, and DoS-control
 settings are derived from the captured service runtime instead of being copied by hand. Every
+service health observation file should contain one
+`service_health_observation=<block>,reachable` or
+`service_health_observation=<block>,unreachable` line per observed block; prefer
+`service-health-from-file` over manually copying first/last/count values when the raw observation file is
+available.
 `record-summary` root must have a matching signed `record-artifact` locator for the external raw-record
 artifact; when possible, use `record-summary-from-file` and `record-artifact-from-file` over the saved raw
 record file instead of manually copying comma-separated roots. Preserve raw supporting records for:
@@ -160,7 +166,7 @@ publication must include:
 - signed artifact locator lines for every raw supporting-record artifact
 - independent auditor records and audit artifacts
 - operator identity artifacts
-- public service health artifacts
+- public service health artifacts, including the raw observation files used with `service-health-from-file`
 - public service content artifacts and content-root observations generated from exact captured response
   files with `service-content-from-file` when possible, or exact hex bytes with `service-content-from-bytes`
 - libp2p network-observation artifacts, including the per-operator `network_runtime_observation=...`

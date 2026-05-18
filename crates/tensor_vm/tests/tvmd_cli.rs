@@ -616,7 +616,7 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             "a4".repeat(32),
         ),
     ] {
-        service_lines.push(trimmed_tvmd(&[
+        let service_health = trimmed_tvmd(&[
             "public-evidence",
             "service-health",
             "--kind",
@@ -635,7 +635,31 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             "10",
             "--signed-health-check-count",
             "10",
-        ]));
+        ]);
+        let health_record_file = data_dir.join(format!("{kind}-health.records"));
+        let health_records = (0..10)
+            .map(|block| format!("service_health_observation={block},reachable"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(&health_record_file, health_records)
+            .expect("service health record file must be written");
+        let health_record_file_text = health_record_file.to_string_lossy().into_owned();
+        let service_health_from_file = trimmed_tvmd(&[
+            "public-evidence",
+            "service-health-from-file",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            &endpoint_id,
+            "--public-url",
+            health_url,
+            "--health-path",
+            "/health",
+            "--observation-file",
+            &health_record_file_text,
+        ]);
+        assert_eq!(service_health_from_file, service_health);
+        service_lines.push(service_health);
         service_content_lines.push(trimmed_tvmd(&[
             "public-evidence",
             "service-content",

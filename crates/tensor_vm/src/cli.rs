@@ -63,6 +63,13 @@ pub enum CliCommand {
         reachable_observation_count: u64,
         signed_health_check_count: u64,
     },
+    PublicEvidenceServiceHealthFromFile {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        health_path: String,
+        observation_file: String,
+    },
     PublicEvidenceServiceContent {
         kind: PublicServiceKind,
         endpoint_id: Hash,
@@ -295,6 +302,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             last_seen_block: parse_u64(last_seen_block)?,
             reachable_observation_count: parse_u64(reachable_observation_count)?,
             signed_health_check_count: parse_u64(signed_health_check_count)?,
+        }),
+        [
+            "public-evidence",
+            "service-health-from-file",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            endpoint_id,
+            "--public-url",
+            public_url,
+            "--health-path",
+            health_path,
+            "--observation-file",
+            observation_file,
+        ] => Ok(CliCommand::PublicEvidenceServiceHealthFromFile {
+            kind: parse_public_service_kind(kind)?,
+            endpoint_id: parse_hash_argument(endpoint_id)?,
+            public_url: (*public_url).to_owned(),
+            health_path: (*health_path).to_owned(),
+            observation_file: (*observation_file).to_owned(),
         }),
         [
             "public-evidence",
@@ -708,6 +735,18 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_service_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceServiceHealthFromFile {
+            kind,
+            public_url,
+            health_path,
+            observation_file,
+            ..
+        } => {
+            format!(
+                "generate {} service health evidence from captured observations observation_file={observation_file} public_url={public_url} health_path={health_path}",
+                public_service_kind_tag(*kind)
+            )
+        }
         CliCommand::PublicEvidenceServiceContent {
             kind,
             public_url,
@@ -965,6 +1004,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             reachable_observation_count: *reachable_observation_count,
             signed_health_check_count: *signed_health_check_count,
         }),
+        CliCommand::PublicEvidenceServiceHealthFromFile {
+            kind,
+            endpoint_id,
+            public_url,
+            health_path,
+            observation_file,
+        } => service_health_evidence_line_from_file(
+            *kind,
+            *endpoint_id,
+            public_url,
+            health_path,
+            observation_file,
+        ),
         CliCommand::PublicEvidenceServiceContent {
             kind,
             endpoint_id,
@@ -1266,6 +1318,111 @@ fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>) -> Result<
         evidence.signed_health_check_count,
         hex(&evidence.health_check_signature)
     ))
+}
+
+struct ServiceHealthObservationSummary {
+    first_seen_block: u64,
+    last_seen_block: u64,
+    reachable_observation_count: u64,
+    signed_health_check_count: u64,
+}
+
+fn service_health_evidence_line_from_file(
+    kind: PublicServiceKind,
+    endpoint_id: Hash,
+    public_url: &str,
+    health_path: &str,
+    observation_file: &str,
+) -> Result<String> {
+    let contents = std::fs::read_to_string(observation_file)
+        .map_err(|_| TvmError::Storage("failed to read service health observation file"))?;
+    let summary = service_health_observation_summary_from_file(&contents)?;
+    service_health_evidence_line(ServiceHealthEvidenceLine {
+        kind,
+        endpoint_id,
+        public_url,
+        health_path,
+        first_seen_block: summary.first_seen_block,
+        last_seen_block: summary.last_seen_block,
+        reachable_observation_count: summary.reachable_observation_count,
+        signed_health_check_count: summary.signed_health_check_count,
+    })
+}
+
+fn service_health_observation_summary_from_file(
+    contents: &str,
+) -> Result<ServiceHealthObservationSummary> {
+    let mut observed_blocks = BTreeSet::new();
+    let mut reachable_observation_count = 0_u64;
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line != raw_line {
+            return Err(TvmError::InvalidReceipt(
+                "service health observation line has leading or trailing whitespace",
+            ));
+        }
+        let (block, reachable) = parse_service_health_observation_line(line)?;
+        if !observed_blocks.insert(block) {
+            return Err(TvmError::InvalidReceipt(
+                "duplicate service health observation block",
+            ));
+        }
+        if reachable {
+            reachable_observation_count = reachable_observation_count.saturating_add(1);
+        }
+    }
+    let Some(first_seen_block) = observed_blocks.iter().next().copied() else {
+        return Err(TvmError::InvalidReceipt(
+            "service health observation file has no observations",
+        ));
+    };
+    let last_seen_block = observed_blocks.iter().next_back().copied().unwrap();
+    let signed_health_check_count = observed_blocks.len() as u64;
+    let expected_observation_count = last_seen_block
+        .checked_sub(first_seen_block)
+        .and_then(|span| span.checked_add(1))
+        .ok_or(TvmError::InvalidReceipt(
+            "service health observation block range is invalid",
+        ))?;
+    if signed_health_check_count != expected_observation_count {
+        return Err(TvmError::InvalidReceipt(
+            "service health observation blocks must be contiguous",
+        ));
+    }
+    Ok(ServiceHealthObservationSummary {
+        first_seen_block,
+        last_seen_block,
+        reachable_observation_count,
+        signed_health_check_count,
+    })
+}
+
+fn parse_service_health_observation_line(line: &str) -> Result<(u64, bool)> {
+    let record =
+        line.strip_prefix("service_health_observation=")
+            .ok_or(TvmError::InvalidReceipt(
+                "unsupported service health observation line",
+            ))?;
+    let fields: Vec<&str> = record.split(',').collect();
+    if fields.len() != 2 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed service health observation",
+        ));
+    }
+    let block = parse_u64(fields[0])?;
+    let reachable = match fields[1] {
+        "reachable" => true,
+        "unreachable" => false,
+        _ => {
+            return Err(TvmError::InvalidReceipt(
+                "invalid service health observation status",
+            ));
+        }
+    };
+    Ok((block, reachable))
 }
 
 fn service_content_evidence_line(
@@ -3025,6 +3182,30 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 signed_health_check_count: 10,
             }
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "service-health-from-file",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.net/health",
+                "--health-path",
+                "/health",
+                "--observation-file",
+                "artifacts/rpc-health.records",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceServiceHealthFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                observation_file: "artifacts/rpc-health.records".to_owned(),
+            }
+        );
         let content_root = manifest_hash(b"rpc-service-content");
         assert_eq!(
             parse_cli_parts(&[
@@ -3483,6 +3664,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 signed_health_check_count: 10,
             }),
             "generate rpc service health evidence public_url=https://rpc.tensorvm.net/health health_path=/health"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                observation_file: "artifacts/rpc-health.records".to_owned(),
+            }),
+            "generate rpc service health evidence from captured observations observation_file=artifacts/rpc-health.records public_url=https://rpc.tensorvm.net/health health_path=/health"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceServiceContent {
@@ -3960,6 +4151,27 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             PublicServiceKind::Rpc,
             b"rpc-service"
         )));
+        let health_observation_file = std::env::temp_dir().join(format!(
+            "tensor-vm-service-health-{}-{}.records",
+            std::process::id(),
+            manifest_hash(b"rpc-service").as_bytes()[0]
+        ));
+        let health_observations = (0..10)
+            .map(|block| format!("service_health_observation={block},reachable"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(&health_observation_file, health_observations).unwrap();
+        let service_health_from_file =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                observation_file: health_observation_file.to_string_lossy().into_owned(),
+            })
+            .unwrap();
+        std::fs::remove_file(&health_observation_file).unwrap();
+        assert_eq!(service_health_from_file, service_health);
         let additional_service_cases: [(PublicServiceKind, &[u8], &str); 3] = [
             (PublicServiceKind::Explorer, b"explorer-service", "explorer"),
             (PublicServiceKind::Faucet, b"faucet-service", "faucet"),
@@ -4912,6 +5124,43 @@ p2p_idle_timeout_seconds=60
                 last_seen_block: 9,
                 reachable_observation_count: 0,
                 signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        let partial_health = service_health_observation_summary_from_file(
+            "service_health_observation=0,reachable\nservice_health_observation=1,unreachable\n",
+        )
+        .unwrap();
+        assert_eq!(partial_health.first_seen_block, 0);
+        assert_eq!(partial_health.last_seen_block, 1);
+        assert_eq!(partial_health.reachable_observation_count, 1);
+        assert_eq!(partial_health.signed_health_check_count, 2);
+        for invalid_health_observations in [
+            "# no observations\n\n",
+            " service_health_observation=0,reachable\n",
+            "service_health_observation=0,reachable\nservice_health_observation=0,reachable\n",
+            "service_health_observation=0,reachable\nservice_health_observation=2,reachable\n",
+            "service_health_observation=0,ok\n",
+            "service_health_observation=0\n",
+            "record_root=00\n",
+        ] {
+            assert!(
+                service_health_observation_summary_from_file(invalid_health_observations).is_err()
+            );
+        }
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                observation_file: std::env::temp_dir()
+                    .join(format!(
+                        "missing-tensor-vm-service-health-{}.records",
+                        std::process::id()
+                    ))
+                    .to_string_lossy()
+                    .into_owned(),
             })
             .is_err()
         );

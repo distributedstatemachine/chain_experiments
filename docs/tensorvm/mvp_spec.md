@@ -1747,6 +1747,13 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
+tvmd public-evidence service-health-from-file \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.tensorvm.net/health \
+  --health-path /health \
+  --observation-file artifacts/rpc-health.records
+
 tvmd public-evidence service-content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
@@ -1858,6 +1865,12 @@ telemetry evidence. The signature is bound to the service kind, endpoint ID, ext
 path, observed block range, reachable observation count, and signed health-check count; the public URL path
 must match the signed health path. Counted service-health records must cover the manifest's full observed
 block count with both reachable observations and signed health checks.
+The `service-health-from-file` command derives the same signed line from a saved line-oriented observation
+file using `service_health_observation=<block>,reachable` or
+`service_health_observation=<block>,unreachable` records. Blank lines and `#` comments are ignored;
+duplicate blocks, non-contiguous block observations, unsupported lines, and whitespace-padded records are
+rejected so the derived first block, last block, reachable count, and signed health-check count are not
+manually copied.
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Counted

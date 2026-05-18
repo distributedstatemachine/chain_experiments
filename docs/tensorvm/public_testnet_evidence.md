@@ -299,6 +299,13 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
+tvmd public-evidence service-health-from-file \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.tensorvm.net/health \
+  --health-path /health \
+  --observation-file artifacts/rpc-health.records
+
 tvmd public-evidence service-content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
@@ -328,6 +335,11 @@ tvmd public-evidence service-content-from-file \
 The command rejects non-public service URLs, health URLs whose path does not exactly match the signed
 health path, health URLs with query strings or fragments, malformed endpoint IDs, invalid block ranges,
 and unsigned or unreachable service-health summaries.
+The `service-health-from-file` form derives the same signed `service=...` line from raw
+`service_health_observation=<block>,reachable` and
+`service_health_observation=<block>,unreachable` records. It ignores blank lines and `#` comments, rejects
+duplicate or non-contiguous block observations, and rejects unsupported or whitespace-padded records before
+deriving the signed first block, last block, reachable count, and signed health-check count.
 Bundle validation only counts a service as deployed when both reachable observations and signed health
 checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
 line in the evidence manifest. The service-content command rejects non-public content URLs, malformed

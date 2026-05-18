@@ -96,6 +96,7 @@ pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence node-heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
     "tvmd public-evidence operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
     "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
+    "tvmd public-evidence service-health-from-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
     "tvmd public-evidence service-content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
     "tvmd public-evidence service-content-from-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
     "tvmd public-evidence service-content-from-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
@@ -155,6 +156,11 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("service-health"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("service-health-from-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
