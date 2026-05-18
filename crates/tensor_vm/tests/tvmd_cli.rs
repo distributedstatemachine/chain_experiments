@@ -29,6 +29,27 @@ fn run_tvmd(args: &[&str]) -> String {
     String::from_utf8(output.stdout).expect("tvmd stdout must be utf8")
 }
 
+fn run_tvmd_failure(args: &[&str]) -> (i32, String, String) {
+    let output = Command::new(env!("CARGO_BIN_EXE_tvmd"))
+        .args(args)
+        .current_dir(workspace_root())
+        .output()
+        .expect("tvmd command must execute");
+
+    assert!(
+        !output.status.success(),
+        "tvmd unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    (
+        output.status.code().unwrap_or_default(),
+        String::from_utf8(output.stdout).expect("tvmd stdout must be utf8"),
+        String::from_utf8(output.stderr).expect("tvmd stderr must be utf8"),
+    )
+}
+
 fn unique_test_dir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!(
         "tensor-vm-{name}-{}-{}",
@@ -106,6 +127,14 @@ fn response_body(response: &str) -> &str {
         .split_once("\r\n\r\n")
         .map(|(_, body)| body)
         .expect("HTTP response must contain a body separator")
+}
+
+fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix(key))
+        .and_then(|value| value.strip_prefix('='))
+        .expect("expected service stdout field")
 }
 
 fn assert_service_content_evidence_from_response(
@@ -393,6 +422,39 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
     assert!(stdout.contains("served_requests=19"));
+    let p2p_peer_id = stdout_value(&stdout, "p2p_peer_id");
+    let p2p_gossipsub_topics = stdout_value(&stdout, "p2p_gossipsub_topics");
+    let p2p_request_response_protocols = stdout_value(&stdout, "p2p_request_response_protocols");
+    let p2p_bootstrap_peers = stdout_value(&stdout, "p2p_bootstrap_peers");
+    let (status, public_observation_stdout, public_observation_stderr) = run_tvmd_failure(&[
+        "public-evidence",
+        "network-observation",
+        "--operator-id",
+        &"99".repeat(32),
+        "--peer-id",
+        p2p_peer_id,
+        "--listen-address",
+        "/ip4/127.0.0.1/tcp/4001",
+        "--observed-at",
+        "1700000000",
+        "--gossip-topics",
+        p2p_gossipsub_topics,
+        "--request-response-protocols",
+        p2p_request_response_protocols,
+        "--bootstrap-peers",
+        p2p_bootstrap_peers,
+        "--max-transmit-bytes",
+        "1048576",
+        "--request-timeout-seconds",
+        "10",
+        "--max-concurrent-streams",
+        "128",
+        "--idle-timeout-seconds",
+        "60",
+    ]);
+    assert_eq!(status, 1);
+    assert!(public_observation_stdout.is_empty());
+    assert!(public_observation_stderr.contains("network observation address is not public"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
