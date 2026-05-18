@@ -133,7 +133,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   production libp2p network-observation roots,
   `tvmd public-evidence record-artifact ...` generation for signed external raw-record artifact locators, and
   `tvmd public-evidence record-summary-from-roots ...` deterministic root aggregation for post-run
-  supporting records
+  supporting records with duplicate-root rejection
 
 ## Verified Gates
 
@@ -167,7 +167,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.90% workspace line coverage
-- 7382/7464 workspace lines covered
+- 7385/7467 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

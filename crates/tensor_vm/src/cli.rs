@@ -12,6 +12,7 @@ use crate::testnet::{
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
+use std::collections::BTreeSet;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1179,6 +1180,10 @@ fn aggregate_public_evidence_record_roots(
     }
     if record_roots.contains(&[0; 32]) {
         return Err(TvmError::InvalidReceipt("record root argument is empty"));
+    }
+    let mut unique_roots = BTreeSet::new();
+    if record_roots.iter().any(|root| !unique_roots.insert(*root)) {
+        return Err(TvmError::InvalidReceipt("duplicate record root argument"));
     }
     let record_count = (record_roots.len() as u64).to_le_bytes();
     let mut encoded_roots = Vec::with_capacity(record_roots.len() * 32);
@@ -4251,6 +4256,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
                 record_roots: vec![[0; 32]],
+            })
+            .is_err()
+        );
+        let duplicate_record_root = hash_bytes(b"test", &[b"network-runtime-root"]);
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: vec![duplicate_record_root, duplicate_record_root],
             })
             .is_err()
         );

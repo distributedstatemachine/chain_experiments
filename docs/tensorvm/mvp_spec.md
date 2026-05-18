@@ -1825,9 +1825,9 @@ record kinds are `block-history`, `finality-history`, `network-runtime`, `data-a
 The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
 artifact URI to the record kind, root, and count; independently checkable public evidence requires one
 valid artifact locator for every required supporting-record summary root.
-The `record-summary-from-roots` command deterministically aggregates comma-separated supporting-record
-roots, derives the record count, and emits the same signed manifest summary fields so operators do not
-need an out-of-band root-signing tool for post-run bundles.
+The `record-summary-from-roots` command deterministically aggregates unique comma-separated
+supporting-record roots, rejects duplicate roots that would pad the derived count, and emits the same signed
+manifest summary fields so operators do not need an out-of-band root-signing tool for post-run bundles.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 
