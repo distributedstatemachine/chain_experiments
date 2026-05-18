@@ -2440,6 +2440,7 @@ dependencies = [
 name = "tensor_vm"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "libp2p",
  "serde",
  "tokio",

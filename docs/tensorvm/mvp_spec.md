@@ -1587,7 +1587,7 @@ tvmd miner register --stake 100
 tvmd miner start \
   --wallet miner.key \
   --device cuda:0 \
-  --node http://localhost:8545
+  --node /ip4/127.0.0.1/tcp/4001
 
 tvmd miner status
 ```
@@ -1599,7 +1599,7 @@ tvmd validator register --stake 10000
 
 tvmd validator start \
   --wallet validator.key \
-  --node http://localhost:8545
+  --node /ip4/127.0.0.1/tcp/4001
 
 tvmd validator status
 ```
@@ -1612,11 +1612,15 @@ tvmd service init \
 
 tvmd service serve \
   --listen 0.0.0.0:8545 \
+  --p2p-listen /ip4/0.0.0.0/tcp/4001 \
   --data-dir /var/lib/tensorvm \
   --auth-token service-token \
   --max-requests 0
 ```
 
+Miner and validator `--node` values are libp2p multiaddrs. The RPC listener remains HTTP for
+operator APIs, but `tvmd service serve` must start the mandatory rust-libp2p control plane for node
+discovery, Gossipsub propagation, and tensor/program request-response protocols.
 `--max-requests 0` means serve continuously; positive values are for supervised smoke tests and controlled
 rollout checks.
 

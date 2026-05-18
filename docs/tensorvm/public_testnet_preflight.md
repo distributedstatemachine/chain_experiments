@@ -58,7 +58,7 @@ The reference service process can be prepared and launched with:
 
 ```bash
 tvmd service init --data-dir /var/lib/tensorvm
-tvmd service serve --listen 0.0.0.0:8545 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
+tvmd service serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
 ```
 
 The service exposes `GET /health` plus scoped `GET /rpc/health`, `GET /explorer/health`,

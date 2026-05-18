@@ -72,19 +72,19 @@ pub const TENSOR_DATA_RPC_ROUTES: &[&str] = &[
 
 pub const MINER_CLI_COMMANDS: &[&str] = &[
     "tvmd miner register --stake <tokens>",
-    "tvmd miner start --wallet <key> --device <device> --node <url>",
+    "tvmd miner start --wallet <key> --device <device> --node <libp2p-multiaddr>",
     "tvmd miner status",
 ];
 
 pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator register --stake <tokens>",
-    "tvmd validator start --wallet <key> --node <url>",
+    "tvmd validator start --wallet <key> --node <libp2p-multiaddr>",
     "tvmd validator status",
 ];
 
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
     "tvmd service init --data-dir <path>",
-    "tvmd service serve --listen <addr> --data-dir <path> --auth-token <token> --max-requests <n>",
+    "tvmd service serve --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
 ];
 
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[

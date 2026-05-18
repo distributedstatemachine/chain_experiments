@@ -8,6 +8,7 @@ use crate::testnet::{
     sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address};
+use libp2p::Multiaddr;
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,6 +35,7 @@ pub enum CliCommand {
     },
     ServiceServe {
         listen: String,
+        p2p_listen: String,
         data_dir: String,
         auth_token: String,
         max_requests: usize,
@@ -128,6 +130,8 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             "serve",
             "--listen",
             listen,
+            "--p2p-listen",
+            p2p_listen,
             "--data-dir",
             data_dir,
             "--auth-token",
@@ -136,6 +140,7 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             max_requests,
         ] => Ok(CliCommand::ServiceServe {
             listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
             data_dir: (*data_dir).to_owned(),
             auth_token: (*auth_token).to_owned(),
             max_requests: parse_usize(max_requests)?,
@@ -285,12 +290,13 @@ pub fn describe_command(command: &CliCommand) -> String {
         }
         CliCommand::ServiceServe {
             listen,
+            p2p_listen,
             data_dir,
             auth_token: _,
             max_requests,
         } => {
             format!(
-                "serve RPC explorer faucet telemetry listen={listen} data_dir={data_dir} max_requests={max_requests}"
+                "serve RPC explorer faucet telemetry over mandatory libp2p listen={listen} p2p_listen={p2p_listen} data_dir={data_dir} max_requests={max_requests}"
             )
         }
         CliCommand::PublicEvidenceValidate { manifest } => {
@@ -393,15 +399,17 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
         }
         CliCommand::ServiceServe {
             listen,
+            p2p_listen,
             data_dir,
             auth_token,
             max_requests,
         } => {
             ensure_listen_addr(listen)?;
+            ensure_libp2p_multiaddr(p2p_listen)?;
             ensure_data_dir(data_dir)?;
             ensure_auth_token(auth_token)?;
             Ok(format!(
-                "command=service_serve\nlisten={listen}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true"
+                "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true"
             ))
         }
         CliCommand::PublicEvidenceServiceHealth {
@@ -870,19 +878,8 @@ fn ensure_device(device: &str) -> Result<()> {
 }
 
 fn ensure_node_endpoint(node: &str) -> Result<()> {
-    let node = node.trim();
-    if node.starts_with("http://")
-        || node.starts_with("https://")
-        || node.starts_with("tcp://")
-        || node.starts_with("/ip4/")
-        || node.starts_with("/ip6/")
-        || node.starts_with("/dns/")
-        || node.starts_with("/dns4/")
-        || node.starts_with("/dns6/")
-    {
-        return Ok(());
-    }
-    Err(TvmError::InvalidReceipt("unsupported node endpoint"))
+    ensure_libp2p_multiaddr(node)
+        .map_err(|_| TvmError::InvalidReceipt("unsupported libp2p node endpoint"))
 }
 
 fn ensure_listen_addr(listen: &str) -> Result<()> {
@@ -890,6 +887,14 @@ fn ensure_listen_addr(listen: &str) -> Result<()> {
         .parse::<SocketAddr>()
         .map(|_| ())
         .map_err(|_| TvmError::InvalidReceipt("invalid service listen address"))
+}
+
+fn ensure_libp2p_multiaddr(address: &str) -> Result<()> {
+    address
+        .trim()
+        .parse::<Multiaddr>()
+        .map(|_| ())
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))
 }
 
 fn ensure_data_dir(data_dir: &str) -> Result<()> {
@@ -1224,13 +1229,13 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "--device",
                 "cuda:0",
                 "--node",
-                "http://localhost:8545"
+                "/ip4/127.0.0.1/tcp/4001"
             ])
             .unwrap(),
             CliCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
                 device: "cuda:0".to_owned(),
-                node: "http://localhost:8545".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             }
         );
         assert_eq!(
@@ -1252,12 +1257,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "--wallet",
                 "validator.key",
                 "--node",
-                "http://localhost:8545"
+                "/ip4/127.0.0.1/tcp/4001"
             ])
             .unwrap(),
             CliCommand::ValidatorStart {
                 wallet: "validator.key".to_owned(),
-                node: "http://localhost:8545".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             }
         );
         assert_eq!(
@@ -1436,6 +1441,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "serve",
                 "--listen",
                 "0.0.0.0:8545",
+                "--p2p-listen",
+                "/ip4/0.0.0.0/tcp/4001",
                 "--data-dir",
                 "/var/lib/tensorvm",
                 "--auth-token",
@@ -1446,6 +1453,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             .unwrap(),
             CliCommand::ServiceServe {
                 listen: "0.0.0.0:8545".to_owned(),
+                p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
@@ -1479,9 +1487,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 CliCommand::MinerStart {
                     wallet: "miner.key".to_owned(),
                     device: "cuda:0".to_owned(),
-                    node: "http://localhost:8545".to_owned(),
+                    node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 },
-                "start miner wallet=miner.key device=cuda:0 node=http://localhost:8545",
+                "start miner wallet=miner.key device=cuda:0 node=/ip4/127.0.0.1/tcp/4001",
             ),
             (CliCommand::MinerStatus, "show miner status"),
             (
@@ -1491,9 +1499,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             (
                 CliCommand::ValidatorStart {
                     wallet: "validator.key".to_owned(),
-                    node: "http://localhost:8545".to_owned(),
+                    node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 },
-                "start validator wallet=validator.key node=http://localhost:8545",
+                "start validator wallet=validator.key node=/ip4/127.0.0.1/tcp/4001",
             ),
             (CliCommand::ValidatorStatus, "show validator status"),
             (
@@ -1505,11 +1513,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             (
                 CliCommand::ServiceServe {
                     listen: "0.0.0.0:8545".to_owned(),
+                    p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                     data_dir: "/var/lib/tensorvm".to_owned(),
                     auth_token: "secret".to_owned(),
                     max_requests: 0,
                 },
-                "serve RPC explorer faucet telemetry listen=0.0.0.0:8545 data_dir=/var/lib/tensorvm max_requests=0",
+                "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0",
             ),
             (
                 CliCommand::PublicEvidenceValidate {
@@ -1631,13 +1640,13 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let miner_start = execute_reference_cli_command(&CliCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cuda:0".to_owned(),
-            node: "http://localhost:8545".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         })
         .unwrap();
         assert!(miner_start.contains("command=miner_start"));
         assert!(miner_start.contains("wallet=miner.key"));
         assert!(miner_start.contains("device=cuda:0"));
-        assert!(miner_start.contains("node=http://localhost:8545"));
+        assert!(miner_start.contains("node=/ip4/127.0.0.1/tcp/4001"));
         assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
         assert!(miner_start.contains("reference_backend_ready=true"));
 
@@ -1672,12 +1681,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
 
         let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
+            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             auth_token: "secret".to_owned(),
             max_requests: 0,
         })
         .unwrap();
         assert!(service_serve.contains("command=service_serve"));
+        assert!(service_serve.contains("p2p_runtime=libp2p"));
+        assert!(service_serve.contains("p2p_gossipsub=enabled"));
+        assert!(service_serve.contains("p2p_identify=enabled"));
+        assert!(service_serve.contains("p2p_kademlia=enabled"));
+        assert!(service_serve.contains("p2p_request_response=enabled"));
         assert!(service_serve.contains("auth_enabled=true"));
         assert!(service_serve.contains("rpc_routes=enabled"));
         assert!(service_serve.contains("explorer_routes=enabled"));
@@ -1874,7 +1889,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&CliCommand::MinerStart {
                 wallet: " ".to_owned(),
                 device: "cuda:0".to_owned(),
-                node: "http://localhost:8545".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             })
             .is_err()
         );
@@ -1882,6 +1897,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&CliCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
                 device: " ".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: "miner.key".to_owned(),
+                device: "cuda:0".to_owned(),
                 node: "http://localhost:8545".to_owned(),
             })
             .is_err()
@@ -1902,6 +1925,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(
             execute_reference_cli_command(&CliCommand::ServiceServe {
                 listen: "localhost:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
@@ -1911,6 +1935,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(
             execute_reference_cli_command(&CliCommand::ServiceServe {
                 listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "not-a-multiaddr".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                auth_token: "secret".to_owned(),
+                max_requests: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceServe {
+                listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: " ".to_owned(),
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
@@ -1920,6 +1955,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(
             execute_reference_cli_command(&CliCommand::ServiceServe {
                 listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 auth_token: " ".to_owned(),
                 max_requests: 0,
@@ -1932,6 +1968,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "serve",
                 "--listen",
                 "127.0.0.1:8545",
+                "--p2p-listen",
+                "/ip4/127.0.0.1/tcp/4001",
                 "--data-dir",
                 "/var/lib/tensorvm",
                 "--auth-token",

@@ -37,12 +37,12 @@ implementation artifacts and tests.
   shape is documented in [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete
   external bundle is linked yet.
 - Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web
-  services remain outside the local reference crate. The crate has rust-libp2p runtime wiring with
+  services remain outside the local reference crate. The crate has mandatory rust-libp2p runtime wiring with
   TCP/TLS/Yamux swarm construction, Gossipsub subscriptions, Identify, Kademlia discovery/address
-  registration, JSON request-response protocols, durable bootstrap peer-book persistence, generic HTTP
-  request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
+  registration, JSON request-response protocols, `tvmd service serve` startup of a libp2p control-plane
+  runtime, durable bootstrap peer-book persistence, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer/telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
-  `tvmd service init/serve` launch validation, a documented mandatory-libp2p networking choice, and a
+  `tvmd service init/serve` launch validation with required libp2p listen multiaddrs, a documented mandatory-libp2p networking choice, and a
   restartable reference `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence.

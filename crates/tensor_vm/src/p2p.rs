@@ -1,10 +1,15 @@
 use crate::api::P2pMessage;
 use crate::error::{Result as TvmResult, TvmError};
 use crate::types::{Hash, hash_bytes};
+use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
@@ -125,6 +130,39 @@ pub struct TensorVmLibp2pNode {
     pub request_response_protocols: Vec<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TensorVmLibp2pServiceInfo {
+    pub peer_id: PeerId,
+    pub identify_protocol: String,
+    pub subscribed_topics: Vec<String>,
+    pub request_response_protocols: Vec<String>,
+}
+
+pub struct TensorVmLibp2pService {
+    info: TensorVmLibp2pServiceInfo,
+    stop: Arc<AtomicBool>,
+    worker: Option<thread::JoinHandle<()>>,
+}
+
+impl TensorVmLibp2pService {
+    pub fn info(&self) -> &TensorVmLibp2pServiceInfo {
+        &self.info
+    }
+
+    pub fn peer_id(&self) -> PeerId {
+        self.info.peer_id
+    }
+}
+
+impl Drop for TensorVmLibp2pService {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
+}
+
 pub fn build_libp2p_node(config: &Libp2pControlPlaneConfig) -> TvmResult<TensorVmLibp2pNode> {
     let keypair = libp2p::identity::Keypair::generate_ed25519();
     let peer_id = PeerId::from(keypair.public());
@@ -182,6 +220,56 @@ pub fn build_libp2p_node(config: &Libp2pControlPlaneConfig) -> TvmResult<TensorV
         subscribed_topics,
         request_response_protocols,
     })
+}
+
+pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<TensorVmLibp2pService> {
+    let (ready_tx, ready_rx) = mpsc::sync_channel(1);
+    let stop = Arc::new(AtomicBool::new(false));
+    let worker_stop = Arc::clone(&stop);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .map_err(|_| TvmError::InvalidReceipt("libp2p runtime build failed"))?;
+    let worker = thread::spawn(move || {
+        runtime.block_on(async move {
+            let mut node = match build_libp2p_node(&config) {
+                Ok(node) => node,
+                Err(error) => {
+                    let _ = ready_tx.send(Err(error));
+                    return;
+                }
+            };
+            let info = TensorVmLibp2pServiceInfo {
+                peer_id: node.peer_id,
+                identify_protocol: node.identify_protocol.clone(),
+                subscribed_topics: node.subscribed_topics.clone(),
+                request_response_protocols: node.request_response_protocols.clone(),
+            };
+            let _ = ready_tx.send(Ok(info));
+
+            while !worker_stop.load(Ordering::Relaxed) {
+                let _ =
+                    tokio::time::timeout(Duration::from_millis(100), node.swarm.select_next_some())
+                        .await;
+            }
+        });
+    });
+
+    match ready_rx
+        .recv()
+        .map_err(|_| TvmError::InvalidReceipt("libp2p service failed to start"))?
+    {
+        Ok(info) => Ok(TensorVmLibp2pService {
+            info,
+            stop,
+            worker: Some(worker),
+        }),
+        Err(error) => {
+            let _ = worker.join();
+            Err(error)
+        }
+    }
 }
 
 fn build_libp2p_behaviour(
@@ -801,6 +889,33 @@ mod tests {
             let node = build_libp2p_node(&config).unwrap();
             assert!(!node.peer_id.to_string().is_empty());
         });
+    }
+
+    #[test]
+    fn libp2p_service_spawns_background_runtime() {
+        let service = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+
+        assert!(!service.peer_id().to_string().is_empty());
+        assert_eq!(service.info().identify_protocol, "/tensorchain/1/identify");
+        assert_eq!(service.info().subscribed_topics.len(), 5);
+        assert_eq!(service.info().request_response_protocols.len(), 3);
+        std::thread::sleep(Duration::from_millis(150));
+    }
+
+    #[test]
+    fn libp2p_service_rejects_invalid_runtime_config() {
+        let error = match spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["not-a-multiaddr".to_owned()],
+            ..Libp2pControlPlaneConfig::default()
+        }) {
+            Err(error) => error,
+            Ok(_) => panic!("invalid libp2p config started"),
+        };
+        assert_eq!(error, TvmError::InvalidReceipt("invalid libp2p multiaddr"));
     }
 
     #[test]
