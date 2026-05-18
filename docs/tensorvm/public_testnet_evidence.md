@@ -170,6 +170,29 @@ The command rejects local/private service URLs, malformed endpoint IDs, invalid 
 or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
 the evidence manifest.
 
+Operators can also generate signed production libp2p runtime observation records before rolling them into
+the required network-runtime summary root:
+
+```bash
+tvmd public-evidence network-observation \
+  --operator-id <operator-id-hex> \
+  --peer-id <libp2p-peer-id> \
+  --listen-address /dns/node-a.example.test/tcp/4001 \
+  --observed-at <unix-seconds> \
+  --gossip-topics 5 \
+  --request-response-protocols 3 \
+  --bootstrap-peers 2 \
+  --max-transmit-bytes 1048576 \
+  --request-timeout-seconds 10 \
+  --max-concurrent-streams 128 \
+  --idle-timeout-seconds 60
+```
+
+The command rejects zero operator IDs, malformed peer IDs, local/private or malformed libp2p multiaddrs,
+missing discovery/bootstrap observations, missing gossip or request-response protocol counts, and missing
+DoS-control limits. Its output is a signed `network_runtime_observation=...` line suitable for external
+aggregation into the `network-runtime` record summary.
+
 Operators can also generate signed supporting-record summary lines, including the production libp2p
 network-observation summary required by full-spec evidence:
 

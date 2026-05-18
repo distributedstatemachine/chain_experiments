@@ -1665,6 +1665,19 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
+tvmd public-evidence network-observation \
+  --operator-id <operator-id-hex> \
+  --peer-id <libp2p-peer-id> \
+  --listen-address /dns/node-a.example.test/tcp/4001 \
+  --observed-at <unix-seconds> \
+  --gossip-topics 5 \
+  --request-response-protocols 3 \
+  --bootstrap-peers 2 \
+  --max-transmit-bytes 1048576 \
+  --request-timeout-seconds 10 \
+  --max-concurrent-streams 128 \
+  --idle-timeout-seconds 60
+
 tvmd public-evidence record-summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -1678,6 +1691,9 @@ public evidence location, wall-clock run duration, and external operator node he
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count.
+The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
+public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
+counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, or data-availability measurements.

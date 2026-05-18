@@ -96,7 +96,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence node-heartbeat ...` generation for signed publication, wall-clock run-window, and
   external-operator heartbeat fields,
   `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
-  `service=...` manifest records bound to external HTTPS health URLs and observation counts, and
+  `service=...` manifest records bound to external HTTPS health URLs and observation counts,
+  `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
+  records, and
   `tvmd public-evidence record-summary ...` generation for signed block/finality/network-runtime/data-availability
   summary fields including production libp2p network-observation roots
 
@@ -113,21 +115,21 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 179 passing library tests under Tarpaulin:
+The workspace currently has 180 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 165 in `tensor_vm`
+- 166 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.71% workspace line coverage
-- 6275/6357 workspace lines covered
+- 98.74% workspace line coverage
+- 6424/6506 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 166 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 167 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 

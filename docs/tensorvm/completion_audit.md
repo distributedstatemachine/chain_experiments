@@ -33,7 +33,7 @@ The objective decomposes into these deliverables:
 | Recommended TensorVM modules exist | `api`, `chain`, `challenge`, `cli`, `error`, `explorer`, `faucet`, `jobs`, `merkle`, `miner`, `p2p`, `rpc`, `runtime`, `scheduler`, `storage`, `study`, `telemetry`, `tensor`, `tensor_server`, `testnet`, `txpool`, `types`, `validator`, `verify`, `vm`, `watcher` under `crates/tensor_vm/src` | Present |
 | Local Acceptance Criteria 1-12, 14, 15 | [`coverage_matrix.md`](coverage_matrix.md) maps each criterion to concrete tests and artifacts | Locally covered |
 | AC13 local preflight | [`public_testnet_preflight.md`](public_testnet_preflight.md), `parse_public_testnet_preflight_manifest`, and `tvmd public-testnet preflight --manifest <path>` | Present |
-| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, operator-attestation-derived external-operator evidence, `tvmd public-evidence validate --manifest <path>`, `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, `tvmd public-evidence node-heartbeat ...`, `tvmd public-evidence service-health ...` signed service-record generation, and `tvmd public-evidence record-summary ...` signed supporting-record generation | Present |
+| AC13 public evidence validator | [`public_testnet_evidence.md`](public_testnet_evidence.md), `parse_public_testnet_evidence_manifest`, `PublicTestnetEvidenceBundle`, external publication URI validation, verified manifest publication signatures, signed wall-clock run-window evidence, signed block/finality/network-runtime/data-availability summary roots, operator-attestation-derived external-operator evidence, `tvmd public-evidence validate --manifest <path>`, `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, `tvmd public-evidence node-heartbeat ...`, `tvmd public-evidence service-health ...` signed service-record generation, `tvmd public-evidence network-observation ...` signed libp2p observation-record generation, and `tvmd public-evidence record-summary ...` signed supporting-record generation | Present |
 | Miner, validator, and service CLI surfaces | `cli::parse_cli_args`, `cli::execute_reference_cli_command`, libp2p multiaddr validation for miner/validator nodes, required `tvmd service serve --p2p-listen <multiaddr>`, and `tvmd` binary entrypoint | Reference implementation present |
 | CPU reference backend | `runtime::CpuReferenceBackend` and runtime tests | Present |
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
@@ -42,11 +42,11 @@ The objective decomposes into these deliverables:
 | P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, background libp2p service runtime, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP and health-route tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 165 `tensor_vm` tests | Passed |
+| `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 166 `tensor_vm` tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 179 instrumented tests | Passed |
+| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 180 instrumented tests | Passed |
 | TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage | Passed |
-| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 164 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
+| CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 167 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 ## Acceptance Criteria Audit
 

@@ -7,9 +7,11 @@ use crate::testnet::{
     parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
     sign_public_evidence_record, sign_public_run_window,
 };
-use crate::types::{Address, Hash, address};
-use libp2p::Multiaddr;
+use crate::types::{Address, Hash, address, hash_bytes};
+use libp2p::multiaddr::Protocol;
+use libp2p::{Multiaddr, PeerId};
 use std::net::SocketAddr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -59,6 +61,19 @@ pub enum CliCommand {
         manifest_signer: Address,
         record_root: Hash,
         record_count: u64,
+    },
+    PublicEvidenceNetworkObservation {
+        operator_id: Hash,
+        peer_id: String,
+        listen_address: String,
+        observed_at_unix_seconds: u64,
+        gossip_topic_count: u64,
+        request_response_protocol_count: u64,
+        bootstrap_peer_count: u64,
+        max_transmit_bytes: u64,
+        request_timeout_seconds: u64,
+        max_concurrent_streams: u64,
+        idle_connection_timeout_seconds: u64,
     },
     PublicEvidencePublication {
         bundle_id: Hash,
@@ -201,6 +216,44 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "network-observation",
+            "--operator-id",
+            operator_id,
+            "--peer-id",
+            peer_id,
+            "--listen-address",
+            listen_address,
+            "--observed-at",
+            observed_at_unix_seconds,
+            "--gossip-topics",
+            gossip_topic_count,
+            "--request-response-protocols",
+            request_response_protocol_count,
+            "--bootstrap-peers",
+            bootstrap_peer_count,
+            "--max-transmit-bytes",
+            max_transmit_bytes,
+            "--request-timeout-seconds",
+            request_timeout_seconds,
+            "--max-concurrent-streams",
+            max_concurrent_streams,
+            "--idle-timeout-seconds",
+            idle_connection_timeout_seconds,
+        ] => Ok(CliCommand::PublicEvidenceNetworkObservation {
+            operator_id: parse_hash_argument(operator_id)?,
+            peer_id: (*peer_id).to_owned(),
+            listen_address: (*listen_address).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at_unix_seconds)?,
+            gossip_topic_count: parse_u64(gossip_topic_count)?,
+            request_response_protocol_count: parse_u64(request_response_protocol_count)?,
+            bootstrap_peer_count: parse_u64(bootstrap_peer_count)?,
+            max_transmit_bytes: parse_u64(max_transmit_bytes)?,
+            request_timeout_seconds: parse_u64(request_timeout_seconds)?,
+            max_concurrent_streams: parse_u64(max_concurrent_streams)?,
+            idle_connection_timeout_seconds: parse_u64(idle_connection_timeout_seconds)?,
+        }),
+        [
+            "public-evidence",
             "publication",
             "--bundle-id",
             bundle_id,
@@ -319,6 +372,15 @@ pub fn describe_command(command: &CliCommand) -> String {
             format!(
                 "generate {} public evidence record summary records={record_count}",
                 public_evidence_record_kind_tag(*kind)
+            )
+        }
+        CliCommand::PublicEvidenceNetworkObservation {
+            peer_id,
+            listen_address,
+            ..
+        } => {
+            format!(
+                "generate signed libp2p network observation peer_id={peer_id} listen_address={listen_address}"
             )
         }
         CliCommand::PublicEvidencePublication { public_uri, .. } => {
@@ -444,6 +506,31 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *record_root,
             *record_count,
         ),
+        CliCommand::PublicEvidenceNetworkObservation {
+            operator_id,
+            peer_id,
+            listen_address,
+            observed_at_unix_seconds,
+            gossip_topic_count,
+            request_response_protocol_count,
+            bootstrap_peer_count,
+            max_transmit_bytes,
+            request_timeout_seconds,
+            max_concurrent_streams,
+            idle_connection_timeout_seconds,
+        } => network_observation_evidence_line(NetworkObservationEvidenceLine {
+            operator_id: *operator_id,
+            peer_id,
+            listen_address,
+            observed_at_unix_seconds: *observed_at_unix_seconds,
+            gossip_topic_count: *gossip_topic_count,
+            request_response_protocol_count: *request_response_protocol_count,
+            bootstrap_peer_count: *bootstrap_peer_count,
+            max_transmit_bytes: *max_transmit_bytes,
+            request_timeout_seconds: *request_timeout_seconds,
+            max_concurrent_streams: *max_concurrent_streams,
+            idle_connection_timeout_seconds: *idle_connection_timeout_seconds,
+        }),
         CliCommand::PublicEvidencePublication {
             bundle_id,
             public_uri,
@@ -679,6 +766,150 @@ fn record_summary_evidence_lines(
         hex(&record_root),
         hex(&signature)
     ))
+}
+
+struct NetworkObservationEvidenceLine<'a> {
+    operator_id: Hash,
+    peer_id: &'a str,
+    listen_address: &'a str,
+    observed_at_unix_seconds: u64,
+    gossip_topic_count: u64,
+    request_response_protocol_count: u64,
+    bootstrap_peer_count: u64,
+    max_transmit_bytes: u64,
+    request_timeout_seconds: u64,
+    max_concurrent_streams: u64,
+    idle_connection_timeout_seconds: u64,
+}
+
+fn network_observation_evidence_line(input: NetworkObservationEvidenceLine<'_>) -> Result<String> {
+    if input.operator_id == [0; 32] {
+        return Err(TvmError::InvalidReceipt("operator id argument is empty"));
+    }
+    if input.observed_at_unix_seconds == 0 {
+        return Err(TvmError::InvalidReceipt("observed-at argument is empty"));
+    }
+    if input.gossip_topic_count == 0 {
+        return Err(TvmError::InvalidReceipt("gossip topics argument is empty"));
+    }
+    if input.request_response_protocol_count == 0 {
+        return Err(TvmError::InvalidReceipt(
+            "request-response protocols argument is empty",
+        ));
+    }
+    if input.bootstrap_peer_count == 0 {
+        return Err(TvmError::InvalidReceipt(
+            "bootstrap peers argument is empty",
+        ));
+    }
+    if input.max_transmit_bytes == 0
+        || input.request_timeout_seconds == 0
+        || input.max_concurrent_streams == 0
+        || input.idle_connection_timeout_seconds == 0
+    {
+        return Err(TvmError::InvalidReceipt(
+            "network runtime control arguments must be positive",
+        ));
+    }
+
+    let peer_id = input
+        .peer_id
+        .parse::<PeerId>()
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p peer id"))?;
+    let listen_address = input
+        .listen_address
+        .parse::<Multiaddr>()
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
+    if !network_observation_multiaddr_is_public(&listen_address) {
+        return Err(TvmError::InvalidReceipt(
+            "network observation address is not public",
+        ));
+    }
+
+    let peer_id = peer_id.to_string();
+    let listen_address = listen_address.to_string();
+    let root = network_observation_root(&input, &peer_id, &listen_address);
+    let signature = hash_bytes(
+        b"tensor-vm-network-runtime-observation-signature-v1",
+        &[&input.operator_id, &root],
+    );
+    Ok(format!(
+        "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
+        hex(&input.operator_id),
+        peer_id,
+        listen_address,
+        input.observed_at_unix_seconds,
+        input.gossip_topic_count,
+        input.request_response_protocol_count,
+        input.bootstrap_peer_count,
+        input.max_transmit_bytes,
+        input.request_timeout_seconds,
+        input.max_concurrent_streams,
+        input.idle_connection_timeout_seconds,
+        hex(&root),
+        hex(&signature)
+    ))
+}
+
+fn network_observation_root(
+    input: &NetworkObservationEvidenceLine<'_>,
+    peer_id: &str,
+    listen_address: &str,
+) -> Hash {
+    let observed_at = input.observed_at_unix_seconds.to_le_bytes();
+    let gossip_topics = input.gossip_topic_count.to_le_bytes();
+    let request_response_protocols = input.request_response_protocol_count.to_le_bytes();
+    let bootstrap_peers = input.bootstrap_peer_count.to_le_bytes();
+    let max_transmit_bytes = input.max_transmit_bytes.to_le_bytes();
+    let request_timeout = input.request_timeout_seconds.to_le_bytes();
+    let max_streams = input.max_concurrent_streams.to_le_bytes();
+    let idle_timeout = input.idle_connection_timeout_seconds.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-network-runtime-observation-v1",
+        &[
+            &input.operator_id,
+            peer_id.as_bytes(),
+            listen_address.as_bytes(),
+            &observed_at,
+            &gossip_topics,
+            &request_response_protocols,
+            &bootstrap_peers,
+            &max_transmit_bytes,
+            &request_timeout,
+            &max_streams,
+            &idle_timeout,
+        ],
+    )
+}
+
+fn network_observation_multiaddr_is_public(address: &Multiaddr) -> bool {
+    address.iter().any(|protocol| match protocol {
+        Protocol::Ip4(ip) => public_ipv4(ip),
+        Protocol::Ip6(ip) => public_ipv6(ip),
+        Protocol::Dns(host) | Protocol::Dns4(host) | Protocol::Dns6(host) => {
+            public_dns_host(host.as_ref())
+        }
+        _ => false,
+    })
+}
+
+fn public_ipv4(ip: Ipv4Addr) -> bool {
+    !(ip.is_unspecified() || ip.is_loopback() || ip.is_private() || ip.is_link_local())
+}
+
+fn public_ipv6(ip: Ipv6Addr) -> bool {
+    let first_segment = ip.segments()[0];
+    let unique_local = (first_segment & 0xfe00) == 0xfc00;
+    let link_local = (first_segment & 0xffc0) == 0xfe80;
+    !(ip.is_unspecified() || ip.is_loopback() || unique_local || link_local)
+}
+
+fn public_dns_host(host: &str) -> bool {
+    let host = host.trim().trim_end_matches('.').to_ascii_lowercase();
+    !host.is_empty()
+        && host != "localhost"
+        && !host.ends_with(".localhost")
+        && !host.ends_with(".local")
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -1404,6 +1635,49 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 signed_health_check_count: 10,
             }
         );
+        let peer_id = PeerId::random().to_string();
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "network-observation",
+                "--operator-id",
+                &manifest_hash(b"network-operator"),
+                "--peer-id",
+                &peer_id,
+                "--listen-address",
+                "/dns/node-a.tensorvm.example/tcp/4001",
+                "--observed-at",
+                "1700000000",
+                "--gossip-topics",
+                "5",
+                "--request-response-protocols",
+                "3",
+                "--bootstrap-peers",
+                "2",
+                "--max-transmit-bytes",
+                "1048576",
+                "--request-timeout-seconds",
+                "10",
+                "--max-concurrent-streams",
+                "128",
+                "--idle-timeout-seconds",
+                "60",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceNetworkObservation {
+                operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                peer_id,
+                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                gossip_topic_count: 5,
+                request_response_protocol_count: 3,
+                bootstrap_peer_count: 2,
+                max_transmit_bytes: 1_048_576,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_connection_timeout_seconds: 60,
+            }
+        );
         let record_root = manifest_hash(b"network-runtime-root");
         assert_eq!(
             parse_cli_parts(&[
@@ -1569,6 +1843,25 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 observed_blocks: 10,
             }),
             "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
+        );
+        let peer_id = PeerId::random().to_string();
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceNetworkObservation {
+                operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                peer_id: peer_id.clone(),
+                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                gossip_topic_count: 5,
+                request_response_protocol_count: 3,
+                bootstrap_peer_count: 2,
+                max_transmit_bytes: 1_048_576,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_connection_timeout_seconds: 60,
+            }),
+            format!(
+                "generate signed libp2p network observation peer_id={peer_id} listen_address=/dns/node-a.tensorvm.example/tcp/4001"
+            )
         );
 
         let node_roles = [
@@ -1830,6 +2123,54 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             assert!(line.ends_with(&manifest_service_signature(kind, label)));
         }
 
+        let peer_id = PeerId::random().to_string();
+        let network_observation =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNetworkObservation {
+                operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                peer_id: peer_id.clone(),
+                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                gossip_topic_count: 5,
+                request_response_protocol_count: 3,
+                bootstrap_peer_count: 2,
+                max_transmit_bytes: 1_048_576,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_connection_timeout_seconds: 60,
+            })
+            .unwrap();
+        let observation_input = NetworkObservationEvidenceLine {
+            operator_id: hash_bytes(b"test", &[b"network-operator"]),
+            peer_id: &peer_id,
+            listen_address: "/dns/node-a.tensorvm.example/tcp/4001",
+            observed_at_unix_seconds: 1_700_000_000,
+            gossip_topic_count: 5,
+            request_response_protocol_count: 3,
+            bootstrap_peer_count: 2,
+            max_transmit_bytes: 1_048_576,
+            request_timeout_seconds: 10,
+            max_concurrent_streams: 128,
+            idle_connection_timeout_seconds: 60,
+        };
+        let observation_root = network_observation_root(
+            &observation_input,
+            &peer_id,
+            "/dns/node-a.tensorvm.example/tcp/4001",
+        );
+        let observation_signature = hash_bytes(
+            b"tensor-vm-network-runtime-observation-signature-v1",
+            &[&observation_input.operator_id, &observation_root],
+        );
+        assert_eq!(
+            network_observation,
+            format!(
+                "network_runtime_observation={},{peer_id},/dns/node-a.tensorvm.example/tcp/4001,1700000000,5,3,2,1048576,10,128,60,{},{}",
+                hex(&observation_input.operator_id),
+                hex(&observation_root),
+                hex(&observation_signature)
+            )
+        );
+
         let record_cases: [(PublicEvidenceRecordKind, &[u8], u64, &str, String); 4] = [
             (
                 PublicEvidenceRecordKind::BlockHistory,
@@ -1979,6 +2320,125 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ])
             .is_err()
         );
+        let peer_id = PeerId::random().to_string();
+        let make_network_observation = |operator_id,
+                                        peer_id: String,
+                                        listen_address: String,
+                                        observed_at_unix_seconds,
+                                        gossip_topic_count,
+                                        request_response_protocol_count,
+                                        bootstrap_peer_count,
+                                        max_transmit_bytes| {
+            CliCommand::PublicEvidenceNetworkObservation {
+                operator_id,
+                peer_id,
+                listen_address,
+                observed_at_unix_seconds,
+                gossip_topic_count,
+                request_response_protocol_count,
+                bootstrap_peer_count,
+                max_transmit_bytes,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_connection_timeout_seconds: 60,
+            }
+        };
+        let operator_id = hash_bytes(b"test", &[b"network-operator"]);
+        let public_listen_address = "/dns/node-a.tensorvm.example/tcp/4001".to_owned();
+        for invalid in [
+            make_network_observation(
+                [0; 32],
+                peer_id.clone(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                public_listen_address.clone(),
+                0,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                0,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                5,
+                0,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                5,
+                3,
+                0,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                0,
+            ),
+            make_network_observation(
+                operator_id,
+                "not-a-peer-id".to_owned(),
+                public_listen_address.clone(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "not-a-multiaddr".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+        ] {
+            assert!(execute_reference_cli_command(&invalid).is_err());
+        }
         assert!(parse_public_service_kind("archive").is_err());
         assert_eq!(
             parse_public_node_role("miner").unwrap(),
@@ -2272,6 +2732,40 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             })
             .is_err()
         );
+    }
+
+    #[test]
+    fn network_observation_public_address_filter_rejects_local_targets() {
+        assert!(network_observation_multiaddr_is_public(
+            &"/ip4/8.8.8.8/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip4/0.0.0.0/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip4/10.0.0.1/tcp/4001".parse().unwrap()
+        ));
+        assert!(network_observation_multiaddr_is_public(
+            &"/ip6/2001:4860:4860::8888/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip6/::1/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip6/fc00::1/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip6/fe80::1/tcp/4001".parse().unwrap()
+        ));
+        assert!(network_observation_multiaddr_is_public(
+            &"/dns/node.tensorvm.example/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/dns/localhost/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/dns/node.local/tcp/4001".parse().unwrap()
+        ));
     }
 
     #[test]
