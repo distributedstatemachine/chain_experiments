@@ -92,7 +92,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, well-formed whitespace-free
-  `ipfs://`/`ar://` content identifiers, exact untrimmed URI/path manifest-field validation, and
+  `ipfs://`/`ar://` content identifiers, HTTPS evidence URI path enforcement with query/fragment
+  rejection, exact untrimmed URI/path manifest-field validation, and
   exact run-derived block/finality/data-availability/invalid-work summary counts plus network-runtime
   observation coverage for every counted public operator before full-spec evidence can be considered
   independently checkable

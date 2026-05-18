@@ -61,8 +61,9 @@ and the explicit separation between local evidence and the 7-day public deployme
   counters, exact run-derived supporting-record summary counts, non-public IP literal rejection,
   special-use DNS and single-label DNS rejection, plus
   malformed HTTPS authority rejection for public endpoints, raw-whitespace rejection for external evidence
-  URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, exact service
-  URL path matching with query and fragment rejection, no overreported operator-attestation counts,
+  URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, HTTPS evidence
+  URI path enforcement with query and fragment rejection, exact service URL path matching with query and
+  fragment rejection, no overreported operator-attestation counts,
   well-formed `ipfs://`/`ar://` identifier validation, and deployed public-service reachability plus
   content roots bound to external HTTPS URLs. A local launch
   preflight manifest is documented in

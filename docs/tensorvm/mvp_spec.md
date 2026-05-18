@@ -2359,6 +2359,7 @@ public service evidence includes externally reachable HTTPS URLs, signed health-
 signed service-content roots
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
+HTTPS public evidence URIs include concrete query-free paths
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
 the evidence includes signed external artifact locators for the raw supporting records behind summary roots
 run-derived block/finality/data-availability/invalid-work summary counts match the signed run counters exactly

@@ -1713,7 +1713,7 @@ fn public_ipv6_is_external(ip: Ipv6Addr) -> bool {
 
 fn public_evidence_uri_is_external(uri: &str) -> bool {
     if let Some(host) = public_https_host(uri) {
-        return public_host_is_external(host);
+        return public_host_is_external(host) && public_https_path(uri).is_some();
     }
     content_addressed_uri_has_identifier(uri, "ipfs://")
         || content_addressed_uri_has_identifier(uri, "ar://")
@@ -4294,6 +4294,11 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "https://evidence.invalid/public-evidence.json",
             "https://[2001:db8::1]x/public-evidence.json",
             "https://[2001:4860:4860::8888]:/public-evidence.json",
+            "https://evidence.tensorvm.net",
+            "https://evidence.tensorvm.net?manifest=1",
+            "https://evidence.tensorvm.net#manifest",
+            "https://evidence.tensorvm.net/public-evidence.json?download=1",
+            "https://evidence.tensorvm.net/public-evidence.json#sha256",
             "https:///public-evidence.json",
         ] {
             assert!(!public_evidence_uri_is_external(uri));
@@ -4305,6 +4310,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let userinfo_obfuscated_uri = bundle.evaluate(&criteria, 6);
         assert!(!userinfo_obfuscated_uri.has_published_evidence_bundle);
         assert!(!userinfo_obfuscated_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri =
+            String::from("https://evidence.tensorvm.net/public-evidence.json?download=1");
+        let query_publication_uri = bundle.evaluate(&criteria, 6);
+        assert!(!query_publication_uri.has_published_evidence_bundle);
+        assert!(!query_publication_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("ipfs://");

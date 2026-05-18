@@ -3850,6 +3850,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         );
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json?download=1"
+                    .to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: [0; 32],
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
