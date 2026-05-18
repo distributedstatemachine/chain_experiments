@@ -2,9 +2,10 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
-    PublicEvidenceRecordKind, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
-    PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
-    parse_public_testnet_preflight_manifest, sign_public_evidence_record,
+    PublicEvidencePublication, PublicEvidenceRecordKind, PublicNodeEvidence, PublicNodeRole,
+    PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
+    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
+    sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address};
 use std::net::SocketAddr;
@@ -56,6 +57,28 @@ pub enum CliCommand {
         manifest_signer: Address,
         record_root: Hash,
         record_count: u64,
+    },
+    PublicEvidencePublication {
+        bundle_id: Hash,
+        public_uri: String,
+        manifest_signer: Address,
+        manifest_signature_count: u64,
+        independent_auditor_count: u64,
+    },
+    PublicEvidenceRunWindow {
+        bundle_id: Hash,
+        manifest_signer: Address,
+        run_started_at_unix_seconds: u64,
+        run_ended_at_unix_seconds: u64,
+        observed_blocks: u64,
+    },
+    PublicEvidenceNodeHeartbeat {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        first_seen_block: u64,
+        last_seen_block: u64,
+        signed_heartbeat_count: u64,
     },
     PublicTestnetPreflight {
         manifest: String,
@@ -171,6 +194,69 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             record_root: parse_hash_argument(record_root)?,
             record_count: parse_u64(record_count)?,
         }),
+        [
+            "public-evidence",
+            "publication",
+            "--bundle-id",
+            bundle_id,
+            "--public-uri",
+            public_uri,
+            "--manifest-signer",
+            manifest_signer,
+            "--manifest-signature-count",
+            manifest_signature_count,
+            "--independent-auditor-count",
+            independent_auditor_count,
+        ] => Ok(CliCommand::PublicEvidencePublication {
+            bundle_id: parse_hash_argument(bundle_id)?,
+            public_uri: (*public_uri).to_owned(),
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            manifest_signature_count: parse_u64(manifest_signature_count)?,
+            independent_auditor_count: parse_u64(independent_auditor_count)?,
+        }),
+        [
+            "public-evidence",
+            "run-window",
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--started-at",
+            run_started_at_unix_seconds,
+            "--ended-at",
+            run_ended_at_unix_seconds,
+            "--observed-blocks",
+            observed_blocks,
+        ] => Ok(CliCommand::PublicEvidenceRunWindow {
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            run_started_at_unix_seconds: parse_u64(run_started_at_unix_seconds)?,
+            run_ended_at_unix_seconds: parse_u64(run_ended_at_unix_seconds)?,
+            observed_blocks: parse_u64(observed_blocks)?,
+        }),
+        [
+            "public-evidence",
+            "node-heartbeat",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--first-block",
+            first_seen_block,
+            "--last-block",
+            last_seen_block,
+            "--heartbeat-count",
+            signed_heartbeat_count,
+        ] => Ok(CliCommand::PublicEvidenceNodeHeartbeat {
+            role: parse_public_node_role(role)?,
+            address: parse_hash_argument(address)?,
+            operator_id: parse_hash_argument(operator_id)?,
+            first_seen_block: parse_u64(first_seen_block)?,
+            last_seen_block: parse_u64(last_seen_block)?,
+            signed_heartbeat_count: parse_u64(signed_heartbeat_count)?,
+        }),
         ["public-testnet", "preflight", "--manifest", manifest] => {
             Ok(CliCommand::PublicTestnetPreflight {
                 manifest: (*manifest).to_owned(),
@@ -227,6 +313,26 @@ pub fn describe_command(command: &CliCommand) -> String {
             format!(
                 "generate {} public evidence record summary records={record_count}",
                 public_evidence_record_kind_tag(*kind)
+            )
+        }
+        CliCommand::PublicEvidencePublication { public_uri, .. } => {
+            format!("generate public evidence publication signature public_uri={public_uri}")
+        }
+        CliCommand::PublicEvidenceRunWindow {
+            run_started_at_unix_seconds,
+            run_ended_at_unix_seconds,
+            observed_blocks,
+            ..
+        } => {
+            format!(
+                "generate public evidence run window started={run_started_at_unix_seconds} ended={run_ended_at_unix_seconds} observed_blocks={observed_blocks}"
+            )
+        }
+        CliCommand::PublicEvidenceNodeHeartbeat { role, address, .. } => {
+            format!(
+                "generate {} node heartbeat evidence address={}",
+                public_node_role_tag(*role),
+                hex(address)
             )
         }
         CliCommand::PublicTestnetPreflight { manifest } => {
@@ -330,6 +436,47 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *record_root,
             *record_count,
         ),
+        CliCommand::PublicEvidencePublication {
+            bundle_id,
+            public_uri,
+            manifest_signer,
+            manifest_signature_count,
+            independent_auditor_count,
+        } => publication_evidence_lines(
+            *bundle_id,
+            public_uri,
+            *manifest_signer,
+            *manifest_signature_count,
+            *independent_auditor_count,
+        ),
+        CliCommand::PublicEvidenceRunWindow {
+            bundle_id,
+            manifest_signer,
+            run_started_at_unix_seconds,
+            run_ended_at_unix_seconds,
+            observed_blocks,
+        } => run_window_evidence_line(
+            *bundle_id,
+            *manifest_signer,
+            *run_started_at_unix_seconds,
+            *run_ended_at_unix_seconds,
+            *observed_blocks,
+        ),
+        CliCommand::PublicEvidenceNodeHeartbeat {
+            role,
+            address,
+            operator_id,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        } => node_heartbeat_evidence_line(
+            *role,
+            *address,
+            *operator_id,
+            *first_seen_block,
+            *last_seen_block,
+            *signed_heartbeat_count,
+        ),
         CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
             Ok(describe_command(command))
         }
@@ -375,6 +522,118 @@ fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>) -> Result<
         evidence.reachable_observation_count,
         evidence.signed_health_check_count,
         hex(&evidence.health_check_signature)
+    ))
+}
+
+fn publication_evidence_lines(
+    bundle_id: Hash,
+    public_uri: &str,
+    manifest_signer: Address,
+    manifest_signature_count: u64,
+    independent_auditor_count: u64,
+) -> Result<String> {
+    let publication = PublicEvidencePublication::new(
+        bundle_id,
+        public_uri.to_owned(),
+        manifest_signer,
+        manifest_signature_count,
+        independent_auditor_count,
+    );
+    if !publication.is_published_and_independently_checkable() {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence publication",
+        ));
+    }
+    Ok(format!(
+        "bundle_id={}\npublic_uri={}\nmanifest_signer={}\nmanifest_signature={}\nmanifest_signature_count={}\nindependent_auditor_count={}",
+        hex(&publication.bundle_id),
+        publication.public_uri,
+        hex(&publication.manifest_signer),
+        hex(&publication.manifest_signature),
+        publication.manifest_signature_count,
+        publication.independent_auditor_count
+    ))
+}
+
+fn run_window_evidence_line(
+    bundle_id: Hash,
+    manifest_signer: Address,
+    run_started_at_unix_seconds: u64,
+    run_ended_at_unix_seconds: u64,
+    observed_blocks: u64,
+) -> Result<String> {
+    if bundle_id == [0; 32] {
+        return Err(TvmError::InvalidReceipt("bundle id argument is empty"));
+    }
+    if manifest_signer == [0; 32] {
+        return Err(TvmError::InvalidReceipt(
+            "manifest signer argument is empty",
+        ));
+    }
+    if run_ended_at_unix_seconds < run_started_at_unix_seconds {
+        return Err(TvmError::InvalidReceipt(
+            "public run window block range is invalid",
+        ));
+    }
+    if observed_blocks == 0 {
+        return Err(TvmError::InvalidReceipt(
+            "observed blocks argument is empty",
+        ));
+    }
+    let signature = sign_public_run_window(
+        &manifest_signer,
+        &bundle_id,
+        run_started_at_unix_seconds,
+        run_ended_at_unix_seconds,
+        observed_blocks,
+    );
+    Ok(format!("run_window_signature={}", hex(&signature)))
+}
+
+fn node_heartbeat_evidence_line(
+    role: PublicNodeRole,
+    address: Address,
+    operator_id: Hash,
+    first_seen_block: u64,
+    last_seen_block: u64,
+    signed_heartbeat_count: u64,
+) -> Result<String> {
+    if address == [0; 32] {
+        return Err(TvmError::InvalidReceipt("node address argument is empty"));
+    }
+    if last_seen_block < first_seen_block {
+        return Err(TvmError::InvalidReceipt(
+            "node heartbeat block range is invalid",
+        ));
+    }
+    let node = match role {
+        PublicNodeRole::Miner => PublicNodeEvidence::miner(
+            address,
+            operator_id,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        ),
+        PublicNodeRole::Validator => PublicNodeEvidence::validator(
+            address,
+            operator_id,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        ),
+    };
+    if !node.has_external_operator_proof() {
+        return Err(TvmError::InvalidReceipt("invalid node heartbeat evidence"));
+    }
+    Ok(format!(
+        "node={},{},{},{},{},{},{}",
+        public_node_role_tag(node.role),
+        hex(&node.address),
+        hex(&node.operator_id),
+        node.first_seen_block,
+        node.last_seen_block,
+        node.signed_heartbeat_count,
+        hex(&node.heartbeat_signature)
     ))
 }
 
@@ -517,6 +776,21 @@ fn public_service_kind_tag(kind: PublicServiceKind) -> &'static str {
         PublicServiceKind::Explorer => "explorer",
         PublicServiceKind::Faucet => "faucet",
         PublicServiceKind::Telemetry => "telemetry",
+    }
+}
+
+fn parse_public_node_role(value: &str) -> Result<PublicNodeRole> {
+    match value {
+        "miner" => Ok(PublicNodeRole::Miner),
+        "validator" => Ok(PublicNodeRole::Validator),
+        _ => Err(TvmError::InvalidReceipt("invalid public node role")),
+    }
+}
+
+fn public_node_role_tag(role: PublicNodeRole) -> &'static str {
+    match role {
+        PublicNodeRole::Miner => "miner",
+        PublicNodeRole::Validator => "validator",
     }
 }
 
@@ -1014,6 +1288,83 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
             }
         );
+        let bundle_id = manifest_hash(b"public-evidence-bundle");
+        let manifest_signer = manifest_address(b"public-evidence-publisher");
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "publication",
+                "--bundle-id",
+                &bundle_id,
+                "--public-uri",
+                "https://example.test/tensorvm/public-evidence.json",
+                "--manifest-signer",
+                &manifest_signer,
+                "--manifest-signature-count",
+                "1",
+                "--independent-auditor-count",
+                "1",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "run-window",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--started-at",
+                "1700000000",
+                "--ended-at",
+                "1700000060",
+                "--observed-blocks",
+                "10",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRunWindow {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
+                observed_blocks: 10,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "node-heartbeat",
+                "--role",
+                "miner",
+                "--address",
+                &manifest_address(b"miner-a"),
+                "--operator-id",
+                &manifest_hash(b"miner-a-operator"),
+                "--first-block",
+                "0",
+                "--last-block",
+                "9",
+                "--heartbeat-count",
+                "10",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceNodeHeartbeat {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                signed_heartbeat_count: 10,
+            }
+        );
         let endpoint_id = manifest_hash(b"rpc-service");
         assert_eq!(
             parse_cli_parts(&[
@@ -1048,8 +1399,6 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 signed_health_check_count: 10,
             }
         );
-        let bundle_id = manifest_hash(b"public-evidence-bundle");
-        let manifest_signer = manifest_address(b"public-evidence-publisher");
         let record_root = manifest_hash(b"network-runtime-root");
         assert_eq!(
             parse_cli_parts(&[
@@ -1192,6 +1541,52 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             }),
             "generate rpc service health evidence public_url=https://rpc.tensorvm.example/health health_path=/health"
         );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            }),
+            "generate public evidence publication signature public_uri=https://example.test/tensorvm/public-evidence.json"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRunWindow {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
+                observed_blocks: 10,
+            }),
+            "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
+        );
+
+        let node_roles = [
+            (
+                PublicNodeRole::Miner,
+                address(b"miner-a"),
+                "generate miner node heartbeat evidence address=",
+            ),
+            (
+                PublicNodeRole::Validator,
+                address(b"validator-a"),
+                "generate validator node heartbeat evidence address=",
+            ),
+        ];
+        for (role, node_address, prefix) in node_roles {
+            assert_eq!(
+                describe_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                    role,
+                    address: node_address,
+                    operator_id: hash_bytes(b"test", &[b"operator"]),
+                    first_seen_block: 0,
+                    last_seen_block: 9,
+                    signed_heartbeat_count: 10,
+                }),
+                format!("{prefix}{}", hex(&node_address))
+            );
+        }
 
         let record_kinds = [
             (
@@ -1297,6 +1692,84 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&public_command).unwrap(),
             describe_command(&public_command)
         );
+
+        let publication = execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+            manifest_signer: address(b"public-evidence-publisher"),
+            manifest_signature_count: 1,
+            independent_auditor_count: 1,
+        })
+        .unwrap();
+        assert!(publication.contains(&format!(
+            "bundle_id={}",
+            manifest_hash(b"public-evidence-bundle")
+        )));
+        assert!(
+            publication.contains("public_uri=https://example.test/tensorvm/public-evidence.json")
+        );
+        assert!(publication.contains(&format!(
+            "manifest_signer={}",
+            manifest_address(b"public-evidence-publisher")
+        )));
+        assert!(publication.contains(&format!(
+            "manifest_signature={}",
+            manifest_publication_signature()
+        )));
+        assert!(publication.contains("manifest_signature_count=1"));
+        assert!(publication.contains("independent_auditor_count=1"));
+
+        let run_window = execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            manifest_signer: address(b"public-evidence-publisher"),
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
+            observed_blocks: 10,
+        })
+        .unwrap();
+        assert_eq!(
+            run_window,
+            format!(
+                "run_window_signature={}",
+                hex(&manifest_bundle().run_window_signature)
+            )
+        );
+
+        let node_cases = [
+            (
+                PublicNodeRole::Miner,
+                b"miner-a".as_slice(),
+                b"miner-a-operator".as_slice(),
+                "miner",
+            ),
+            (
+                PublicNodeRole::Validator,
+                b"validator-a".as_slice(),
+                b"validator-a-operator".as_slice(),
+                "validator",
+            ),
+        ];
+        for (role, address_label, operator_label, tag) in node_cases {
+            let node = execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                role,
+                address: address(address_label),
+                operator_id: hash_bytes(b"test", &[operator_label]),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                signed_heartbeat_count: 10,
+            })
+            .unwrap();
+            assert!(node.starts_with(&format!(
+                "node={tag},{},{}",
+                hex(&address(address_label)),
+                hex(&hash_bytes(b"test", &[operator_label]))
+            )));
+            assert!(node.ends_with(&manifest_node_signature(
+                role,
+                address_label,
+                operator_label
+            )));
+        }
 
         let service_health =
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
@@ -1470,6 +1943,15 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         );
         assert!(parse_public_service_kind("archive").is_err());
         assert_eq!(
+            parse_public_node_role("miner").unwrap(),
+            PublicNodeRole::Miner
+        );
+        assert_eq!(
+            parse_public_node_role("validator").unwrap(),
+            PublicNodeRole::Validator
+        );
+        assert!(parse_public_node_role("observer").is_err());
+        assert_eq!(
             parse_public_evidence_record_kind("block-history").unwrap(),
             PublicEvidenceRecordKind::BlockHistory
         );
@@ -1550,6 +2032,140 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 last_seen_block: 9,
                 reachable_observation_count: 0,
                 signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "http://127.0.0.1/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: [0; 32],
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: [0; 32],
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 0,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+                bundle_id: [0; 32],
+                manifest_signer: address(b"public-evidence-publisher"),
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
+                observed_blocks: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: [0; 32],
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
+                observed_blocks: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                run_started_at_unix_seconds: 1_700_000_060,
+                run_ended_at_unix_seconds: 1_700_000_000,
+                observed_blocks: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
+                observed_blocks: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                role: PublicNodeRole::Miner,
+                address: [0; 32],
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                signed_heartbeat_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: [0; 32],
+                first_seen_block: 0,
+                last_seen_block: 9,
+                signed_heartbeat_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                first_seen_block: 10,
+                last_seen_block: 9,
+                signed_heartbeat_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                signed_heartbeat_count: 0,
             })
             .is_err()
         );

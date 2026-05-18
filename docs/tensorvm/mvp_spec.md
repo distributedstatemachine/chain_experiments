@@ -1629,6 +1629,28 @@ tvmd public-testnet preflight \
 tvmd public-evidence validate \
   --manifest docs/tensorvm/public-testnet.evidence
 
+tvmd public-evidence publication \
+  --bundle-id <bundle-id-hex> \
+  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --manifest-signer <manifest-signer-address-hex> \
+  --manifest-signature-count 1 \
+  --independent-auditor-count 1
+
+tvmd public-evidence run-window \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --started-at <unix-seconds> \
+  --ended-at <unix-seconds-plus-at-least-604800> \
+  --observed-blocks 100800
+
+tvmd public-evidence node-heartbeat \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --first-block 0 \
+  --last-block 100799 \
+  --heartbeat-count 100800
+
 tvmd public-evidence service-health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
@@ -1647,6 +1669,8 @@ tvmd public-evidence record-summary \
   --record-count 4
 ```
 
+The `publication`, `run-window`, and `node-heartbeat` commands emit the signed manifest fields for the
+public evidence location, wall-clock run duration, and external operator node heartbeats.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count.

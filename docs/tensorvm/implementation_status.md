@@ -92,6 +92,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   private, and link-local hosts
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
   `tvmd public-evidence validate --manifest <path>`, plus
+  `tvmd public-evidence publication ...`, `tvmd public-evidence run-window ...`, and
+  `tvmd public-evidence node-heartbeat ...` generation for signed publication, wall-clock run-window, and
+  external-operator heartbeat fields,
   `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service=...` manifest records bound to external HTTPS health URLs and observation counts, and
   `tvmd public-evidence record-summary ...` generation for signed block/finality/network-runtime/data-availability
@@ -118,8 +121,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.67% workspace line coverage
-- 6068/6150 workspace lines covered
+- 98.70% workspace line coverage
+- 6234/6316 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

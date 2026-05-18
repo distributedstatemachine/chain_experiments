@@ -89,6 +89,9 @@ pub const SERVICE_CLI_COMMANDS: &[&str] = &[
 
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence validate --manifest <path>",
+    "tvmd public-evidence publication --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
+    "tvmd public-evidence run-window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
+    "tvmd public-evidence node-heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
     "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
     "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
 ];
@@ -139,6 +142,21 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("service-health"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("publication"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("run-window"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("node-heartbeat"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS

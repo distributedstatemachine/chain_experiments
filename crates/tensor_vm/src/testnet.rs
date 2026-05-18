@@ -1176,7 +1176,7 @@ fn public_run_window_message(
     )
 }
 
-fn sign_public_run_window(
+pub fn sign_public_run_window(
     signer: &Address,
     bundle_id: &Hash,
     run_started_at_unix_seconds: u64,

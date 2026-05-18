@@ -120,6 +120,37 @@ The CLI reads a manifest file and reports the default full-spec evidence status:
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
 ```
 
+Operators can generate the signed publication, run-window, and node-heartbeat manifest fields:
+
+```bash
+tvmd public-evidence publication \
+  --bundle-id <bundle-id-hex> \
+  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --manifest-signer <manifest-signer-address-hex> \
+  --manifest-signature-count 1 \
+  --independent-auditor-count 1
+
+tvmd public-evidence run-window \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --started-at <unix-seconds> \
+  --ended-at <unix-seconds-plus-at-least-604800> \
+  --observed-blocks 100800
+
+tvmd public-evidence node-heartbeat \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --first-block 0 \
+  --last-block 100799 \
+  --heartbeat-count 100800
+```
+
+The publication command rejects local/private evidence URIs, zero bundle IDs, zero manifest signers, and
+zero signature or auditor counts. The run-window command rejects zero IDs/signers, inverted time windows,
+and empty block counts. The node-heartbeat command rejects zero node addresses, zero operator IDs,
+inverted block ranges, and unsigned heartbeat summaries.
+
 Operators can generate a signed service-health manifest line for RPC, explorer, faucet, or telemetry
 evidence:
 
