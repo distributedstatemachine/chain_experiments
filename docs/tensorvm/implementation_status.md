@@ -94,8 +94,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   private, and link-local hosts
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
-  hostnames, and a preflight manifest example validated through
-  `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example`
+  hostnames, a preflight manifest example validated through
+  `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example`,
+  and a checked post-run evidence manifest example that validates structurally while still reporting
+  `public_evidence_full_spec=false`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
   `tvmd public-evidence validate --manifest <path>`, plus
   `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`,
@@ -127,10 +129,10 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 179 passing library tests under Tarpaulin:
+The workspace currently has 181 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 165 in `tensor_vm`
+- 167 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
@@ -141,7 +143,7 @@ The current instrumented Tarpaulin line coverage is documented in
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 169 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 171 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
@@ -159,8 +161,9 @@ These spec items require real deployment or non-reference infrastructure and are
   invalid-work rejection plus reward-settlement records, signed production libp2p runtime observation
   records, and deployed public-service reachability before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
-  [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is available
-  yet
+  [`public_testnet_evidence.md`](public_testnet_evidence.md), and
+  `deploy/tensorvm/manifests/public-testnet.evidence.example` is checked as a non-full-spec format example,
+  but no complete external bundle is available yet
 - externally observed production libp2p operation during a public testnet; current implementation starts
   the mandatory rust-libp2p service runtime locally with bounded Gossipsub payloads, request timeouts,
   concurrent stream limits, idle connection timeouts, Kademlia discovery/address registration, and durable

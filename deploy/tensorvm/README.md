@@ -11,6 +11,9 @@ artifacts for launching a service that can later produce independently checkable
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
 - `manifests/public-testnet.preflight.example` - manifest accepted by
   `tvmd public-testnet preflight --manifest <path>` after replacing example IDs and hosts
+- `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
+  `tvmd public-evidence validate --manifest <path>`, but intentionally too short and too small to satisfy
+  the default full-spec 7-day public-testnet criteria
 
 ## Deployment Shape
 
@@ -50,5 +53,13 @@ and run:
 tvmd public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
 ```
 
-The full-spec gate remains closed until a real 7-day public run publishes the evidence bundle documented in
+After a run, operators can use the post-run evidence shape with real roots and signatures:
+
+```bash
+tvmd public-evidence validate --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
+```
+
+The checked example reports `independently_checkable=true` but `public_evidence_full_spec=false` because it
+contains only 60 seconds, 10 observed blocks, 2 miners, and 1 validator. The full-spec gate remains closed
+until a real 7-day public run publishes the evidence bundle documented in
 `docs/tensorvm/public_testnet_evidence.md`.

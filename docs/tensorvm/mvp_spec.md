@@ -1630,6 +1630,9 @@ rollout checks.
 The `tvmd` executable must be an explicit Cargo binary target. Public deployment templates live under
 `deploy/tensorvm/` and must use `tvmd service serve` with a required libp2p listen multiaddr, external TLS
 termination, and the health endpoints required by the public preflight and post-run evidence validators.
+Those templates include checked preflight and non-full-spec post-run evidence example manifests; the
+post-run example is only a signature-domain and parser shape check and cannot substitute for the required
+7-day external public-run evidence.
 
 ### 31.4 Public Testnet Evidence CLI
 
@@ -1639,6 +1642,9 @@ tvmd public-testnet preflight \
 
 tvmd public-evidence validate \
   --manifest docs/tensorvm/public-testnet.evidence
+
+tvmd public-evidence validate \
+  --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
 
 tvmd public-evidence publication \
   --bundle-id <bundle-id-hex> \

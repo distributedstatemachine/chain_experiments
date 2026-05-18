@@ -3388,6 +3388,35 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
     }
 
     #[test]
+    fn deployed_public_testnet_evidence_example_is_parseable_but_not_full_spec() {
+        let manifest =
+            include_str!("../../../deploy/tensorvm/manifests/public-testnet.evidence.example");
+        let parsed = parse_public_testnet_evidence_manifest(manifest).unwrap();
+        let report = parsed.evaluate(
+            &PublicTestnetCriteria::default(),
+            ChainParams::default().block_time_seconds,
+        );
+
+        assert!(report.has_published_evidence_bundle);
+        assert!(report.has_independent_auditor_records);
+        assert!(report.has_signed_run_window);
+        assert!(report.has_block_history);
+        assert!(report.has_finality_history);
+        assert!(report.has_operator_identity_attestations);
+        assert!(report.has_network_runtime_observations);
+        assert!(report.has_data_availability_measurements);
+        assert!(report.has_invalid_work_rejection_records);
+        assert!(report.has_reward_settlement_record_summary);
+        assert!(report.independently_checkable);
+        assert!(!report.run_evidence.public_criterion_met);
+        assert!(!report.run_evidence.has_required_miners);
+        assert!(!report.run_evidence.has_required_validators);
+        assert!(!report.run_evidence.has_required_run_duration);
+        assert!(!report.run_evidence.has_required_block_count);
+        assert!(!report.full_spec_evidence_met);
+    }
+
+    #[test]
     fn public_testnet_evidence_manifest_rejects_malformed_input() {
         let manifest = complete_public_evidence_manifest_text();
         let cases = [
@@ -3532,6 +3561,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             .evaluate(ChainParams::default().block_time_seconds);
         assert!(!no_auth_report.has_telemetry_service_plan);
         assert!(!no_auth_report.can_start_public_run);
+    }
+
+    #[test]
+    fn deployed_public_testnet_preflight_example_reports_launch_readiness() {
+        let manifest =
+            include_str!("../../../deploy/tensorvm/manifests/public-testnet.preflight.example");
+        let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
+        let report = plan.evaluate(ChainParams::default().block_time_seconds);
+
+        assert!(report.local_shape_ready);
+        assert!(report.deployment_plan_ready);
+        assert!(report.can_start_public_run);
     }
 
     #[test]

@@ -9,6 +9,12 @@ run, not from the local harness.
 For pre-run launch readiness, use [`public_testnet_preflight.md`](public_testnet_preflight.md). A passing
 preflight report is not a substitute for this post-run evidence bundle.
 
+A checked example manifest lives at
+[`../../deploy/tensorvm/manifests/public-testnet.evidence.example`](../../deploy/tensorvm/manifests/public-testnet.evidence.example).
+It is useful for validating the post-run manifest shape, signature domains, and reporting fields, but it is
+deliberately only a 60-second, 10-block, 2-miner, 1-validator sample and is not full-spec public-testnet
+evidence.
+
 ## Required Bundle
 
 A complete evidence bundle must include:
@@ -131,6 +137,7 @@ The CLI reads a manifest file and reports the default full-spec evidence status:
 
 ```bash
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
+tvmd public-evidence validate --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
 Operators can generate the signed publication, run-window, node-heartbeat, and operator-attestation
