@@ -1,4 +1,4 @@
-# TensorChain MVP Specification (Reviewed Draft)
+# TensorVM (TVM) MVP Specification (Reviewed Draft)
 
 ## 0. Review Status
 
@@ -20,7 +20,7 @@ The spec below keeps the architecture but tightens the MVP around these constrai
 
 ## 0.1 One-Line Definition
 
-TensorChain is a blockchain testnet where **probabilistically verified tensor computation** is the native
+TensorVM (TVM) is a blockchain testnet where **probabilistically verified tensor computation** is the native
 block-production primitive. The MVP begins with deterministic tensor operations and introduces a minimal
 forward/backward training-step primitive so the network can test verifiable learning state transitions.
 
@@ -30,7 +30,7 @@ forward/backward training-step primitive so the network can test verifiable lear
 
 Traditional Proof-of-Work proves that energy was spent on hash search.
 
-TensorChain should prove, within explicit soundness parameters, that tensor computation was performed
+TensorVM should prove, within explicit soundness parameters, that tensor computation was performed
 according to canonical deterministic semantics.
 
 The long-term vision is a blockchain where the core commodity is not hashpower, gas, or generic computation, but:
@@ -1577,62 +1577,114 @@ GET /tensor/:tensor_id/opening/:chunk_index
 ### 31.1 Miner CLI
 
 ```bash
-tensorchaind miner register --stake 100
+tvmd miner register --stake 100
 
-tensorchaind miner start \
+tvmd miner start \
   --wallet miner.key \
   --device cuda:0 \
   --node http://localhost:8545
 
-tensorchaind miner status
+tvmd miner status
 ```
 
 ### 31.2 Validator CLI
 
 ```bash
-tensorchaind validator register --stake 10000
+tvmd validator register --stake 10000
 
-tensorchaind validator start \
+tvmd validator start \
   --wallet validator.key \
   --node http://localhost:8545
 
-tensorchaind validator status
+tvmd validator status
 ```
 
 ---
 
 ## 32. Reference Implementation
 
-Recommended repo structure:
+The reference implementation should live in a Cargo workspace so multiple chain designs can be developed
+side-by-side without mixing protocol experiments.
+
+Required repository structure for this workspace:
 
 ```text
-tensorchain/
-  node/
-    consensus/
-    state/
-    txpool/
-    p2p/
-    rpc/
-  tensorvm/
-    ir/
-    runtime/
-    ops/
-    commitments/
-    verifier/
-  miner/
-    executor/
-    scheduler/
-    receipt_submitter/
-    tensor_server/
-  validator/
-    assignment/
-    freivalds/
-    sampled_checks/
-    training_step_checks/
-    attestation/
-  cli/
-  tests/
-  specs/
+chain/
+  Cargo.toml
+  README.md
+  tarpaulin.toml
+  crates/
+    pearl_chain/
+      Cargo.toml
+      README.md
+      src/
+    tensor_vm/
+      Cargo.toml
+      README.md
+      src/
+  docs/
+    README.md
+    tensorvm/
+      README.md
+      mvp_spec.md
+      coverage_matrix.md
+      implementation_status.md
+      networking_choice.md
+      tarpaulin_report.md
+      torchlean_verification_analysis.md
+    pearl/
+      README.md
+      pearl.pdf
+    ambient/
+      README.md
+      Ambient_Litepaper_V1.pdf
+    reviews/
+      README.md
+    attacks/
+      README.md
+```
+
+Workspace requirements:
+
+```text
+the repository root must be a Cargo workspace
+each chain design must be a separate crate under crates/<name>/
+each crate must have its own README
+the root README must describe the workspace and link to crate-level READMEs
+protocol specs, papers, reviews, and reports must live under topic-specific docs/ subdirectories
+TensorVM implementation code must live under crates/tensor_vm/
+crates/tensor_vm/ must be self-contained and must not depend on the Pearl reference crate
+```
+
+Recommended internal module structure for TensorVM:
+
+```text
+api
+chain
+challenge
+cli
+error
+explorer
+faucet
+jobs
+merkle
+miner
+p2p
+rpc
+runtime
+scheduler
+storage
+study
+telemetry
+tensor
+tensor_server
+testnet
+txpool
+types
+validator
+verify
+vm
+watcher
 ```
 
 Recommended languages:
@@ -1650,6 +1702,27 @@ CPU reference backend
 GPU miner backend
 cross-machine determinism tests
 invalid-output test harness
+restartable node storage
+P2P/RPC codec and socket tests
+```
+
+Required local verification commands before sharing changes:
+
+```bash
+cargo fmt --check --all
+cargo test --workspace --release
+cargo clippy --workspace --all-targets -- -D warnings
+cargo tarpaulin
+```
+
+Test and coverage requirements:
+
+```text
+all workspace tests must pass
+TensorVM library tests must cover every line in crates/tensor_vm/src
+coverage reports must be generated from the workspace root with cargo tarpaulin
+any remaining uncovered lines must be outside TensorVM or explicitly documented
+branch coverage should be reported when the installed coverage tool supports it
 ```
 
 ---
@@ -1798,12 +1871,16 @@ Deliverables:
 
 ```text
 multi-node network
+production libp2p runtime
 miner CLI
 validator CLI
 explorer
 faucet
 telemetry dashboard
 public docs
+deployed public services for RPC, explorer, faucet, and telemetry
+real CUDA/C++ miner kernels where GPU acceleration is claimed
+external public-testnet evidence bundle
 ```
 
 Success criteria:
@@ -1812,8 +1889,12 @@ Success criteria:
 10+ miners
 5+ validators
 7 days continuous block production
+independent external operator evidence
 invalid work rejected
 rewards paid by verified TensorWork
+production libp2p networking used for node propagation
+deployed services remain reachable during the public run
+GPU kernel outputs match canonical deterministic CPU semantics
 ```
 
 ---
@@ -1884,6 +1965,29 @@ The MVP succeeds if:
 13. The network runs for 7 consecutive days with independent nodes.
 14. Genesis and zero-work epochs have a tested fallback proposer path.
 15. Reward concentration, validator disagreement, and data withholding are reported.
+```
+
+Full-spec completion additionally requires deployment evidence, not only a local deterministic reference
+implementation:
+
+```text
+real CUDA/C++ kernels exist where GPU mining is claimed
+production libp2p runtime is used for network propagation
+RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
+the public testnet runs for 7 consecutive days with independent external operators
+evidence for the 7-day run is published and independently checkable
+the required Cargo workspace structure is present
+the required verification commands have been executed and their results are documented
+```
+
+Do not count the full spec as complete if these remain true:
+
+```text
+GPU mining is represented only by a deterministic CPU-equivalent shim
+P2P is represented only by local simulation or stdlib test sockets
+browser/RPC surfaces exist only as local handlers or local HTML pages
+durable state is only a reference file store rather than a production database/service deployment
+7-day public-testnet evidence is inferred from local simulation rather than an external run
 ```
 
 Do not count the MVP as successful if:
@@ -2136,7 +2240,7 @@ The strategic message is:
 
 ```text
 Bitcoin proved energy was spent.
-TensorChain tests whether learning-relevant tensor work can be verified cheaply enough to drive block production.
+TensorVM tests whether learning-relevant tensor work can be verified cheaply enough to drive block production.
 ```
 
 That is the MVP worth building.

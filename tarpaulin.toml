@@ -1,0 +1,9 @@
+[test_config]
+manifest-path = "./Cargo.toml"
+workspace = true
+run-types = ["Lib"]
+engine = "Llvm"
+generate = ["Stdout"]
+force-clean = true
+skip-clean = false
+include-tests = false
