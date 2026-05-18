@@ -40,7 +40,7 @@ pub use chain::{
     MinerState, RewardAllocation, RewardState, ValidatorState,
 };
 pub use challenge::{ChallengeOutcome, FraudChallenge, TensorOpChallengeInput, TraceStep};
-pub use cli::{CliCommand, parse_cli_args};
+pub use cli::{CliCommand, parse_cli_args, validate_public_evidence_manifest};
 pub use error::{Result, TvmError};
 pub use faucet::Faucet;
 pub use jobs::{

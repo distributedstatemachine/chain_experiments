@@ -70,7 +70,7 @@ service=faucet,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check
 service=telemetry,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>
 ```
 
-The CLI parser recognizes:
+The CLI reads a manifest file and reports the default full-spec evidence status:
 
 ```bash
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence

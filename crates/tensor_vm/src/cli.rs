@@ -1,4 +1,6 @@
+use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
+use crate::testnet::{PublicTestnetCriteria, parse_public_testnet_evidence_manifest};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -88,6 +90,25 @@ pub fn describe_command(command: &CliCommand) -> String {
     }
 }
 
+pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
+    let bundle = parse_public_testnet_evidence_manifest(input)?;
+    let report = bundle.evaluate(
+        &PublicTestnetCriteria::default(),
+        ChainParams::default().block_time_seconds,
+        true,
+    );
+    Ok(format!(
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\nminers={}\nvalidators={}\nobserved_blocks={}\nrequired_blocks={}",
+        report.full_spec_evidence_met,
+        report.run_evidence.public_criterion_met,
+        report.independently_checkable,
+        report.run_evidence.miner_count,
+        report.run_evidence.validator_count,
+        report.run_evidence.observed_blocks,
+        report.run_evidence.required_blocks,
+    ))
+}
+
 fn parse_u64(value: &str) -> Result<u64> {
     value
         .parse()
@@ -97,6 +118,63 @@ fn parse_u64(value: &str) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::hash::hex;
+    use crate::testnet::PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION;
+    use crate::types::{address, hash_bytes};
+
+    fn manifest_hash(label: &[u8]) -> String {
+        hex(&hash_bytes(b"test", &[label]))
+    }
+
+    fn manifest_address(label: &[u8]) -> String {
+        hex(&address(label))
+    }
+
+    fn evidence_manifest() -> String {
+        format!(
+            "\
+version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
+bundle_id={}
+public_uri=https://example.test/tensorvm/public-evidence.json
+manifest_signature_count=1
+independent_auditor_count=1
+block_history_records=10
+finality_history_records=10
+operator_identity_attestation_records=3
+data_availability_measurement_records=20
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+observed_blocks=10
+finalized_blocks=10
+checked_receipts=20
+available_receipts=19
+invalid_receipts_submitted=1
+invalid_receipts_rejected=1
+reward_settlement_records=1
+node=miner,{},{},0,9,10
+node=miner,{},{},0,9,10
+node=validator,{},{},0,9,10
+service=rpc,{},0,9,10,10
+service=explorer,{},0,9,10,10
+service=faucet,{},0,9,10,10
+service=telemetry,{},0,9,10,10
+",
+            manifest_hash(b"public-evidence-bundle"),
+            manifest_address(b"miner-a"),
+            manifest_hash(b"miner-a-operator"),
+            manifest_address(b"miner-b"),
+            manifest_hash(b"miner-b-operator"),
+            manifest_address(b"validator-a"),
+            manifest_hash(b"validator-a-operator"),
+            manifest_hash(b"rpc-service"),
+            manifest_hash(b"explorer-service"),
+            manifest_hash(b"faucet-service"),
+            manifest_hash(b"telemetry-service"),
+        )
+    }
 
     #[test]
     fn parses_documented_miner_commands() {
@@ -220,5 +298,19 @@ mod tests {
         for (command, description) in commands {
             assert_eq!(describe_command(&command), description);
         }
+    }
+
+    #[test]
+    fn validate_public_evidence_manifest_reports_default_criteria_status() {
+        let report = validate_public_evidence_manifest(&evidence_manifest()).unwrap();
+        assert!(report.contains("public_evidence_full_spec=false"));
+        assert!(report.contains("public_criterion=false"));
+        assert!(report.contains("independently_checkable=true"));
+        assert!(report.contains("miners=2"));
+        assert!(report.contains("validators=1"));
+        assert!(report.contains("observed_blocks=10"));
+        assert!(report.contains("required_blocks=100800"));
+
+        assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }
 }

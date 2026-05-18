@@ -76,6 +76,9 @@ pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator status",
 ];
 
+pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] =
+    &["tvmd public-evidence validate --manifest <path>"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,6 +102,11 @@ mod tests {
             VALIDATOR_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("validator start"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("public-evidence validate"))
         );
     }
 }
