@@ -96,7 +96,8 @@ userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid p
 IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
 domains, loopback, private, link-local, unspecified, documentation, shared-address, benchmarking,
 multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator identity URIs
-may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
+may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule and no raw
+whitespace or control characters.
 The service-health URL path must match the signed health path exactly and must not include a query string
 or fragment. Public service-content URLs use the same exact-path rule for their required content path.
 Counted miner and validator operator sets must be disjoint; the same operator ID cannot satisfy both role

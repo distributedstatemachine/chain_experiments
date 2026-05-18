@@ -1507,15 +1507,25 @@ fn required_string(value: Option<String>) -> Result<String> {
 }
 
 fn public_https_host(url: &str) -> Option<&str> {
-    let rest = url.trim().strip_prefix("https://")?;
+    let rest = public_https_url_rest(url)?;
     let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     public_https_authority_host(&rest[..authority_end])
 }
 
 fn public_https_authority(url: &str) -> Option<(&str, Option<u16>)> {
-    let rest = url.trim().strip_prefix("https://")?;
+    let rest = public_https_url_rest(url)?;
     let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     public_https_authority_parts(&rest[..authority_end])
+}
+
+fn public_https_url_rest(url: &str) -> Option<&str> {
+    if url
+        .bytes()
+        .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+    {
+        return None;
+    }
+    url.strip_prefix("https://")
 }
 
 fn public_https_authority_host(authority: &str) -> Option<&str> {
@@ -1592,7 +1602,7 @@ fn public_authority_host_key(host: &str) -> String {
 }
 
 fn public_https_path(url: &str) -> Option<&str> {
-    let rest = url.trim().strip_prefix("https://")?;
+    let rest = public_https_url_rest(url)?;
     let path_start = rest.find('/')?;
     let path = &rest[path_start..];
     if path.contains(['?', '#']) {
@@ -1896,11 +1906,16 @@ pub fn sign_public_run_window(
 }
 
 fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
-    let Some(rest) = uri.trim().strip_prefix(scheme) else {
+    if uri
+        .bytes()
+        .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+    {
+        return false;
+    }
+    let Some(rest) = uri.strip_prefix(scheme) else {
         return false;
     };
-    rest.trim_start_matches('/')
-        .split('/')
+    rest.split('/')
         .next()
         .is_some_and(content_addressed_identifier_is_well_formed)
 }
@@ -4175,6 +4190,9 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "https://evidence.tensorvm.net@localhost/public-evidence.json",
             "https://localhost@evidence.tensorvm.net/public-evidence.json",
             "https://evidence.tensorvm.net /public-evidence.json",
+            " https://evidence.tensorvm.net/public-evidence.json",
+            "https://evidence.tensorvm.net/public-evidence.json ",
+            "https://evidence.tensorvm.net/public evidence.json",
             "https://evidence.tensorvm.net:bad/public-evidence.json",
             "https://evidence.tensorvm.net:0/public-evidence.json",
             "https://evidence.example.test/public-evidence.json",
@@ -4211,6 +4229,9 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "ipfs://?cid",
             "ipfs://#cid",
             "ipfs://../manifest.json",
+            "ipfs:///manifest.json",
+            " ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3 ",
             "ipfs://white space",
             "ar:///",
         ] {
@@ -4701,6 +4722,10 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             public_https_host("https://rpc.tensorvm.net\\evil/health"),
             None
         );
+        assert_eq!(public_https_host(" https://rpc.tensorvm.net/health"), None);
+        assert_eq!(public_https_host("https://rpc.tensorvm.net/health "), None);
+        assert_eq!(public_https_host("https://rpc.tensorvm.net/health\n"), None);
+        assert_eq!(public_https_host("https://rpc.tensorvm.net/bad path"), None);
         assert_eq!(public_https_host("https://rpc.tensorvm.net /health"), None);
         assert_eq!(public_https_host("https://rpc[bad]/health"), None);
         assert_eq!(public_https_host("https://[not-ip]/health"), None);

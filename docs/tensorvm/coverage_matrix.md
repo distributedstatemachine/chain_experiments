@@ -58,8 +58,8 @@ and the explicit separation between local evidence and the 7-day public deployme
   signer, operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability
   counters, non-public IP literal rejection, special-use DNS and single-label DNS rejection, plus
-  malformed HTTPS authority rejection for public endpoints, exact service URL path matching with query and
-  fragment rejection,
+  malformed HTTPS authority rejection for public endpoints, raw-whitespace rejection for external evidence
+  URLs and content-addressed identifiers, exact service URL path matching with query and fragment rejection,
   no overreported operator-attestation counts, well-formed `ipfs://`/`ar://` identifier validation, and
   deployed public-service reachability plus content roots bound to external HTTPS URLs. A local launch
   preflight manifest is documented in

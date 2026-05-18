@@ -1776,7 +1776,8 @@ The `auditor-record` command emits the exact `auditor=...` manifest line for an 
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
 IDs must differ from the manifest signer.
 Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator-identity URIs must start
-with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`.
+with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`, with no raw whitespace
+or control characters.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
 identity URI bound to a node address, role, operator ID, and observation time. Counted operator
 attestations must be observed inside the signed run window, and the
