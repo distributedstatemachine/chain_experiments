@@ -62,6 +62,12 @@ pub enum CliCommand {
         record_root: Hash,
         record_count: u64,
     },
+    PublicEvidenceRecordSummaryFromRoots {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_roots: Vec<Hash>,
+    },
     PublicEvidenceNetworkObservation {
         operator_id: Hash,
         peer_id: String,
@@ -220,6 +226,23 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             manifest_signer: parse_hash_argument(manifest_signer)?,
             record_root: parse_hash_argument(record_root)?,
             record_count: parse_u64(record_count)?,
+        }),
+        [
+            "public-evidence",
+            "record-summary-from-roots",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--record-roots",
+            record_roots,
+        ] => Ok(CliCommand::PublicEvidenceRecordSummaryFromRoots {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            record_roots: parse_hash_list_argument(record_roots)?,
         }),
         [
             "public-evidence",
@@ -401,6 +424,15 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_evidence_record_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceRecordSummaryFromRoots {
+            kind, record_roots, ..
+        } => {
+            format!(
+                "generate {} public evidence record summary from {} roots",
+                public_evidence_record_kind_tag(*kind),
+                record_roots.len()
+            )
+        }
         CliCommand::PublicEvidenceNetworkObservation {
             peer_id,
             listen_address,
@@ -545,6 +577,21 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *record_root,
             *record_count,
         ),
+        CliCommand::PublicEvidenceRecordSummaryFromRoots {
+            kind,
+            bundle_id,
+            manifest_signer,
+            record_roots,
+        } => {
+            let record_root = aggregate_public_evidence_record_roots(*kind, record_roots)?;
+            record_summary_evidence_lines(
+                *kind,
+                *bundle_id,
+                *manifest_signer,
+                record_root,
+                record_roots.len() as u64,
+            )
+        }
         CliCommand::PublicEvidenceNetworkObservation {
             operator_id,
             peer_id,
@@ -847,6 +894,31 @@ fn record_summary_evidence_lines(
         "{field_prefix}_records={record_count}\n{field_prefix}_root={}\n{field_prefix}_signature={}",
         hex(&record_root),
         hex(&signature)
+    ))
+}
+
+fn aggregate_public_evidence_record_roots(
+    kind: PublicEvidenceRecordKind,
+    record_roots: &[Hash],
+) -> Result<Hash> {
+    if record_roots.is_empty() {
+        return Err(TvmError::InvalidReceipt("record roots argument is empty"));
+    }
+    if record_roots.contains(&[0; 32]) {
+        return Err(TvmError::InvalidReceipt("record root argument is empty"));
+    }
+    let record_count = (record_roots.len() as u64).to_le_bytes();
+    let mut encoded_roots = Vec::with_capacity(record_roots.len() * 32);
+    for root in record_roots {
+        encoded_roots.extend_from_slice(root);
+    }
+    Ok(hash_bytes(
+        b"tensor-vm-public-evidence-record-root-aggregation-v1",
+        &[
+            public_evidence_record_kind_tag(kind).as_bytes(),
+            &record_count,
+            &encoded_roots,
+        ],
     ))
 }
 
@@ -1157,6 +1229,16 @@ fn parse_hash_argument(value: &str) -> Result<Hash> {
         *byte = (high << 4) | low;
     }
     Ok(out)
+}
+
+fn parse_hash_list_argument(value: &str) -> Result<Vec<Hash>> {
+    if value.trim().is_empty() {
+        return Err(TvmError::InvalidReceipt("empty hash list argument"));
+    }
+    value
+        .split(',')
+        .map(|part| parse_hash_argument(part.trim()))
+        .collect()
 }
 
 fn parse_hash_nibble(value: u8) -> Result<u8> {
@@ -1850,6 +1932,35 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 record_count: 4,
             }
         );
+        let record_roots = format!(
+            "{},{}",
+            manifest_hash(b"network-observation-a"),
+            manifest_hash(b"network-observation-b")
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary-from-roots",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--record-roots",
+                &record_roots,
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ],
+            }
+        );
         assert_eq!(
             parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
             CliCommand::ServiceInit {
@@ -1990,6 +2101,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 observed_blocks: 10,
             }),
             "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ],
+            }),
+            "generate network-runtime public evidence record summary from 2 roots"
         );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
@@ -2400,6 +2523,39 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 )
             );
         }
+
+        let roots = vec![
+            hash_bytes(b"test", &[b"network-observation-a"]),
+            hash_bytes(b"test", &[b"network-observation-b"]),
+        ];
+        let aggregate_root = aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &roots,
+        )
+        .unwrap();
+        let aggregate_signature = sign_public_evidence_record(
+            &address(b"public-evidence-publisher"),
+            &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &aggregate_root,
+            roots.len() as u64,
+        );
+        let aggregate_line =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: roots,
+            })
+            .unwrap();
+        assert_eq!(
+            aggregate_line,
+            format!(
+                "network_runtime_observation_records=2\nnetwork_runtime_observation_root={}\nnetwork_runtime_observation_signature={}",
+                hex(&aggregate_root),
+                hex(&aggregate_signature)
+            )
+        );
     }
 
     #[test]
@@ -2906,6 +3062,21 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ])
             .is_err()
         );
+        assert!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary-from-roots",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &manifest_hash(b"public-evidence-bundle"),
+                "--manifest-signer",
+                &manifest_address(b"public-evidence-publisher"),
+                "--record-roots",
+                "",
+            ])
+            .is_err()
+        );
         let valid_record_summary = CliCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
@@ -2951,6 +3122,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 manifest_signer: address(b"public-evidence-publisher"),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: Vec::new(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: vec![[0; 32]],
             })
             .is_err()
         );

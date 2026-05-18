@@ -216,11 +216,19 @@ tvmd public-evidence record-summary \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count 4
+
+tvmd public-evidence record-summary-from-roots \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-roots <comma-separated-record-roots>
 ```
 
 Supported record kinds are `block-history`, `finality-history`, `network-runtime`, and
 `data-availability`. The command emits the corresponding `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest fields using the same signature domain the validator checks.
+The `record-summary-from-roots` variant derives a deterministic aggregate root and record count from the
+provided supporting-record roots before signing those same summary fields.
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
 `public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true

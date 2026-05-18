@@ -1698,6 +1698,12 @@ tvmd public-evidence record-summary \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count 4
+
+tvmd public-evidence record-summary-from-roots \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --record-roots <comma-separated-record-roots>
 ```
 
 The `publication`, `run-window`, `node-heartbeat`, and `operator-attestation` commands emit the signed
@@ -1714,6 +1720,9 @@ counts, and DoS-control limits. Those records are rolled into the `network-runti
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, or data-availability measurements.
+The `record-summary-from-roots` command deterministically aggregates comma-separated supporting-record
+roots, derives the record count, and emits the same signed manifest summary fields so operators do not
+need an out-of-band root-signing tool for post-run bundles.
 
 ---
 
