@@ -354,10 +354,28 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let faucet = authenticated_get_request(rpc_port, "/faucet/page");
     assert!(faucet.contains("HTTP/1.1 200 OK"));
     assert!(faucet.contains("TensorVM Faucet"));
+    assert_service_content_evidence_from_response(
+        &data_dir,
+        "faucet",
+        &"77".repeat(32),
+        "https://faucet.tensorvm.net/faucet/page",
+        "/faucet/page",
+        "faucet-page.body",
+        &faucet,
+    );
 
     let telemetry = authenticated_get_request(rpc_port, "/telemetry/dashboard");
     assert!(telemetry.contains("HTTP/1.1 200 OK"));
     assert!(telemetry.contains("TensorVM Telemetry"));
+    assert_service_content_evidence_from_response(
+        &data_dir,
+        "telemetry",
+        &"88".repeat(32),
+        "https://telemetry.tensorvm.net/telemetry/dashboard",
+        "/telemetry/dashboard",
+        "telemetry-dashboard.body",
+        &telemetry,
+    );
 
     let output = child.wait_with_output().expect("service process must exit");
     assert!(

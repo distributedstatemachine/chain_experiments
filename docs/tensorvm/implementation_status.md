@@ -193,8 +193,8 @@ test that starts the mandatory libp2p service path and serves authenticated `/he
 `/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
 `/attestation` submissions with reference payloads, read-back of registered miner/validator state, and
 unauthenticated request rejection. The same process-level smoke test now captures the served
-`/chain/head` and `/explorer` response bodies and verifies that `tvmd public-evidence
-service-content-from-bytes` and
+`/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard` response bodies and verifies that
+`tvmd public-evidence service-content-from-bytes` and
 `tvmd public-evidence service-content-from-file` emit identical signed service-content evidence for the
 captured bodies.
 
