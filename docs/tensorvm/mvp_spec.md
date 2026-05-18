@@ -1781,8 +1781,8 @@ run duration, external operator node heartbeats, and operator identity attestati
 heartbeats must cover the manifest's full observed block count, and counted miner and validator operator
 sets must be disjoint. The current evidence manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
-scalar fields; only explicitly repeated record fields such as `node=`, `service=`, `auditor=`,
-`record_artifact=`, `operator=`, and `service_content=` may appear more than once.
+scalar fields and whitespace-padded field keys; only explicitly repeated record fields such as `node=`,
+`service=`, `auditor=`, `record_artifact=`, `operator=`, and `service_content=` may appear more than once.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
 IDs must differ from the manifest signer and must be observed at or after the signed run-window end.

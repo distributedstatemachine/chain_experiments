@@ -664,6 +664,7 @@ pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestn
         let (key, value) = raw_line
             .split_once('=')
             .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
+        reject_manifest_key_whitespace(key)?;
         let key = key.trim();
         if !public_evidence_manifest_field_allows_repeated(key)
             && !scalar_fields.insert(key.to_owned())
@@ -688,6 +689,7 @@ pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTest
         let (key, value) = raw_line.split_once('=').ok_or(TvmError::InvalidReceipt(
             "malformed preflight manifest line",
         ))?;
+        reject_manifest_key_whitespace(key)?;
         let key = key.trim();
         if key != "service" && !scalar_fields.insert(key.to_owned()) {
             return Err(TvmError::InvalidReceipt(
@@ -697,6 +699,13 @@ pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTest
         builder.set(key, value)?;
     }
     builder.finish()
+}
+
+fn reject_manifest_key_whitespace(key: &str) -> Result<()> {
+    if key.trim() != key {
+        return Err(TvmError::InvalidReceipt("malformed manifest field key"));
+    }
+    Ok(())
 }
 
 fn public_evidence_manifest_field_allows_repeated(key: &str) -> bool {
@@ -4950,6 +4959,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             manifest.replace("bundle_id=0x", "bundle_id=0x12"),
             manifest.replace("bundle_id=0x", "bundle_id=0xz"),
             format!("{manifest}\nobserved_blocks=10"),
+            manifest.replace("bundle_id=", " bundle_id="),
+            manifest.replace("bundle_id=", "bundle_id ="),
             manifest.replace("manifest_signature_count=1", "manifest_signature_count=abc"),
             manifest.replace("dos_controls_enabled=true", "dos_controls_enabled=maybe"),
             manifest.replace("node=miner", "node=archive"),
@@ -5293,6 +5304,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "cuda_kernels_available=maybe",
             ),
             format!("{manifest}\nminer_count=10"),
+            manifest.replace("miner_count=", " miner_count="),
+            manifest.replace("miner_count=", "miner_count ="),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace(
                 "service=rpc,",
