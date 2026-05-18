@@ -1385,7 +1385,7 @@ fn public_dns_host(host: &str) -> bool {
     match host.parse::<IpAddr>() {
         Ok(IpAddr::V4(ip)) => public_ipv4(ip),
         Ok(IpAddr::V6(ip)) => public_ipv6(ip),
-        Err(_) => true,
+        Err(_) => public_dns_host_is_well_formed(&host),
     }
 }
 
@@ -1403,6 +1403,32 @@ fn special_use_dns_name(host: &str) -> bool {
         || host.ends_with(".test")
         || host.ends_with(".example")
         || host.ends_with(".invalid")
+}
+
+fn public_dns_host_is_well_formed(host: &str) -> bool {
+    if host.is_empty() || host.len() > 253 {
+        return false;
+    }
+    let mut labels = host.split('.').peekable();
+    while let Some(label) = labels.next() {
+        if label.is_empty() || label.len() > 63 {
+            return false;
+        }
+        let bytes = label.as_bytes();
+        if bytes.first() == Some(&b'-') || bytes.last() == Some(&b'-') {
+            return false;
+        }
+        if !bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
+        {
+            return false;
+        }
+        if labels.peek().is_none() && !bytes.iter().any(|byte| byte.is_ascii_alphabetic()) {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -3522,6 +3548,26 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 2,
                 1_048_576,
             ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/dns/bad_host.tensorvm.net/tcp/4001".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/dns/node.tensorvm.example/tcp/4001".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
         ] {
             assert!(execute_reference_cli_command(&invalid).is_err());
         }
@@ -4179,6 +4225,21 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(network_observation_multiaddr_is_public(
             &"/dns/node.tensorvm.net/tcp/4001".parse().unwrap()
         ));
+        assert!(!public_dns_host_is_well_formed(""));
+        assert!(!public_dns_host_is_well_formed(&"a".repeat(254)));
+        for address in [
+            "/dns/bad_host.tensorvm.net/tcp/4001",
+            "/dns/-bad.tensorvm.net/tcp/4001",
+            "/dns/bad-.tensorvm.net/tcp/4001",
+            "/dns/bad..tensorvm.net/tcp/4001",
+            "/dns/node.tensorvm.example/tcp/4001",
+            "/dns/example.com/tcp/4001",
+            "/dns/123.456/tcp/4001",
+        ] {
+            assert!(!network_observation_multiaddr_is_public(
+                &address.parse().unwrap()
+            ));
+        }
         assert!(!network_observation_multiaddr_is_public(
             &"/dns/localhost/tcp/4001".parse().unwrap()
         ));

@@ -118,7 +118,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, and content roots,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
-  records with non-public multiaddr rejection,
+  records with non-public multiaddr and malformed DNS-label rejection,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
@@ -140,12 +140,14 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-Gate 0 is the CPU local multi-participant testnet required before CUDA, public preflight, public evidence,
-or deployment-gated work can count:
+Gate 0 is the first non-skippable CPU local multi-participant testnet required before CUDA, public
+preflight, public evidence, or deployment-gated work can count:
 
 - `cargo test -p tensor_vm local_testnet --release`: 3 TensorVM tests passed, covering the local
-  10-miner/5-validator bootstrap shape, matmul settlement/rewards, LinearTrainingStep state transition,
-  tensor-server availability, and the explicit non-public-run evidence boundary
+  10-miner/5-validator bootstrap shape, separate participant identities and endpoints, mandatory libp2p
+  node paths under default features, matmul settlement/rewards, LinearTrainingStep state transition,
+  tensor-server availability, no simulation or local-only networking-shim credit, and the explicit
+  non-public-run evidence boundary
 
 The workspace currently has 181 passing library tests under Tarpaulin:
 
@@ -155,8 +157,8 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.89% workspace line coverage
-- 7322/7404 workspace lines covered
+- 98.90% workspace line coverage
+- 7339/7421 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

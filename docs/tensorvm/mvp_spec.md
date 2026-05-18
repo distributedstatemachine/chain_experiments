@@ -193,10 +193,12 @@ scientific workloads
 
 ### 4.5 Security Gates Before Public Testnet
 
-Gate 0 is a local CPU multi-participant testnet. Before CUDA acceleration, production deployment,
-public-run evidence, or any adversarial public-testnet claim can count, the default-feature CPU reference
-path must run a local TensorVM testnet with multiple miners and validators. This gate must use the
-canonical CPU semantics, not CUDA kernels, local-only shims, or single-participant shortcuts.
+Gate 0 is the first non-skippable gate: a local CPU multi-participant testnet. Before CUDA acceleration,
+production deployment, public-run evidence, or any adversarial public-testnet claim can count, the
+default-feature CPU reference path must run a local TensorVM testnet with multiple independently
+instantiated miners and validators. This gate must use canonical CPU semantics and the mandatory libp2p
+node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking shims,
+in-memory propagation substitutes, or single-participant shortcuts.
 
 Required Gate 0 command from the repository root:
 
@@ -208,17 +210,20 @@ The Gate 0 run must cover:
 
 ```text
 at least two miners and one validator, with the default local target remaining 10 miners and 5 validators
+separate local participant identities, node endpoints, and operator roles for miners and validators
 block production from the local testnet harness
 matmul receipt submission, full Freivalds validation, attestation, settlement, and rewards
 LinearTrainingStep receipt validation and state transition
 data availability through the local tensor server path
+mandatory libp2p node startup and propagation paths under default features
 explicit proof that this CPU gate is not public-run evidence and does not satisfy the 7-day deployment gate
 ```
 
 The MVP must pass these gates before it is treated as a public adversarial testnet:
 
 ```text
-Gate 0 local CPU multi-participant testnet passes
+Gate 0 local CPU multi-participant testnet passes without simulations, local-only networking shims, or
+single-participant shortcuts
 explicit threat model for miners, validators, proposers, and data servers
 unbiasable validation randomness from a finalized beacon or commit-reveal protocol
 settled-epoch TensorWork only for proposer eligibility
@@ -1796,8 +1801,9 @@ such as `.localhost`, `.local`, `.test`, `.example`, `.invalid`, `example.com`, 
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. The public libp2p multiaddr must not use localhost, `.local`, loopback,
-unspecified, private, link-local, special-use DNS names, documentation, shared-address, benchmarking,
-multicast, or reserved IP hosts. Those records are rolled into the `network-runtime` summary root.
+unspecified, private, link-local, special-use DNS names, malformed DNS labels, documentation,
+shared-address, benchmarking, multicast, or reserved IP hosts. Those records are rolled into the
+`network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
@@ -2026,7 +2032,9 @@ Local reference completion requires:
 
 ```text
 all modules listed in the recommended internal module structure exist or have documented replacements
-Gate 0 CPU local multi-participant testnet passes with cargo test -p tensor_vm local_testnet --release
+Gate 0 CPU local multi-participant testnet passes with cargo test -p tensor_vm local_testnet --release,
+using canonical CPU semantics, mandatory libp2p node paths, separate participant identities/endpoints,
+and no simulations or local-only networking shims
 all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing tests
 Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
 not yet complete
@@ -2332,7 +2340,9 @@ Full-spec completion additionally requires deployment evidence, not only a local
 implementation:
 
 ```text
-Gate 0 CPU local multi-participant testnet passes before any deployment evidence is counted
+Gate 0 CPU local multi-participant testnet passes before any deployment evidence is counted, using
+canonical CPU semantics, mandatory libp2p node paths, separate participant identities/endpoints, and no
+simulations or local-only networking shims
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
 production libp2p operation is supported by signed network-observation evidence
