@@ -58,7 +58,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   checksum validation
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
-- Node/tensor RPC route handling, explorer/telemetry/faucet RPC endpoints, browser-facing
+- Node/tensor RPC route handling, service and per-surface health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing
   explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
   formatting, generic HTTP request reading, socketed stdlib HTTP serving, `tvmd service init/serve`
   launch configuration for a `NodeStore`-backed service process, and gateway auth/body-size/rate-limit
@@ -115,7 +115,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.63% workspace line coverage
-- 5889/5971 workspace lines covered
+- 5898/5980 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

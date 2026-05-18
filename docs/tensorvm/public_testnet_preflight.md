@@ -61,6 +61,10 @@ tvmd service init --data-dir /var/lib/tensorvm
 tvmd service serve --listen 0.0.0.0:8545 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
 ```
 
+The service exposes `GET /health` plus scoped `GET /rpc/health`, `GET /explorer/health`,
+`GET /faucet/health`, and `GET /telemetry/health` endpoints for external monitors. The generic `/health`
+path is suitable when each public service hostname routes to the same TensorVM service process.
+
 The output is a line-oriented readiness report. `public_testnet_preflight_ready=true` only means the
 planned run has the required local shape and deployment plan; it still does not prove an external run
 has happened. Failed launches can be diagnosed from the individual gate fields:

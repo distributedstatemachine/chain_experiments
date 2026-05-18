@@ -1548,6 +1548,8 @@ PeerInfo
 ### 30.1 Node RPC
 
 ```text
+GET  /health
+GET  /rpc/health
 GET  /chain/head
 GET  /chain/block/:height
 GET  /epoch/current
@@ -1556,6 +1558,9 @@ GET  /jobs/:job_id
 GET  /receipts/:receipt_id
 GET  /miners/:address
 GET  /validators/:address
+GET  /explorer/health
+GET  /telemetry/health
+GET  /faucet/health
 POST /tx
 POST /receipt
 POST /attestation

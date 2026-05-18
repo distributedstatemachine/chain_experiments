@@ -36,6 +36,8 @@ pub enum P2pMessage {
 }
 
 pub const NODE_RPC_ROUTES: &[&str] = &[
+    "GET /health",
+    "GET /rpc/health",
     "GET /chain/head",
     "GET /chain/block/:height",
     "GET /epoch/current",
@@ -45,12 +47,15 @@ pub const NODE_RPC_ROUTES: &[&str] = &[
     "GET /miners/:address",
     "GET /validators/:address",
     "GET /explorer",
+    "GET /explorer/health",
     "GET /explorer/summary",
     "GET /explorer/account/:address",
     "GET /explorer/blocks/latest/:limit",
     "GET /telemetry",
+    "GET /telemetry/health",
     "GET /telemetry/dashboard",
     "GET /faucet",
+    "GET /faucet/health",
     "GET /faucet/page",
     "POST /faucet/claim/:address",
     "POST /tx",
@@ -94,11 +99,16 @@ mod tests {
 
     #[test]
     fn api_surface_includes_spec_routes() {
+        assert!(NODE_RPC_ROUTES.contains(&"GET /health"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /rpc/health"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /chain/head"));
         assert!(NODE_RPC_ROUTES.contains(&"POST /attestation"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /explorer"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/health"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry/health"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry/dashboard"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /faucet/health"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /faucet/page"));
         assert!(NODE_RPC_ROUTES.contains(&"POST /faucet/claim/:address"));
         assert!(TENSOR_DATA_RPC_ROUTES.contains(&"GET /tensor/:tensor_id/opening/:chunk_index"));

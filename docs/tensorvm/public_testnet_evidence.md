@@ -66,6 +66,9 @@ observed block, and heartbeat count. Service-health signatures cover the service
 URL, health path, first/last observed block, reachable observation count, and signed health-check count.
 Service URLs must be external HTTPS endpoints; localhost, `.local`, loopback, private, link-local, and
 unspecified hosts are rejected.
+The reference service process serves `GET /health` for shared-host deployments and scoped
+`GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
+when operators publish distinct public service hostnames or paths.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1

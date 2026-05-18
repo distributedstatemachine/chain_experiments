@@ -169,6 +169,8 @@ impl RpcNode {
 
     pub fn handle(&self, request: &RpcRequest) -> RpcResponse {
         match (request.method.as_str(), request.path.as_str()) {
+            ("GET", "/health") => self.health("all"),
+            ("GET", "/rpc/health") => self.health("rpc"),
             ("GET", "/chain/head") => self.ok(format!(
                 "{{\"height\":{},\"epoch\":{},\"block_count\":{}}}",
                 self.chain.state.height,
@@ -179,14 +181,17 @@ impl RpcNode {
                 self.ok(format!("{{\"epoch\":{}}}", self.chain.state.epoch))
             }
             ("GET", "/jobs/current") => self.jobs_current(),
+            ("GET", "/explorer/health") => self.health("explorer"),
             ("GET", "/explorer") => self.ok(explorer_dashboard_html(&self.chain)),
             ("GET", "/explorer/summary") => {
                 self.ok(ExplorerSummary::from_chain(&self.chain).to_json())
             }
+            ("GET", "/telemetry/health") => self.health("telemetry"),
             ("GET", "/telemetry") => self.ok(TelemetrySnapshot::from_chain(&self.chain).to_json()),
             ("GET", "/telemetry/dashboard") => self.ok(telemetry_dashboard_html(
                 &TelemetrySnapshot::from_chain(&self.chain),
             )),
+            ("GET", "/faucet/health") => self.health("faucet"),
             ("GET", "/faucet") => self.faucet_status(),
             ("GET", "/faucet/page") => self.ok(faucet_page_html(self.faucet.as_ref())),
             ("POST", "/tx") | ("POST", "/receipt") | ("POST", "/attestation") => self.accepted(),
@@ -497,6 +502,16 @@ impl RpcNode {
         parse_hash(tensor_id)
             .ok()
             .and_then(|tensor_id| self.tensors.get(&tensor_id))
+    }
+
+    fn health(&self, service: &str) -> RpcResponse {
+        self.ok(format!(
+            "{{\"status\":\"ok\",\"service\":\"{service}\",\"height\":{},\"epoch\":{},\"block_count\":{},\"faucet_configured\":{}}}",
+            self.chain.state.height,
+            self.chain.state.epoch,
+            self.chain.blocks.len(),
+            self.faucet.is_some()
+        ))
     }
 
     fn ok(&self, body: String) -> RpcResponse {
@@ -848,6 +863,24 @@ mod tests {
         assert_eq!(head.status, 200);
         assert!(head.body.contains("\"height\":1"));
 
+        let health = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/health".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(health.status, 200);
+        assert!(health.body.contains("\"status\":\"ok\""));
+        assert!(health.body.contains("\"service\":\"all\""));
+        assert!(health.body.contains("\"block_count\":1"));
+
+        let rpc_health = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/rpc/health".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(rpc_health.status, 200);
+        assert!(rpc_health.body.contains("\"service\":\"rpc\""));
+
         let block = rpc.handle_http_text("GET /chain/block/0 HTTP/1.1\r\n\r\n");
         assert_eq!(block.status, 200);
         assert!(block.body.contains("\"height\":0"));
@@ -979,6 +1012,14 @@ mod tests {
         assert!(explorer_page.body.starts_with("<!doctype html>"));
         assert!(explorer_page.body.contains("TensorVM Explorer"));
 
+        let explorer_health = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/health".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(explorer_health.status, 200);
+        assert!(explorer_health.body.contains("\"service\":\"explorer\""));
+
         let telemetry = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
             path: "/telemetry".to_owned(),
@@ -994,6 +1035,14 @@ mod tests {
         });
         assert_eq!(telemetry_page.status, 200);
         assert!(telemetry_page.body.contains("Telemetry Dashboard"));
+
+        let telemetry_health = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/telemetry/health".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(telemetry_health.status, 200);
+        assert!(telemetry_health.body.contains("\"service\":\"telemetry\""));
 
         let faucet = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
@@ -1011,6 +1060,15 @@ mod tests {
         assert_eq!(faucet_page.status, 200);
         assert!(faucet_page.body.contains("<h1>Faucet</h1>"));
         assert!(faucet_page.body.contains("<dd>100</dd>"));
+
+        let faucet_health = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/faucet/health".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(faucet_health.status, 200);
+        assert!(faucet_health.body.contains("\"service\":\"faucet\""));
+        assert!(faucet_health.body.contains("\"faucet_configured\":true"));
 
         let claim = rpc.handle_mut(&RpcRequest {
             method: "POST".to_owned(),

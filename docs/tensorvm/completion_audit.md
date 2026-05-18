@@ -39,7 +39,7 @@ The objective decomposes into these deliverables:
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` | Present for field matmul |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
-| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
+| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP and health-route tests, `tvmd service init/serve` launch validation, and public evidence service URLs rejected when local or private | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 163 `tensor_vm` tests | Passed |
