@@ -156,7 +156,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence record-artifact-from-roots ...` generation that signs artifact locators from the
   same derived aggregate root and count as summary generation, and `tvmd public-evidence
   record-summary-from-roots ...` deterministic root aggregation for post-run supporting records with
-  duplicate-root rejection
+  duplicate-root rejection; a process-level `tvmd` integration test now assembles a short
+  external-addressed evidence manifest entirely from the signed generator subcommands, validates it from
+  disk, and proves it is independently checkable without allowing the default full-spec flag to pass
 
 ## Verified Gates
 
@@ -186,8 +188,9 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 - 14 in `pearl_chain`
 - 171 in `tensor_vm`
 
-`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 3 `tvmd` CLI integration
-tests for the documented spec-path pending manifest commands plus a supervised
+`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 4 `tvmd` CLI integration
+tests for the documented spec-path pending manifest commands, a generated short-run evidence manifest
+round trip that reports `independently_checkable=true` and `public_evidence_full_spec=false`, plus a supervised
 `tvmd service init` / `tvmd service peer add` / bounded `tvmd service serve` lifecycle smoke
 test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,

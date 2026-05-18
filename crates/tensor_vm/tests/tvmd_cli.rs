@@ -137,6 +137,10 @@ fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
         .expect("expected service stdout field")
 }
 
+fn trimmed_tvmd(args: &[&str]) -> String {
+    run_tvmd(args).trim_end().to_owned()
+}
+
 fn network_observation_root(line: &str) -> &str {
     let fields = line
         .trim()
@@ -273,6 +277,362 @@ fn documented_public_testnet_evidence_command_reports_non_full_spec_status() {
     assert!(stdout.contains("supporting_record_artifacts=false"));
     assert!(stdout.contains("required_run_duration=false"));
     assert!(stdout.contains("required_block_count=false"));
+}
+
+#[test]
+fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
+    let data_dir = unique_test_dir("generated-public-evidence");
+    let manifest_path = data_dir.join("generated-public-testnet.evidence");
+    let manifest_path_text = manifest_path.to_string_lossy().into_owned();
+
+    let bundle_id = "11".repeat(32);
+    let manifest_signer = "22".repeat(32);
+    let public_uri = "https://tensorvm.net/tensorvm/public-evidence.json";
+    let publication = trimmed_tvmd(&[
+        "public-evidence",
+        "publication",
+        "--bundle-id",
+        &bundle_id,
+        "--public-uri",
+        public_uri,
+        "--manifest-signer",
+        &manifest_signer,
+        "--manifest-signature-count",
+        "1",
+        "--independent-auditor-count",
+        "1",
+    ]);
+    let auditor = trimmed_tvmd(&[
+        "public-evidence",
+        "auditor-record",
+        "--bundle-id",
+        &bundle_id,
+        "--public-uri",
+        public_uri,
+        "--auditor-id",
+        &"33".repeat(32),
+        "--audit-uri",
+        "https://auditors.tensorvm.net/tensorvm/generated-audit.json",
+        "--observed-at",
+        "1700000060",
+    ]);
+
+    let mut artifact_lines = Vec::new();
+    let mut summary_lines = Vec::new();
+    for (kind, root, count) in [
+        ("block-history", "44".repeat(32), "10"),
+        ("finality-history", "55".repeat(32), "10"),
+        ("data-availability", "77".repeat(32), "20"),
+        ("invalid-work", "88".repeat(32), "1"),
+        ("reward-settlement", "99".repeat(32), "1"),
+    ] {
+        summary_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "record-summary",
+            "--kind",
+            kind,
+            "--bundle-id",
+            &bundle_id,
+            "--manifest-signer",
+            &manifest_signer,
+            "--record-root",
+            &root,
+            "--record-count",
+            count,
+        ]));
+        artifact_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "record-artifact",
+            "--kind",
+            kind,
+            "--bundle-id",
+            &bundle_id,
+            "--manifest-signer",
+            &manifest_signer,
+            "--artifact-uri",
+            &format!("https://evidence.tensorvm.net/tensorvm/{kind}.json"),
+            "--record-root",
+            &root,
+            "--record-count",
+            count,
+        ]));
+    }
+
+    let miner_a = "aa".repeat(32);
+    let miner_a_operator = "dd".repeat(32);
+    let miner_b = "bb".repeat(32);
+    let miner_b_operator = "ee".repeat(32);
+    let validator_a = "cc".repeat(32);
+    let validator_a_operator = "ff".repeat(32);
+    let participants = [
+        (
+            "miner",
+            miner_a.as_str(),
+            miner_a_operator.as_str(),
+            "node-a.tensorvm.net",
+            "4001",
+        ),
+        (
+            "miner",
+            miner_b.as_str(),
+            miner_b_operator.as_str(),
+            "node-b.tensorvm.net",
+            "4002",
+        ),
+        (
+            "validator",
+            validator_a.as_str(),
+            validator_a_operator.as_str(),
+            "node-c.tensorvm.net",
+            "4003",
+        ),
+    ];
+    let mut operator_lines = Vec::new();
+    let mut node_lines = Vec::new();
+    let mut network_lines = Vec::new();
+    let mut network_roots = Vec::new();
+    for (role, address, operator_id, host, port) in participants {
+        let identity_uri = format!("https://operators.tensorvm.net/{operator_id}.json");
+        operator_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "operator-attestation",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--identity-uri",
+            &identity_uri,
+            "--observed-at",
+            "1700000000",
+        ]));
+        node_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "node-heartbeat",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--first-block",
+            "0",
+            "--last-block",
+            "9",
+            "--heartbeat-count",
+            "10",
+        ]));
+        let peer_id = PeerId::random().to_string();
+        let listen_address = format!("/dns/{host}/tcp/{port}");
+        let observation = trimmed_tvmd(&[
+            "public-evidence",
+            "network-observation",
+            "--operator-id",
+            operator_id,
+            "--peer-id",
+            &peer_id,
+            "--listen-address",
+            &listen_address,
+            "--observed-at",
+            "1700000000",
+            "--gossip-topics",
+            "5",
+            "--request-response-protocols",
+            "3",
+            "--bootstrap-peers",
+            "2",
+            "--max-transmit-bytes",
+            "1048576",
+            "--request-timeout-seconds",
+            "10",
+            "--max-concurrent-streams",
+            "128",
+            "--idle-timeout-seconds",
+            "60",
+        ]);
+        network_roots.push(network_observation_root(&observation).to_owned());
+        network_lines.push(observation);
+    }
+    let network_root_csv = network_roots.join(",");
+    let network_summary = trimmed_tvmd(&[
+        "public-evidence",
+        "record-summary-from-roots",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--record-roots",
+        &network_root_csv,
+    ]);
+    artifact_lines.push(trimmed_tvmd(&[
+        "public-evidence",
+        "record-artifact-from-roots",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--artifact-uri",
+        "https://evidence.tensorvm.net/tensorvm/network-runtime.json",
+        "--record-roots",
+        &network_root_csv,
+    ]));
+
+    let run_window = trimmed_tvmd(&[
+        "public-evidence",
+        "run-window",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--started-at",
+        "1700000000",
+        "--ended-at",
+        "1700000060",
+        "--observed-blocks",
+        "10",
+    ]);
+
+    let mut service_lines = Vec::new();
+    let mut service_content_lines = Vec::new();
+    for (kind, endpoint_id, health_url, content_url, content_path, content_root) in [
+        (
+            "rpc",
+            "12".repeat(32),
+            "https://rpc.tensorvm.net/health",
+            "https://rpc.tensorvm.net/chain/head",
+            "/chain/head",
+            "a1".repeat(32),
+        ),
+        (
+            "explorer",
+            "13".repeat(32),
+            "https://explorer.tensorvm.net/health",
+            "https://explorer.tensorvm.net/explorer",
+            "/explorer",
+            "a2".repeat(32),
+        ),
+        (
+            "faucet",
+            "14".repeat(32),
+            "https://faucet.tensorvm.net/health",
+            "https://faucet.tensorvm.net/faucet/page",
+            "/faucet/page",
+            "a3".repeat(32),
+        ),
+        (
+            "telemetry",
+            "15".repeat(32),
+            "https://telemetry.tensorvm.net/health",
+            "https://telemetry.tensorvm.net/telemetry/dashboard",
+            "/telemetry/dashboard",
+            "a4".repeat(32),
+        ),
+    ] {
+        service_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "service-health",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            &endpoint_id,
+            "--public-url",
+            health_url,
+            "--health-path",
+            "/health",
+            "--first-block",
+            "0",
+            "--last-block",
+            "9",
+            "--reachable-count",
+            "10",
+            "--signed-health-check-count",
+            "10",
+        ]));
+        service_content_lines.push(trimmed_tvmd(&[
+            "public-evidence",
+            "service-content",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            &endpoint_id,
+            "--public-url",
+            content_url,
+            "--content-path",
+            content_path,
+            "--content-root",
+            &content_root,
+            "--observed-at",
+            "1700000000",
+            "--min-content-bytes",
+            "64",
+        ]));
+    }
+
+    let manifest = format!(
+        "\
+version=tensor-vm-public-testnet-evidence-v1
+{publication}
+{auditor}
+{}
+{}
+operator_identity_attestation_records=3
+{}
+{}
+{network_summary}
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+run_started_at_unix_seconds=1700000000
+run_ended_at_unix_seconds=1700000060
+{run_window}
+observed_blocks=10
+finalized_blocks=10
+checked_receipts=20
+available_receipts=19
+invalid_receipts_submitted=1
+invalid_receipts_rejected=1
+{}
+{}
+{}
+",
+        artifact_lines.join("\n"),
+        summary_lines.join("\n"),
+        operator_lines.join("\n"),
+        network_lines.join("\n"),
+        node_lines.join("\n"),
+        service_lines.join("\n"),
+        service_content_lines.join("\n"),
+    );
+    std::fs::write(&manifest_path, manifest).expect("generated evidence manifest must be written");
+
+    let report = run_tvmd(&[
+        "public-evidence",
+        "validate",
+        "--manifest",
+        &manifest_path_text,
+    ]);
+    assert!(report.contains("public_evidence_full_spec=false"));
+    assert!(report.contains("public_criterion=false"));
+    assert!(report.contains("independently_checkable=true"));
+    assert!(report.contains("published_evidence_bundle=true"));
+    assert!(report.contains("supporting_record_artifacts=true"));
+    assert!(report.contains("network_runtime_observations=true"));
+    assert!(report.contains("deployed_public_services=true"));
+    assert!(report.contains("deployed_public_service_content=true"));
+    assert!(report.contains("production_libp2p_runtime=true"));
+    assert!(report.contains("required_run_duration=false"));
+    assert!(report.contains("required_block_count=false"));
+    assert!(report.contains("required_miners=false"));
+    assert!(report.contains("required_validators=false"));
+
+    std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
 
 #[test]
