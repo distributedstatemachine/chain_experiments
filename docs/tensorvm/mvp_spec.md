@@ -1807,7 +1807,9 @@ HTTPS URL, content path, content root, observation time, and minimum observed co
 service-content records must be observed inside the signed run window and prove at least 64 observed bytes.
 Deployed public service evidence must include both signed health and signed content records with matching
 endpoint IDs and matching HTTPS authorities for `/chain/head`, `/explorer`, `/faucet/page`, and
-`/telemetry/dashboard`.
+`/telemetry/dashboard`. The RPC, explorer, faucet, and telemetry service surfaces must use distinct
+endpoint IDs and distinct service-content roots; reused IDs or content roots do not satisfy the public
+service gate.
 Public service health and content URLs must use the exact signed path with no query string or fragment.
 External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
 DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed IPv6 authorities, localhost,
@@ -2082,7 +2084,8 @@ production libp2p evidence includes signed network-observation records for disco
 request/response, and DoS controls
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes external HTTPS URLs, signed health-check summaries, and signed
-service-content roots for those services
+service-content roots for those services, with distinct endpoint IDs and distinct content roots across
+RPC, explorer, faucet, and telemetry
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
 the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
 block-count evidence
@@ -2285,7 +2288,8 @@ production libp2p networking used for node propagation
 production libp2p operation is evidenced by signed network-observation records
 deployed services remain reachable during the public run
 deployed service reachability is evidenced by signed health checks bound to external HTTPS service URLs
-deployed service content is evidenced by signed content roots bound to external HTTPS service URLs
+deployed service content is evidenced by signed content roots bound to external HTTPS service URLs, with
+distinct endpoint IDs and distinct content roots across RPC, explorer, faucet, and telemetry
 raw supporting-record artifacts are externally linked and signed against their summary roots
 GPU kernel outputs match canonical deterministic CPU semantics
 ```
@@ -2373,7 +2377,8 @@ production libp2p operation is supported by signed network-observation evidence 
 counted public miner and validator operator
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes externally reachable HTTPS URLs, signed health-check summaries, and
-signed service-content roots
+signed service-content roots with distinct endpoint IDs and distinct content roots across RPC, explorer,
+faucet, and telemetry
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
 the evidence bundle includes exactly one manifest publication signature in the current manifest format

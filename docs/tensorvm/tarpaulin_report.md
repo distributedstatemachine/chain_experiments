@@ -22,10 +22,11 @@ Result:
 - 14 pearl_chain library tests
 - 167 tensor_vm library tests
 
-98.91% workspace line coverage
-7454/7536 workspace lines covered
+98.92% workspace line coverage
+7515/7597 workspace lines covered
 
 100.00% tensor_vm crate line coverage
+1679/1679 tensor_vm lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps

@@ -85,7 +85,7 @@ These are not satisfied by local tests or manifests alone:
   measurements, invalid-work rejection evidence, reward-settlement records, signed production libp2p
   network-observation records, signed external raw-record artifact locators, signed deployed-service health
   records that cover the observed block count, and signed deployed-service content-root records bound to
-  external HTTPS URLs
+  external HTTPS URLs with distinct deployed service endpoint IDs and distinct service-content roots
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
 Local evidence validators reject malformed HTTPS authorities, userinfo, whitespace, invalid DNS host
@@ -101,8 +101,9 @@ signed service-health records bound to external HTTPS URLs, matching health path
 coverage, signed
 independent-auditor records bound to
 external audit URIs with observations at or after the signed run end, signed service-content roots bound to
-external HTTPS URLs, matching service endpoint IDs, matching service-health HTTPS authorities, required
-content paths, 64-byte minimum content proofs, exact run-derived supporting-record counts, rejection of
+external HTTPS URLs, matching service endpoint IDs, distinct deployed service endpoint IDs, matching
+service-health HTTPS authorities, distinct service-content roots, required content paths, 64-byte minimum
+content proofs, exact run-derived supporting-record counts, rejection of
 full-spec evidence status under relaxed local harness criteria, and external-operator evidence derived from signed manifest
 operator-attestation records plus distinct node-heartbeat addresses and counts that cover the observed block
 count while rejecting overreported operator-attestation counts.

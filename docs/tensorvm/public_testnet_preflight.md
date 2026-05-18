@@ -17,7 +17,7 @@ The local preflight report checks:
 - available CUDA kernels for the claimed GPU mining path
 - production libp2p runtime plan with discovery, gossip, request/response, and DoS controls
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
-- service endpoint identifiers, health paths, content paths, auth, and rate limiting
+- distinct service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
 Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities,
 and each service's health and content URLs must use the same HTTPS authority. The local checker rejects
@@ -25,7 +25,8 @@ userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid p
 IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
 domains, loopback, unspecified, private, and link-local IP addresses, including bracketed IPv6 loopback
 literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or reserved
-ranges are also rejected.
+ranges are also rejected. RPC, explorer, faucet, and telemetry plans must use distinct endpoint IDs;
+reusing one endpoint ID across multiple public service kinds does not satisfy launch readiness.
 
 ## Manifest Format
 
@@ -60,7 +61,8 @@ health path exactly and must not include a query string or fragment. The content
 required public surface for that service exactly, also without a query string or fragment:
 `/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`. The content URL authority must
 match the health URL authority so a preflight manifest cannot combine health checks from one deployed
-service with content evidence from another host.
+service with content evidence from another host. Endpoint IDs must be distinct across the RPC, explorer,
+faucet, and telemetry service plans.
 
 The CLI reads a manifest file and reports launch readiness:
 

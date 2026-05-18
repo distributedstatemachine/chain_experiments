@@ -39,6 +39,8 @@ A complete evidence bundle must include:
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
 - external HTTPS URLs, health paths, reachability records, content paths, and signed content-root
   observations for deployed RPC, explorer, faucet, and telemetry services
+- distinct deployed endpoint IDs and distinct signed service-content roots for the RPC, explorer, faucet,
+  and telemetry service surfaces
 
 A public `https://` evidence URI must use a well-formed external host authority. The local validator
 rejects userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed
@@ -105,6 +107,9 @@ block, reachable observation count, and signed health-check count. Supporting-ar
 bundle ID, record-set kind, external artifact URI, record root, and record count. Service-content
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
 and minimum observed content bytes; counted public service content must prove at least 64 observed bytes.
+The RPC, explorer, faucet, and telemetry services must have distinct endpoint IDs and distinct deployed
+content roots. Reusing a health endpoint ID or content root across service kinds does not satisfy the
+deployed public-service gate.
 Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed external host authorities;
 userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed
@@ -135,7 +140,7 @@ when operators publish distinct public service hostnames or paths. Public servic
 must bind the same endpoint IDs and HTTPS authorities as the corresponding health records to deployed
 content roots for `GET /chain/head`, `GET /explorer`, `GET /faucet/page`, and
 `GET /telemetry/dashboard`; other content paths or cross-authority content URLs do not satisfy the
-deployed-service gate.
+deployed-service gate. Endpoint IDs and content roots must also be unique across the four service kinds.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1

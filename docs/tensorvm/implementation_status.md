@@ -83,7 +83,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   rejection evidence, reward-settlement records, production libp2p runtime evidence, internally consistent
   finalized-block and available-receipt counters, and deployed RPC/explorer/faucet/telemetry service
   reachability with reachable and signed health-check summaries that cover the observed block count plus
-  signed content-root observations bound to external HTTPS service URLs and paths
+  signed content-root observations bound to external HTTPS service URLs and paths, requiring distinct
+  service endpoint IDs and distinct service-content roots across the four deployed service kinds
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, exactly one verified manifest publication signature in the current manifest format, signed
   independent auditor records bound to external audit URIs, distinct from the manifest signer, and observed
@@ -106,8 +107,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
-  requiring exact untrimmed service URL/path manifest fields for the planned public content paths used by
-  post-run evidence
+  requiring exact untrimmed service URL/path manifest fields plus distinct endpoint IDs for the planned
+  public content paths used by post-run evidence
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -127,7 +128,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
-  content roots, and at least 64 observed bytes,
+  distinct content roots, and at least 64 observed bytes,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
   single-label DNS rejection,
@@ -169,9 +170,10 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.91% workspace line coverage
-- 7454/7536 workspace lines covered
+- 98.92% workspace line coverage
+- 7515/7597 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
+- 1679/1679 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

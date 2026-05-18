@@ -165,7 +165,9 @@ impl PublicTestnetPreflightPlan {
         let has_public_service_plan = has_rpc_service_plan
             && has_explorer_service_plan
             && has_faucet_service_plan
-            && has_telemetry_service_plan;
+            && has_telemetry_service_plan
+            && has_public_service_content_plan
+            && self.has_distinct_ready_service_endpoint_ids();
         let local_shape_ready = has_required_miners
             && has_required_validators
             && has_positive_stakes
@@ -205,6 +207,23 @@ impl PublicTestnetPreflightPlan {
         self.services
             .iter()
             .any(|service| service.kind == kind && service.has_public_content_surface())
+    }
+
+    fn has_distinct_ready_service_endpoint_ids(&self) -> bool {
+        let mut endpoint_ids = BTreeSet::new();
+        for kind in public_service_kinds() {
+            let Some(service) = self
+                .services
+                .iter()
+                .find(|service| service.kind == kind && service.is_ready_for_public_run())
+            else {
+                return false;
+            };
+            if !endpoint_ids.insert(service.endpoint_id) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -269,6 +288,15 @@ impl PublicServiceKind {
             Self::Telemetry => "/telemetry/dashboard",
         }
     }
+}
+
+fn public_service_kinds() -> [PublicServiceKind; 4] {
+    [
+        PublicServiceKind::Rpc,
+        PublicServiceKind::Explorer,
+        PublicServiceKind::Faucet,
+        PublicServiceKind::Telemetry,
+    ]
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2522,8 +2550,15 @@ impl PublicTestnetRunEvidence {
             self.has_service_content_for_reachable_endpoint(PublicServiceKind::Faucet);
         let has_telemetry_content =
             self.has_service_content_for_reachable_endpoint(PublicServiceKind::Telemetry);
-        let has_deployed_public_service_content =
-            has_rpc_content && has_explorer_content && has_faucet_content && has_telemetry_content;
+        let has_distinct_deployed_service_endpoint_ids =
+            self.has_distinct_deployed_service_endpoint_ids();
+        let has_distinct_deployed_service_content_roots =
+            self.has_distinct_deployed_service_content_roots();
+        let has_deployed_public_service_content = has_rpc_content
+            && has_explorer_content
+            && has_faucet_content
+            && has_telemetry_content
+            && has_distinct_deployed_service_content_roots;
         let has_deployed_rpc_service = has_rpc_content;
         let has_deployed_explorer_service = has_explorer_content;
         let has_deployed_faucet_service = has_faucet_content;
@@ -2531,7 +2566,9 @@ impl PublicTestnetRunEvidence {
         let has_deployed_public_services = has_deployed_rpc_service
             && has_deployed_explorer_service
             && has_deployed_faucet_service
-            && has_deployed_telemetry_service;
+            && has_deployed_telemetry_service
+            && has_deployed_public_service_content
+            && has_distinct_deployed_service_endpoint_ids;
         let public_criterion_met = has_required_miners
             && has_required_validators
             && has_required_run_duration
@@ -2579,20 +2616,74 @@ impl PublicTestnetRunEvidence {
     }
 
     fn has_service_content_for_reachable_endpoint(&self, kind: PublicServiceKind) -> bool {
+        self.deployed_service_content_root(kind).is_some()
+    }
+
+    fn deployed_service_content_root(&self, kind: PublicServiceKind) -> Option<Hash> {
         self.services
             .iter()
             .filter(|service| {
                 service.kind == kind && service.is_reachable_for_run(self.observed_blocks)
             })
-            .any(|service| {
-                self.service_content.iter().any(|content| {
-                    content.kind == kind
+            .find_map(|service| {
+                self.service_content.iter().find_map(|content| {
+                    let matches_content = content.kind == kind
                         && content.endpoint_id == service.endpoint_id
                         && content.has_external_content_proof()
                         && public_https_authorities_match(&service.public_url, &content.public_url)
-                        && self.observation_is_within_run(content.observed_at_unix_seconds)
+                        && self.observation_is_within_run(content.observed_at_unix_seconds);
+                    matches_content.then_some(content.content_root)
                 })
             })
+    }
+
+    fn deployed_service_endpoint_id(&self, kind: PublicServiceKind) -> Option<Hash> {
+        self.services
+            .iter()
+            .filter(|service| {
+                service.kind == kind && service.is_reachable_for_run(self.observed_blocks)
+            })
+            .find_map(|service| {
+                self.service_content
+                    .iter()
+                    .any(|content| {
+                        content.kind == kind
+                            && content.endpoint_id == service.endpoint_id
+                            && content.has_external_content_proof()
+                            && public_https_authorities_match(
+                                &service.public_url,
+                                &content.public_url,
+                            )
+                            && self.observation_is_within_run(content.observed_at_unix_seconds)
+                    })
+                    .then_some(service.endpoint_id)
+            })
+    }
+
+    fn has_distinct_deployed_service_endpoint_ids(&self) -> bool {
+        let mut endpoint_ids = BTreeSet::new();
+        for kind in public_service_kinds() {
+            let Some(endpoint_id) = self.deployed_service_endpoint_id(kind) else {
+                return false;
+            };
+            if !endpoint_ids.insert(endpoint_id) {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn has_distinct_deployed_service_content_roots(&self) -> bool {
+        let mut content_roots = BTreeSet::new();
+        for kind in public_service_kinds() {
+            let Some(content_root) = self.deployed_service_content_root(kind) else {
+                return false;
+            };
+            if !content_roots.insert(content_root) {
+                return false;
+            }
+        }
+        true
     }
 
     fn observation_is_within_run(&self, observed_at_unix_seconds: u64) -> bool {
@@ -4221,6 +4312,51 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(complete.has_deployed_public_services);
         assert!(complete.public_criterion_met);
 
+        run.services[1] = PublicServiceEvidence::new(
+            PublicServiceKind::Explorer,
+            PublicServiceEndpoint::new(
+                run.services[0].endpoint_id,
+                public_service_url(PublicServiceKind::Explorer),
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
+        run.service_content[1] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Explorer,
+            run.services[0].endpoint_id,
+            public_service_content_url(PublicServiceKind::Explorer),
+            public_service_content_path(PublicServiceKind::Explorer),
+            hash_bytes(b"test", &[b"explorer-service", b"content-root"]),
+            1_700_000_000,
+            64,
+        );
+        let duplicate_service_endpoint = run.evaluate(&criteria, 6, true);
+        assert!(duplicate_service_endpoint.has_deployed_explorer_service);
+        assert!(duplicate_service_endpoint.has_deployed_public_service_content);
+        assert!(!duplicate_service_endpoint.has_deployed_public_services);
+        assert!(!duplicate_service_endpoint.public_criterion_met);
+        run.services = deployed_public_services(9);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[1] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Explorer,
+            hash_bytes(b"test", &[b"explorer-service"]),
+            public_service_content_url(PublicServiceKind::Explorer),
+            public_service_content_path(PublicServiceKind::Explorer),
+            run.service_content[0].content_root,
+            1_700_000_000,
+            64,
+        );
+        let duplicate_service_content_root = run.evaluate(&criteria, 6, true);
+        assert!(duplicate_service_content_root.has_deployed_explorer_service);
+        assert!(!duplicate_service_content_root.has_deployed_public_service_content);
+        assert!(!duplicate_service_content_root.has_deployed_public_services);
+        assert!(!duplicate_service_content_root.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
         run.service_content[0].content_signature = [8; 32];
         let tampered_rpc_content = run.evaluate(&criteria, 6, true);
         assert!(!tampered_rpc_content.has_deployed_rpc_service);
@@ -5357,6 +5493,27 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(report.local_shape_ready);
         assert!(report.deployment_plan_ready);
         assert!(report.can_start_public_run);
+
+        let duplicate_service_endpoint = manifest.replace(
+            &manifest_hash(b"test", b"explorer-service"),
+            &manifest_hash(b"test", b"rpc-service"),
+        );
+        let duplicate_service_endpoint_report =
+            parse_public_testnet_preflight_manifest(&duplicate_service_endpoint)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(duplicate_service_endpoint_report.has_rpc_service_plan);
+        assert!(duplicate_service_endpoint_report.has_explorer_service_plan);
+        assert!(duplicate_service_endpoint_report.has_public_service_content_plan);
+        assert!(!duplicate_service_endpoint_report.has_public_service_plan);
+        assert!(!duplicate_service_endpoint_report.deployment_plan_ready);
+        assert!(!duplicate_service_endpoint_report.can_start_public_run);
+
+        let mut missing_service_plan = plan.clone();
+        missing_service_plan
+            .services
+            .retain(|service| service.kind != PublicServiceKind::Explorer);
+        assert!(!missing_service_plan.has_distinct_ready_service_endpoint_ids());
 
         let rpc = plan
             .services
