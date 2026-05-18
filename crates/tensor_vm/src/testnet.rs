@@ -656,14 +656,14 @@ impl PublicEvidenceSupportingArtifact {
 pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
     let mut builder = PublicEvidenceManifestBuilder::default();
     for raw_line in input.lines() {
-        let line = raw_line.trim();
+        let line = raw_line.trim_start();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let (key, value) = line
+        let (key, value) = raw_line
             .split_once('=')
             .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
-        builder.set(key.trim(), value.trim())?;
+        builder.set(key.trim(), value)?;
     }
     builder.finish()
 }
@@ -671,14 +671,14 @@ pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestn
 pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTestnetPreflightPlan> {
     let mut builder = PublicTestnetPreflightManifestBuilder::default();
     for raw_line in input.lines() {
-        let line = raw_line.trim();
+        let line = raw_line.trim_start();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let (key, value) = line.split_once('=').ok_or(TvmError::InvalidReceipt(
+        let (key, value) = raw_line.split_once('=').ok_or(TvmError::InvalidReceipt(
             "malformed preflight manifest line",
         ))?;
-        builder.set(key.trim(), value.trim())?;
+        builder.set(key.trim(), value)?;
     }
     builder.finish()
 }
@@ -1016,35 +1016,38 @@ struct PublicTestnetPreflightManifestBuilder {
 
 impl PublicTestnetPreflightManifestBuilder {
     fn set(&mut self, key: &str, value: &str) -> Result<()> {
+        let scalar = value.trim();
         match key {
             "version" => {
-                if value != PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION {
+                if scalar != PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION {
                     return Err(TvmError::InvalidReceipt(
                         "unsupported preflight manifest version",
                     ));
                 }
                 self.version_seen = true;
             }
-            "miner_count" => self.miner_count = Some(parse_manifest_usize(value)?),
-            "validator_count" => self.validator_count = Some(parse_manifest_usize(value)?),
-            "miner_stake" => self.miner_stake = Some(parse_manifest_u64(value)?),
-            "validator_stake" => self.validator_stake = Some(parse_manifest_u64(value)?),
-            "faucet_balance" => self.faucet_balance = Some(parse_manifest_u64(value)?),
-            "faucet_drip" => self.faucet_drip = Some(parse_manifest_u64(value)?),
+            "miner_count" => self.miner_count = Some(parse_manifest_usize(scalar)?),
+            "validator_count" => self.validator_count = Some(parse_manifest_usize(scalar)?),
+            "miner_stake" => self.miner_stake = Some(parse_manifest_u64(scalar)?),
+            "validator_stake" => self.validator_stake = Some(parse_manifest_u64(scalar)?),
+            "faucet_balance" => self.faucet_balance = Some(parse_manifest_u64(scalar)?),
+            "faucet_drip" => self.faucet_drip = Some(parse_manifest_u64(scalar)?),
             "cuda_kernels_available" => {
-                self.cuda_kernels_available = Some(parse_manifest_bool(value)?);
+                self.cuda_kernels_available = Some(parse_manifest_bool(scalar)?);
             }
-            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
+            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(scalar)?),
             "peer_discovery_observed" => {
-                self.peer_discovery_observed = Some(parse_manifest_bool(value)?);
+                self.peer_discovery_observed = Some(parse_manifest_bool(scalar)?);
             }
             "gossip_propagation_observed" => {
-                self.gossip_propagation_observed = Some(parse_manifest_bool(value)?);
+                self.gossip_propagation_observed = Some(parse_manifest_bool(scalar)?);
             }
             "request_response_observed" => {
-                self.request_response_observed = Some(parse_manifest_bool(value)?);
+                self.request_response_observed = Some(parse_manifest_bool(scalar)?);
             }
-            "dos_controls_enabled" => self.dos_controls_enabled = Some(parse_manifest_bool(value)?),
+            "dos_controls_enabled" => {
+                self.dos_controls_enabled = Some(parse_manifest_bool(scalar)?)
+            }
             "service" => self.services.push(parse_preflight_service_plan(value)?),
             _ => return Err(TvmError::InvalidReceipt("unknown preflight manifest field")),
         }
@@ -1081,42 +1084,43 @@ impl PublicTestnetPreflightManifestBuilder {
 }
 
 fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePlan> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 8 {
         return Err(TvmError::InvalidReceipt("malformed preflight service plan"));
     }
     Ok(PublicDeploymentServicePlan {
-        kind: parse_service_kind(fields[0])?,
-        endpoint_id: parse_hash_hex(fields[1])?,
+        kind: parse_service_kind(fields[0].trim())?,
+        endpoint_id: parse_hash_hex(fields[1].trim())?,
         public_url: fields[2].to_owned(),
         health_path: fields[3].to_owned(),
         content_url: fields[4].to_owned(),
         content_path: fields[5].to_owned(),
-        auth_enabled: parse_manifest_bool(fields[6])?,
-        rate_limit_enabled: parse_manifest_bool(fields[7])?,
+        auth_enabled: parse_manifest_bool(fields[6].trim())?,
+        rate_limit_enabled: parse_manifest_bool(fields[7].trim())?,
     })
 }
 
 impl PublicEvidenceManifestBuilder {
     fn set(&mut self, key: &str, value: &str) -> Result<()> {
+        let scalar = value.trim();
         match key {
             "version" => {
-                if value != PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION {
+                if scalar != PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION {
                     return Err(TvmError::InvalidReceipt(
                         "unsupported evidence manifest version",
                     ));
                 }
                 self.version_seen = true;
             }
-            "bundle_id" => self.bundle_id = Some(parse_hash_hex(value)?),
+            "bundle_id" => self.bundle_id = Some(parse_hash_hex(scalar)?),
             "public_uri" => self.public_uri = Some(value.to_owned()),
-            "manifest_signer" => self.manifest_signer = Some(parse_hash_hex(value)?),
-            "manifest_signature" => self.manifest_signature = Some(parse_hash_hex(value)?),
+            "manifest_signer" => self.manifest_signer = Some(parse_hash_hex(scalar)?),
+            "manifest_signature" => self.manifest_signature = Some(parse_hash_hex(scalar)?),
             "manifest_signature_count" => {
-                self.manifest_signature_count = Some(parse_manifest_u64(value)?);
+                self.manifest_signature_count = Some(parse_manifest_u64(scalar)?);
             }
             "independent_auditor_count" => {
-                self.independent_auditor_count = Some(parse_manifest_u64(value)?);
+                self.independent_auditor_count = Some(parse_manifest_u64(scalar)?);
             }
             "auditor" => self
                 .auditor_records
@@ -1125,91 +1129,93 @@ impl PublicEvidenceManifestBuilder {
                 .supporting_artifacts
                 .push(parse_manifest_supporting_artifact(value)?),
             "block_history_records" => {
-                self.block_history_records = Some(parse_manifest_u64(value)?);
+                self.block_history_records = Some(parse_manifest_u64(scalar)?);
             }
-            "block_history_root" => self.block_history_root = Some(parse_hash_hex(value)?),
+            "block_history_root" => self.block_history_root = Some(parse_hash_hex(scalar)?),
             "block_history_signature" => {
-                self.block_history_signature = Some(parse_hash_hex(value)?);
+                self.block_history_signature = Some(parse_hash_hex(scalar)?);
             }
             "finality_history_records" => {
-                self.finality_history_records = Some(parse_manifest_u64(value)?);
+                self.finality_history_records = Some(parse_manifest_u64(scalar)?);
             }
-            "finality_history_root" => self.finality_history_root = Some(parse_hash_hex(value)?),
+            "finality_history_root" => self.finality_history_root = Some(parse_hash_hex(scalar)?),
             "finality_history_signature" => {
-                self.finality_history_signature = Some(parse_hash_hex(value)?);
+                self.finality_history_signature = Some(parse_hash_hex(scalar)?);
             }
             "operator_identity_attestation_records" => {
-                self.operator_identity_attestation_records = Some(parse_manifest_u64(value)?);
+                self.operator_identity_attestation_records = Some(parse_manifest_u64(scalar)?);
             }
             "operator" => self
                 .operator_identity_attestations
                 .push(parse_manifest_operator_identity_attestation(value)?),
             "network_runtime_observation_records" => {
-                self.network_runtime_observation_records = Some(parse_manifest_u64(value)?);
+                self.network_runtime_observation_records = Some(parse_manifest_u64(scalar)?);
             }
             "network_runtime_observation_root" => {
-                self.network_runtime_observation_root = Some(parse_hash_hex(value)?);
+                self.network_runtime_observation_root = Some(parse_hash_hex(scalar)?);
             }
             "network_runtime_observation_signature" => {
-                self.network_runtime_observation_signature = Some(parse_hash_hex(value)?);
+                self.network_runtime_observation_signature = Some(parse_hash_hex(scalar)?);
             }
             "data_availability_measurement_records" => {
-                self.data_availability_measurement_records = Some(parse_manifest_u64(value)?);
+                self.data_availability_measurement_records = Some(parse_manifest_u64(scalar)?);
             }
             "data_availability_measurement_root" => {
-                self.data_availability_measurement_root = Some(parse_hash_hex(value)?);
+                self.data_availability_measurement_root = Some(parse_hash_hex(scalar)?);
             }
             "data_availability_measurement_signature" => {
-                self.data_availability_measurement_signature = Some(parse_hash_hex(value)?);
+                self.data_availability_measurement_signature = Some(parse_hash_hex(scalar)?);
             }
             "invalid_work_rejection_records" => {
-                self.invalid_work_rejection_records = Some(parse_manifest_u64(value)?);
+                self.invalid_work_rejection_records = Some(parse_manifest_u64(scalar)?);
             }
             "invalid_work_rejection_root" => {
-                self.invalid_work_rejection_root = Some(parse_hash_hex(value)?);
+                self.invalid_work_rejection_root = Some(parse_hash_hex(scalar)?);
             }
             "invalid_work_rejection_signature" => {
-                self.invalid_work_rejection_signature = Some(parse_hash_hex(value)?);
+                self.invalid_work_rejection_signature = Some(parse_hash_hex(scalar)?);
             }
-            "reward_settlement_root" => self.reward_settlement_root = Some(parse_hash_hex(value)?),
+            "reward_settlement_root" => self.reward_settlement_root = Some(parse_hash_hex(scalar)?),
             "reward_settlement_signature" => {
-                self.reward_settlement_signature = Some(parse_hash_hex(value)?);
+                self.reward_settlement_signature = Some(parse_hash_hex(scalar)?);
             }
             "run_started_at_unix_seconds" => {
-                self.run_started_at_unix_seconds = Some(parse_manifest_u64(value)?);
+                self.run_started_at_unix_seconds = Some(parse_manifest_u64(scalar)?);
             }
             "run_ended_at_unix_seconds" => {
-                self.run_ended_at_unix_seconds = Some(parse_manifest_u64(value)?);
+                self.run_ended_at_unix_seconds = Some(parse_manifest_u64(scalar)?);
             }
-            "run_window_signature" => self.run_window_signature = Some(parse_hash_hex(value)?),
-            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
+            "run_window_signature" => self.run_window_signature = Some(parse_hash_hex(scalar)?),
+            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(scalar)?),
             "peer_discovery_observed" => {
-                self.peer_discovery_observed = Some(parse_manifest_bool(value)?);
+                self.peer_discovery_observed = Some(parse_manifest_bool(scalar)?);
             }
             "gossip_propagation_observed" => {
-                self.gossip_propagation_observed = Some(parse_manifest_bool(value)?);
+                self.gossip_propagation_observed = Some(parse_manifest_bool(scalar)?);
             }
             "request_response_observed" => {
-                self.request_response_observed = Some(parse_manifest_bool(value)?);
+                self.request_response_observed = Some(parse_manifest_bool(scalar)?);
             }
-            "dos_controls_enabled" => self.dos_controls_enabled = Some(parse_manifest_bool(value)?),
+            "dos_controls_enabled" => {
+                self.dos_controls_enabled = Some(parse_manifest_bool(scalar)?)
+            }
             "node" => self.nodes.push(parse_manifest_node(value)?),
             "service" => self.services.push(parse_manifest_service(value)?),
             "service_content" => self
                 .service_content
                 .push(parse_manifest_service_content(value)?),
-            "observed_blocks" => self.observed_blocks = Some(parse_manifest_u64(value)?),
-            "finalized_blocks" => self.finalized_blocks = Some(parse_manifest_u64(value)?),
-            "checked_receipts" => self.checked_receipts = Some(parse_manifest_u64(value)?),
-            "available_receipts" => self.available_receipts = Some(parse_manifest_u64(value)?),
+            "observed_blocks" => self.observed_blocks = Some(parse_manifest_u64(scalar)?),
+            "finalized_blocks" => self.finalized_blocks = Some(parse_manifest_u64(scalar)?),
+            "checked_receipts" => self.checked_receipts = Some(parse_manifest_u64(scalar)?),
+            "available_receipts" => self.available_receipts = Some(parse_manifest_u64(scalar)?),
             "invalid_receipts_submitted" => {
-                self.invalid_receipts_submitted = Some(parse_manifest_u64(value)?);
+                self.invalid_receipts_submitted = Some(parse_manifest_u64(scalar)?);
             }
             "invalid_receipts_rejected" => {
-                self.invalid_receipts_rejected = Some(parse_manifest_u64(value)?);
+                self.invalid_receipts_rejected = Some(parse_manifest_u64(scalar)?);
             }
             "reward_settlement_records" => {
-                self.reward_settlement_records = Some(parse_manifest_u64(value)?);
+                self.reward_settlement_records = Some(parse_manifest_u64(scalar)?);
             }
             _ => return Err(TvmError::InvalidReceipt("unknown evidence manifest field")),
         }
@@ -1294,18 +1300,18 @@ impl PublicEvidenceManifestBuilder {
 }
 
 fn parse_manifest_supporting_artifact(value: &str) -> Result<PublicEvidenceSupportingArtifact> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 5 {
         return Err(TvmError::InvalidReceipt(
             "malformed supporting evidence artifact",
         ));
     }
     Ok(PublicEvidenceSupportingArtifact {
-        kind: parse_public_evidence_record_kind_tag(fields[0])?,
+        kind: parse_public_evidence_record_kind_tag(fields[0].trim())?,
         artifact_uri: fields[1].to_owned(),
-        record_root: parse_hash_hex(fields[2])?,
-        record_count: parse_manifest_u64(fields[3])?,
-        artifact_signature: parse_hash_hex(fields[4])?,
+        record_root: parse_hash_hex(fields[2].trim())?,
+        record_count: parse_manifest_u64(fields[3].trim())?,
+        artifact_signature: parse_hash_hex(fields[4].trim())?,
     })
 }
 
@@ -1344,13 +1350,13 @@ fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
 fn parse_manifest_operator_identity_attestation(
     value: &str,
 ) -> Result<PublicOperatorIdentityAttestation> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 6 {
         return Err(TvmError::InvalidReceipt(
             "malformed operator identity attestation",
         ));
     }
-    let role = match fields[0] {
+    let role = match fields[0].trim() {
         "miner" => PublicNodeRole::Miner,
         "validator" => PublicNodeRole::Validator,
         _ => {
@@ -1361,41 +1367,41 @@ fn parse_manifest_operator_identity_attestation(
     };
     let mut attestation = PublicOperatorIdentityAttestation::new(
         role,
-        parse_hash_hex(fields[1])?,
-        parse_hash_hex(fields[2])?,
+        parse_hash_hex(fields[1].trim())?,
+        parse_hash_hex(fields[2].trim())?,
         fields[3].to_owned(),
-        parse_manifest_u64(fields[4])?,
+        parse_manifest_u64(fields[4].trim())?,
     );
-    attestation.operator_signature = parse_hash_hex(fields[5])?;
+    attestation.operator_signature = parse_hash_hex(fields[5].trim())?;
     Ok(attestation)
 }
 
 fn parse_manifest_auditor_record(value: &str) -> Result<PublicEvidenceAuditorRecord> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 4 {
         return Err(TvmError::InvalidReceipt("malformed auditor record"));
     }
     Ok(PublicEvidenceAuditorRecord {
-        auditor_id: parse_hash_hex(fields[0])?,
+        auditor_id: parse_hash_hex(fields[0].trim())?,
         audit_uri: fields[1].to_owned(),
-        observed_at_unix_seconds: parse_manifest_u64(fields[2])?,
-        auditor_signature: parse_hash_hex(fields[3])?,
+        observed_at_unix_seconds: parse_manifest_u64(fields[2].trim())?,
+        auditor_signature: parse_hash_hex(fields[3].trim())?,
     })
 }
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 9 {
         return Err(TvmError::InvalidReceipt("malformed service evidence"));
     }
-    let kind = parse_service_kind(fields[0])?;
-    let endpoint_id = parse_hash_hex(fields[1])?;
+    let kind = parse_service_kind(fields[0].trim())?;
+    let endpoint_id = parse_hash_hex(fields[1].trim())?;
     let public_url = fields[2].to_owned();
     let health_path = fields[3].to_owned();
-    let first_seen_block = parse_manifest_u64(fields[4])?;
-    let last_seen_block = parse_manifest_u64(fields[5])?;
-    let reachable_observation_count = parse_manifest_u64(fields[6])?;
-    let signed_health_check_count = parse_manifest_u64(fields[7])?;
+    let first_seen_block = parse_manifest_u64(fields[4].trim())?;
+    let last_seen_block = parse_manifest_u64(fields[5].trim())?;
+    let reachable_observation_count = parse_manifest_u64(fields[6].trim())?;
+    let signed_health_check_count = parse_manifest_u64(fields[7].trim())?;
     let mut evidence = PublicServiceEvidence::new(
         kind,
         PublicServiceEndpoint::new(endpoint_id, public_url, health_path),
@@ -1404,27 +1410,27 @@ fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
         reachable_observation_count,
         signed_health_check_count,
     );
-    evidence.health_check_signature = parse_hash_hex(fields[8])?;
+    evidence.health_check_signature = parse_hash_hex(fields[8].trim())?;
     Ok(evidence)
 }
 
 fn parse_manifest_service_content(value: &str) -> Result<PublicServiceContentEvidence> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    let fields: Vec<&str> = value.split(',').collect();
     if fields.len() != 8 {
         return Err(TvmError::InvalidReceipt(
             "malformed service content evidence",
         ));
     }
     let mut evidence = PublicServiceContentEvidence::new(
-        parse_service_kind(fields[0])?,
-        parse_hash_hex(fields[1])?,
+        parse_service_kind(fields[0].trim())?,
+        parse_hash_hex(fields[1].trim())?,
         fields[2].to_owned(),
         fields[3].to_owned(),
-        parse_hash_hex(fields[4])?,
-        parse_manifest_u64(fields[5])?,
-        parse_manifest_u64(fields[6])?,
+        parse_hash_hex(fields[4].trim())?,
+        parse_manifest_u64(fields[5].trim())?,
+        parse_manifest_u64(fields[6].trim())?,
     );
-    evidence.content_signature = parse_hash_hex(fields[7])?;
+    evidence.content_signature = parse_hash_hex(fields[7].trim())?;
     Ok(evidence)
 }
 
@@ -4548,6 +4554,94 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!local_rpc_report.run_evidence.has_deployed_public_services);
         assert!(!local_rpc_report.full_spec_evidence_met);
 
+        let trailing_public_uri = manifest.replace(
+            "public_uri=https://tensorvm.net/tensorvm/public-evidence.json",
+            "public_uri=https://tensorvm.net/tensorvm/public-evidence.json ",
+        );
+        let trailing_public_uri_report =
+            parse_public_testnet_evidence_manifest(&trailing_public_uri)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(!trailing_public_uri_report.has_published_evidence_bundle);
+        assert!(!trailing_public_uri_report.independently_checkable);
+        assert!(!trailing_public_uri_report.full_spec_evidence_met);
+
+        let auditor_uri = manifest_auditor_uri();
+        let auditor_uri_with_space = manifest.replace(
+            &format!("{auditor_uri},1700000000"),
+            &format!("{auditor_uri} ,1700000000"),
+        );
+        let auditor_uri_with_space_report =
+            parse_public_testnet_evidence_manifest(&auditor_uri_with_space)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(!auditor_uri_with_space_report.has_independent_auditor_records);
+        assert!(!auditor_uri_with_space_report.independently_checkable);
+
+        let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+        let block_artifact_uri = public_evidence_supporting_artifact_uri(
+            &bundle_id,
+            PublicEvidenceRecordKind::BlockHistory,
+        );
+        let artifact_uri_with_space = manifest.replace(
+            &format!("record_artifact=block-history,{block_artifact_uri},"),
+            &format!("record_artifact=block-history,{block_artifact_uri} ,"),
+        );
+        let artifact_uri_with_space_report =
+            parse_public_testnet_evidence_manifest(&artifact_uri_with_space)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(!artifact_uri_with_space_report.has_public_supporting_record_artifacts);
+        assert!(!artifact_uri_with_space_report.independently_checkable);
+
+        let miner_operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
+        let operator_uri = manifest_operator_identity_uri(&miner_operator_id);
+        let operator_uri_with_space = manifest.replace(
+            &format!("{operator_uri},1700000000"),
+            &format!(" {operator_uri},1700000000"),
+        );
+        let operator_uri_with_space_report =
+            parse_public_testnet_evidence_manifest(&operator_uri_with_space)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(!operator_uri_with_space_report.has_operator_identity_attestations);
+        assert!(!operator_uri_with_space_report.independently_checkable);
+
+        let service_url_with_space = manifest.replace(
+            "https://rpc.tensorvm.net/health,/health",
+            "https://rpc.tensorvm.net/health ,/health",
+        );
+        let service_url_with_space_report =
+            parse_public_testnet_evidence_manifest(&service_url_with_space)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(
+            !service_url_with_space_report
+                .run_evidence
+                .has_deployed_rpc_service
+        );
+        assert!(
+            !service_url_with_space_report
+                .run_evidence
+                .has_deployed_public_services
+        );
+        assert!(!service_url_with_space_report.full_spec_evidence_met);
+
+        let service_content_url_with_space = manifest.replace(
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            "https://rpc.tensorvm.net/chain/head ,/chain/head",
+        );
+        let service_content_url_with_space_report =
+            parse_public_testnet_evidence_manifest(&service_content_url_with_space)
+                .unwrap()
+                .evaluate(&criteria, 6);
+        assert!(
+            !service_content_url_with_space_report
+                .run_evidence
+                .has_deployed_public_service_content
+        );
+        assert!(!service_content_url_with_space_report.full_spec_evidence_met);
+
         let missing_operator_lines = manifest_without_line(&manifest, "operator=");
         let parsed_missing_operator_lines =
             parse_public_testnet_evidence_manifest(&missing_operator_lines).unwrap();
@@ -4886,6 +4980,31 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!bad_content_path_report.has_public_service_content_plan);
         assert!(!bad_content_path_report.has_public_service_plan);
         assert!(!bad_content_path_report.can_start_public_run);
+
+        let health_url_with_space = manifest.replace(
+            "https://rpc.tensorvm.net/health,/health",
+            "https://rpc.tensorvm.net/health ,/health",
+        );
+        let health_url_with_space_report =
+            parse_public_testnet_preflight_manifest(&health_url_with_space)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!health_url_with_space_report.has_rpc_service_plan);
+        assert!(!health_url_with_space_report.has_public_service_plan);
+        assert!(!health_url_with_space_report.can_start_public_run);
+
+        let content_url_with_space = manifest.replace(
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            " https://rpc.tensorvm.net/chain/head,/chain/head",
+        );
+        let content_url_with_space_report =
+            parse_public_testnet_preflight_manifest(&content_url_with_space)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!content_url_with_space_report.has_rpc_service_plan);
+        assert!(!content_url_with_space_report.has_public_service_content_plan);
+        assert!(!content_url_with_space_report.has_public_service_plan);
+        assert!(!content_url_with_space_report.can_start_public_run);
 
         let health_query = manifest.replace(
             "https://rpc.tensorvm.net/health,/health",
