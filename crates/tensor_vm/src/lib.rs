@@ -80,7 +80,7 @@ pub use testnet::{
     LocalTestnet, PublicEvidencePublication, PublicNetworkRuntimeEvidence, PublicNodeEvidence,
     PublicNodeRole, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
     PublicTestnetEvidence, PublicTestnetEvidenceBundle, PublicTestnetEvidenceBundleReport,
-    PublicTestnetRunEvidence, TestnetConfig,
+    PublicTestnetRunEvidence, TestnetConfig, parse_public_testnet_evidence_manifest,
 };
 pub use txpool::TxPool;
 pub use types::{Address, Hash, Signature};

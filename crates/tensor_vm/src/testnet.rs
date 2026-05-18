@@ -1,4 +1,5 @@
 use crate::chain::{BlockVote, ChainParams, JobState, LocalChain, TensorBlock, Transaction};
+use crate::error::{Result, TvmError};
 use crate::explorer::ExplorerSummary;
 use crate::faucet::Faucet;
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec};
@@ -12,6 +13,8 @@ use crate::txpool::TxPool;
 use crate::types::{Address, Hash, address, hash_bytes};
 use crate::validator::ValidatorNode;
 use std::collections::BTreeSet;
+
+pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestnetConfig {
@@ -165,6 +168,21 @@ impl PublicEvidencePublication {
     }
 }
 
+pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
+    let mut builder = PublicEvidenceManifestBuilder::default();
+    for raw_line in input.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (key, value) = line
+            .split_once('=')
+            .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
+        builder.set(key.trim(), value.trim())?;
+    }
+    builder.finish()
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PublicNodeRole {
     Miner,
@@ -279,6 +297,249 @@ pub struct PublicTestnetEvidenceBundleReport {
     pub has_data_availability_measurements: bool,
     pub independently_checkable: bool,
     pub full_spec_evidence_met: bool,
+}
+
+#[derive(Default)]
+struct PublicEvidenceManifestBuilder {
+    version_seen: bool,
+    bundle_id: Option<Hash>,
+    public_uri: Option<String>,
+    manifest_signature_count: Option<u64>,
+    independent_auditor_count: Option<u64>,
+    block_history_records: Option<u64>,
+    finality_history_records: Option<u64>,
+    operator_identity_attestation_records: Option<u64>,
+    data_availability_measurement_records: Option<u64>,
+    libp2p_runtime_used: Option<bool>,
+    peer_discovery_observed: Option<bool>,
+    gossip_propagation_observed: Option<bool>,
+    request_response_observed: Option<bool>,
+    dos_controls_enabled: Option<bool>,
+    nodes: Vec<PublicNodeEvidence>,
+    services: Vec<PublicServiceEvidence>,
+    observed_blocks: Option<u64>,
+    finalized_blocks: Option<u64>,
+    checked_receipts: Option<u64>,
+    available_receipts: Option<u64>,
+    invalid_receipts_submitted: Option<u64>,
+    invalid_receipts_rejected: Option<u64>,
+    reward_settlement_records: Option<u64>,
+}
+
+impl PublicEvidenceManifestBuilder {
+    fn set(&mut self, key: &str, value: &str) -> Result<()> {
+        match key {
+            "version" => {
+                if value != PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION {
+                    return Err(TvmError::InvalidReceipt(
+                        "unsupported evidence manifest version",
+                    ));
+                }
+                self.version_seen = true;
+            }
+            "bundle_id" => self.bundle_id = Some(parse_hash_hex(value)?),
+            "public_uri" => self.public_uri = Some(value.to_owned()),
+            "manifest_signature_count" => {
+                self.manifest_signature_count = Some(parse_manifest_u64(value)?);
+            }
+            "independent_auditor_count" => {
+                self.independent_auditor_count = Some(parse_manifest_u64(value)?);
+            }
+            "block_history_records" => {
+                self.block_history_records = Some(parse_manifest_u64(value)?);
+            }
+            "finality_history_records" => {
+                self.finality_history_records = Some(parse_manifest_u64(value)?);
+            }
+            "operator_identity_attestation_records" => {
+                self.operator_identity_attestation_records = Some(parse_manifest_u64(value)?);
+            }
+            "data_availability_measurement_records" => {
+                self.data_availability_measurement_records = Some(parse_manifest_u64(value)?);
+            }
+            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
+            "peer_discovery_observed" => {
+                self.peer_discovery_observed = Some(parse_manifest_bool(value)?);
+            }
+            "gossip_propagation_observed" => {
+                self.gossip_propagation_observed = Some(parse_manifest_bool(value)?);
+            }
+            "request_response_observed" => {
+                self.request_response_observed = Some(parse_manifest_bool(value)?);
+            }
+            "dos_controls_enabled" => self.dos_controls_enabled = Some(parse_manifest_bool(value)?),
+            "node" => self.nodes.push(parse_manifest_node(value)?),
+            "service" => self.services.push(parse_manifest_service(value)?),
+            "observed_blocks" => self.observed_blocks = Some(parse_manifest_u64(value)?),
+            "finalized_blocks" => self.finalized_blocks = Some(parse_manifest_u64(value)?),
+            "checked_receipts" => self.checked_receipts = Some(parse_manifest_u64(value)?),
+            "available_receipts" => self.available_receipts = Some(parse_manifest_u64(value)?),
+            "invalid_receipts_submitted" => {
+                self.invalid_receipts_submitted = Some(parse_manifest_u64(value)?);
+            }
+            "invalid_receipts_rejected" => {
+                self.invalid_receipts_rejected = Some(parse_manifest_u64(value)?);
+            }
+            "reward_settlement_records" => {
+                self.reward_settlement_records = Some(parse_manifest_u64(value)?);
+            }
+            _ => return Err(TvmError::InvalidReceipt("unknown evidence manifest field")),
+        }
+        Ok(())
+    }
+
+    fn finish(self) -> Result<PublicTestnetEvidenceBundle> {
+        if !self.version_seen {
+            return Err(TvmError::InvalidReceipt(
+                "missing evidence manifest version",
+            ));
+        }
+        Ok(PublicTestnetEvidenceBundle {
+            run: PublicTestnetRunEvidence {
+                nodes: self.nodes,
+                network_runtime: PublicNetworkRuntimeEvidence {
+                    libp2p_runtime_used: required_bool(self.libp2p_runtime_used)?,
+                    peer_discovery_observed: required_bool(self.peer_discovery_observed)?,
+                    gossip_propagation_observed: required_bool(self.gossip_propagation_observed)?,
+                    request_response_observed: required_bool(self.request_response_observed)?,
+                    dos_controls_enabled: required_bool(self.dos_controls_enabled)?,
+                },
+                services: self.services,
+                observed_blocks: required_u64(self.observed_blocks)?,
+                finalized_blocks: required_u64(self.finalized_blocks)?,
+                checked_receipts: required_u64(self.checked_receipts)?,
+                available_receipts: required_u64(self.available_receipts)?,
+                invalid_receipts_submitted: required_u64(self.invalid_receipts_submitted)?,
+                invalid_receipts_rejected: required_u64(self.invalid_receipts_rejected)?,
+                reward_settlement_records: required_u64(self.reward_settlement_records)?,
+            },
+            publication: PublicEvidencePublication {
+                bundle_id: required_hash(self.bundle_id)?,
+                public_uri: required_string(self.public_uri)?,
+                manifest_signature_count: required_u64(self.manifest_signature_count)?,
+                independent_auditor_count: required_u64(self.independent_auditor_count)?,
+            },
+            block_history_records: required_u64(self.block_history_records)?,
+            finality_history_records: required_u64(self.finality_history_records)?,
+            operator_identity_attestation_records: required_u64(
+                self.operator_identity_attestation_records,
+            )?,
+            data_availability_measurement_records: required_u64(
+                self.data_availability_measurement_records,
+            )?,
+        })
+    }
+}
+
+fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 6 {
+        return Err(TvmError::InvalidReceipt("malformed node evidence"));
+    }
+    let address = parse_hash_hex(fields[1])?;
+    let operator_id = parse_hash_hex(fields[2])?;
+    let first_seen_block = parse_manifest_u64(fields[3])?;
+    let last_seen_block = parse_manifest_u64(fields[4])?;
+    let signed_heartbeat_count = parse_manifest_u64(fields[5])?;
+    match fields[0] {
+        "miner" => Ok(PublicNodeEvidence::miner(
+            address,
+            operator_id,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        )),
+        "validator" => Ok(PublicNodeEvidence::validator(
+            address,
+            operator_id,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        )),
+        _ => Err(TvmError::InvalidReceipt("unknown node evidence role")),
+    }
+}
+
+fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 6 {
+        return Err(TvmError::InvalidReceipt("malformed service evidence"));
+    }
+    Ok(PublicServiceEvidence {
+        kind: parse_service_kind(fields[0])?,
+        endpoint_id: parse_hash_hex(fields[1])?,
+        first_seen_block: parse_manifest_u64(fields[2])?,
+        last_seen_block: parse_manifest_u64(fields[3])?,
+        reachable_observation_count: parse_manifest_u64(fields[4])?,
+        signed_health_check_count: parse_manifest_u64(fields[5])?,
+    })
+}
+
+fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
+    match value {
+        "rpc" => Ok(PublicServiceKind::Rpc),
+        "explorer" => Ok(PublicServiceKind::Explorer),
+        "faucet" => Ok(PublicServiceKind::Faucet),
+        "telemetry" => Ok(PublicServiceKind::Telemetry),
+        _ => Err(TvmError::InvalidReceipt("unknown service evidence kind")),
+    }
+}
+
+fn parse_hash_hex(value: &str) -> Result<Hash> {
+    let value = value.strip_prefix("0x").unwrap_or(value);
+    if value.len() != 64 {
+        return Err(TvmError::InvalidReceipt("invalid evidence hash length"));
+    }
+    let mut out = [0_u8; 32];
+    for (index, byte) in out.iter_mut().enumerate() {
+        let high = parse_hex_nibble(value.as_bytes()[index * 2])?;
+        let low = parse_hex_nibble(value.as_bytes()[index * 2 + 1])?;
+        *byte = (high << 4) | low;
+    }
+    Ok(out)
+}
+
+fn parse_hex_nibble(value: u8) -> Result<u8> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        b'A'..=b'F' => Ok(value - b'A' + 10),
+        _ => Err(TvmError::InvalidReceipt("invalid evidence hash hex")),
+    }
+}
+
+fn parse_manifest_u64(value: &str) -> Result<u64> {
+    value
+        .parse()
+        .map_err(|_| TvmError::InvalidReceipt("invalid evidence manifest number"))
+}
+
+fn parse_manifest_bool(value: &str) -> Result<bool> {
+    match value {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(TvmError::InvalidReceipt(
+            "invalid evidence manifest boolean",
+        )),
+    }
+}
+
+fn required_u64(value: Option<u64>) -> Result<u64> {
+    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest number"))
+}
+
+fn required_bool(value: Option<bool>) -> Result<bool> {
+    value.ok_or(TvmError::InvalidReceipt(
+        "missing evidence manifest boolean",
+    ))
+}
+
+fn required_hash(value: Option<Hash>) -> Result<Hash> {
+    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest hash"))
+}
+
+fn required_string(value: Option<String>) -> Result<String> {
+    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest string"))
 }
 
 impl PublicTestnetEvidenceBundle {
@@ -782,6 +1043,7 @@ fn required_blocks_for_days(days: u64, block_time_seconds: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::hash::hex;
     use crate::types::hash_bytes;
 
     fn production_runtime_evidence() -> PublicNetworkRuntimeEvidence {
@@ -885,6 +1147,70 @@ mod tests {
             operator_identity_attestation_records: 3,
             data_availability_measurement_records: 20,
         }
+    }
+
+    fn manifest_hash(domain: &[u8], label: &[u8]) -> String {
+        hex(&hash_bytes(domain, &[label]))
+    }
+
+    fn manifest_address(label: &[u8]) -> String {
+        hex(&address(label))
+    }
+
+    fn complete_public_evidence_manifest_text() -> String {
+        format!(
+            "\
+# TensorVM external public evidence manifest
+version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
+
+bundle_id=0x{}
+public_uri=https://example.test/tensorvm/public-evidence.json
+manifest_signature_count=1
+independent_auditor_count=1
+block_history_records=10
+finality_history_records=10
+operator_identity_attestation_records=3
+data_availability_measurement_records=20
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+observed_blocks=10
+finalized_blocks=10
+checked_receipts=20
+available_receipts=19
+invalid_receipts_submitted=1
+invalid_receipts_rejected=1
+reward_settlement_records=1
+node=miner,{},{},0,9,10
+node=miner,{},{},0,9,10
+node=validator,{},{},0,9,10
+service=rpc,{},0,9,10,10
+service=explorer,{},0,9,10,10
+service=faucet,{},0,9,10,10
+service=telemetry,{},0,9,10,10
+",
+            manifest_hash(b"test", b"public-evidence-bundle"),
+            manifest_address(b"miner-a"),
+            manifest_hash(b"test", b"miner-a-operator"),
+            manifest_address(b"miner-b"),
+            manifest_hash(b"test", b"miner-b-operator"),
+            manifest_address(b"validator-a"),
+            manifest_hash(b"test", b"validator-a-operator"),
+            manifest_hash(b"test", b"rpc-service"),
+            manifest_hash(b"test", b"explorer-service"),
+            manifest_hash(b"test", b"faucet-service"),
+            manifest_hash(b"test", b"telemetry-service"),
+        )
+    }
+
+    fn manifest_without_line(manifest: &str, prefix: &str) -> String {
+        manifest
+            .lines()
+            .filter(|line| !line.starts_with(prefix))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     #[test]
@@ -1273,6 +1599,77 @@ mod tests {
         assert!(missing_services.independently_checkable);
         assert!(!missing_services.run_evidence.public_criterion_met);
         assert!(!missing_services.full_spec_evidence_met);
+    }
+
+    #[test]
+    fn public_testnet_evidence_manifest_parses_into_bundle() {
+        let criteria = PublicTestnetCriteria {
+            min_miners: 2,
+            min_validators: 1,
+            duration_days: 0,
+            min_finality_rate_bps: 9_000,
+            min_data_availability_bps: 9_500,
+            min_invalid_work_rejections: 1,
+            min_reward_settlement_records: 1,
+        };
+        let manifest = complete_public_evidence_manifest_text();
+        let parsed = parse_public_testnet_evidence_manifest(&manifest).unwrap();
+
+        assert_eq!(parsed, complete_public_evidence_bundle());
+        assert!(parsed.evaluate(&criteria, 6, true).full_spec_evidence_met);
+
+        let false_runtime =
+            manifest.replace("libp2p_runtime_used=true", "libp2p_runtime_used=false");
+        let parsed_false_runtime = parse_public_testnet_evidence_manifest(&false_runtime).unwrap();
+        assert!(!parsed_false_runtime.run.network_runtime.libp2p_runtime_used);
+        assert!(
+            !parsed_false_runtime
+                .evaluate(&criteria, 6, true)
+                .full_spec_evidence_met
+        );
+
+        let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
+        assert_eq!(
+            parse_hash_hex(&uppercase_hash).unwrap(),
+            hash_bytes(b"test", &[b"public-evidence-bundle"])
+        );
+        assert!(parse_hash_hex(&format!("z{}", "0".repeat(63))).is_err());
+    }
+
+    #[test]
+    fn public_testnet_evidence_manifest_rejects_malformed_input() {
+        let manifest = complete_public_evidence_manifest_text();
+        let cases = [
+            manifest_without_line(&manifest, "version="),
+            manifest.replace(
+                PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION,
+                "tensor-vm-public-testnet-evidence-v0",
+            ),
+            manifest_without_line(&manifest, "bundle_id="),
+            manifest_without_line(&manifest, "public_uri="),
+            manifest_without_line(&manifest, "observed_blocks="),
+            manifest_without_line(&manifest, "dos_controls_enabled="),
+            manifest.replace("bundle_id=0x", "bundle_id=0x12"),
+            manifest.replace("bundle_id=0x", "bundle_id=0xz"),
+            manifest.replace("manifest_signature_count=1", "manifest_signature_count=abc"),
+            manifest.replace("dos_controls_enabled=true", "dos_controls_enabled=maybe"),
+            manifest.replace("node=miner", "node=archive"),
+            manifest.replace(
+                "node=miner,",
+                "node=miner,too,few,fields\n# removed original node=",
+            ),
+            manifest.replace("service=rpc", "service=archive"),
+            manifest.replace(
+                "service=rpc,",
+                "service=rpc,too,few,fields\n# removed original service=",
+            ),
+            manifest.replace("reward_settlement_records=1", "unknown_field=1"),
+            manifest.replace("reward_settlement_records=1", "malformed-line"),
+        ];
+
+        for case in cases {
+            assert!(parse_public_testnet_evidence_manifest(&case).is_err());
+        }
     }
 
     #[test]

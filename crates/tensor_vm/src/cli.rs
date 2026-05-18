@@ -19,6 +19,9 @@ pub enum CliCommand {
         node: String,
     },
     ValidatorStatus,
+    PublicEvidenceValidate {
+        manifest: String,
+    },
 }
 
 pub fn parse_cli_args(args: &[String]) -> Result<CliCommand> {
@@ -56,6 +59,11 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             })
         }
         ["validator", "status"] => Ok(CliCommand::ValidatorStatus),
+        ["public-evidence", "validate", "--manifest", manifest] => {
+            Ok(CliCommand::PublicEvidenceValidate {
+                manifest: (*manifest).to_owned(),
+            })
+        }
         _ => Err(TvmError::InvalidReceipt("invalid cli command")),
     }
 }
@@ -74,6 +82,9 @@ pub fn describe_command(command: &CliCommand) -> String {
             format!("start validator wallet={wallet} node={node}")
         }
         CliCommand::ValidatorStatus => "show validator status".to_owned(),
+        CliCommand::PublicEvidenceValidate { manifest } => {
+            format!("validate public evidence manifest {manifest}")
+        }
     }
 }
 
@@ -142,6 +153,18 @@ mod tests {
             parse_cli_parts(&["validator", "status"]).unwrap(),
             CliCommand::ValidatorStatus
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "validate",
+                "--manifest",
+                "docs/tensorvm/public-testnet.evidence"
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceValidate {
+                manifest: "docs/tensorvm/public-testnet.evidence".to_owned(),
+            }
+        );
     }
 
     #[test]
@@ -187,6 +210,12 @@ mod tests {
                 "start validator wallet=validator.key node=http://localhost:8545",
             ),
             (CliCommand::ValidatorStatus, "show validator status"),
+            (
+                CliCommand::PublicEvidenceValidate {
+                    manifest: "evidence.txt".to_owned(),
+                },
+                "validate public evidence manifest evidence.txt",
+            ),
         ];
         for (command, description) in commands {
             assert_eq!(describe_command(&command), description);

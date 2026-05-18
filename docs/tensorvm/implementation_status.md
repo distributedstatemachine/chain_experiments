@@ -81,6 +81,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Typed public-testnet evidence-bundle evaluation that additionally requires a public manifest location,
   signatures, independent auditor records, block/finality history, operator attestations, and
   data-availability measurement records before full-spec evidence can be considered independently checkable
+- Dependency-free public evidence manifest parsing plus a CLI parse surface for
+  `tvmd public-evidence validate --manifest <path>`
 
 ## Verified Gates
 
@@ -95,21 +97,21 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 178 passing library tests under Tarpaulin:
+The workspace currently has 180 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 164 in `tensor_vm`
+- 166 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.48% workspace line coverage
-- 5300/5382 workspace lines covered
+- 98.52% workspace line coverage
+- 5460/5542 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 165 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 167 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 
