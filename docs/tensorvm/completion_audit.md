@@ -96,7 +96,7 @@ multicast, reserved, empty publication endpoints, and malformed `ipfs://`/`ar://
 signatures with the current exact one-signature manifest count, reject duplicate scalar manifest fields,
 reject whitespace-padded field keys, reject duplicate supporting-record roots, signed run-window records, signed
 block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
-network-observation roots covering counted public operators, signed external artifact locators for the raw records behind each summary root,
+network-observation roots exactly matching counted public operators, signed external artifact locators for the raw records behind each summary root,
 signed service-health records bound to external HTTPS URLs, matching health paths, and observed-block
 coverage, signed
 independent-auditor records bound to

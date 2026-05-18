@@ -53,7 +53,7 @@ and the explicit separation between local evidence and the 7-day public deployme
 - Public 7-day independent-node testnet evidence is not available in this repository; typed evidence
   validation exists for checking it when a real external run is available, including signed wall-clock
   run-window evidence, invalid-work rejection evidence, reward-settlement records, production libp2p
-  runtime use with signed network-observation records and summary roots covering counted public operators,
+  runtime use with signed network-observation records and summary roots exactly matching counted public operators,
   an exact one-signature manifest publication count for the current manifest format, signed external
   artifact locators for raw supporting records, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
   from the manifest signer with auditor observations at or after the signed run end,

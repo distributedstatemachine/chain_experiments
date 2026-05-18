@@ -96,9 +96,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `ipfs://`/`ar://` content identifiers, HTTPS evidence URI path enforcement with query/fragment
   rejection, exact untrimmed URI/path manifest-field validation, duplicate scalar manifest-field
   rejection, whitespace-padded field-key rejection, and
-  exact run-derived block/finality/data-availability/invalid-work summary counts, distinct node-address
-  counting for public operators, plus network-runtime observation coverage for every counted public operator
-  before full-spec evidence can be considered independently checkable; the `public_evidence_full_spec`
+  exact run-derived block/finality/network-runtime/data-availability/invalid-work summary counts, distinct node-address
+  counting for public operators, plus network-runtime observation count rejection for undercounts and
+  overcounts against every counted public operator before full-spec evidence can be considered
+  independently checkable; the `public_evidence_full_spec`
   report flag also requires the default 7-day, 10-miner, 5-validator public-testnet criteria or stricter
   criteria, so relaxed local harness criteria cannot mark an evidence bundle full-spec
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for

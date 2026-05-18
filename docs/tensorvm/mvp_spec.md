@@ -1825,6 +1825,8 @@ The `record-summary` command emits the exact `<record>_records`, `<record>_root`
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
 record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
 `invalid-work`, and `reward-settlement`.
+The `network-runtime` record count must equal the counted independent public miner plus validator operator
+total; signed undercounts or overcounts cannot satisfy independently checkable evidence.
 The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
 artifact URI to the record kind, root, and count; independently checkable public evidence requires one
 valid artifact locator for every required supporting-record summary root.
@@ -2367,8 +2369,8 @@ canonical CPU semantics, mandatory libp2p node paths, separate participant ident
 simulations or local-only networking shims
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
-production libp2p operation is supported by signed network-observation evidence covering every counted
-public miner and validator operator
+production libp2p operation is supported by signed network-observation evidence exactly matching every
+counted public miner and validator operator
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes externally reachable HTTPS URLs, signed health-check summaries, and
 signed service-content roots

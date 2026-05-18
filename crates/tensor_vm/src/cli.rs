@@ -2002,7 +2002,7 @@ mod tests {
                 finality_history_records: 10,
                 finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
                 operator_identity_attestation_records: 3,
-                network_runtime_observation_records: 4,
+                network_runtime_observation_records: 3,
                 network_runtime_observation_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 data_availability_measurement_records: 20,
                 data_availability_measurement_root: hash_bytes(
@@ -2043,7 +2043,7 @@ operator_identity_attestation_records=3
 operator=miner,{},{},{},1700000000,{}
 operator=miner,{},{},{},1700000000,{}
 operator=validator,{},{},{},1700000000,{}
-network_runtime_observation_records=4
+network_runtime_observation_records=3
 network_runtime_observation_root={}
 network_runtime_observation_signature={}
 data_availability_measurement_records=20
@@ -2100,7 +2100,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
             manifest_artifact_line(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 b"network-runtime-root",
-                4
+                3
             ),
             manifest_artifact_line(
                 PublicEvidenceRecordKind::DataAvailabilityMeasurements,
@@ -3222,7 +3222,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             (
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 b"network-runtime-root",
-                4,
+                3,
                 "network_runtime_observation",
                 hex(&manifest_bundle().network_runtime_observation_signature),
             ),

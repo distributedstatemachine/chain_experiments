@@ -77,9 +77,9 @@ external run publishes real records. Run-level finality and data-availability co
 internally consistent: finalized blocks cannot exceed observed blocks, and available receipts cannot exceed
 checked receipts. The run-derived supporting-record counts must be exact, not padded: block-history and
 finality-history record counts must match observed blocks, data-availability measurement count must match
-checked receipts, and invalid-work rejection record count must match invalid receipts submitted. The
-production-libp2p network-runtime observation count must also cover every counted independent miner and
-validator operator.
+checked receipts, invalid-work rejection record count must match invalid receipts submitted, and the
+production-libp2p network-runtime observation count must match the counted independent miner and validator
+operator total exactly.
 
 ## Manifest Format
 
@@ -127,10 +127,8 @@ Every counted service health summary must likewise span the full observed block 
 one reachable observation and one signed health check per observed block.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
 checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
-public gate. Signed overcounts for block-history, finality-history, data-availability, or invalid-work
-summary records also do not satisfy the independently checkable gate. Signed network-runtime observation
-undercounts do not satisfy the independently checkable gate when fewer observations exist than counted
-public operators.
+public gate. Signed overcounts or undercounts for block-history, finality-history, data-availability,
+invalid-work, or network-runtime summary records do not satisfy the independently checkable gate.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
@@ -150,7 +148,7 @@ independent_auditor_count=1
 auditor=<auditor-address-hex>,https://auditor.tensorvm.net/tensorvm/audit.json,<unix-seconds-at-or-after-run-end>,<auditor-signature-hex>
 record_artifact=block-history,https://evidence.tensorvm.net/tensorvm/block-history.json,<history-root-hex>,100800,<artifact-signature-hex>
 record_artifact=finality-history,https://evidence.tensorvm.net/tensorvm/finality-history.json,<finality-root-hex>,100800,<artifact-signature-hex>
-record_artifact=network-runtime,https://evidence.tensorvm.net/tensorvm/network-runtime.json,<network-runtime-root-hex>,4,<artifact-signature-hex>
+record_artifact=network-runtime,https://evidence.tensorvm.net/tensorvm/network-runtime.json,<network-runtime-root-hex>,<operator-count>,<artifact-signature-hex>
 record_artifact=data-availability,https://evidence.tensorvm.net/tensorvm/data-availability.json,<da-root-hex>,1000,<artifact-signature-hex>
 record_artifact=invalid-work,https://evidence.tensorvm.net/tensorvm/invalid-work.json,<invalid-work-root-hex>,1,<artifact-signature-hex>
 record_artifact=reward-settlement,https://evidence.tensorvm.net/tensorvm/reward-settlement.json,<reward-settlement-root-hex>,1,<artifact-signature-hex>
@@ -163,7 +161,7 @@ finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
 operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
 operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
-network_runtime_observation_records=4
+network_runtime_observation_records=<operator-count>
 network_runtime_observation_root=<network-runtime-root-hex>
 network_runtime_observation_signature=<network-runtime-signature-hex>
 data_availability_measurement_records=1000
