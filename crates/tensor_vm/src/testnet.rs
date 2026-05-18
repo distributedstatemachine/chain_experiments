@@ -1772,13 +1772,22 @@ pub fn sign_public_run_window(
 }
 
 fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
-    let Some(rest) = uri.strip_prefix(scheme) else {
+    let Some(rest) = uri.trim().strip_prefix(scheme) else {
         return false;
     };
-    rest.trim_matches('/')
+    rest.trim_start_matches('/')
         .split('/')
         .next()
-        .is_some_and(|identifier| !identifier.is_empty())
+        .is_some_and(content_addressed_identifier_is_well_formed)
+}
+
+fn content_addressed_identifier_is_well_formed(identifier: &str) -> bool {
+    !identifier.is_empty()
+        && identifier != "."
+        && identifier != ".."
+        && identifier
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
 }
 
 fn public_node_role_tag(role: PublicNodeRole) -> &'static [u8] {
@@ -3955,6 +3964,27 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!empty_ipfs_uri.has_published_evidence_bundle);
         assert!(!empty_ipfs_uri.has_independent_auditor_records);
         assert!(!empty_ipfs_uri.independently_checkable);
+
+        assert!(public_evidence_uri_is_external(
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3g3/raw.json"
+        ));
+        assert!(public_evidence_uri_is_external("ar://abc_DEF-123"));
+        for uri in [
+            "ipfs://?cid",
+            "ipfs://#cid",
+            "ipfs://../manifest.json",
+            "ipfs://white space",
+            "ar:///",
+        ] {
+            assert!(!public_evidence_uri_is_external(uri));
+        }
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri = String::from("ipfs://?cid");
+        let malformed_content_uri = bundle.evaluate(&criteria, 6);
+        assert!(!malformed_content_uri.has_published_evidence_bundle);
+        assert!(!malformed_content_uri.has_independent_auditor_records);
+        assert!(!malformed_content_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.auditor_records.clear();

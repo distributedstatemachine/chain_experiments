@@ -42,8 +42,8 @@ A complete evidence bundle must include:
 
 A public `https://` evidence URI must use an external host. The local validator rejects localhost, `.local`
 names, loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast,
-and reserved IP addresses. `ipfs://` and `ar://` publication URIs must include a non-empty content
-identifier.
+and reserved IP addresses. `ipfs://` and `ar://` publication URIs must start with a well-formed content
+identifier segment using only ASCII alphanumerics, `-`, or `_`.
 
 ## Current Repository Evidence
 
@@ -90,7 +90,7 @@ and minimum observed content bytes. Service URLs, service-content URLs, supporti
 auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
 localhost, `.local`, loopback, private, link-local, unspecified, documentation, shared-address,
 benchmarking, multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator
-identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
+identity URIs may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
@@ -218,18 +218,19 @@ tvmd public-evidence operator-attestation \
   --observed-at <unix-seconds>
 ```
 
-The publication command rejects local/private evidence URIs, zero bundle IDs, zero manifest signers, and
-zero signature or auditor counts. The auditor-record command rejects zero bundle IDs, local/private public
-or audit URIs, zero auditor IDs, and empty observation times; bundle validation only counts auditor records
-whose auditor ID differs from the manifest signer. Its output can be inserted directly as an
-`auditor=...` line in the evidence manifest. The run-window command rejects zero IDs/signers, inverted
-time windows, and empty block counts. The node-heartbeat command rejects zero node addresses, zero
-operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation only counts a
-node toward the public run when its signed heartbeat count covers the manifest's observed block count, and
-miner/validator operator IDs must be disjoint for the role minima to count independently. The
-operator-attestation command rejects zero node addresses, zero operator IDs, local/private identity URIs,
-and empty observation times; bundle validation only counts operator attestations observed inside the signed
-run window. Its output can be inserted directly as an `operator=...` line in the evidence manifest.
+The publication command rejects non-public or malformed evidence URIs, zero bundle IDs, zero manifest
+signers, and zero signature or auditor counts. The auditor-record command rejects zero bundle IDs,
+non-public or malformed public or audit URIs, zero auditor IDs, and empty observation times; bundle
+validation only counts auditor records whose auditor ID differs from the manifest signer. Its output can be
+inserted directly as an `auditor=...` line in the evidence manifest. The run-window command rejects zero
+IDs/signers, inverted time windows, and empty block counts. The node-heartbeat command rejects zero node
+addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
+only counts a node toward the public run when its signed heartbeat count covers the manifest's observed
+block count, and miner/validator operator IDs must be disjoint for the role minima to count independently.
+The operator-attestation command rejects zero node addresses, zero operator IDs, non-public or malformed
+identity URIs, and empty observation times; bundle validation only counts operator attestations observed
+inside the signed run window. Its output can be inserted directly as an `operator=...` line in the evidence
+manifest.
 
 Operators can generate signed service-health and service-content manifest lines for RPC, explorer, faucet,
 or telemetry evidence:
@@ -255,11 +256,11 @@ tvmd public-evidence service-content \
   --min-content-bytes 64
 ```
 
-The command rejects local/private service URLs, health URLs whose path does not match the signed health
+The command rejects non-public service URLs, health URLs whose path does not match the signed health
 path, malformed endpoint IDs, invalid block ranges, and unsigned or unreachable service-health summaries.
 Bundle validation only counts a service as deployed when both reachable observations and signed health
 checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
-line in the evidence manifest. The service-content command rejects local/private content URLs, malformed
+line in the evidence manifest. The service-content command rejects non-public content URLs, malformed
 endpoint IDs, content URLs whose path does not match the required service surface, zero content roots,
 empty observation times, and empty content sizes. Bundle validation only counts service-content records
 observed inside the signed run window. Its output can be inserted directly as a `service_content=...` line
