@@ -2339,7 +2339,9 @@ impl PublicTestnetEvidenceBundle {
             && has_invalid_work_rejection_records
             && has_reward_settlement_record_summary
             && has_public_supporting_record_artifacts;
-        let full_spec_evidence_met = run_evidence.public_criterion_met && independently_checkable;
+        let full_spec_evidence_met = public_testnet_criteria_are_full_spec(criteria)
+            && run_evidence.public_criterion_met
+            && independently_checkable;
         PublicTestnetEvidenceBundleReport {
             run_evidence,
             has_published_evidence_bundle,
@@ -3003,6 +3005,17 @@ fn required_duration_seconds_for_days(days: u64) -> u64 {
         .saturating_mul(60)
 }
 
+fn public_testnet_criteria_are_full_spec(criteria: &PublicTestnetCriteria) -> bool {
+    let full_spec = PublicTestnetCriteria::default();
+    criteria.min_miners >= full_spec.min_miners
+        && criteria.min_validators >= full_spec.min_validators
+        && criteria.duration_days >= full_spec.duration_days
+        && criteria.min_finality_rate_bps >= full_spec.min_finality_rate_bps
+        && criteria.min_data_availability_bps >= full_spec.min_data_availability_bps
+        && criteria.min_invalid_work_rejections >= full_spec.min_invalid_work_rejections
+        && criteria.min_reward_settlement_records >= full_spec.min_reward_settlement_records
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3025,6 +3038,16 @@ mod tests {
         first_seen_block: u64,
         last_seen_block: u64,
     ) -> PublicServiceEvidence {
+        public_service_with_observations(kind, label, first_seen_block, last_seen_block, 10)
+    }
+
+    fn public_service_with_observations(
+        kind: PublicServiceKind,
+        label: &[u8],
+        first_seen_block: u64,
+        last_seen_block: u64,
+        observation_count: u64,
+    ) -> PublicServiceEvidence {
         PublicServiceEvidence::new(
             kind,
             PublicServiceEndpoint::new(
@@ -3034,8 +3057,8 @@ mod tests {
             ),
             first_seen_block,
             last_seen_block,
-            10,
-            10,
+            observation_count,
+            observation_count,
         )
     }
 
@@ -3204,6 +3227,117 @@ mod tests {
                 invalid_work_rejection_records: 1,
                 invalid_work_rejection_root: hash_bytes(b"test", &[b"invalid-work-root"]),
                 reward_settlement_root: hash_bytes(b"test", &[b"reward-settlement-root"]),
+            },
+        )
+    }
+
+    fn full_spec_public_evidence_bundle(block_time_seconds: u64) -> PublicTestnetEvidenceBundle {
+        let criteria = PublicTestnetCriteria::default();
+        let observed_blocks =
+            required_blocks_for_days(criteria.duration_days, block_time_seconds.max(1));
+        let last_seen_block = observed_blocks.saturating_sub(1);
+        let run_started_at_unix_seconds = 1_700_000_000;
+        let run_ended_at_unix_seconds = run_started_at_unix_seconds
+            + required_duration_seconds_for_days(criteria.duration_days);
+        let mut nodes = Vec::new();
+        for index in 0..criteria.min_miners {
+            nodes.push(PublicNodeEvidence::miner(
+                address(format!("full-spec-miner-{index}").as_bytes()),
+                hash_bytes(
+                    b"test",
+                    &[format!("full-spec-miner-{index}-operator").as_bytes()],
+                ),
+                0,
+                last_seen_block,
+                observed_blocks,
+            ));
+        }
+        for index in 0..criteria.min_validators {
+            nodes.push(PublicNodeEvidence::validator(
+                address(format!("full-spec-validator-{index}").as_bytes()),
+                hash_bytes(
+                    b"test",
+                    &[format!("full-spec-validator-{index}-operator").as_bytes()],
+                ),
+                0,
+                last_seen_block,
+                observed_blocks,
+            ));
+        }
+        let operator_records = nodes.len() as u64;
+        let checked_receipts = observed_blocks;
+        let run = PublicTestnetRunEvidence {
+            nodes,
+            network_runtime: production_runtime_evidence(),
+            services: vec![
+                public_service_with_observations(
+                    PublicServiceKind::Rpc,
+                    b"rpc-service",
+                    0,
+                    last_seen_block,
+                    observed_blocks,
+                ),
+                public_service_with_observations(
+                    PublicServiceKind::Explorer,
+                    b"explorer-service",
+                    0,
+                    last_seen_block,
+                    observed_blocks,
+                ),
+                public_service_with_observations(
+                    PublicServiceKind::Faucet,
+                    b"faucet-service",
+                    0,
+                    last_seen_block,
+                    observed_blocks,
+                ),
+                public_service_with_observations(
+                    PublicServiceKind::Telemetry,
+                    b"telemetry-service",
+                    0,
+                    last_seen_block,
+                    observed_blocks,
+                ),
+            ],
+            service_content: deployed_public_service_content(),
+            run_started_at_unix_seconds,
+            run_ended_at_unix_seconds,
+            observed_blocks,
+            finalized_blocks: observed_blocks,
+            checked_receipts,
+            available_receipts: checked_receipts,
+            invalid_receipts_submitted: 1,
+            invalid_receipts_rejected: 1,
+            reward_settlement_records: 1,
+        };
+        PublicTestnetEvidenceBundle::new(
+            run,
+            PublicEvidencePublication::new(
+                hash_bytes(b"test", &[b"full-spec-public-evidence-bundle"]),
+                String::from("https://tensorvm.net/tensorvm/full-spec-public-evidence.json"),
+                address(b"full-spec-public-evidence-publisher"),
+                1,
+                1,
+            ),
+            PublicEvidenceRecordSummaries {
+                block_history_records: observed_blocks,
+                block_history_root: hash_bytes(b"test", &[b"full-spec-block-history-root"]),
+                finality_history_records: observed_blocks,
+                finality_history_root: hash_bytes(b"test", &[b"full-spec-finality-history-root"]),
+                operator_identity_attestation_records: operator_records,
+                network_runtime_observation_records: operator_records,
+                network_runtime_observation_root: hash_bytes(
+                    b"test",
+                    &[b"full-spec-network-runtime-root"],
+                ),
+                data_availability_measurement_records: checked_receipts,
+                data_availability_measurement_root: hash_bytes(
+                    b"test",
+                    &[b"full-spec-data-availability-root"],
+                ),
+                invalid_work_rejection_records: 1,
+                invalid_work_rejection_root: hash_bytes(b"test", &[b"full-spec-invalid-work-root"]),
+                reward_settlement_root: hash_bytes(b"test", &[b"full-spec-reward-settlement-root"]),
             },
         )
     }
@@ -4270,7 +4404,15 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(complete.has_reward_settlement_record_summary);
         assert!(complete.has_public_supporting_record_artifacts);
         assert!(complete.independently_checkable);
-        assert!(complete.full_spec_evidence_met);
+        assert!(!complete.full_spec_evidence_met);
+
+        let full_spec_criteria = PublicTestnetCriteria::default();
+        let full_spec_block_time = ChainParams::default().block_time_seconds;
+        let full_spec_bundle = full_spec_public_evidence_bundle(full_spec_block_time);
+        let full_spec_report = full_spec_bundle.evaluate(&full_spec_criteria, full_spec_block_time);
+        assert!(full_spec_report.run_evidence.public_criterion_met);
+        assert!(full_spec_report.independently_checkable);
+        assert!(full_spec_report.full_spec_evidence_met);
 
         bundle.publication.manifest_signature = [9; 32];
         let tampered_manifest_signature = bundle.evaluate(&criteria, 6);
@@ -4776,7 +4918,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 .run_evidence
                 .has_deployed_public_service_content
         );
-        assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .run_evidence
+                .public_criterion_met
+        );
+        assert!(parsed.evaluate(&criteria, 6).independently_checkable);
+        assert!(!parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
         let false_runtime =
             manifest.replace("libp2p_runtime_used=true", "libp2p_runtime_used=false");

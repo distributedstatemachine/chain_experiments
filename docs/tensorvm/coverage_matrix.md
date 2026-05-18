@@ -65,8 +65,9 @@ and the explicit separation between local evidence and the 7-day public deployme
   URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, HTTPS evidence
   URI path enforcement with query and fragment rejection, duplicate scalar manifest-field rejection,
   whitespace-padded field-key rejection, duplicate supporting-record root rejection, repeated node-address count rejection, exact service URL path matching with query and fragment rejection, no overreported operator-attestation counts,
-  well-formed `ipfs://`/`ar://` identifier validation, and deployed public-service reachability plus
-  content roots with at least 64 observed bytes bound to external HTTPS URLs. A local launch
+  full-spec flag rejection for relaxed local harness criteria, well-formed `ipfs://`/`ar://` identifier
+  validation, and deployed public-service reachability plus content roots with at least 64 observed bytes
+  bound to external HTTPS URLs. A local launch
   preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,

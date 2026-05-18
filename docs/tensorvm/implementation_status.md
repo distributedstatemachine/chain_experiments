@@ -98,7 +98,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   rejection, whitespace-padded field-key rejection, and
   exact run-derived block/finality/data-availability/invalid-work summary counts, distinct node-address
   counting for public operators, plus network-runtime observation coverage for every counted public operator
-  before full-spec evidence can be considered independently checkable
+  before full-spec evidence can be considered independently checkable; the `public_evidence_full_spec`
+  report flag also requires the default 7-day, 10-miner, 5-validator public-testnet criteria or stricter
+  criteria, so relaxed local harness criteria cannot mark an evidence bundle full-spec
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
@@ -167,7 +169,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.90% workspace line coverage
-- 7391/7473 workspace lines covered
+- 7402/7484 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

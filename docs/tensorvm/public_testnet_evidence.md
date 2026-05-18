@@ -369,9 +369,11 @@ The `record-summary-from-roots` variant derives a deterministic aggregate root a
 provided supporting-record roots before signing those same summary fields; duplicate roots are rejected so a
 summary count cannot be padded by repeating the same raw record root.
 
-The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
-`public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true
-only when enough signed node evidence and matching signed operator identity attestation records are present.
+The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires the default
+public-testnet criteria or stricter criteria, `public_criterion=true`, and `independently_checkable=true`.
+Relaxed local harness criteria can exercise the validator but cannot set the full-spec flag. The
+`external_operator_evidence` field is true only when enough signed node evidence and matching signed
+operator identity attestation records are present.
 The individual fields identify which post-run artifact or protocol observation is missing:
 
 ```text

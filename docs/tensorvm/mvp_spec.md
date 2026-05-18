@@ -1833,6 +1833,8 @@ supporting-record roots, rejects duplicate roots that would pad the derived coun
 manifest summary fields so operators do not need an out-of-band root-signing tool for post-run bundles.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
+`public_evidence_full_spec=true` is reserved for default-or-stricter public-testnet criteria; shortened or
+relaxed local harness criteria may exercise the validator but must not mark evidence as full-spec.
 
 ---
 
