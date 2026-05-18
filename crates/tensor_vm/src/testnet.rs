@@ -477,6 +477,63 @@ impl PublicEvidenceAuditorRecord {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicEvidenceSupportingArtifact {
+    pub kind: PublicEvidenceRecordKind,
+    pub artifact_uri: String,
+    pub record_root: Hash,
+    pub record_count: u64,
+    pub artifact_signature: Signature,
+}
+
+impl PublicEvidenceSupportingArtifact {
+    pub fn new(
+        bundle_id: &Hash,
+        manifest_signer: &Address,
+        kind: PublicEvidenceRecordKind,
+        artifact_uri: impl Into<String>,
+        record_root: Hash,
+        record_count: u64,
+    ) -> Self {
+        let artifact_uri = artifact_uri.into();
+        let message = public_evidence_artifact_message(
+            bundle_id,
+            kind,
+            &artifact_uri,
+            &record_root,
+            record_count,
+        );
+        Self {
+            kind,
+            artifact_uri,
+            record_root,
+            record_count,
+            artifact_signature: sign(manifest_signer, &message),
+        }
+    }
+
+    pub fn artifact_signature_valid(&self, bundle_id: &Hash, manifest_signer: &Address) -> bool {
+        verify_signature(
+            manifest_signer,
+            &public_evidence_artifact_message(
+                bundle_id,
+                self.kind,
+                &self.artifact_uri,
+                &self.record_root,
+                self.record_count,
+            ),
+            &self.artifact_signature,
+        )
+    }
+
+    pub fn is_public_and_signed(&self, bundle_id: &Hash, manifest_signer: &Address) -> bool {
+        self.record_root != [0; 32]
+            && self.record_count > 0
+            && public_evidence_uri_is_external(&self.artifact_uri)
+            && self.artifact_signature_valid(bundle_id, manifest_signer)
+    }
+}
+
 pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
     let mut builder = PublicEvidenceManifestBuilder::default();
     for raw_line in input.lines() {
@@ -716,6 +773,7 @@ pub struct PublicTestnetEvidenceBundle {
     pub run: PublicTestnetRunEvidence,
     pub publication: PublicEvidencePublication,
     pub auditor_records: Vec<PublicEvidenceAuditorRecord>,
+    pub supporting_artifacts: Vec<PublicEvidenceSupportingArtifact>,
     pub run_window_signature: Signature,
     pub block_history_records: u64,
     pub block_history_root: Hash,
@@ -751,6 +809,7 @@ pub struct PublicTestnetEvidenceBundleReport {
     pub has_data_availability_measurements: bool,
     pub has_invalid_work_rejection_records: bool,
     pub has_reward_settlement_record_summary: bool,
+    pub has_public_supporting_record_artifacts: bool,
     pub independently_checkable: bool,
     pub full_spec_evidence_met: bool,
 }
@@ -765,6 +824,7 @@ struct PublicEvidenceManifestBuilder {
     manifest_signature_count: Option<u64>,
     independent_auditor_count: Option<u64>,
     auditor_records: Vec<PublicEvidenceAuditorRecord>,
+    supporting_artifacts: Vec<PublicEvidenceSupportingArtifact>,
     block_history_records: Option<u64>,
     block_history_root: Option<Hash>,
     block_history_signature: Option<Signature>,
@@ -926,6 +986,9 @@ impl PublicEvidenceManifestBuilder {
             "auditor" => self
                 .auditor_records
                 .push(parse_manifest_auditor_record(value)?),
+            "record_artifact" => self
+                .supporting_artifacts
+                .push(parse_manifest_supporting_artifact(value)?),
             "block_history_records" => {
                 self.block_history_records = Some(parse_manifest_u64(value)?);
             }
@@ -1054,6 +1117,7 @@ impl PublicEvidenceManifestBuilder {
                 publication
             },
             auditor_records: self.auditor_records,
+            supporting_artifacts: self.supporting_artifacts,
             run_window_signature: required_hash(self.run_window_signature)?,
             block_history_records: required_u64(self.block_history_records)?,
             block_history_root: required_hash(self.block_history_root)?,
@@ -1088,6 +1152,22 @@ impl PublicEvidenceManifestBuilder {
             reward_settlement_signature: required_hash(self.reward_settlement_signature)?,
         })
     }
+}
+
+fn parse_manifest_supporting_artifact(value: &str) -> Result<PublicEvidenceSupportingArtifact> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 5 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed supporting evidence artifact",
+        ));
+    }
+    Ok(PublicEvidenceSupportingArtifact {
+        kind: parse_public_evidence_record_kind_tag(fields[0])?,
+        artifact_uri: fields[1].to_owned(),
+        record_root: parse_hash_hex(fields[2])?,
+        record_count: parse_manifest_u64(fields[3])?,
+        artifact_signature: parse_hash_hex(fields[4])?,
+    })
 }
 
 fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
@@ -1367,6 +1447,31 @@ impl PublicEvidenceRecordKind {
             Self::RewardSettlements => b"reward-settlements",
         }
     }
+
+    pub fn manifest_tag(self) -> &'static str {
+        match self {
+            Self::BlockHistory => "block-history",
+            Self::FinalityHistory => "finality-history",
+            Self::NetworkRuntimeObservations => "network-runtime",
+            Self::DataAvailabilityMeasurements => "data-availability",
+            Self::InvalidWorkRejections => "invalid-work",
+            Self::RewardSettlements => "reward-settlement",
+        }
+    }
+}
+
+fn parse_public_evidence_record_kind_tag(value: &str) -> Result<PublicEvidenceRecordKind> {
+    match value {
+        "block-history" => Ok(PublicEvidenceRecordKind::BlockHistory),
+        "finality-history" => Ok(PublicEvidenceRecordKind::FinalityHistory),
+        "network-runtime" => Ok(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+        "data-availability" => Ok(PublicEvidenceRecordKind::DataAvailabilityMeasurements),
+        "invalid-work" => Ok(PublicEvidenceRecordKind::InvalidWorkRejections),
+        "reward-settlement" => Ok(PublicEvidenceRecordKind::RewardSettlements),
+        _ => Err(TvmError::InvalidReceipt(
+            "invalid public evidence record kind",
+        )),
+    }
 }
 
 fn public_evidence_record_message(
@@ -1382,6 +1487,26 @@ fn public_evidence_record_message(
     )
 }
 
+fn public_evidence_artifact_message(
+    bundle_id: &Hash,
+    kind: PublicEvidenceRecordKind,
+    artifact_uri: &str,
+    record_root: &Hash,
+    record_count: u64,
+) -> Hash {
+    let count = record_count.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-evidence-artifact-v1",
+        &[
+            bundle_id,
+            kind.tag(),
+            artifact_uri.as_bytes(),
+            record_root,
+            &count,
+        ],
+    )
+}
+
 pub fn sign_public_evidence_record(
     signer: &Address,
     bundle_id: &Hash,
@@ -1392,6 +1517,31 @@ pub fn sign_public_evidence_record(
     sign(
         signer,
         &public_evidence_record_message(bundle_id, kind, record_root, record_count),
+    )
+}
+
+pub fn sign_public_evidence_artifact(
+    signer: &Address,
+    bundle_id: &Hash,
+    kind: PublicEvidenceRecordKind,
+    artifact_uri: &str,
+    record_root: &Hash,
+    record_count: u64,
+) -> Signature {
+    sign(
+        signer,
+        &public_evidence_artifact_message(bundle_id, kind, artifact_uri, record_root, record_count),
+    )
+}
+
+fn public_evidence_supporting_artifact_uri(
+    bundle_id: &Hash,
+    kind: PublicEvidenceRecordKind,
+) -> String {
+    format!(
+        "https://evidence.tensorvm.example/{}/{}.json",
+        hex(bundle_id),
+        kind.manifest_tag()
     )
 }
 
@@ -1565,10 +1715,55 @@ impl PublicTestnetEvidenceBundle {
             run.observed_blocks,
         );
         let reward_settlement_records = run.reward_settlement_records;
+        let supporting_artifacts = [
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                record_summaries.block_history_root,
+                record_summaries.block_history_records,
+            ),
+            (
+                PublicEvidenceRecordKind::FinalityHistory,
+                record_summaries.finality_history_root,
+                record_summaries.finality_history_records,
+            ),
+            (
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                record_summaries.network_runtime_observation_root,
+                record_summaries.network_runtime_observation_records,
+            ),
+            (
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                record_summaries.data_availability_measurement_root,
+                record_summaries.data_availability_measurement_records,
+            ),
+            (
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                record_summaries.invalid_work_rejection_root,
+                record_summaries.invalid_work_rejection_records,
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                record_summaries.reward_settlement_root,
+                reward_settlement_records,
+            ),
+        ]
+        .into_iter()
+        .map(|(kind, record_root, record_count)| {
+            PublicEvidenceSupportingArtifact::new(
+                &bundle_id,
+                &signer,
+                kind,
+                public_evidence_supporting_artifact_uri(&bundle_id, kind),
+                record_root,
+                record_count,
+            )
+        })
+        .collect();
         Self {
             run,
             publication,
             auditor_records,
+            supporting_artifacts,
             run_window_signature,
             block_history_records: record_summaries.block_history_records,
             block_history_root: record_summaries.block_history_root,
@@ -1703,6 +1898,32 @@ impl PublicTestnetEvidenceBundle {
                 self.run.reward_settlement_records,
                 &self.reward_settlement_signature,
             );
+        let has_public_supporting_record_artifacts =
+            self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::BlockHistory,
+                &self.block_history_root,
+                self.block_history_records,
+            ) && self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::FinalityHistory,
+                &self.finality_history_root,
+                self.finality_history_records,
+            ) && self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &self.network_runtime_observation_root,
+                self.network_runtime_observation_records,
+            ) && self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                &self.data_availability_measurement_root,
+                self.data_availability_measurement_records,
+            ) && self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                &self.invalid_work_rejection_root,
+                self.invalid_work_rejection_records,
+            ) && self.has_public_supporting_record_artifact(
+                PublicEvidenceRecordKind::RewardSettlements,
+                &self.reward_settlement_root,
+                self.run.reward_settlement_records,
+            );
         let independently_checkable = has_published_evidence_bundle
             && has_independent_auditor_records
             && has_signed_run_window
@@ -1712,7 +1933,8 @@ impl PublicTestnetEvidenceBundle {
             && has_network_runtime_observations
             && has_data_availability_measurements
             && has_invalid_work_rejection_records
-            && has_reward_settlement_record_summary;
+            && has_reward_settlement_record_summary
+            && has_public_supporting_record_artifacts;
         let full_spec_evidence_met = run_evidence.public_criterion_met && independently_checkable;
         PublicTestnetEvidenceBundleReport {
             run_evidence,
@@ -1726,9 +1948,27 @@ impl PublicTestnetEvidenceBundle {
             has_data_availability_measurements,
             has_invalid_work_rejection_records,
             has_reward_settlement_record_summary,
+            has_public_supporting_record_artifacts,
             independently_checkable,
             full_spec_evidence_met,
         }
+    }
+
+    fn has_public_supporting_record_artifact(
+        &self,
+        kind: PublicEvidenceRecordKind,
+        record_root: &Hash,
+        record_count: u64,
+    ) -> bool {
+        self.supporting_artifacts.iter().any(|artifact| {
+            artifact.kind == kind
+                && artifact.record_root == *record_root
+                && artifact.record_count == record_count
+                && artifact.is_public_and_signed(
+                    &self.publication.bundle_id,
+                    &self.publication.manifest_signer,
+                )
+        })
     }
 
     fn public_record_signature_valid(
@@ -2529,6 +2769,32 @@ mod tests {
         hex(&public_service(kind, label, 0, 9).health_check_signature)
     }
 
+    fn manifest_artifact_line(
+        kind: PublicEvidenceRecordKind,
+        root_label: &[u8],
+        record_count: u64,
+    ) -> String {
+        let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+        let artifact_uri = public_evidence_supporting_artifact_uri(&bundle_id, kind);
+        let record_root = hash_bytes(b"test", &[root_label]);
+        let signature = sign_public_evidence_artifact(
+            &address(b"public-evidence-publisher"),
+            &bundle_id,
+            kind,
+            &artifact_uri,
+            &record_root,
+            record_count,
+        );
+        format!(
+            "record_artifact={},{},{},{},{}",
+            kind.manifest_tag(),
+            artifact_uri,
+            hex(&record_root),
+            record_count,
+            hex(&signature)
+        )
+    }
+
     fn complete_public_evidence_manifest_text() -> String {
         format!(
             "\
@@ -2542,6 +2808,12 @@ manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 auditor={},{},1700000000,{}
+{}
+{}
+{}
+{}
+{}
+{}
 block_history_records=10
 block_history_root={}
 block_history_signature={}
@@ -2592,6 +2864,36 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
             manifest_auditor_signature(),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::BlockHistory,
+                b"block-history-root",
+                10
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::FinalityHistory,
+                b"finality-history-root",
+                10
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                b"network-runtime-root",
+                4
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                b"data-availability-root",
+                20
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                b"invalid-work-root",
+                1
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::RewardSettlements,
+                b"reward-settlement-root",
+                1
+            ),
             manifest_hash(b"test", b"block-history-root"),
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"test", b"finality-history-root"),
@@ -3110,6 +3412,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.has_data_availability_measurements);
         assert!(complete.has_invalid_work_rejection_records);
         assert!(complete.has_reward_settlement_record_summary);
+        assert!(complete.has_public_supporting_record_artifacts);
         assert!(complete.independently_checkable);
         assert!(complete.full_spec_evidence_met);
 
@@ -3303,6 +3606,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!tampered_reward_records.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.supporting_artifacts.clear();
+        let missing_supporting_artifacts = bundle.evaluate(&criteria, 6);
+        assert!(!missing_supporting_artifacts.has_public_supporting_record_artifacts);
+        assert!(!missing_supporting_artifacts.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.supporting_artifacts[0].artifact_signature = [1; 32];
+        let tampered_supporting_artifact = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_supporting_artifact.has_public_supporting_record_artifacts);
+        assert!(!tampered_supporting_artifact.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.supporting_artifacts[0].artifact_uri = String::from("https://localhost/raw.json");
+        let local_supporting_artifact = bundle.evaluate(&criteria, 6);
+        assert!(!local_supporting_artifact.has_public_supporting_record_artifacts);
+        assert!(!local_supporting_artifact.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.run.services.clear();
         let missing_services = bundle.evaluate(&criteria, 6);
         assert!(missing_services.independently_checkable);
@@ -3339,6 +3660,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             parsed
                 .evaluate(&criteria, 6)
                 .has_reward_settlement_record_summary
+        );
+        assert!(
+            parsed
+                .evaluate(&criteria, 6)
+                .has_public_supporting_record_artifacts
         );
         assert!(parsed.evaluate(&criteria, 6).full_spec_evidence_met);
 
@@ -3379,6 +3705,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_auditor_report.independently_checkable);
         assert!(!missing_auditor_report.full_spec_evidence_met);
 
+        let missing_artifact_lines = manifest_without_line(&manifest, "record_artifact=");
+        let parsed_missing_artifact_lines =
+            parse_public_testnet_evidence_manifest(&missing_artifact_lines).unwrap();
+        let missing_artifact_report = parsed_missing_artifact_lines.evaluate(&criteria, 6);
+        assert!(!missing_artifact_report.has_public_supporting_record_artifacts);
+        assert!(!missing_artifact_report.independently_checkable);
+        assert!(!missing_artifact_report.full_spec_evidence_met);
+
         let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
         assert_eq!(
             parse_hash_hex(&uppercase_hash).unwrap(),
@@ -3407,6 +3741,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.has_data_availability_measurements);
         assert!(report.has_invalid_work_rejection_records);
         assert!(report.has_reward_settlement_record_summary);
+        assert!(report.has_public_supporting_record_artifacts);
         assert!(report.independently_checkable);
         assert!(!report.run_evidence.public_criterion_met);
         assert!(!report.run_evidence.has_required_miners);
@@ -3465,6 +3800,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest.replace(
                 "auditor=",
                 "auditor=too,few,fields\n# removed original auditor=",
+            ),
+            manifest.replace("record_artifact=block-history", "record_artifact=archive"),
+            manifest.replace(
+                "record_artifact=block-history,",
+                "record_artifact=block-history,too,few,fields\n# removed original record_artifact=",
             ),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace(

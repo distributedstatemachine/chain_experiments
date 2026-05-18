@@ -97,6 +97,7 @@ pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
     "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
     "tvmd public-evidence network-observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
     "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
+    "tvmd public-evidence record-artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
     "tvmd public-evidence record-summary-from-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
 ];
 
@@ -176,6 +177,11 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("record-summary"))
+        );
+        assert!(
+            PUBLIC_EVIDENCE_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("record-artifact"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS

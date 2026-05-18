@@ -86,9 +86,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs, a signed run-window record, block/finality history, signed operator identity attestations
   matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
-  block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, and
-  data-availability measurement records before full-spec evidence can be considered independently
-  checkable
+  block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
+  external artifact locators for the raw records behind each summary root, and data-availability
+  measurement records before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -113,7 +113,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   records,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
-  production libp2p network-observation roots, and
+  production libp2p network-observation roots,
+  `tvmd public-evidence record-artifact ...` generation for signed external raw-record artifact locators, and
   `tvmd public-evidence record-summary-from-roots ...` deterministic root aggregation for post-run
   supporting records
 
@@ -138,8 +139,8 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.80% workspace line coverage
-- 6764/6846 workspace lines covered
+- 98.83% workspace line coverage
+- 6954/7036 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -160,7 +161,8 @@ These spec items require real deployment or non-reference infrastructure and are
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
   treating a local test harness as public proof, and now requires a signed wall-clock run window,
   invalid-work rejection plus reward-settlement records, signed production libp2p runtime observation
-  records, and deployed public-service reachability before public evidence can satisfy the gate
+  records, signed external artifact locators for raw supporting records, and deployed public-service
+  reachability before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), and
   `deploy/tensorvm/RUNBOOK.md` records the external collection and publication flow, while

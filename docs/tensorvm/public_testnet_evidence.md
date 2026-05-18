@@ -34,6 +34,8 @@ A complete evidence bundle must include:
 - signed data-availability measurement summary root for checked tensor receipts
 - signed invalid-work submission and rejection evidence
 - signed reward-settlement records for verified TensorWork
+- signed external artifact locators for the raw supporting records behind each block/finality/libp2p/data
+  availability/invalid-work/reward-settlement summary root
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
 - external HTTPS URLs, health paths, and reachability records for deployed RPC, explorer, faucet, and
   telemetry services
@@ -59,7 +61,8 @@ auditor count. It also verifies signed auditor records over the bundle ID, publi
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
 end time, and observed block count. It verifies signed supporting-record roots for block history, finality
 history, production libp2p observations, data-availability measurements, invalid-work rejections, and
-reward settlements, and it derives `external_operator_evidence` from signed operator identity attestation
+reward settlements. It also requires signed external artifact locators for the raw supporting records behind
+each summary root, and it derives `external_operator_evidence` from signed operator identity attestation
 records that match the signed node-heartbeat records. These local checks are still only evidence-format
 validation until an external run publishes real records.
 
@@ -76,10 +79,11 @@ bundle ID, Unix start time, Unix end time, and observed block count. Heartbeat s
 role, address, operator ID, first/last observed block, and heartbeat count. Operator identity signatures
 cover the node role, node address, operator ID, external identity URI, and observation time.
 Service-health signatures cover the service kind, endpoint ID, public URL, health path, first/last observed
-block, reachable observation count, and signed health-check count. Service URLs, auditor HTTPS URIs, and
-operator identity HTTPS URIs must use external hosts; localhost, `.local`, loopback, private, link-local,
-and unspecified hosts are rejected. Auditor and operator identity URIs may also use non-empty `ipfs://` or
-`ar://` content identifiers.
+block, reachable observation count, and signed health-check count. Supporting-artifact signatures cover the
+bundle ID, record-set kind, external artifact URI, record root, and record count. Service URLs, supporting
+artifact HTTPS URIs, auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
+localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Supporting artifact,
+auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths.
@@ -93,6 +97,12 @@ manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
 auditor=<auditor-address-hex>,https://auditor.example.test/tensorvm/audit.json,<unix-seconds>,<auditor-signature-hex>
+record_artifact=block-history,https://evidence.example.test/tensorvm/block-history.json,<history-root-hex>,100800,<artifact-signature-hex>
+record_artifact=finality-history,https://evidence.example.test/tensorvm/finality-history.json,<finality-root-hex>,100800,<artifact-signature-hex>
+record_artifact=network-runtime,https://evidence.example.test/tensorvm/network-runtime.json,<network-runtime-root-hex>,4,<artifact-signature-hex>
+record_artifact=data-availability,https://evidence.example.test/tensorvm/data-availability.json,<da-root-hex>,1000,<artifact-signature-hex>
+record_artifact=invalid-work,https://evidence.example.test/tensorvm/invalid-work.json,<invalid-work-root-hex>,1,<artifact-signature-hex>
+record_artifact=reward-settlement,https://evidence.example.test/tensorvm/reward-settlement.json,<reward-settlement-root-hex>,1,<artifact-signature-hex>
 block_history_records=100800
 block_history_root=<history-root-hex>
 block_history_signature=<history-signature-hex>
@@ -246,6 +256,14 @@ tvmd public-evidence record-summary \
   --record-root <network-runtime-root-hex> \
   --record-count 4
 
+tvmd public-evidence record-artifact \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.example.test/tensorvm/network-runtime.json \
+  --record-root <network-runtime-root-hex> \
+  --record-count 4
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -257,6 +275,9 @@ Supported record kinds are `block-history`, `finality-history`, `network-runtime
 `invalid-work`, and `reward-settlement`. The command emits the corresponding `<record>_records`,
 `<record>_root`, and `<record>_signature` manifest fields using the same signature domain the validator
 checks.
+The `record-artifact` command emits a signed `record_artifact=...` manifest line that binds an external
+raw-record artifact URI to the same record kind, root, and count. The full independently checkable gate
+requires one valid artifact locator for every required supporting-record summary root.
 The `record-summary-from-roots` variant derives a deterministic aggregate root and record count from the
 provided supporting-record roots before signing those same summary fields.
 
@@ -279,6 +300,7 @@ network_runtime_observations=true
 data_availability_measurements=true
 signed_invalid_work_rejection_records=true
 signed_reward_settlement_records=true
+supporting_record_artifacts=true
 miners=2
 validators=1
 run_started_at_unix_seconds=1700000000

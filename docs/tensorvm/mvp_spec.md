@@ -1714,6 +1714,14 @@ tvmd public-evidence record-summary \
   --record-root <network-runtime-root-hex> \
   --record-count 4
 
+tvmd public-evidence record-artifact \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.example.test/tensorvm/network-runtime.json \
+  --record-root <network-runtime-root-hex> \
+  --record-count 4
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -1739,6 +1747,9 @@ The `record-summary` command emits the exact `<record>_records`, `<record>_root`
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
 record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
 `invalid-work`, and `reward-settlement`.
+The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
+artifact URI to the record kind, root, and count; independently checkable public evidence requires one
+valid artifact locator for every required supporting-record summary root.
 The `record-summary-from-roots` command deterministically aggregates comma-separated supporting-record
 roots, derives the record count, and emits the same signed manifest summary fields so operators do not
 need an out-of-band root-signing tool for post-run bundles.
@@ -1985,6 +1996,7 @@ the evidence bundle includes a signed wall-clock run window proving the 7-day du
 block-count evidence
 the evidence bundle includes signed node heartbeats, block/finality history, operator identities or
 attestations, data-availability measurements, invalid-work rejection evidence, and reward-settlement records
+the evidence bundle includes signed external artifact locators for every raw supporting-record summary root
 the evidence bundle is stored or linked from docs/tensorvm/implementation_status.md
 ```
 
@@ -1994,6 +2006,8 @@ The agent must not report "fully complete" if any of these are missing:
 GPU miner execution lacks real CUDA/C++ kernels for any claimed GPU path
 independently checkable public-run evidence does not prove that the mandatory rust-libp2p runtime carried
 node discovery, gossip, request/response, and DoS-controlled network operation
+independently checkable public-run evidence lacks signed external artifact locators for raw supporting
+records behind summary roots
 browser-facing services are still local-only handlers or static HTML responses
 the 7-day public testnet evidence has not actually happened
 the verification commands were not executed from the workspace root after the final change
@@ -2158,6 +2172,7 @@ signed production libp2p network-observation evidence
 real CUDA/C++ miner kernels where GPU acceleration is claimed
 external public-testnet evidence bundle
 signed public run-window evidence for the 7-day duration
+signed external raw supporting-record artifact locators
 ```
 
 Success criteria:
@@ -2174,6 +2189,7 @@ production libp2p networking used for node propagation
 production libp2p operation is evidenced by signed network-observation records
 deployed services remain reachable during the public run
 deployed service reachability is evidenced by signed health checks bound to external HTTPS service URLs
+raw supporting-record artifacts are externally linked and signed against their summary roots
 GPU kernel outputs match canonical deterministic CPU semantics
 ```
 
@@ -2259,6 +2275,7 @@ public service evidence includes externally reachable HTTPS URLs and signed heal
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
+the evidence includes signed external artifact locators for the raw supporting records behind summary roots
 the required Cargo workspace structure is present
 the required verification commands have been executed and their results are documented
 ```
@@ -2268,6 +2285,7 @@ Do not count the full spec as complete if these remain true:
 ```text
 GPU mining is claimed without real CUDA/C++ kernels
 public-run evidence does not prove that the mandatory rust-libp2p runtime carried network propagation
+public-run evidence summarizes supporting records without signed external raw-record artifact locators
 browser/RPC surfaces exist only as local handlers or local HTML pages
 durable state is only a reference file store rather than a production database/service deployment
 7-day public-testnet evidence is inferred from a local harness rather than an external run

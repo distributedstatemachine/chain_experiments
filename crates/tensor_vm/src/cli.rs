@@ -3,10 +3,10 @@ use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
-    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
-    PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
-    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
-    sign_public_evidence_record, sign_public_run_window,
+    PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
+    PublicOperatorIdentityAttestation, PublicServiceEndpoint, PublicServiceEvidence,
+    PublicServiceKind, PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest, sign_public_evidence_record, sign_public_run_window,
 };
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
@@ -60,6 +60,14 @@ pub enum CliCommand {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
+        record_root: Hash,
+        record_count: u64,
+    },
+    PublicEvidenceRecordArtifact {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
         record_root: Hash,
         record_count: u64,
     },
@@ -232,6 +240,29 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             kind: parse_public_evidence_record_kind(kind)?,
             bundle_id: parse_hash_argument(bundle_id)?,
             manifest_signer: parse_hash_argument(manifest_signer)?,
+            record_root: parse_hash_argument(record_root)?,
+            record_count: parse_u64(record_count)?,
+        }),
+        [
+            "public-evidence",
+            "record-artifact",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--artifact-uri",
+            artifact_uri,
+            "--record-root",
+            record_root,
+            "--record-count",
+            record_count,
+        ] => Ok(CliCommand::PublicEvidenceRecordArtifact {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            artifact_uri: (*artifact_uri).to_owned(),
             record_root: parse_hash_argument(record_root)?,
             record_count: parse_u64(record_count)?,
         }),
@@ -452,6 +483,14 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_evidence_record_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceRecordArtifact {
+            kind, artifact_uri, ..
+        } => {
+            format!(
+                "generate {} public evidence artifact locator artifact_uri={artifact_uri}",
+                public_evidence_record_kind_tag(*kind)
+            )
+        }
         CliCommand::PublicEvidenceRecordSummaryFromRoots {
             kind, record_roots, ..
         } => {
@@ -612,6 +651,21 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *kind,
             *bundle_id,
             *manifest_signer,
+            *record_root,
+            *record_count,
+        ),
+        CliCommand::PublicEvidenceRecordArtifact {
+            kind,
+            bundle_id,
+            manifest_signer,
+            artifact_uri,
+            record_root,
+            record_count,
+        } => record_artifact_evidence_line(
+            *kind,
+            *bundle_id,
+            *manifest_signer,
+            artifact_uri,
             *record_root,
             *record_count,
         ),
@@ -976,6 +1030,49 @@ fn record_summary_evidence_lines(
     ))
 }
 
+fn record_artifact_evidence_line(
+    kind: PublicEvidenceRecordKind,
+    bundle_id: Hash,
+    manifest_signer: Address,
+    artifact_uri: &str,
+    record_root: Hash,
+    record_count: u64,
+) -> Result<String> {
+    if bundle_id == [0; 32] {
+        return Err(TvmError::InvalidReceipt("bundle id argument is empty"));
+    }
+    if manifest_signer == [0; 32] {
+        return Err(TvmError::InvalidReceipt(
+            "manifest signer argument is empty",
+        ));
+    }
+    if record_root == [0; 32] {
+        return Err(TvmError::InvalidReceipt("record root argument is empty"));
+    }
+    if record_count == 0 {
+        return Err(TvmError::InvalidReceipt("record count argument is empty"));
+    }
+    let artifact = PublicEvidenceSupportingArtifact::new(
+        &bundle_id,
+        &manifest_signer,
+        kind,
+        artifact_uri.to_owned(),
+        record_root,
+        record_count,
+    );
+    if !artifact.is_public_and_signed(&bundle_id, &manifest_signer) {
+        return Err(TvmError::InvalidReceipt("invalid public evidence artifact"));
+    }
+    Ok(format!(
+        "record_artifact={},{},{},{},{}",
+        public_evidence_record_kind_tag(kind),
+        artifact.artifact_uri,
+        hex(&artifact.record_root),
+        artifact.record_count,
+        hex(&artifact.artifact_signature)
+    ))
+}
+
 fn aggregate_public_evidence_record_roots(
     kind: PublicEvidenceRecordKind,
     record_roots: &[Hash],
@@ -1152,7 +1249,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nsigned_invalid_work_rejection_records={}\nsigned_reward_settlement_records={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nindependent_auditor_records={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\nnetwork_runtime_observations={}\ndata_availability_measurements={}\nsigned_invalid_work_rejection_records={}\nsigned_reward_settlement_records={}\nsupporting_record_artifacts={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
@@ -1166,6 +1263,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         report.has_data_availability_measurements,
         report.has_invalid_work_rejection_records,
         report.has_reward_settlement_record_summary,
+        report.has_public_supporting_record_artifacts,
         report.run_evidence.miner_count,
         report.run_evidence.validator_count,
         report.run_evidence.run_started_at_unix_seconds,
@@ -1517,6 +1615,36 @@ mod tests {
         hex(&record.auditor_signature)
     }
 
+    fn manifest_artifact_line(
+        kind: PublicEvidenceRecordKind,
+        root_label: &[u8],
+        record_count: u64,
+    ) -> String {
+        let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+        let artifact_uri = format!(
+            "https://evidence.tensorvm.example/{}/{}.json",
+            manifest_hash(b"public-evidence-bundle"),
+            public_evidence_record_kind_tag(kind)
+        );
+        let record_root = hash_bytes(b"test", &[root_label]);
+        let signature = crate::testnet::sign_public_evidence_artifact(
+            &address(b"public-evidence-publisher"),
+            &bundle_id,
+            kind,
+            &artifact_uri,
+            &record_root,
+            record_count,
+        );
+        format!(
+            "record_artifact={},{},{},{},{}",
+            public_evidence_record_kind_tag(kind),
+            artifact_uri,
+            hex(&record_root),
+            record_count,
+            hex(&signature)
+        )
+    }
+
     fn manifest_bundle() -> PublicTestnetEvidenceBundle {
         PublicTestnetEvidenceBundle::new(
             PublicTestnetRunEvidence {
@@ -1642,6 +1770,12 @@ manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 auditor={},{},1700000000,{}
+{}
+{}
+{}
+{}
+{}
+{}
 block_history_records=10
 block_history_root={}
 block_history_signature={}
@@ -1692,6 +1826,36 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10
             manifest_address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
             manifest_auditor_signature(),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::BlockHistory,
+                b"block-history-root",
+                10
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::FinalityHistory,
+                b"finality-history-root",
+                10
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                b"network-runtime-root",
+                4
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                b"data-availability-root",
+                20
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                b"invalid-work-root",
+                1
+            ),
+            manifest_artifact_line(
+                PublicEvidenceRecordKind::RewardSettlements,
+                b"reward-settlement-root",
+                1
+            ),
             manifest_hash(b"block-history-root"),
             hex(&manifest_bundle().block_history_signature),
             manifest_hash(b"finality-history-root"),
@@ -2079,6 +2243,33 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 record_count: 4,
             }
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-artifact",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--artifact-uri",
+                "https://evidence.tensorvm.example/network-runtime.json",
+                "--record-root",
+                &record_root,
+                "--record-count",
+                "4",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            }
+        );
         let record_roots = format!(
             "{},{}",
             manifest_hash(b"network-observation-a"),
@@ -2294,6 +2485,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 record_count: 1,
             }),
             "generate reward-settlement public evidence record summary records=1"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            }),
+            "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.example/network-runtime.json"
         );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
@@ -2722,10 +2924,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         ];
         for (kind, root_label, count, field_prefix, expected_signature) in record_cases {
             let root = manifest_hash(root_label);
+            let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
+            let manifest_signer = address(b"public-evidence-publisher");
             let line = execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
                 kind,
-                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                manifest_signer: address(b"public-evidence-publisher"),
+                bundle_id,
+                manifest_signer,
                 record_root: hash_bytes(b"test", &[root_label]),
                 record_count: count,
             })
@@ -2734,6 +2938,38 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 line,
                 format!(
                     "{field_prefix}_records={count}\n{field_prefix}_root={root}\n{field_prefix}_signature={expected_signature}"
+                )
+            );
+
+            let artifact_uri = format!(
+                "https://evidence.tensorvm.example/{}/{}.json",
+                manifest_hash(b"public-evidence-bundle"),
+                public_evidence_record_kind_tag(kind)
+            );
+            let artifact_signature = crate::testnet::sign_public_evidence_artifact(
+                &manifest_signer,
+                &bundle_id,
+                kind,
+                &artifact_uri,
+                &hash_bytes(b"test", &[root_label]),
+                count,
+            );
+            let artifact_line =
+                execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                    kind,
+                    bundle_id,
+                    manifest_signer,
+                    artifact_uri: artifact_uri.clone(),
+                    record_root: hash_bytes(b"test", &[root_label]),
+                    record_count: count,
+                })
+                .unwrap();
+            assert_eq!(
+                artifact_line,
+                format!(
+                    "record_artifact={},{artifact_uri},{root},{count},{}",
+                    public_evidence_record_kind_tag(kind),
+                    hex(&artifact_signature)
                 )
             );
         }
@@ -3327,6 +3563,25 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(
             parse_cli_parts(&[
                 "public-evidence",
+                "record-artifact",
+                "--kind",
+                "operator-identity",
+                "--bundle-id",
+                &manifest_hash(b"public-evidence-bundle"),
+                "--manifest-signer",
+                &manifest_address(b"public-evidence-publisher"),
+                "--artifact-uri",
+                "https://evidence.tensorvm.example/network-runtime.json",
+                "--record-root",
+                &manifest_hash(b"network-runtime-root"),
+                "--record-count",
+                "4",
+            ])
+            .is_err()
+        );
+        assert!(
+            parse_cli_parts(&[
+                "public-evidence",
                 "record-summary-from-roots",
                 "--kind",
                 "network-runtime",
@@ -3347,6 +3602,15 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             record_count: 4,
         };
         assert!(execute_reference_cli_command(&valid_record_summary).is_ok());
+        let valid_record_artifact = CliCommand::PublicEvidenceRecordArtifact {
+            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            manifest_signer: address(b"public-evidence-publisher"),
+            artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+            record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+            record_count: 4,
+        };
+        assert!(execute_reference_cli_command(&valid_record_artifact).is_ok());
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
@@ -3382,6 +3646,61 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: [0; 32],
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: [0; 32],
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://localhost/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                record_root: [0; 32],
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 0,
             })
@@ -3457,6 +3776,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("data_availability_measurements=true"));
         assert!(report.contains("signed_invalid_work_rejection_records=true"));
         assert!(report.contains("signed_reward_settlement_records=true"));
+        assert!(report.contains("supporting_record_artifacts=true"));
         assert!(report.contains("miners=2"));
         assert!(report.contains("validators=1"));
         assert!(report.contains("run_started_at_unix_seconds=1700000000"));
@@ -3507,6 +3827,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(missing_auditor_report.contains("published_evidence_bundle=true"));
         assert!(missing_auditor_report.contains("independent_auditor_records=false"));
         assert!(missing_auditor_report.contains("independently_checkable=false"));
+
+        let missing_artifacts = evidence_manifest()
+            .lines()
+            .filter(|line| !line.starts_with("record_artifact="))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let missing_artifacts_report =
+            validate_public_evidence_manifest(&missing_artifacts).unwrap();
+        assert!(missing_artifacts_report.contains("supporting_record_artifacts=false"));
+        assert!(missing_artifacts_report.contains("independently_checkable=false"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }

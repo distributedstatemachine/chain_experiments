@@ -14,7 +14,8 @@ artifacts for launching a service that can later produce independently checkable
   `tvmd public-testnet preflight --manifest <path>` after replacing example IDs and hosts
 - `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
   `tvmd public-evidence validate --manifest <path>`, but intentionally too short and too small to satisfy
-  the default full-spec 7-day public-testnet criteria
+  the default full-spec 7-day public-testnet criteria; it includes the required signed external
+  supporting-record artifact locators
 
 ## Deployment Shape
 
@@ -31,7 +32,9 @@ GET /telemetry/health
 The nginx template publishes separate external HTTPS hostnames for the four surfaces and routes each
 hostname to the local service. Public evidence still has to include signed service-health records for each
 external URL and signed network-observation records proving libp2p discovery, gossip, request/response,
-and configured DoS controls during the external run.
+and configured DoS controls during the external run. Each signed block, finality, libp2p,
+data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
+the raw records behind that root.
 
 ## Minimal Operator Flow
 

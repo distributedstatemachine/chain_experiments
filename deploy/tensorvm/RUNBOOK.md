@@ -56,11 +56,13 @@ tvmd public-evidence operator-attestation ...
 tvmd public-evidence service-health ...
 tvmd public-evidence network-observation ...
 tvmd public-evidence record-summary ...
+tvmd public-evidence record-artifact ...
 tvmd public-evidence record-summary-from-roots ...
 ```
 
-The collected records must cover the full 7-day window, not only a final snapshot. Preserve raw supporting
-records for:
+The collected records must cover the full 7-day window, not only a final snapshot. Every
+`record-summary` root must have a matching signed `record-artifact` locator for the external raw-record
+artifact. Preserve raw supporting records for:
 
 - block history
 - finality history
@@ -110,6 +112,7 @@ required_run_duration=true
 required_block_count=true
 invalid_work_rejection_evidence=true
 reward_settlement_evidence=true
+supporting_record_artifacts=true
 ```
 
 The default criteria currently require at least 10 miners, 5 validators, 604800 observed seconds, and
@@ -122,6 +125,7 @@ validator. The publication must include:
 
 - the validated manifest
 - raw supporting records used to derive each summary root
+- signed artifact locator lines for every raw supporting-record artifact
 - independent auditor records and audit artifacts
 - operator identity artifacts
 - public service health artifacts
