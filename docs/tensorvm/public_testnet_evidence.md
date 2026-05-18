@@ -6,6 +6,9 @@ This document is the publication target for the independently checkable evidence
 the TensorVM MVP can be called fully complete. A complete bundle must be produced from an external public
 run, not from the local harness.
 
+For pre-run launch readiness, use [`public_testnet_preflight.md`](public_testnet_preflight.md). A passing
+preflight report is not a substitute for this post-run evidence bundle.
+
 ## Required Bundle
 
 A complete evidence bundle must include:

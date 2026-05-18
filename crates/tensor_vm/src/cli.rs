@@ -1,6 +1,9 @@
 use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
-use crate::testnet::{PublicTestnetCriteria, parse_public_testnet_evidence_manifest};
+use crate::testnet::{
+    PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -22,6 +25,9 @@ pub enum CliCommand {
     },
     ValidatorStatus,
     PublicEvidenceValidate {
+        manifest: String,
+    },
+    PublicTestnetPreflight {
         manifest: String,
     },
 }
@@ -66,6 +72,11 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
                 manifest: (*manifest).to_owned(),
             })
         }
+        ["public-testnet", "preflight", "--manifest", manifest] => {
+            Ok(CliCommand::PublicTestnetPreflight {
+                manifest: (*manifest).to_owned(),
+            })
+        }
         _ => Err(TvmError::InvalidReceipt("invalid cli command")),
     }
 }
@@ -86,6 +97,9 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::ValidatorStatus => "show validator status".to_owned(),
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
+        }
+        CliCommand::PublicTestnetPreflight { manifest } => {
+            format!("run public testnet preflight manifest {manifest}")
         }
     }
 }
@@ -109,6 +123,23 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
     ))
 }
 
+pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String> {
+    let plan = parse_public_testnet_preflight_manifest(input)?;
+    let report = plan.evaluate(ChainParams::default().block_time_seconds);
+    Ok(format!(
+        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\npublic_services_planned={}",
+        report.can_start_public_run,
+        report.local_shape_ready,
+        report.deployment_plan_ready,
+        report.miner_count,
+        report.validator_count,
+        report.required_blocks,
+        report.has_cuda_kernels_available,
+        report.has_production_libp2p_runtime,
+        report.has_public_service_plan,
+    ))
+}
+
 fn parse_u64(value: &str) -> Result<u64> {
     value
         .parse()
@@ -119,7 +150,9 @@ fn parse_u64(value: &str) -> Result<u64> {
 mod tests {
     use super::*;
     use crate::hash::hex;
-    use crate::testnet::PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION;
+    use crate::testnet::{
+        PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
+    };
     use crate::types::{address, hash_bytes};
 
     fn manifest_hash(label: &[u8]) -> String {
@@ -169,6 +202,34 @@ service=telemetry,{},0,9,10,10
             manifest_hash(b"miner-b-operator"),
             manifest_address(b"validator-a"),
             manifest_hash(b"validator-a-operator"),
+            manifest_hash(b"rpc-service"),
+            manifest_hash(b"explorer-service"),
+            manifest_hash(b"faucet-service"),
+            manifest_hash(b"telemetry-service"),
+        )
+    }
+
+    fn preflight_manifest() -> String {
+        format!(
+            "\
+version={PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION}
+miner_count=10
+validator_count=5
+miner_stake=100
+validator_stake=10000
+faucet_balance=1000000
+faucet_drip=100
+cuda_kernels_available=true
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+service=rpc,{},https://rpc.tensorvm.example/health,/health,true,true
+service=explorer,{},https://explorer.tensorvm.example/health,/health,true,true
+service=faucet,{},https://faucet.tensorvm.example/health,/health,true,true
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
+",
             manifest_hash(b"rpc-service"),
             manifest_hash(b"explorer-service"),
             manifest_hash(b"faucet-service"),
@@ -243,6 +304,18 @@ service=telemetry,{},0,9,10,10
                 manifest: "docs/tensorvm/public-testnet.evidence".to_owned(),
             }
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-testnet",
+                "preflight",
+                "--manifest",
+                "docs/tensorvm/public-testnet.preflight"
+            ])
+            .unwrap(),
+            CliCommand::PublicTestnetPreflight {
+                manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
+            }
+        );
     }
 
     #[test]
@@ -294,6 +367,12 @@ service=telemetry,{},0,9,10,10
                 },
                 "validate public evidence manifest evidence.txt",
             ),
+            (
+                CliCommand::PublicTestnetPreflight {
+                    manifest: "preflight.txt".to_owned(),
+                },
+                "run public testnet preflight manifest preflight.txt",
+            ),
         ];
         for (command, description) in commands {
             assert_eq!(describe_command(&command), description);
@@ -312,5 +391,21 @@ service=telemetry,{},0,9,10,10
         assert!(report.contains("required_blocks=100800"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
+    }
+
+    #[test]
+    fn validate_public_testnet_preflight_manifest_reports_launch_readiness() {
+        let report = validate_public_testnet_preflight_manifest(&preflight_manifest()).unwrap();
+        assert!(report.contains("public_testnet_preflight_ready=true"));
+        assert!(report.contains("local_shape_ready=true"));
+        assert!(report.contains("deployment_plan_ready=true"));
+        assert!(report.contains("miners=10"));
+        assert!(report.contains("validators=5"));
+        assert!(report.contains("required_blocks=100800"));
+        assert!(report.contains("cuda_kernels_available=true"));
+        assert!(report.contains("production_libp2p_runtime=true"));
+        assert!(report.contains("public_services_planned=true"));
+
+        assert!(validate_public_testnet_preflight_manifest("bad-manifest").is_err());
     }
 }

@@ -15,6 +15,7 @@ use crate::validator::ValidatorNode;
 use std::collections::BTreeSet;
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
+pub const PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-preflight-v1";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestnetConfig {
@@ -61,6 +62,118 @@ impl Default for PublicTestnetCriteria {
             min_invalid_work_rejections: 1,
             min_reward_settlement_records: 1,
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicDeploymentServicePlan {
+    pub kind: PublicServiceKind,
+    pub endpoint_id: Hash,
+    pub public_url: String,
+    pub health_path: String,
+    pub auth_enabled: bool,
+    pub rate_limit_enabled: bool,
+}
+
+impl PublicDeploymentServicePlan {
+    pub fn is_public_https_endpoint(&self) -> bool {
+        let Some(host) = public_https_host(&self.public_url) else {
+            return false;
+        };
+        !matches!(host, "localhost" | "127.0.0.1" | "0.0.0.0" | "[::1]")
+            && !host.ends_with(".local")
+    }
+
+    pub fn is_ready_for_public_run(&self) -> bool {
+        self.endpoint_id != [0; 32]
+            && self.is_public_https_endpoint()
+            && self.health_path.starts_with('/')
+            && self.health_path.len() > 1
+            && self.auth_enabled
+            && self.rate_limit_enabled
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicTestnetPreflightPlan {
+    pub config: TestnetConfig,
+    pub criteria: PublicTestnetCriteria,
+    pub cuda_kernels_available: bool,
+    pub network_runtime: PublicNetworkRuntimeEvidence,
+    pub services: Vec<PublicDeploymentServicePlan>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicTestnetPreflightReport {
+    pub miner_count: usize,
+    pub validator_count: usize,
+    pub required_blocks: u64,
+    pub has_required_miners: bool,
+    pub has_required_validators: bool,
+    pub has_positive_stakes: bool,
+    pub has_funded_faucet: bool,
+    pub has_cuda_kernels_available: bool,
+    pub has_production_libp2p_runtime: bool,
+    pub has_rpc_service_plan: bool,
+    pub has_explorer_service_plan: bool,
+    pub has_faucet_service_plan: bool,
+    pub has_telemetry_service_plan: bool,
+    pub has_public_service_plan: bool,
+    pub local_shape_ready: bool,
+    pub deployment_plan_ready: bool,
+    pub can_start_public_run: bool,
+}
+
+impl PublicTestnetPreflightPlan {
+    pub fn evaluate(&self, block_time_seconds: u64) -> PublicTestnetPreflightReport {
+        let required_blocks =
+            required_blocks_for_days(self.criteria.duration_days, block_time_seconds.max(1));
+        let has_required_miners = self.config.miner_count >= self.criteria.min_miners;
+        let has_required_validators = self.config.validator_count >= self.criteria.min_validators;
+        let has_positive_stakes = self.config.miner_stake > 0 && self.config.validator_stake > 0;
+        let has_funded_faucet =
+            self.config.faucet_drip > 0 && self.config.faucet_balance >= self.config.faucet_drip;
+        let has_production_libp2p_runtime = self.network_runtime.has_production_libp2p_runtime();
+        let has_rpc_service_plan = self.has_ready_service_plan(PublicServiceKind::Rpc);
+        let has_explorer_service_plan = self.has_ready_service_plan(PublicServiceKind::Explorer);
+        let has_faucet_service_plan = self.has_ready_service_plan(PublicServiceKind::Faucet);
+        let has_telemetry_service_plan = self.has_ready_service_plan(PublicServiceKind::Telemetry);
+        let has_public_service_plan = has_rpc_service_plan
+            && has_explorer_service_plan
+            && has_faucet_service_plan
+            && has_telemetry_service_plan;
+        let local_shape_ready = has_required_miners
+            && has_required_validators
+            && has_positive_stakes
+            && has_funded_faucet
+            && required_blocks > 0;
+        let deployment_plan_ready =
+            self.cuda_kernels_available && has_production_libp2p_runtime && has_public_service_plan;
+        PublicTestnetPreflightReport {
+            miner_count: self.config.miner_count,
+            validator_count: self.config.validator_count,
+            required_blocks,
+            has_required_miners,
+            has_required_validators,
+            has_positive_stakes,
+            has_funded_faucet,
+            has_cuda_kernels_available: self.cuda_kernels_available,
+            has_production_libp2p_runtime,
+            has_rpc_service_plan,
+            has_explorer_service_plan,
+            has_faucet_service_plan,
+            has_telemetry_service_plan,
+            has_public_service_plan,
+            local_shape_ready,
+            deployment_plan_ready,
+            can_start_public_run: local_shape_ready && deployment_plan_ready,
+        }
+    }
+
+    fn has_ready_service_plan(&self, kind: PublicServiceKind) -> bool {
+        self.services
+            .iter()
+            .any(|service| service.kind == kind && service.is_ready_for_public_run())
     }
 }
 
@@ -178,6 +291,21 @@ pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestn
         let (key, value) = line
             .split_once('=')
             .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
+        builder.set(key.trim(), value.trim())?;
+    }
+    builder.finish()
+}
+
+pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTestnetPreflightPlan> {
+    let mut builder = PublicTestnetPreflightManifestBuilder::default();
+    for raw_line in input.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (key, value) = line.split_once('=').ok_or(TvmError::InvalidReceipt(
+            "malformed preflight manifest line",
+        ))?;
         builder.set(key.trim(), value.trim())?;
     }
     builder.finish()
@@ -324,6 +452,105 @@ struct PublicEvidenceManifestBuilder {
     invalid_receipts_submitted: Option<u64>,
     invalid_receipts_rejected: Option<u64>,
     reward_settlement_records: Option<u64>,
+}
+
+#[derive(Default)]
+struct PublicTestnetPreflightManifestBuilder {
+    version_seen: bool,
+    miner_count: Option<usize>,
+    validator_count: Option<usize>,
+    miner_stake: Option<u64>,
+    validator_stake: Option<u64>,
+    faucet_balance: Option<u64>,
+    faucet_drip: Option<u64>,
+    cuda_kernels_available: Option<bool>,
+    libp2p_runtime_used: Option<bool>,
+    peer_discovery_observed: Option<bool>,
+    gossip_propagation_observed: Option<bool>,
+    request_response_observed: Option<bool>,
+    dos_controls_enabled: Option<bool>,
+    services: Vec<PublicDeploymentServicePlan>,
+}
+
+impl PublicTestnetPreflightManifestBuilder {
+    fn set(&mut self, key: &str, value: &str) -> Result<()> {
+        match key {
+            "version" => {
+                if value != PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION {
+                    return Err(TvmError::InvalidReceipt(
+                        "unsupported preflight manifest version",
+                    ));
+                }
+                self.version_seen = true;
+            }
+            "miner_count" => self.miner_count = Some(parse_manifest_usize(value)?),
+            "validator_count" => self.validator_count = Some(parse_manifest_usize(value)?),
+            "miner_stake" => self.miner_stake = Some(parse_manifest_u64(value)?),
+            "validator_stake" => self.validator_stake = Some(parse_manifest_u64(value)?),
+            "faucet_balance" => self.faucet_balance = Some(parse_manifest_u64(value)?),
+            "faucet_drip" => self.faucet_drip = Some(parse_manifest_u64(value)?),
+            "cuda_kernels_available" => {
+                self.cuda_kernels_available = Some(parse_manifest_bool(value)?);
+            }
+            "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
+            "peer_discovery_observed" => {
+                self.peer_discovery_observed = Some(parse_manifest_bool(value)?);
+            }
+            "gossip_propagation_observed" => {
+                self.gossip_propagation_observed = Some(parse_manifest_bool(value)?);
+            }
+            "request_response_observed" => {
+                self.request_response_observed = Some(parse_manifest_bool(value)?);
+            }
+            "dos_controls_enabled" => self.dos_controls_enabled = Some(parse_manifest_bool(value)?),
+            "service" => self.services.push(parse_preflight_service_plan(value)?),
+            _ => return Err(TvmError::InvalidReceipt("unknown preflight manifest field")),
+        }
+        Ok(())
+    }
+
+    fn finish(self) -> Result<PublicTestnetPreflightPlan> {
+        if !self.version_seen {
+            return Err(TvmError::InvalidReceipt(
+                "missing preflight manifest version",
+            ));
+        }
+        Ok(PublicTestnetPreflightPlan {
+            config: TestnetConfig {
+                miner_count: required_usize(self.miner_count)?,
+                validator_count: required_usize(self.validator_count)?,
+                miner_stake: required_u64(self.miner_stake)?,
+                validator_stake: required_u64(self.validator_stake)?,
+                faucet_balance: required_u64(self.faucet_balance)?,
+                faucet_drip: required_u64(self.faucet_drip)?,
+            },
+            criteria: PublicTestnetCriteria::default(),
+            cuda_kernels_available: required_bool(self.cuda_kernels_available)?,
+            network_runtime: PublicNetworkRuntimeEvidence {
+                libp2p_runtime_used: required_bool(self.libp2p_runtime_used)?,
+                peer_discovery_observed: required_bool(self.peer_discovery_observed)?,
+                gossip_propagation_observed: required_bool(self.gossip_propagation_observed)?,
+                request_response_observed: required_bool(self.request_response_observed)?,
+                dos_controls_enabled: required_bool(self.dos_controls_enabled)?,
+            },
+            services: self.services,
+        })
+    }
+}
+
+fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePlan> {
+    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
+    if fields.len() != 6 {
+        return Err(TvmError::InvalidReceipt("malformed preflight service plan"));
+    }
+    Ok(PublicDeploymentServicePlan {
+        kind: parse_service_kind(fields[0])?,
+        endpoint_id: parse_hash_hex(fields[1])?,
+        public_url: fields[2].to_owned(),
+        health_path: fields[3].to_owned(),
+        auth_enabled: parse_manifest_bool(fields[4])?,
+        rate_limit_enabled: parse_manifest_bool(fields[5])?,
+    })
 }
 
 impl PublicEvidenceManifestBuilder {
@@ -514,6 +741,12 @@ fn parse_manifest_u64(value: &str) -> Result<u64> {
         .map_err(|_| TvmError::InvalidReceipt("invalid evidence manifest number"))
 }
 
+fn parse_manifest_usize(value: &str) -> Result<usize> {
+    value
+        .parse()
+        .map_err(|_| TvmError::InvalidReceipt("invalid evidence manifest number"))
+}
+
 fn parse_manifest_bool(value: &str) -> Result<bool> {
     match value {
         "true" => Ok(true),
@@ -525,6 +758,10 @@ fn parse_manifest_bool(value: &str) -> Result<bool> {
 }
 
 fn required_u64(value: Option<u64>) -> Result<u64> {
+    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest number"))
+}
+
+fn required_usize(value: Option<usize>) -> Result<usize> {
     value.ok_or(TvmError::InvalidReceipt("missing evidence manifest number"))
 }
 
@@ -540,6 +777,13 @@ fn required_hash(value: Option<Hash>) -> Result<Hash> {
 
 fn required_string(value: Option<String>) -> Result<String> {
     value.ok_or(TvmError::InvalidReceipt("missing evidence manifest string"))
+}
+
+fn public_https_host(url: &str) -> Option<&str> {
+    let rest = url.trim().strip_prefix("https://")?;
+    let host_with_port = rest.split('/').next().unwrap_or_default();
+    let host = host_with_port.split(':').next().unwrap_or(host_with_port);
+    (!host.is_empty()).then_some(host)
 }
 
 impl PublicTestnetEvidenceBundle {
@@ -1205,6 +1449,35 @@ service=telemetry,{},0,9,10,10
         )
     }
 
+    fn complete_public_preflight_manifest_text() -> String {
+        format!(
+            "\
+# TensorVM public testnet launch preflight manifest
+version={PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION}
+miner_count=10
+validator_count=5
+miner_stake=100
+validator_stake=10000
+faucet_balance=1000000
+faucet_drip=100
+cuda_kernels_available=true
+libp2p_runtime_used=true
+peer_discovery_observed=true
+gossip_propagation_observed=true
+request_response_observed=true
+dos_controls_enabled=true
+service=rpc,{},https://rpc.tensorvm.example/health,/health,true,true
+service=explorer,{},https://explorer.tensorvm.example/health,/health,true,true
+service=faucet,{},https://faucet.tensorvm.example/health,/health,true,true
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
+",
+            manifest_hash(b"test", b"rpc-service"),
+            manifest_hash(b"test", b"explorer-service"),
+            manifest_hash(b"test", b"faucet-service"),
+            manifest_hash(b"test", b"telemetry-service"),
+        )
+    }
+
     fn manifest_without_line(manifest: &str, prefix: &str) -> String {
         manifest
             .lines()
@@ -1669,6 +1942,110 @@ service=telemetry,{},0,9,10,10
 
         for case in cases {
             assert!(parse_public_testnet_evidence_manifest(&case).is_err());
+        }
+    }
+
+    #[test]
+    fn public_testnet_preflight_manifest_reports_launch_readiness() {
+        let manifest = complete_public_preflight_manifest_text();
+        let plan = parse_public_testnet_preflight_manifest(&manifest).unwrap();
+        let report = plan.evaluate(ChainParams::default().block_time_seconds);
+
+        assert_eq!(report.miner_count, 10);
+        assert_eq!(report.validator_count, 5);
+        assert_eq!(report.required_blocks, 100_800);
+        assert!(report.has_required_miners);
+        assert!(report.has_required_validators);
+        assert!(report.has_positive_stakes);
+        assert!(report.has_funded_faucet);
+        assert!(report.has_cuda_kernels_available);
+        assert!(report.has_production_libp2p_runtime);
+        assert!(report.has_rpc_service_plan);
+        assert!(report.has_explorer_service_plan);
+        assert!(report.has_faucet_service_plan);
+        assert!(report.has_telemetry_service_plan);
+        assert!(report.has_public_service_plan);
+        assert!(report.local_shape_ready);
+        assert!(report.deployment_plan_ready);
+        assert!(report.can_start_public_run);
+
+        let rpc = plan
+            .services
+            .iter()
+            .find(|service| service.kind == PublicServiceKind::Rpc)
+            .unwrap();
+        assert_eq!(public_https_host("https:///missing-host"), None);
+        assert_eq!(
+            public_https_host("https://rpc.tensorvm.example:443/health"),
+            Some("rpc.tensorvm.example")
+        );
+        assert!(rpc.is_public_https_endpoint());
+        assert!(rpc.is_ready_for_public_run());
+        let mut http_rpc = rpc.clone();
+        http_rpc.public_url = String::from("http://rpc.tensorvm.example/health");
+        assert!(!http_rpc.is_public_https_endpoint());
+
+        let local_rpc = manifest.replace(
+            "https://rpc.tensorvm.example/health",
+            "https://localhost:8545/health",
+        );
+        let local_rpc_report = parse_public_testnet_preflight_manifest(&local_rpc)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!local_rpc_report.has_rpc_service_plan);
+        assert!(!local_rpc_report.has_public_service_plan);
+        assert!(!local_rpc_report.can_start_public_run);
+
+        let no_cuda = manifest.replace(
+            "cuda_kernels_available=true",
+            "cuda_kernels_available=false",
+        );
+        let no_cuda_report = parse_public_testnet_preflight_manifest(&no_cuda)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(no_cuda_report.local_shape_ready);
+        assert!(!no_cuda_report.has_cuda_kernels_available);
+        assert!(!no_cuda_report.deployment_plan_ready);
+        assert!(!no_cuda_report.can_start_public_run);
+
+        let no_auth = manifest.replace(
+            "https://telemetry.tensorvm.example/health,/health,true,true",
+            "https://telemetry.tensorvm.example/health,/health,false,true",
+        );
+        let no_auth_report = parse_public_testnet_preflight_manifest(&no_auth)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!no_auth_report.has_telemetry_service_plan);
+        assert!(!no_auth_report.can_start_public_run);
+    }
+
+    #[test]
+    fn public_testnet_preflight_manifest_rejects_malformed_input() {
+        let manifest = complete_public_preflight_manifest_text();
+        let cases = [
+            manifest_without_line(&manifest, "version="),
+            manifest.replace(
+                PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
+                "tensor-vm-public-testnet-preflight-v0",
+            ),
+            manifest_without_line(&manifest, "miner_count="),
+            manifest.replace("miner_count=10", "miner_count=abc"),
+            manifest.replace(
+                "cuda_kernels_available=true",
+                "cuda_kernels_available=maybe",
+            ),
+            manifest.replace("service=rpc", "service=archive"),
+            manifest.replace(
+                "service=rpc,",
+                "service=rpc,too,few,fields\n# removed original service=",
+            ),
+            manifest.replace("service=rpc,", "service=rpc,zz"),
+            format!("{manifest}\nunknown_field=1\n"),
+            manifest.replace("service=rpc", "malformed-line"),
+        ];
+
+        for case in cases {
+            assert!(parse_public_testnet_preflight_manifest(&case).is_err());
         }
     }
 

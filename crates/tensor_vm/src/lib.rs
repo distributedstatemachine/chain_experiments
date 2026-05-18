@@ -40,7 +40,10 @@ pub use chain::{
     MinerState, RewardAllocation, RewardState, ValidatorState,
 };
 pub use challenge::{ChallengeOutcome, FraudChallenge, TensorOpChallengeInput, TraceStep};
-pub use cli::{CliCommand, parse_cli_args, validate_public_evidence_manifest};
+pub use cli::{
+    CliCommand, parse_cli_args, validate_public_evidence_manifest,
+    validate_public_testnet_preflight_manifest,
+};
 pub use error::{Result, TvmError};
 pub use faucet::Faucet;
 pub use jobs::{
@@ -77,10 +80,12 @@ pub use study::{
 pub use tensor::{DType, Layout, Tensor, TensorDescriptor, TensorOpening};
 pub use tensor_server::TensorServer;
 pub use testnet::{
-    LocalTestnet, PublicEvidencePublication, PublicNetworkRuntimeEvidence, PublicNodeEvidence,
-    PublicNodeRole, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
-    PublicTestnetEvidence, PublicTestnetEvidenceBundle, PublicTestnetEvidenceBundleReport,
+    LocalTestnet, PublicDeploymentServicePlan, PublicEvidencePublication,
+    PublicNetworkRuntimeEvidence, PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence,
+    PublicServiceKind, PublicTestnetCriteria, PublicTestnetEvidence, PublicTestnetEvidenceBundle,
+    PublicTestnetEvidenceBundleReport, PublicTestnetPreflightPlan, PublicTestnetPreflightReport,
     PublicTestnetRunEvidence, TestnetConfig, parse_public_testnet_evidence_manifest,
+    parse_public_testnet_preflight_manifest,
 };
 pub use txpool::TxPool;
 pub use types::{Address, Hash, Signature};

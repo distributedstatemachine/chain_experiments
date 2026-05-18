@@ -79,6 +79,9 @@ pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] =
     &["tvmd public-evidence validate --manifest <path>"];
 
+pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] =
+    &["tvmd public-testnet preflight --manifest <path>"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +110,11 @@ mod tests {
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("public-evidence validate"))
+        );
+        assert!(
+            PUBLIC_TESTNET_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("public-testnet preflight"))
         );
     }
 }
