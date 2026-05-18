@@ -18,9 +18,9 @@ A complete evidence bundle must include:
 - independent auditor or verifier records
 - signed miner and validator heartbeat history for the full run
 - independent operator identity or attestation records
-- block history for the full 7-day run
-- finality history for the full 7-day run
-- data-availability measurements for checked tensor receipts
+- signed block-history summary root for the full 7-day run
+- signed finality-history summary root for the full 7-day run
+- signed data-availability measurement summary root for checked tensor receipts
 - invalid-work submission and rejection evidence
 - reward-settlement records for verified TensorWork
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
@@ -42,19 +42,22 @@ The local reference crate exposes typed validation for this future bundle throug
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed service-health summaries, and an external
 publication URI. It verifies a manifest publication signature over the bundle ID, public URI, manifest
-signature count, and independent auditor count, and it derives `external_operator_evidence` from the
-manifest's operator identity attestation record count rather than from a CLI flag. These local checks are
-still only evidence-format validation until an external run publishes real records.
+signature count, and independent auditor count. It also verifies signed supporting-record roots for block
+history, finality history, and data-availability measurements, and it derives
+`external_operator_evidence` from the manifest's operator identity attestation record count rather than from
+a CLI flag. These local checks are still only evidence-format validation until an external run publishes
+real records.
 
 ## Manifest Format
 
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
-signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
-Heartbeat signatures cover the node role, address, operator ID, first/last observed block, and heartbeat
-count. Service-health signatures cover the service kind, endpoint ID, first/last observed block, reachable
-observation count, and signed health-check count.
+signature covers the bundle ID, public URI, manifest signature count, and independent auditor count. Block,
+finality, and data-availability signatures cover the bundle ID, record-set kind, record-set root, and record
+count. Heartbeat signatures cover the node role, address, operator ID, first/last observed block, and
+heartbeat count. Service-health signatures cover the service kind, endpoint ID, first/last observed block,
+reachable observation count, and signed health-check count.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -65,9 +68,15 @@ manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=100800
+block_history_root=<history-root-hex>
+block_history_signature=<history-signature-hex>
 finality_history_records=100800
+finality_history_root=<finality-root-hex>
+finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
 data_availability_measurement_records=1000
+data_availability_measurement_root=<da-root-hex>
+data_availability_measurement_signature=<da-signature-hex>
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true

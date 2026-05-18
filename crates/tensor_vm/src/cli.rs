@@ -274,8 +274,9 @@ mod tests {
     use crate::hash::hex;
     use crate::testnet::{
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
-        PublicEvidencePublication, PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence,
-        PublicServiceKind,
+        PublicEvidencePublication, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
+        PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence, PublicServiceKind,
+        PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
     };
     use crate::types::{address, hash_bytes};
 
@@ -319,6 +320,107 @@ mod tests {
         hex(&publication.manifest_signature)
     }
 
+    fn manifest_publication() -> PublicEvidencePublication {
+        PublicEvidencePublication::new(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            String::from("https://example.test/tensorvm/public-evidence.json"),
+            address(b"public-evidence-publisher"),
+            1,
+            1,
+        )
+    }
+
+    fn manifest_bundle() -> PublicTestnetEvidenceBundle {
+        PublicTestnetEvidenceBundle::new(
+            PublicTestnetRunEvidence {
+                nodes: vec![
+                    PublicNodeEvidence::miner(
+                        address(b"miner-a"),
+                        hash_bytes(b"test", &[b"miner-a-operator"]),
+                        0,
+                        9,
+                        10,
+                    ),
+                    PublicNodeEvidence::miner(
+                        address(b"miner-b"),
+                        hash_bytes(b"test", &[b"miner-b-operator"]),
+                        0,
+                        9,
+                        10,
+                    ),
+                    PublicNodeEvidence::validator(
+                        address(b"validator-a"),
+                        hash_bytes(b"test", &[b"validator-a-operator"]),
+                        0,
+                        9,
+                        10,
+                    ),
+                ],
+                network_runtime: PublicNetworkRuntimeEvidence {
+                    libp2p_runtime_used: true,
+                    peer_discovery_observed: true,
+                    gossip_propagation_observed: true,
+                    request_response_observed: true,
+                    dos_controls_enabled: true,
+                },
+                services: vec![
+                    PublicServiceEvidence::new(
+                        PublicServiceKind::Rpc,
+                        hash_bytes(b"test", &[b"rpc-service"]),
+                        0,
+                        9,
+                        10,
+                        10,
+                    ),
+                    PublicServiceEvidence::new(
+                        PublicServiceKind::Explorer,
+                        hash_bytes(b"test", &[b"explorer-service"]),
+                        0,
+                        9,
+                        10,
+                        10,
+                    ),
+                    PublicServiceEvidence::new(
+                        PublicServiceKind::Faucet,
+                        hash_bytes(b"test", &[b"faucet-service"]),
+                        0,
+                        9,
+                        10,
+                        10,
+                    ),
+                    PublicServiceEvidence::new(
+                        PublicServiceKind::Telemetry,
+                        hash_bytes(b"test", &[b"telemetry-service"]),
+                        0,
+                        9,
+                        10,
+                        10,
+                    ),
+                ],
+                observed_blocks: 10,
+                finalized_blocks: 10,
+                checked_receipts: 20,
+                available_receipts: 19,
+                invalid_receipts_submitted: 1,
+                invalid_receipts_rejected: 1,
+                reward_settlement_records: 1,
+            },
+            manifest_publication(),
+            PublicEvidenceRecordSummaries {
+                block_history_records: 10,
+                block_history_root: hash_bytes(b"test", &[b"block-history-root"]),
+                finality_history_records: 10,
+                finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
+                operator_identity_attestation_records: 3,
+                data_availability_measurement_records: 20,
+                data_availability_measurement_root: hash_bytes(
+                    b"test",
+                    &[b"data-availability-root"],
+                ),
+            },
+        )
+    }
+
     fn evidence_manifest() -> String {
         format!(
             "\
@@ -330,9 +432,15 @@ manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=10
+block_history_root={}
+block_history_signature={}
 finality_history_records=10
+finality_history_root={}
+finality_history_signature={}
 operator_identity_attestation_records=3
 data_availability_measurement_records=20
+data_availability_measurement_root={}
+data_availability_measurement_signature={}
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -356,6 +464,12 @@ service=telemetry,{},0,9,10,10,{}
             manifest_hash(b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
             manifest_publication_signature(),
+            manifest_hash(b"block-history-root"),
+            hex(&manifest_bundle().block_history_signature),
+            manifest_hash(b"finality-history-root"),
+            hex(&manifest_bundle().finality_history_signature),
+            manifest_hash(b"data-availability-root"),
+            hex(&manifest_bundle().data_availability_measurement_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),

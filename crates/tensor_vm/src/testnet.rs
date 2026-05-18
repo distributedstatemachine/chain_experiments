@@ -526,13 +526,30 @@ pub struct PublicTestnetRunEvidence {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicEvidenceRecordSummaries {
+    pub block_history_records: u64,
+    pub block_history_root: Hash,
+    pub finality_history_records: u64,
+    pub finality_history_root: Hash,
+    pub operator_identity_attestation_records: u64,
+    pub data_availability_measurement_records: u64,
+    pub data_availability_measurement_root: Hash,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PublicTestnetEvidenceBundle {
     pub run: PublicTestnetRunEvidence,
     pub publication: PublicEvidencePublication,
     pub block_history_records: u64,
+    pub block_history_root: Hash,
+    pub block_history_signature: Signature,
     pub finality_history_records: u64,
+    pub finality_history_root: Hash,
+    pub finality_history_signature: Signature,
     pub operator_identity_attestation_records: u64,
     pub data_availability_measurement_records: u64,
+    pub data_availability_measurement_root: Hash,
+    pub data_availability_measurement_signature: Signature,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -557,9 +574,15 @@ struct PublicEvidenceManifestBuilder {
     manifest_signature_count: Option<u64>,
     independent_auditor_count: Option<u64>,
     block_history_records: Option<u64>,
+    block_history_root: Option<Hash>,
+    block_history_signature: Option<Signature>,
     finality_history_records: Option<u64>,
+    finality_history_root: Option<Hash>,
+    finality_history_signature: Option<Signature>,
     operator_identity_attestation_records: Option<u64>,
     data_availability_measurement_records: Option<u64>,
+    data_availability_measurement_root: Option<Hash>,
+    data_availability_measurement_signature: Option<Signature>,
     libp2p_runtime_used: Option<bool>,
     peer_discovery_observed: Option<bool>,
     gossip_propagation_observed: Option<bool>,
@@ -699,14 +722,28 @@ impl PublicEvidenceManifestBuilder {
             "block_history_records" => {
                 self.block_history_records = Some(parse_manifest_u64(value)?);
             }
+            "block_history_root" => self.block_history_root = Some(parse_hash_hex(value)?),
+            "block_history_signature" => {
+                self.block_history_signature = Some(parse_hash_hex(value)?);
+            }
             "finality_history_records" => {
                 self.finality_history_records = Some(parse_manifest_u64(value)?);
+            }
+            "finality_history_root" => self.finality_history_root = Some(parse_hash_hex(value)?),
+            "finality_history_signature" => {
+                self.finality_history_signature = Some(parse_hash_hex(value)?);
             }
             "operator_identity_attestation_records" => {
                 self.operator_identity_attestation_records = Some(parse_manifest_u64(value)?);
             }
             "data_availability_measurement_records" => {
                 self.data_availability_measurement_records = Some(parse_manifest_u64(value)?);
+            }
+            "data_availability_measurement_root" => {
+                self.data_availability_measurement_root = Some(parse_hash_hex(value)?);
+            }
+            "data_availability_measurement_signature" => {
+                self.data_availability_measurement_signature = Some(parse_hash_hex(value)?);
             }
             "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
             "peer_discovery_observed" => {
@@ -776,12 +813,22 @@ impl PublicEvidenceManifestBuilder {
                 publication
             },
             block_history_records: required_u64(self.block_history_records)?,
+            block_history_root: required_hash(self.block_history_root)?,
+            block_history_signature: required_hash(self.block_history_signature)?,
             finality_history_records: required_u64(self.finality_history_records)?,
+            finality_history_root: required_hash(self.finality_history_root)?,
+            finality_history_signature: required_hash(self.finality_history_signature)?,
             operator_identity_attestation_records: required_u64(
                 self.operator_identity_attestation_records,
             )?,
             data_availability_measurement_records: required_u64(
                 self.data_availability_measurement_records,
+            )?,
+            data_availability_measurement_root: required_hash(
+                self.data_availability_measurement_root,
+            )?,
+            data_availability_measurement_signature: required_hash(
+                self.data_availability_measurement_signature,
             )?,
         })
     }
@@ -979,6 +1026,49 @@ fn public_evidence_manifest_message(
     )
 }
 
+#[derive(Clone, Copy)]
+enum PublicEvidenceRecordKind {
+    BlockHistory,
+    FinalityHistory,
+    DataAvailabilityMeasurements,
+}
+
+impl PublicEvidenceRecordKind {
+    fn tag(self) -> &'static [u8] {
+        match self {
+            Self::BlockHistory => b"block-history",
+            Self::FinalityHistory => b"finality-history",
+            Self::DataAvailabilityMeasurements => b"data-availability-measurements",
+        }
+    }
+}
+
+fn public_evidence_record_message(
+    bundle_id: &Hash,
+    kind: PublicEvidenceRecordKind,
+    record_root: &Hash,
+    record_count: u64,
+) -> Hash {
+    let count = record_count.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-evidence-record-v1",
+        &[bundle_id, kind.tag(), record_root, &count],
+    )
+}
+
+fn sign_public_evidence_record(
+    signer: &Address,
+    bundle_id: &Hash,
+    kind: PublicEvidenceRecordKind,
+    record_root: &Hash,
+    record_count: u64,
+) -> Signature {
+    sign(
+        signer,
+        &public_evidence_record_message(bundle_id, kind, record_root, record_count),
+    )
+}
+
 fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
     let Some(rest) = uri.strip_prefix(scheme) else {
         return false;
@@ -1046,6 +1136,49 @@ fn public_service_health_message(
 }
 
 impl PublicTestnetEvidenceBundle {
+    pub fn new(
+        run: PublicTestnetRunEvidence,
+        publication: PublicEvidencePublication,
+        record_summaries: PublicEvidenceRecordSummaries,
+    ) -> Self {
+        let signer = publication.manifest_signer;
+        let bundle_id = publication.bundle_id;
+        Self {
+            run,
+            publication,
+            block_history_records: record_summaries.block_history_records,
+            block_history_root: record_summaries.block_history_root,
+            block_history_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::BlockHistory,
+                &record_summaries.block_history_root,
+                record_summaries.block_history_records,
+            ),
+            finality_history_records: record_summaries.finality_history_records,
+            finality_history_root: record_summaries.finality_history_root,
+            finality_history_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::FinalityHistory,
+                &record_summaries.finality_history_root,
+                record_summaries.finality_history_records,
+            ),
+            operator_identity_attestation_records: record_summaries
+                .operator_identity_attestation_records,
+            data_availability_measurement_records: record_summaries
+                .data_availability_measurement_records,
+            data_availability_measurement_root: record_summaries.data_availability_measurement_root,
+            data_availability_measurement_signature: sign_public_evidence_record(
+                &signer,
+                &bundle_id,
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                &record_summaries.data_availability_measurement_root,
+                record_summaries.data_availability_measurement_records,
+            ),
+        }
+    }
+
     pub fn evaluate(
         &self,
         criteria: &PublicTestnetCriteria,
@@ -1053,10 +1186,22 @@ impl PublicTestnetEvidenceBundle {
     ) -> PublicTestnetEvidenceBundleReport {
         let has_published_evidence_bundle =
             self.publication.is_published_and_independently_checkable();
-        let has_block_history =
-            self.run.observed_blocks > 0 && self.block_history_records >= self.run.observed_blocks;
+        let has_block_history = self.run.observed_blocks > 0
+            && self.block_history_records >= self.run.observed_blocks
+            && self.public_record_signature_valid(
+                PublicEvidenceRecordKind::BlockHistory,
+                &self.block_history_root,
+                self.block_history_records,
+                &self.block_history_signature,
+            );
         let has_finality_history = self.run.observed_blocks > 0
-            && self.finality_history_records >= self.run.observed_blocks;
+            && self.finality_history_records >= self.run.observed_blocks
+            && self.public_record_signature_valid(
+                PublicEvidenceRecordKind::FinalityHistory,
+                &self.finality_history_root,
+                self.finality_history_records,
+                &self.finality_history_signature,
+            );
         let (miner_count, validator_count) = self.run.independent_operator_counts();
         let required_operator_attestations = (miner_count + validator_count) as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
@@ -1067,7 +1212,13 @@ impl PublicTestnetEvidenceBundle {
             has_operator_identity_attestations,
         );
         let has_data_availability_measurements = self.run.checked_receipts > 0
-            && self.data_availability_measurement_records >= self.run.checked_receipts;
+            && self.data_availability_measurement_records >= self.run.checked_receipts
+            && self.public_record_signature_valid(
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                &self.data_availability_measurement_root,
+                self.data_availability_measurement_records,
+                &self.data_availability_measurement_signature,
+            );
         let independently_checkable = has_published_evidence_bundle
             && has_block_history
             && has_finality_history
@@ -1086,6 +1237,28 @@ impl PublicTestnetEvidenceBundle {
             independently_checkable,
             full_spec_evidence_met,
         }
+    }
+
+    fn public_record_signature_valid(
+        &self,
+        kind: PublicEvidenceRecordKind,
+        record_root: &Hash,
+        record_count: u64,
+        signature: &Signature,
+    ) -> bool {
+        self.publication.manifest_signer != [0; 32]
+            && self.publication.bundle_id != [0; 32]
+            && *record_root != [0; 32]
+            && verify_signature(
+                &self.publication.manifest_signer,
+                &public_evidence_record_message(
+                    &self.publication.bundle_id,
+                    kind,
+                    record_root,
+                    record_count,
+                ),
+                signature,
+            )
     }
 }
 
@@ -1638,20 +1811,28 @@ mod tests {
     }
 
     fn complete_public_evidence_bundle() -> PublicTestnetEvidenceBundle {
-        PublicTestnetEvidenceBundle {
-            run: complete_public_run_evidence(),
-            publication: PublicEvidencePublication::new(
+        PublicTestnetEvidenceBundle::new(
+            complete_public_run_evidence(),
+            PublicEvidencePublication::new(
                 hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 String::from("https://example.test/tensorvm/public-evidence.json"),
                 address(b"public-evidence-publisher"),
                 1,
                 1,
             ),
-            block_history_records: 10,
-            finality_history_records: 10,
-            operator_identity_attestation_records: 3,
-            data_availability_measurement_records: 20,
-        }
+            PublicEvidenceRecordSummaries {
+                block_history_records: 10,
+                block_history_root: hash_bytes(b"test", &[b"block-history-root"]),
+                finality_history_records: 10,
+                finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
+                operator_identity_attestation_records: 3,
+                data_availability_measurement_records: 20,
+                data_availability_measurement_root: hash_bytes(
+                    b"test",
+                    &[b"data-availability-root"],
+                ),
+            },
+        )
     }
 
     fn manifest_hash(domain: &[u8], label: &[u8]) -> String {
@@ -1671,6 +1852,10 @@ mod tests {
             1,
         );
         hex(&publication.manifest_signature)
+    }
+
+    fn manifest_bundle() -> PublicTestnetEvidenceBundle {
+        complete_public_evidence_bundle()
     }
 
     fn manifest_node_signature(
@@ -1706,9 +1891,15 @@ manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
 block_history_records=10
+block_history_root={}
+block_history_signature={}
 finality_history_records=10
+finality_history_root={}
+finality_history_signature={}
 operator_identity_attestation_records=3
 data_availability_measurement_records=20
+data_availability_measurement_root={}
+data_availability_measurement_signature={}
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -1732,6 +1923,12 @@ service=telemetry,{},0,9,10,10,{}
             manifest_hash(b"test", b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
             manifest_publication_signature(),
+            manifest_hash(b"test", b"block-history-root"),
+            hex(&manifest_bundle().block_history_signature),
+            manifest_hash(b"test", b"finality-history-root"),
+            hex(&manifest_bundle().finality_history_signature),
+            manifest_hash(b"test", b"data-availability-root"),
+            hex(&manifest_bundle().data_availability_measurement_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"test", b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -2207,10 +2404,28 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!missing_block_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.block_history_signature = [6; 32];
+        let tampered_block_history = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_block_history.has_block_history);
+        assert!(!tampered_block_history.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.block_history_root = [0; 32];
+        let missing_block_history_root = bundle.evaluate(&criteria, 6);
+        assert!(!missing_block_history_root.has_block_history);
+        assert!(!missing_block_history_root.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         bundle.finality_history_records = 9;
         let missing_finality_history = bundle.evaluate(&criteria, 6);
         assert!(!missing_finality_history.has_finality_history);
         assert!(!missing_finality_history.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.finality_history_signature = [5; 32];
+        let tampered_finality_history = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_finality_history.has_finality_history);
+        assert!(!tampered_finality_history.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestation_records = 2;
@@ -2233,6 +2448,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let missing_data_availability_measurements = bundle.evaluate(&criteria, 6);
         assert!(!missing_data_availability_measurements.has_data_availability_measurements);
         assert!(!missing_data_availability_measurements.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.data_availability_measurement_signature = [4; 32];
+        let tampered_data_availability_measurements = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_data_availability_measurements.has_data_availability_measurements);
+        assert!(!tampered_data_availability_measurements.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.run.services.clear();
@@ -2290,6 +2511,12 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest_without_line(&manifest, "public_uri="),
             manifest_without_line(&manifest, "manifest_signer="),
             manifest_without_line(&manifest, "manifest_signature="),
+            manifest_without_line(&manifest, "block_history_root="),
+            manifest_without_line(&manifest, "block_history_signature="),
+            manifest_without_line(&manifest, "finality_history_root="),
+            manifest_without_line(&manifest, "finality_history_signature="),
+            manifest_without_line(&manifest, "data_availability_measurement_root="),
+            manifest_without_line(&manifest, "data_availability_measurement_signature="),
             manifest_without_line(&manifest, "observed_blocks="),
             manifest_without_line(&manifest, "dos_controls_enabled="),
             manifest.replace("bundle_id=0x", "bundle_id=0x12"),
