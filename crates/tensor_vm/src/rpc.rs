@@ -172,10 +172,11 @@ impl RpcNode {
             ("GET", "/health") => self.health("all"),
             ("GET", "/rpc/health") => self.health("rpc"),
             ("GET", "/chain/head") => self.ok(format!(
-                "{{\"height\":{},\"epoch\":{},\"block_count\":{}}}",
+                "{{\"height\":{},\"epoch\":{},\"block_count\":{},\"state_root\":\"{}\"}}",
                 self.chain.state.height,
                 self.chain.state.epoch,
-                self.chain.blocks.len()
+                self.chain.blocks.len(),
+                hex(&self.chain.state_root())
             )),
             ("GET", "/epoch/current") => {
                 self.ok(format!("{{\"epoch\":{}}}", self.chain.state.epoch))
@@ -862,6 +863,8 @@ mod tests {
         });
         assert_eq!(head.status, 200);
         assert!(head.body.contains("\"height\":1"));
+        assert!(head.body.contains("\"state_root\""));
+        assert!(head.body.len() >= 64);
 
         let health = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),

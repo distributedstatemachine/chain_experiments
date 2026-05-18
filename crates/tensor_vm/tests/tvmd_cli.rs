@@ -108,6 +108,64 @@ fn response_body(response: &str) -> &str {
         .expect("HTTP response must contain a body separator")
 }
 
+fn assert_service_content_evidence_from_response(
+    data_dir: &Path,
+    kind: &str,
+    endpoint_id: &str,
+    public_url: &str,
+    content_path: &str,
+    file_name: &str,
+    response: &str,
+) {
+    let body = response_body(response);
+    assert!(
+        body.len() >= 64,
+        "{content_path} body must satisfy service-content byte minimum"
+    );
+    let body_hex = hex(body.as_bytes());
+    let content_from_bytes = run_tvmd(&[
+        "public-evidence",
+        "service-content-from-bytes",
+        "--kind",
+        kind,
+        "--endpoint-id",
+        endpoint_id,
+        "--public-url",
+        public_url,
+        "--content-path",
+        content_path,
+        "--observed-at",
+        "1700000000",
+        "--content-hex",
+        &body_hex,
+    ]);
+    assert!(content_from_bytes.starts_with(&format!("service_content={kind},")));
+    assert!(content_from_bytes.contains(endpoint_id));
+    assert!(content_from_bytes.contains(&format!("{public_url},{content_path}")));
+    assert!(content_from_bytes.contains(&format!(",{},", body.len())));
+
+    let content_file = data_dir.join(file_name);
+    std::fs::write(&content_file, body.as_bytes()).expect("service body fixture must be written");
+    let content_file_text = content_file.to_string_lossy().into_owned();
+    let content_from_file = run_tvmd(&[
+        "public-evidence",
+        "service-content-from-file",
+        "--kind",
+        kind,
+        "--endpoint-id",
+        endpoint_id,
+        "--public-url",
+        public_url,
+        "--content-path",
+        content_path,
+        "--observed-at",
+        "1700000000",
+        "--content-file",
+        &content_file_text,
+    ]);
+    assert_eq!(content_from_file, content_from_bytes);
+}
+
 #[test]
 fn documented_public_testnet_preflight_command_reports_pending_status() {
     let stdout = run_tvmd(&[
@@ -218,6 +276,16 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(chain_head.contains("HTTP/1.1 200 OK"));
     assert!(chain_head.contains("\"height\""));
     assert!(chain_head.contains("\"block_count\""));
+    assert!(chain_head.contains("\"state_root\""));
+    assert_service_content_evidence_from_response(
+        &data_dir,
+        "rpc",
+        &"55".repeat(32),
+        "https://rpc.tensorvm.net/chain/head",
+        "/chain/head",
+        "rpc-chain-head.body",
+        &chain_head,
+    );
 
     let current_epoch = authenticated_get_request(rpc_port, "/epoch/current");
     assert!(current_epoch.contains("HTTP/1.1 200 OK"));
@@ -273,53 +341,15 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let explorer = authenticated_get_request(rpc_port, "/explorer");
     assert!(explorer.contains("HTTP/1.1 200 OK"));
     assert!(explorer.contains("TensorVM Explorer"));
-    let explorer_body = response_body(&explorer);
-    let explorer_body_hex = hex(explorer_body.as_bytes());
-    let explorer_endpoint = "55".repeat(32);
-    let explorer_content_from_bytes = run_tvmd(&[
-        "public-evidence",
-        "service-content-from-bytes",
-        "--kind",
+    assert_service_content_evidence_from_response(
+        &data_dir,
         "explorer",
-        "--endpoint-id",
-        &explorer_endpoint,
-        "--public-url",
+        &"66".repeat(32),
         "https://explorer.tensorvm.net/explorer",
-        "--content-path",
         "/explorer",
-        "--observed-at",
-        "1700000000",
-        "--content-hex",
-        &explorer_body_hex,
-    ]);
-    assert!(explorer_content_from_bytes.starts_with("service_content=explorer,"));
-    assert!(explorer_content_from_bytes.contains(&explorer_endpoint));
-    assert!(
-        explorer_content_from_bytes.contains("https://explorer.tensorvm.net/explorer,/explorer")
+        "explorer.body",
+        &explorer,
     );
-    assert!(explorer_content_from_bytes.contains(&format!(",{},", explorer_body.len())));
-
-    let explorer_content_file = data_dir.join("explorer.body");
-    std::fs::write(&explorer_content_file, explorer_body.as_bytes())
-        .expect("explorer body fixture must be written");
-    let explorer_content_file_text = explorer_content_file.to_string_lossy().into_owned();
-    let explorer_content_from_file = run_tvmd(&[
-        "public-evidence",
-        "service-content-from-file",
-        "--kind",
-        "explorer",
-        "--endpoint-id",
-        &explorer_endpoint,
-        "--public-url",
-        "https://explorer.tensorvm.net/explorer",
-        "--content-path",
-        "/explorer",
-        "--observed-at",
-        "1700000000",
-        "--content-file",
-        &explorer_content_file_text,
-    ]);
-    assert_eq!(explorer_content_from_file, explorer_content_from_bytes);
 
     let faucet = authenticated_get_request(rpc_port, "/faucet/page");
     assert!(faucet.contains("HTTP/1.1 200 OK"));

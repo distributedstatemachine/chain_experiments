@@ -59,11 +59,12 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   peer-book storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
-- Node/tensor RPC route handling, service and per-surface health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing
-  explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
-  formatting, generic HTTP request reading, socketed stdlib HTTP serving, `tvmd service init/peer add/serve`
-  launch configuration for a `NodeStore`-backed service process with mandatory rust-libp2p listen
-  configuration, and gateway auth/body-size/rate-limit enforcement
+- Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
+  health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing explorer/telemetry/faucet HTML
+  pages, mutable transaction submission, job lookup, HTTP response formatting, generic HTTP request
+  reading, socketed stdlib HTTP serving, `tvmd service init/peer add/serve` launch configuration for a
+  `NodeStore`-backed service process with mandatory rust-libp2p listen configuration, and gateway
+  auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
@@ -191,18 +192,19 @@ test that starts the mandatory libp2p service path and serves authenticated `/he
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
 `/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
 `/attestation` submissions with reference payloads, read-back of registered miner/validator state, and
-unauthenticated request rejection. The same process-level smoke test now captures the served `/explorer`
-response body and verifies that `tvmd public-evidence service-content-from-bytes` and
+unauthenticated request rejection. The same process-level smoke test now captures the served
+`/chain/head` and `/explorer` response bodies and verifies that `tvmd public-evidence
+service-content-from-bytes` and
 `tvmd public-evidence service-content-from-file` emit identical signed service-content evidence for the
-captured body.
+captured bodies.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.97% workspace line coverage
-- 7897/7979 workspace lines covered
+- 7898/7980 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7329/7329 `tensor_vm` lines covered
+- 7330/7330 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
