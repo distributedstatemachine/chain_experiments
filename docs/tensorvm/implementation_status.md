@@ -108,8 +108,8 @@ The workspace currently has 186 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.57% workspace line coverage
-- 5668/5750 workspace lines covered
+- 98.58% workspace line coverage
+- 5701/5783 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

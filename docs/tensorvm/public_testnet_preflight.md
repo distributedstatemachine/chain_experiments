@@ -49,3 +49,27 @@ The CLI reads a manifest file and reports launch readiness:
 ```bash
 tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight
 ```
+
+The output is a line-oriented readiness report. `public_testnet_preflight_ready=true` only means the
+planned run has the required local shape and deployment plan; it still does not prove an external run
+has happened. Failed launches can be diagnosed from the individual gate fields:
+
+```text
+public_testnet_preflight_ready=true
+local_shape_ready=true
+deployment_plan_ready=true
+miners=10
+validators=5
+required_blocks=100800
+required_miners=true
+required_validators=true
+positive_stakes=true
+funded_faucet=true
+cuda_kernels_available=true
+production_libp2p_runtime=true
+rpc_service_plan=true
+explorer_service_plan=true
+faucet_service_plan=true
+telemetry_service_plan=true
+public_services_planned=true
+```

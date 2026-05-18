@@ -164,14 +164,39 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         true,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\nminers={}\nvalidators={}\nobserved_blocks={}\nrequired_blocks={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
+        report.has_published_evidence_bundle,
+        report.has_block_history,
+        report.has_finality_history,
+        report.has_operator_identity_attestations,
+        report.has_data_availability_measurements,
         report.run_evidence.miner_count,
         report.run_evidence.validator_count,
         report.run_evidence.observed_blocks,
         report.run_evidence.required_blocks,
+        report.run_evidence.finality_rate_bps,
+        report.run_evidence.data_availability_bps,
+        report.run_evidence.invalid_receipts_submitted,
+        report.run_evidence.invalid_receipts_rejected,
+        report.run_evidence.invalid_work_rejection_rate_bps,
+        report.run_evidence.reward_settlement_records,
+        report.run_evidence.external_operator_evidence,
+        report.run_evidence.has_required_miners,
+        report.run_evidence.has_required_validators,
+        report.run_evidence.has_required_block_count,
+        report.run_evidence.has_required_finality,
+        report.run_evidence.has_required_data_availability,
+        report.run_evidence.has_invalid_work_rejection_evidence,
+        report.run_evidence.has_reward_settlement_records,
+        report.run_evidence.has_production_libp2p_runtime,
+        report.run_evidence.has_deployed_rpc_service,
+        report.run_evidence.has_deployed_explorer_service,
+        report.run_evidence.has_deployed_faucet_service,
+        report.run_evidence.has_deployed_telemetry_service,
+        report.run_evidence.has_deployed_public_services,
     ))
 }
 
@@ -179,15 +204,23 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
     let plan = parse_public_testnet_preflight_manifest(input)?;
     let report = plan.evaluate(ChainParams::default().block_time_seconds);
     Ok(format!(
-        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\npublic_services_planned={}",
+        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\nrequired_miners={}\nrequired_validators={}\npositive_stakes={}\nfunded_faucet={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\nrpc_service_plan={}\nexplorer_service_plan={}\nfaucet_service_plan={}\ntelemetry_service_plan={}\npublic_services_planned={}",
         report.can_start_public_run,
         report.local_shape_ready,
         report.deployment_plan_ready,
         report.miner_count,
         report.validator_count,
         report.required_blocks,
+        report.has_required_miners,
+        report.has_required_validators,
+        report.has_positive_stakes,
+        report.has_funded_faucet,
         report.has_cuda_kernels_available,
         report.has_production_libp2p_runtime,
+        report.has_rpc_service_plan,
+        report.has_explorer_service_plan,
+        report.has_faucet_service_plan,
+        report.has_telemetry_service_plan,
         report.has_public_service_plan,
     ))
 }
@@ -558,10 +591,35 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("public_evidence_full_spec=false"));
         assert!(report.contains("public_criterion=false"));
         assert!(report.contains("independently_checkable=true"));
+        assert!(report.contains("published_evidence_bundle=true"));
+        assert!(report.contains("block_history=true"));
+        assert!(report.contains("finality_history=true"));
+        assert!(report.contains("operator_identity_attestations=true"));
+        assert!(report.contains("data_availability_measurements=true"));
         assert!(report.contains("miners=2"));
         assert!(report.contains("validators=1"));
         assert!(report.contains("observed_blocks=10"));
         assert!(report.contains("required_blocks=100800"));
+        assert!(report.contains("finality_rate_bps=10000"));
+        assert!(report.contains("data_availability_bps=9500"));
+        assert!(report.contains("invalid_receipts_submitted=1"));
+        assert!(report.contains("invalid_receipts_rejected=1"));
+        assert!(report.contains("invalid_work_rejection_rate_bps=10000"));
+        assert!(report.contains("reward_settlement_records=1"));
+        assert!(report.contains("external_operator_evidence=true"));
+        assert!(report.contains("required_miners=false"));
+        assert!(report.contains("required_validators=false"));
+        assert!(report.contains("required_block_count=false"));
+        assert!(report.contains("required_finality=true"));
+        assert!(report.contains("required_data_availability=true"));
+        assert!(report.contains("invalid_work_rejection_evidence=true"));
+        assert!(report.contains("reward_settlement_evidence=true"));
+        assert!(report.contains("production_libp2p_runtime=true"));
+        assert!(report.contains("deployed_rpc_service=true"));
+        assert!(report.contains("deployed_explorer_service=true"));
+        assert!(report.contains("deployed_faucet_service=true"));
+        assert!(report.contains("deployed_telemetry_service=true"));
+        assert!(report.contains("deployed_public_services=true"));
 
         assert!(validate_public_evidence_manifest("bad-manifest").is_err());
     }
@@ -575,8 +633,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("miners=10"));
         assert!(report.contains("validators=5"));
         assert!(report.contains("required_blocks=100800"));
+        assert!(report.contains("required_miners=true"));
+        assert!(report.contains("required_validators=true"));
+        assert!(report.contains("positive_stakes=true"));
+        assert!(report.contains("funded_faucet=true"));
         assert!(report.contains("cuda_kernels_available=true"));
         assert!(report.contains("production_libp2p_runtime=true"));
+        assert!(report.contains("rpc_service_plan=true"));
+        assert!(report.contains("explorer_service_plan=true"));
+        assert!(report.contains("faucet_service_plan=true"));
+        assert!(report.contains("telemetry_service_plan=true"));
         assert!(report.contains("public_services_planned=true"));
 
         assert!(validate_public_testnet_preflight_manifest("bad-manifest").is_err());

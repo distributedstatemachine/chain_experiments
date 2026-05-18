@@ -78,3 +78,42 @@ The CLI reads a manifest file and reports the default full-spec evidence status:
 ```bash
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
 ```
+
+The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
+`public_criterion=true` and `independently_checkable=true`; the individual fields identify which
+post-run artifact or protocol observation is missing:
+
+```text
+public_evidence_full_spec=false
+public_criterion=false
+independently_checkable=true
+published_evidence_bundle=true
+block_history=true
+finality_history=true
+operator_identity_attestations=true
+data_availability_measurements=true
+miners=2
+validators=1
+observed_blocks=10
+required_blocks=100800
+finality_rate_bps=10000
+data_availability_bps=9500
+invalid_receipts_submitted=1
+invalid_receipts_rejected=1
+invalid_work_rejection_rate_bps=10000
+reward_settlement_records=1
+external_operator_evidence=true
+required_miners=false
+required_validators=false
+required_block_count=false
+required_finality=true
+required_data_availability=true
+invalid_work_rejection_evidence=true
+reward_settlement_evidence=true
+production_libp2p_runtime=true
+deployed_rpc_service=true
+deployed_explorer_service=true
+deployed_faucet_service=true
+deployed_telemetry_service=true
+deployed_public_services=true
+```
