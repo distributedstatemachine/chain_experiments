@@ -11,7 +11,8 @@ artifacts for launching a service that can later produce independently checkable
 - `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
 - `manifests/public-testnet.preflight.example` - manifest accepted by
-  `tvmd public-testnet preflight --manifest <path>` after replacing example IDs and hosts
+  `tvmd public-testnet preflight --manifest <path>` after replacing example IDs, hosts, and public
+  content URLs
 - `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
   `tvmd public-evidence validate --manifest <path>`, but intentionally too short and too small to satisfy
   the default full-spec 7-day public-testnet criteria; it includes the required signed external

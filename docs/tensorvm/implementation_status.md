@@ -92,7 +92,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   measurement records before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
-  private, and link-local hosts
+  private, and link-local hosts and requiring the planned public content paths used by post-run evidence
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -144,7 +144,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.86% workspace line coverage
-- 7106/7188 workspace lines covered
+- 7126/7208 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

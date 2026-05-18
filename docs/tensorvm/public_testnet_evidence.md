@@ -87,6 +87,7 @@ and minimum observed content bytes. Service URLs, service-content URLs, supporti
 auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
 localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Supporting artifact,
 auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
+The service-health URL path must match the signed health path.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
@@ -237,13 +238,14 @@ tvmd public-evidence service-content \
   --min-content-bytes 64
 ```
 
-The command rejects local/private service URLs, malformed endpoint IDs, invalid block ranges, and unsigned
-or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
-the evidence manifest. The service-content command rejects local/private content URLs, malformed endpoint
-IDs, content URLs whose path does not match the required service surface, zero content roots, empty
-observation times, and empty content sizes. Its output can be inserted directly as a `service_content=...`
-line in the evidence manifest. The public service gate requires both lines for every RPC, explorer,
-faucet, and telemetry endpoint, with matching endpoint IDs.
+The command rejects local/private service URLs, health URLs whose path does not match the signed health
+path, malformed endpoint IDs, invalid block ranges, and unsigned or unreachable service-health summaries.
+Its output can be inserted directly as a `service=...` line in the evidence manifest. The service-content
+command rejects local/private content URLs, malformed endpoint IDs, content URLs whose path does not match
+the required service surface, zero content roots, empty observation times, and empty content sizes. Its
+output can be inserted directly as a `service_content=...` line in the evidence manifest. The public
+service gate requires both lines for every RPC, explorer, faucet, and telemetry endpoint, with matching
+endpoint IDs.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:

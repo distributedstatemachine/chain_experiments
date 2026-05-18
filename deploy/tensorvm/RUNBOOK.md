@@ -32,6 +32,7 @@ The run must not start as a public MVP attempt unless the preflight reports:
 public_testnet_preflight_ready=true
 deployment_plan_ready=true
 production_libp2p_runtime=true
+public_service_content_planned=true
 public_services_planned=true
 ```
 

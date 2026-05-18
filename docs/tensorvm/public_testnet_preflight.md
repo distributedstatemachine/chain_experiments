@@ -17,7 +17,7 @@ The local preflight report checks:
 - available CUDA kernels for the claimed GPU mining path
 - production libp2p runtime plan with discovery, gossip, request/response, and DoS controls
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
-- service endpoint identifiers, health paths, auth, and rate limiting
+- service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
 Public HTTPS service hosts must be externally reachable names or addresses. The local checker rejects
 localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
@@ -42,11 +42,16 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,true,true
-service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,true,true
-service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,true,true
-service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,true,true
+service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,https://rpc.example.test/chain/head,/chain/head,true,true
+service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,https://explorer.example.test/explorer,/explorer,true,true
+service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,https://faucet.example.test/faucet/page,/faucet/page,true,true
+service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,https://telemetry.example.test/telemetry/dashboard,/telemetry/dashboard,true,true
 ```
+
+Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
+content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
+health path. The content URL path must match the required public surface for that service:
+`/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`.
 
 The CLI reads a manifest file and reports launch readiness:
 
@@ -78,7 +83,9 @@ tvmd service serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --da
 
 The service exposes `GET /health` plus scoped `GET /rpc/health`, `GET /explorer/health`,
 `GET /faucet/health`, and `GET /telemetry/health` endpoints for external monitors. The generic `/health`
-path is suitable when each public service hostname routes to the same TensorVM service process.
+path is suitable when each public service hostname routes to the same TensorVM service process. It also
+exposes the content surfaces later required by public evidence: `GET /chain/head`, `GET /explorer`,
+`GET /faucet/page`, and `GET /telemetry/dashboard`.
 
 The output is a line-oriented readiness report. `public_testnet_preflight_ready=true` only means the
 planned run has the required local shape and deployment plan; it still does not prove an external run
@@ -101,5 +108,6 @@ rpc_service_plan=true
 explorer_service_plan=true
 faucet_service_plan=true
 telemetry_service_plan=true
+public_service_content_planned=true
 public_services_planned=true
 ```

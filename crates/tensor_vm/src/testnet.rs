@@ -73,6 +73,8 @@ pub struct PublicDeploymentServicePlan {
     pub endpoint_id: Hash,
     pub public_url: String,
     pub health_path: String,
+    pub content_url: String,
+    pub content_path: String,
     pub auth_enabled: bool,
     pub rate_limit_enabled: bool,
 }
@@ -85,11 +87,22 @@ impl PublicDeploymentServicePlan {
         public_host_is_external(host)
     }
 
+    pub fn has_public_content_surface(&self) -> bool {
+        let Some(host) = public_https_host(&self.content_url) else {
+            return false;
+        };
+        public_host_is_external(host)
+            && self.content_path == self.kind.content_path()
+            && public_https_path(&self.content_url) == Some(self.kind.content_path())
+    }
+
     pub fn is_ready_for_public_run(&self) -> bool {
         self.endpoint_id != [0; 32]
             && self.is_public_https_endpoint()
             && self.health_path.starts_with('/')
             && self.health_path.len() > 1
+            && public_https_path(&self.public_url) == Some(self.health_path.as_str())
+            && self.has_public_content_surface()
             && self.auth_enabled
             && self.rate_limit_enabled
     }
@@ -119,6 +132,7 @@ pub struct PublicTestnetPreflightReport {
     pub has_explorer_service_plan: bool,
     pub has_faucet_service_plan: bool,
     pub has_telemetry_service_plan: bool,
+    pub has_public_service_content_plan: bool,
     pub has_public_service_plan: bool,
     pub local_shape_ready: bool,
     pub deployment_plan_ready: bool,
@@ -139,6 +153,11 @@ impl PublicTestnetPreflightPlan {
         let has_explorer_service_plan = self.has_ready_service_plan(PublicServiceKind::Explorer);
         let has_faucet_service_plan = self.has_ready_service_plan(PublicServiceKind::Faucet);
         let has_telemetry_service_plan = self.has_ready_service_plan(PublicServiceKind::Telemetry);
+        let has_public_service_content_plan = self
+            .has_ready_service_content_plan(PublicServiceKind::Rpc)
+            && self.has_ready_service_content_plan(PublicServiceKind::Explorer)
+            && self.has_ready_service_content_plan(PublicServiceKind::Faucet)
+            && self.has_ready_service_content_plan(PublicServiceKind::Telemetry);
         let has_public_service_plan = has_rpc_service_plan
             && has_explorer_service_plan
             && has_faucet_service_plan
@@ -164,6 +183,7 @@ impl PublicTestnetPreflightPlan {
             has_explorer_service_plan,
             has_faucet_service_plan,
             has_telemetry_service_plan,
+            has_public_service_content_plan,
             has_public_service_plan,
             local_shape_ready,
             deployment_plan_ready,
@@ -175,6 +195,12 @@ impl PublicTestnetPreflightPlan {
         self.services
             .iter()
             .any(|service| service.kind == kind && service.is_ready_for_public_run())
+    }
+
+    fn has_ready_service_content_plan(&self, kind: PublicServiceKind) -> bool {
+        self.services
+            .iter()
+            .any(|service| service.kind == kind && service.has_public_content_surface())
     }
 }
 
@@ -265,6 +291,7 @@ impl PublicServiceEndpoint {
         public_https_host(&self.public_url).is_some_and(public_host_is_external)
             && self.health_path.starts_with('/')
             && self.health_path.len() > 1
+            && public_https_path(&self.public_url) == Some(self.health_path.as_str())
     }
 }
 
@@ -1034,7 +1061,7 @@ impl PublicTestnetPreflightManifestBuilder {
 
 fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePlan> {
     let fields: Vec<&str> = value.split(',').map(str::trim).collect();
-    if fields.len() != 6 {
+    if fields.len() != 8 {
         return Err(TvmError::InvalidReceipt("malformed preflight service plan"));
     }
     Ok(PublicDeploymentServicePlan {
@@ -1042,8 +1069,10 @@ fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePl
         endpoint_id: parse_hash_hex(fields[1])?,
         public_url: fields[2].to_owned(),
         health_path: fields[3].to_owned(),
-        auth_enabled: parse_manifest_bool(fields[4])?,
-        rate_limit_enabled: parse_manifest_bool(fields[5])?,
+        content_url: fields[4].to_owned(),
+        content_path: fields[5].to_owned(),
+        auth_enabled: parse_manifest_bool(fields[6])?,
+        rate_limit_enabled: parse_manifest_bool(fields[7])?,
     })
 }
 
@@ -3205,10 +3234,10 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,{},https://rpc.tensorvm.example/health,/health,true,true
-service=explorer,{},https://explorer.tensorvm.example/health,/health,true,true
-service=faucet,{},https://faucet.tensorvm.example/health,/health,true,true
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
+service=rpc,{},https://rpc.tensorvm.example/health,/health,https://rpc.tensorvm.example/chain/head,/chain/head,true,true
+service=explorer,{},https://explorer.tensorvm.example/health,/health,https://explorer.tensorvm.example/explorer,/explorer,true,true
+service=faucet,{},https://faucet.tensorvm.example/health,/health,https://faucet.tensorvm.example/faucet/page,/faucet/page,true,true
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true
 ",
             manifest_hash(b"test", b"rpc-service"),
             manifest_hash(b"test", b"explorer-service"),
@@ -4169,6 +4198,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.has_explorer_service_plan);
         assert!(report.has_faucet_service_plan);
         assert!(report.has_telemetry_service_plan);
+        assert!(report.has_public_service_content_plan);
         assert!(report.has_public_service_plan);
         assert!(report.local_shape_ready);
         assert!(report.deployment_plan_ready);
@@ -4186,10 +4216,25 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         );
         assert_eq!(public_https_host("https://[::1]:443/health"), Some("::1"));
         assert!(rpc.is_public_https_endpoint());
+        assert!(rpc.has_public_content_surface());
         assert!(rpc.is_ready_for_public_run());
         let mut http_rpc = rpc.clone();
         http_rpc.public_url = String::from("http://rpc.tensorvm.example/health");
         assert!(!http_rpc.is_public_https_endpoint());
+
+        let mut mismatched_health_path_rpc = rpc.clone();
+        mismatched_health_path_rpc.public_url = String::from("https://rpc.tensorvm.example/wrong");
+        assert!(!mismatched_health_path_rpc.is_ready_for_public_run());
+
+        let mut wrong_content_path_rpc = rpc.clone();
+        wrong_content_path_rpc.content_url = String::from("https://rpc.tensorvm.example/wrong");
+        assert!(!wrong_content_path_rpc.has_public_content_surface());
+        assert!(!wrong_content_path_rpc.is_ready_for_public_run());
+
+        let mut http_content_rpc = rpc.clone();
+        http_content_rpc.content_url = String::from("http://rpc.tensorvm.example/chain/head");
+        assert!(!http_content_rpc.has_public_content_surface());
+        assert!(!http_content_rpc.is_ready_for_public_run());
 
         let mut ipv6_loopback_rpc = rpc.clone();
         ipv6_loopback_rpc.public_url = String::from("https://[::1]:443/health");
@@ -4210,6 +4255,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!local_rpc_report.has_public_service_plan);
         assert!(!local_rpc_report.can_start_public_run);
 
+        let bad_content_path = manifest.replace(
+            "https://rpc.tensorvm.example/chain/head,/chain/head",
+            "https://rpc.tensorvm.example/wrong,/chain/head",
+        );
+        let bad_content_path_report = parse_public_testnet_preflight_manifest(&bad_content_path)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!bad_content_path_report.has_rpc_service_plan);
+        assert!(!bad_content_path_report.has_public_service_content_plan);
+        assert!(!bad_content_path_report.has_public_service_plan);
+        assert!(!bad_content_path_report.can_start_public_run);
+
         let no_cuda = manifest.replace(
             "cuda_kernels_available=true",
             "cuda_kernels_available=false",
@@ -4223,8 +4280,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!no_cuda_report.can_start_public_run);
 
         let no_auth = manifest.replace(
-            "https://telemetry.tensorvm.example/health,/health,true,true",
-            "https://telemetry.tensorvm.example/health,/health,false,true",
+            "https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true",
+            "https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,false,true",
         );
         let no_auth_report = parse_public_testnet_preflight_manifest(&no_auth)
             .unwrap()

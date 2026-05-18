@@ -1629,7 +1629,8 @@ rollout checks.
 
 The `tvmd` executable must be an explicit Cargo binary target. Public deployment templates live under
 `deploy/tensorvm/` and must use `tvmd service serve` with a required libp2p listen multiaddr, external TLS
-termination, and the health endpoints required by the public preflight and post-run evidence validators.
+termination, plus the health and content endpoints required by the public preflight and post-run evidence
+validators.
 Those templates include checked preflight and non-full-spec post-run evidence example manifests; the
 post-run example is only a signature-domain and parser shape check and cannot substitute for the required
 7-day external public-run evidence.
@@ -1747,7 +1748,8 @@ The `operator-attestation` command emits the exact `operator=...` manifest line 
 identity URI bound to a node address, role, operator ID, and observation time.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
-path, observed block range, reachable observation count, and signed health-check count.
+path, observed block range, reachable observation count, and signed health-check count; the public URL path
+must match the signed health path.
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Deployed

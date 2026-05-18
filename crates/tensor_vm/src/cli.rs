@@ -1399,7 +1399,7 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
     let plan = parse_public_testnet_preflight_manifest(input)?;
     let report = plan.evaluate(ChainParams::default().block_time_seconds);
     Ok(format!(
-        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\nrequired_miners={}\nrequired_validators={}\npositive_stakes={}\nfunded_faucet={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\nrpc_service_plan={}\nexplorer_service_plan={}\nfaucet_service_plan={}\ntelemetry_service_plan={}\npublic_services_planned={}",
+        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\nrequired_miners={}\nrequired_validators={}\npositive_stakes={}\nfunded_faucet={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\nrpc_service_plan={}\nexplorer_service_plan={}\nfaucet_service_plan={}\ntelemetry_service_plan={}\npublic_service_content_planned={}\npublic_services_planned={}",
         report.can_start_public_run,
         report.local_shape_ready,
         report.deployment_plan_ready,
@@ -1416,6 +1416,7 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
         report.has_explorer_service_plan,
         report.has_faucet_service_plan,
         report.has_telemetry_service_plan,
+        report.has_public_service_content_plan,
         report.has_public_service_plan,
     ))
 }
@@ -2088,10 +2089,10 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,{},https://rpc.tensorvm.example/health,/health,true,true
-service=explorer,{},https://explorer.tensorvm.example/health,/health,true,true
-service=faucet,{},https://faucet.tensorvm.example/health,/health,true,true
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
+service=rpc,{},https://rpc.tensorvm.example/health,/health,https://rpc.tensorvm.example/chain/head,/chain/head,true,true
+service=explorer,{},https://explorer.tensorvm.example/health,/health,https://explorer.tensorvm.example/explorer,/explorer,true,true
+service=faucet,{},https://faucet.tensorvm.example/health,/health,https://faucet.tensorvm.example/faucet/page,/faucet/page,true,true
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true
 ",
             manifest_hash(b"rpc-service"),
             manifest_hash(b"explorer-service"),
@@ -3518,6 +3519,19 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
                 public_url: "https://rpc.tensorvm.example/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 10,
@@ -4167,6 +4181,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("explorer_service_plan=true"));
         assert!(report.contains("faucet_service_plan=true"));
         assert!(report.contains("telemetry_service_plan=true"));
+        assert!(report.contains("public_service_content_planned=true"));
         assert!(report.contains("public_services_planned=true"));
 
         assert!(validate_public_testnet_preflight_manifest("bad-manifest").is_err());
