@@ -191,7 +191,10 @@ test that starts the mandatory libp2p service path and serves authenticated `/he
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
 `/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
 `/attestation` submissions with reference payloads, read-back of registered miner/validator state, and
-unauthenticated request rejection.
+unauthenticated request rejection. The same process-level smoke test now captures the served `/explorer`
+response body and verifies that `tvmd public-evidence service-content-from-bytes` and
+`tvmd public-evidence service-content-from-file` emit identical signed service-content evidence for the
+captured body.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use libp2p::PeerId;
+use tensor_vm::hash::hex;
 
 fn workspace_root() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -98,6 +99,13 @@ fn authenticated_get_request(port: u16, path: &str) -> String {
 
 fn unauthenticated_get_request(port: u16, path: &str) -> String {
     service_request(port, "GET", path, "", None)
+}
+
+fn response_body(response: &str) -> &str {
+    response
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .expect("HTTP response must contain a body separator")
 }
 
 #[test]
@@ -265,6 +273,53 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let explorer = authenticated_get_request(rpc_port, "/explorer");
     assert!(explorer.contains("HTTP/1.1 200 OK"));
     assert!(explorer.contains("TensorVM Explorer"));
+    let explorer_body = response_body(&explorer);
+    let explorer_body_hex = hex(explorer_body.as_bytes());
+    let explorer_endpoint = "55".repeat(32);
+    let explorer_content_from_bytes = run_tvmd(&[
+        "public-evidence",
+        "service-content-from-bytes",
+        "--kind",
+        "explorer",
+        "--endpoint-id",
+        &explorer_endpoint,
+        "--public-url",
+        "https://explorer.tensorvm.net/explorer",
+        "--content-path",
+        "/explorer",
+        "--observed-at",
+        "1700000000",
+        "--content-hex",
+        &explorer_body_hex,
+    ]);
+    assert!(explorer_content_from_bytes.starts_with("service_content=explorer,"));
+    assert!(explorer_content_from_bytes.contains(&explorer_endpoint));
+    assert!(
+        explorer_content_from_bytes.contains("https://explorer.tensorvm.net/explorer,/explorer")
+    );
+    assert!(explorer_content_from_bytes.contains(&format!(",{},", explorer_body.len())));
+
+    let explorer_content_file = data_dir.join("explorer.body");
+    std::fs::write(&explorer_content_file, explorer_body.as_bytes())
+        .expect("explorer body fixture must be written");
+    let explorer_content_file_text = explorer_content_file.to_string_lossy().into_owned();
+    let explorer_content_from_file = run_tvmd(&[
+        "public-evidence",
+        "service-content-from-file",
+        "--kind",
+        "explorer",
+        "--endpoint-id",
+        &explorer_endpoint,
+        "--public-url",
+        "https://explorer.tensorvm.net/explorer",
+        "--content-path",
+        "/explorer",
+        "--observed-at",
+        "1700000000",
+        "--content-file",
+        &explorer_content_file_text,
+    ]);
+    assert_eq!(explorer_content_from_file, explorer_content_from_bytes);
 
     let faucet = authenticated_get_request(rpc_port, "/faucet/page");
     assert!(faucet.contains("HTTP/1.1 200 OK"));
