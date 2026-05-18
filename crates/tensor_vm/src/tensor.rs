@@ -1,0 +1,712 @@
+use crate::error::{Result, TvmError};
+use crate::field::{self, Elem};
+use crate::hash::Sha256;
+use crate::merkle::{
+    MerkleCommitment, MerkleProof, build_proof, leaf_hash, merkle_root, verify_proof,
+};
+use crate::oracle::OracleRng;
+use crate::types::{Hash, hash_bytes};
+
+pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DType {
+    Int32,
+    Int64,
+    Fixed32,
+    FieldElement,
+}
+
+impl DType {
+    pub fn tag(self) -> u8 {
+        match self {
+            Self::Int32 => 1,
+            Self::Int64 => 2,
+            Self::Fixed32 => 3,
+            Self::FieldElement => 4,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Layout {
+    RowMajor,
+    ChunkedRowMajor,
+}
+
+impl Layout {
+    pub fn tag(self) -> u8 {
+        match self {
+            Self::RowMajor => 1,
+            Self::ChunkedRowMajor => 2,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TensorDescriptor {
+    pub tensor_id: Hash,
+    pub shape: Vec<usize>,
+    pub dtype: DType,
+    pub layout: Layout,
+    pub chunk_shape: Vec<usize>,
+    pub commitment: MerkleCommitment,
+    pub byte_size: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TensorOpening {
+    pub tensor_id: Hash,
+    pub chunk_index: u64,
+    pub chunk_bytes: Vec<u8>,
+    pub merkle_proof: MerkleProof,
+}
+
+impl TensorOpening {
+    pub fn verify(&self, descriptor: &TensorDescriptor) -> bool {
+        if self.tensor_id != descriptor.tensor_id {
+            return false;
+        }
+        let leaf = leaf_hash(&self.tensor_id, self.chunk_index, &self.chunk_bytes);
+        verify_proof(&descriptor.commitment.root, leaf, &self.merkle_proof)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Tensor {
+    shape: Vec<usize>,
+    dtype: DType,
+    layout: Layout,
+    data: Vec<Elem>,
+}
+
+impl Tensor {
+    pub fn zeros(shape: Vec<usize>, dtype: DType) -> Result<Self> {
+        let len = checked_len(&shape)?;
+        Ok(Self {
+            shape,
+            dtype,
+            layout: Layout::RowMajor,
+            data: vec![0; len],
+        })
+    }
+
+    pub fn from_vec(shape: Vec<usize>, dtype: DType, data: Vec<Elem>) -> Result<Self> {
+        let expected = checked_len(&shape)?;
+        if expected != data.len() {
+            return Err(TvmError::InvalidTensorData {
+                expected,
+                actual: data.len(),
+            });
+        }
+        Ok(Self {
+            shape,
+            dtype,
+            layout: Layout::RowMajor,
+            data: data.into_iter().map(field::normalize).collect(),
+        })
+    }
+
+    pub fn random(seed: &Hash, shape: Vec<usize>, dtype: DType) -> Result<Self> {
+        let shape_bytes = encode_shape(&shape);
+        let dtype_bytes = [dtype.tag()];
+        let mut rng = OracleRng::new(
+            b"tensor-vm-random-tensor-v1",
+            &[seed, &shape_bytes, &dtype_bytes],
+        );
+        let len = checked_len(&shape)?;
+        let mut data = Vec::with_capacity(len);
+        for _ in 0..len {
+            data.push(rng.next_field());
+        }
+        Self::from_vec(shape, dtype, data)
+    }
+
+    pub fn shape(&self) -> &[usize] {
+        &self.shape
+    }
+
+    pub fn dtype(&self) -> DType {
+        self.dtype
+    }
+
+    pub fn layout(&self) -> Layout {
+        self.layout
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn as_slice(&self) -> &[Elem] {
+        &self.data
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [Elem] {
+        &mut self.data
+    }
+
+    pub fn rows(&self) -> Result<usize> {
+        self.require_rank(2)?;
+        Ok(self.shape[0])
+    }
+
+    pub fn cols(&self) -> Result<usize> {
+        self.require_rank(2)?;
+        Ok(self.shape[1])
+    }
+
+    pub fn get2(&self, row: usize, col: usize) -> Result<Elem> {
+        let rows = self.rows()?;
+        let cols = self.cols()?;
+        if row >= rows {
+            return Err(TvmError::InvalidIndex {
+                index: row,
+                len: rows,
+            });
+        }
+        if col >= cols {
+            return Err(TvmError::InvalidIndex {
+                index: col,
+                len: cols,
+            });
+        }
+        Ok(self.data[row * cols + col])
+    }
+
+    pub fn set2(&mut self, row: usize, col: usize, value: Elem) -> Result<()> {
+        let rows = self.rows()?;
+        let cols = self.cols()?;
+        if row >= rows {
+            return Err(TvmError::InvalidIndex {
+                index: row,
+                len: rows,
+            });
+        }
+        if col >= cols {
+            return Err(TvmError::InvalidIndex {
+                index: col,
+                len: cols,
+            });
+        }
+        self.data[row * cols + col] = field::normalize(value);
+        Ok(())
+    }
+
+    pub fn row(&self, row: usize) -> Result<&[Elem]> {
+        let rows = self.rows()?;
+        let cols = self.cols()?;
+        if row >= rows {
+            return Err(TvmError::InvalidIndex {
+                index: row,
+                len: rows,
+            });
+        }
+        Ok(&self.data[row * cols..(row + 1) * cols])
+    }
+
+    pub fn add(&self, rhs: &Self) -> Result<Self> {
+        self.check_same_shape(rhs)?;
+        let data = self
+            .data
+            .iter()
+            .zip(&rhs.data)
+            .map(|(lhs, rhs)| field::add(*lhs, *rhs))
+            .collect();
+        Self::from_vec(self.shape.clone(), self.dtype, data)
+    }
+
+    pub fn sub(&self, rhs: &Self) -> Result<Self> {
+        self.check_same_shape(rhs)?;
+        let data = self
+            .data
+            .iter()
+            .zip(&rhs.data)
+            .map(|(lhs, rhs)| field::sub(*lhs, *rhs))
+            .collect();
+        Self::from_vec(self.shape.clone(), self.dtype, data)
+    }
+
+    pub fn mul(&self, rhs: &Self) -> Result<Self> {
+        self.check_same_shape(rhs)?;
+        let data = self
+            .data
+            .iter()
+            .zip(&rhs.data)
+            .map(|(lhs, rhs)| field::mul(*lhs, *rhs))
+            .collect();
+        Self::from_vec(self.shape.clone(), self.dtype, data)
+    }
+
+    pub fn scalar_mul(&self, scalar: Elem) -> Result<Self> {
+        let scalar = field::normalize(scalar);
+        let data = self
+            .data
+            .iter()
+            .map(|value| field::mul(*value, scalar))
+            .collect();
+        Self::from_vec(self.shape.clone(), self.dtype, data)
+    }
+
+    pub fn transpose(&self) -> Result<Self> {
+        self.require_rank(2)?;
+        let rows = self.shape[0];
+        let cols = self.shape[1];
+        let mut out = vec![0; self.data.len()];
+        for row in 0..rows {
+            for col in 0..cols {
+                out[col * rows + row] = self.data[row * cols + col];
+            }
+        }
+        Self::from_vec(vec![cols, rows], self.dtype, out)
+    }
+
+    pub fn matmul(&self, rhs: &Self) -> Result<Self> {
+        self.require_rank(2)?;
+        rhs.require_rank(2)?;
+        let rows = self.shape[0];
+        let inner = self.shape[1];
+        if inner != rhs.shape[0] {
+            return Err(TvmError::DimensionMismatch {
+                left: self.shape.clone(),
+                right: rhs.shape.clone(),
+            });
+        }
+        let cols = rhs.shape[1];
+        let rhs_t = rhs.transpose()?;
+        let mut data = vec![0; rows * cols];
+        for row in 0..rows {
+            let lhs_row = &self.data[row * inner..(row + 1) * inner];
+            for col in 0..cols {
+                let rhs_row = &rhs_t.data[col * inner..(col + 1) * inner];
+                let mut acc = 0_u128;
+                for k in 0..inner {
+                    acc += lhs_row[k] as u128 * rhs_row[k] as u128;
+                }
+                data[row * cols + col] = field::reduce_u128(acc);
+            }
+        }
+        Self::from_vec(vec![rows, cols], self.dtype, data)
+    }
+
+    pub fn reduce_sum(&self, axis: usize) -> Result<Self> {
+        self.require_rank(2)?;
+        let rows = self.shape[0];
+        let cols = self.shape[1];
+        match axis {
+            0 => {
+                let mut out = vec![0; cols];
+                for row in 0..rows {
+                    for (col, out_cell) in out.iter_mut().enumerate().take(cols) {
+                        *out_cell = field::add(*out_cell, self.data[row * cols + col]);
+                    }
+                }
+                Self::from_vec(vec![cols], self.dtype, out)
+            }
+            1 => {
+                let mut out = vec![0; rows];
+                for (row, out_cell) in out.iter_mut().enumerate() {
+                    let mut acc = 0;
+                    for value in &self.data[row * cols..(row + 1) * cols] {
+                        acc = field::add(acc, *value);
+                    }
+                    *out_cell = acc;
+                }
+                Self::from_vec(vec![rows], self.dtype, out)
+            }
+            _ => Err(TvmError::InvalidAxis { axis, rank: 2 }),
+        }
+    }
+
+    pub fn dot_vector(&self, vector: &[Elem]) -> Result<Vec<Elem>> {
+        self.require_rank(2)?;
+        let rows = self.shape[0];
+        let cols = self.shape[1];
+        if cols != vector.len() {
+            return Err(TvmError::InvalidTensorData {
+                expected: cols,
+                actual: vector.len(),
+            });
+        }
+        let mut out = vec![0; rows];
+        for (row, out_cell) in out.iter_mut().enumerate() {
+            let mut acc = 0_u128;
+            let row_data = &self.data[row * cols..(row + 1) * cols];
+            for col in 0..cols {
+                acc += row_data[col] as u128 * vector[col] as u128;
+            }
+            *out_cell = field::reduce_u128(acc);
+        }
+        Ok(out)
+    }
+
+    pub fn row_dot(&self, row: usize, vector: &[Elem]) -> Result<Elem> {
+        let row_data = self.row(row)?;
+        if row_data.len() != vector.len() {
+            return Err(TvmError::InvalidTensorData {
+                expected: row_data.len(),
+                actual: vector.len(),
+            });
+        }
+        let mut acc = 0_u128;
+        for i in 0..row_data.len() {
+            acc += row_data[i] as u128 * vector[i] as u128;
+        }
+        Ok(field::reduce_u128(acc))
+    }
+
+    pub fn linear_combination(&self, weights: &[Elem]) -> Result<Elem> {
+        if self.data.len() != weights.len() {
+            return Err(TvmError::InvalidTensorData {
+                expected: self.data.len(),
+                actual: weights.len(),
+            });
+        }
+        let mut acc = 0_u128;
+        for (value, weight) in self.data.iter().zip(weights) {
+            acc += *value as u128 * *weight as u128;
+        }
+        Ok(field::reduce_u128(acc))
+    }
+
+    pub fn squared_error_sum(&self, rhs: &Self) -> Result<Elem> {
+        self.check_same_shape(rhs)?;
+        let mut acc = 0_u128;
+        for (lhs, rhs) in self.data.iter().zip(&rhs.data) {
+            let diff = field::sub(*lhs, *rhs);
+            acc += diff as u128 * diff as u128;
+        }
+        Ok(field::reduce_u128(acc))
+    }
+
+    pub fn tensor_id(&self) -> Hash {
+        let mut hasher = Sha256::new();
+        hasher.update(b"tensor-vm-tensor-id-v1");
+        self.hash_header_into(&mut hasher);
+        for value in &self.data {
+            hasher.update_u64(*value);
+        }
+        hasher.finalize()
+    }
+
+    pub fn descriptor(&self) -> TensorDescriptor {
+        self.descriptor_with_chunk_size(DEFAULT_CHUNK_SIZE)
+    }
+
+    pub fn descriptor_with_chunk_size(&self, chunk_size: usize) -> TensorDescriptor {
+        let tensor_id = self.tensor_id();
+        let chunks = self.byte_chunks(chunk_size);
+        let leaves: Vec<_> = chunks
+            .iter()
+            .enumerate()
+            .map(|(index, chunk)| leaf_hash(&tensor_id, index as u64, chunk))
+            .collect();
+        TensorDescriptor {
+            tensor_id,
+            shape: self.shape.clone(),
+            dtype: self.dtype,
+            layout: self.layout,
+            chunk_shape: vec![chunk_size],
+            commitment: MerkleCommitment {
+                root: merkle_root(&leaves),
+                leaf_count: leaves.len() as u64,
+                chunk_size,
+            },
+            byte_size: (self.data.len() * std::mem::size_of::<Elem>()) as u64,
+        }
+    }
+
+    pub fn commitment_root(&self) -> Hash {
+        self.descriptor().commitment.root
+    }
+
+    pub fn hash_tensor(&self) -> Hash {
+        hash_bytes(
+            b"tensor-vm-hash-tensor-v1",
+            &[&self.tensor_id(), &self.commitment_root()],
+        )
+    }
+
+    pub fn opening(&self, chunk_index: u64, chunk_size: usize) -> Result<TensorOpening> {
+        let descriptor = self.descriptor_with_chunk_size(chunk_size);
+        let chunks = self.byte_chunks(chunk_size);
+        let chunk = chunks
+            .get(chunk_index as usize)
+            .ok_or(TvmError::InvalidChunk { chunk_index })?;
+        let leaves: Vec<_> = chunks
+            .iter()
+            .enumerate()
+            .map(|(index, chunk)| leaf_hash(&descriptor.tensor_id, index as u64, chunk))
+            .collect();
+        Ok(TensorOpening {
+            tensor_id: descriptor.tensor_id,
+            chunk_index,
+            chunk_bytes: chunk.clone(),
+            merkle_proof: build_proof(&leaves, chunk_index)?,
+        })
+    }
+
+    fn byte_chunks(&self, chunk_size: usize) -> Vec<Vec<u8>> {
+        let mut bytes = Vec::with_capacity(self.data.len() * std::mem::size_of::<Elem>());
+        for value in &self.data {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        if bytes.is_empty() {
+            return vec![Vec::new()];
+        }
+        bytes
+            .chunks(chunk_size.max(1))
+            .map(|chunk| chunk.to_vec())
+            .collect()
+    }
+
+    fn hash_header_into(&self, hasher: &mut Sha256) {
+        hasher.update_u64(self.shape.len() as u64);
+        for dim in &self.shape {
+            hasher.update_u64(*dim as u64);
+        }
+        hasher.update(&[self.dtype.tag(), self.layout.tag()]);
+    }
+
+    fn require_rank(&self, rank: usize) -> Result<()> {
+        if self.shape.len() != rank {
+            return Err(TvmError::UnsupportedRank {
+                rank: self.shape.len(),
+            });
+        }
+        Ok(())
+    }
+
+    fn check_same_shape(&self, rhs: &Self) -> Result<()> {
+        if self.shape != rhs.shape {
+            return Err(TvmError::ShapeMismatch {
+                left: self.shape.clone(),
+                right: rhs.shape.clone(),
+            });
+        }
+        Ok(())
+    }
+}
+
+pub fn random_field_vector(seed: &Hash, label: &[u8], len: usize) -> Vec<Elem> {
+    let len_bytes = (len as u64).to_le_bytes();
+    let mut rng = OracleRng::new(label, &[seed, &len_bytes]);
+    let mut out = Vec::with_capacity(len);
+    for _ in 0..len {
+        out.push(rng.next_field());
+    }
+    out
+}
+
+pub fn encode_shape(shape: &[usize]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(8 + shape.len() * 8);
+    out.extend_from_slice(&(shape.len() as u64).to_le_bytes());
+    for dim in shape {
+        out.extend_from_slice(&(*dim as u64).to_le_bytes());
+    }
+    out
+}
+
+fn checked_len(shape: &[usize]) -> Result<usize> {
+    if shape.is_empty() {
+        return Err(TvmError::EmptyShape);
+    }
+    let mut len = 1_usize;
+    for dim in shape {
+        len = len.checked_mul(*dim).ok_or(TvmError::InvalidTensorData {
+            expected: usize::MAX,
+            actual: 0,
+        })?;
+    }
+    Ok(len)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn random_tensors_are_deterministic() {
+        let seed = hash_bytes(b"test", &[b"seed"]);
+        let a = Tensor::random(&seed, vec![3, 4], DType::FieldElement).unwrap();
+        let b = Tensor::random(&seed, vec![3, 4], DType::FieldElement).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn tensor_construction_accessors_and_empty_commitment_work() {
+        assert_eq!(
+            Tensor::zeros(Vec::new(), DType::FieldElement),
+            Err(TvmError::EmptyShape)
+        );
+        assert_eq!(
+            Tensor::from_vec(vec![2], DType::FieldElement, vec![1]),
+            Err(TvmError::InvalidTensorData {
+                expected: 2,
+                actual: 1,
+            })
+        );
+        assert!(Tensor::zeros(vec![usize::MAX, 2], DType::FieldElement).is_err());
+
+        let mut tensor = Tensor::zeros(vec![2], DType::Int64).unwrap();
+        assert_eq!(tensor.shape(), &[2]);
+        assert_eq!(tensor.dtype(), DType::Int64);
+        assert_eq!(tensor.layout(), Layout::RowMajor);
+        assert_eq!(tensor.len(), 2);
+        assert!(!tensor.is_empty());
+        assert_eq!(tensor.as_slice(), &[0, 0]);
+        tensor.as_mut_slice()[1] = 9;
+        assert_eq!(tensor.as_slice(), &[0, 9]);
+
+        let empty = Tensor::zeros(vec![0], DType::FieldElement).unwrap();
+        assert!(empty.is_empty());
+        let descriptor = empty.descriptor_with_chunk_size(4);
+        assert_eq!(descriptor.byte_size, 0);
+        assert_eq!(descriptor.commitment.leaf_count, 1);
+        assert!(empty.opening(0, 4).unwrap().verify(&descriptor));
+    }
+
+    #[test]
+    fn tensor_ops_match_small_examples() {
+        let a = Tensor::from_vec(vec![2, 3], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let b =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![7, 8, 9, 10, 11, 12]).unwrap();
+        let c = a.matmul(&b).unwrap();
+        assert_eq!(
+            c,
+            Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![58, 64, 139, 154]).unwrap()
+        );
+        assert_eq!(a.transpose().unwrap().shape(), &[3, 2]);
+        assert_eq!(
+            a.reduce_sum(0).unwrap(),
+            Tensor::from_vec(vec![3], DType::FieldElement, vec![5, 7, 9]).unwrap()
+        );
+        assert_eq!(
+            a.reduce_sum(1).unwrap(),
+            Tensor::from_vec(vec![2], DType::FieldElement, vec![6, 15]).unwrap()
+        );
+        assert_eq!(a.add(&a).unwrap(), a.scalar_mul(2).unwrap());
+        assert_eq!(
+            a.mul(&a).unwrap(),
+            Tensor::from_vec(vec![2, 3], DType::FieldElement, vec![1, 4, 9, 16, 25, 36]).unwrap()
+        );
+    }
+
+    #[test]
+    fn tensor_vector_checks_and_rank_errors_are_reported() {
+        let matrix =
+            Tensor::from_vec(vec![2, 3], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        assert_eq!(matrix.dot_vector(&[7, 8, 9]).unwrap(), vec![50, 122]);
+        assert_eq!(
+            matrix.dot_vector(&[1, 2]),
+            Err(TvmError::InvalidTensorData {
+                expected: 3,
+                actual: 2,
+            })
+        );
+        assert_eq!(matrix.row_dot(1, &[7, 8, 9]).unwrap(), 122);
+        assert_eq!(
+            matrix.row_dot(1, &[1, 2]),
+            Err(TvmError::InvalidTensorData {
+                expected: 3,
+                actual: 2,
+            })
+        );
+        assert_eq!(matrix.linear_combination(&[1, 1, 1, 1, 1, 1]).unwrap(), 21);
+        assert_eq!(
+            matrix.linear_combination(&[1]),
+            Err(TvmError::InvalidTensorData {
+                expected: 6,
+                actual: 1,
+            })
+        );
+        assert_eq!(
+            matrix.reduce_sum(2),
+            Err(TvmError::InvalidAxis { axis: 2, rank: 2 })
+        );
+        let vector = Tensor::from_vec(vec![3], DType::FieldElement, vec![1, 2, 3]).unwrap();
+        assert_eq!(
+            vector.transpose(),
+            Err(TvmError::UnsupportedRank { rank: 1 })
+        );
+        assert_eq!(
+            matrix.matmul(&matrix),
+            Err(TvmError::DimensionMismatch {
+                left: vec![2, 3],
+                right: vec![2, 3],
+            })
+        );
+    }
+
+    #[test]
+    fn tensor_openings_verify_and_reject_tampering() {
+        let tensor = Tensor::from_vec(
+            vec![2, 4],
+            DType::FieldElement,
+            vec![1, 2, 3, 4, 5, 6, 7, 8],
+        )
+        .unwrap();
+        let descriptor = tensor.descriptor_with_chunk_size(16);
+        let mut opening = tensor.opening(1, 16).unwrap();
+        assert!(opening.verify(&descriptor));
+        opening.chunk_bytes[0] ^= 1;
+        assert!(!opening.verify(&descriptor));
+    }
+
+    #[test]
+    fn tensor_tags_and_openings_reject_wrong_descriptor() {
+        assert_eq!(DType::Int32.tag(), 1);
+        assert_eq!(DType::Int64.tag(), 2);
+        assert_eq!(DType::Fixed32.tag(), 3);
+        assert_eq!(DType::FieldElement.tag(), 4);
+        assert_eq!(Layout::RowMajor.tag(), 1);
+        assert_eq!(Layout::ChunkedRowMajor.tag(), 2);
+        assert_eq!(
+            encode_shape(&[2, 3]),
+            vec![
+                2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0,
+            ]
+        );
+
+        let tensor = Tensor::from_vec(vec![1], DType::FieldElement, vec![7]).unwrap();
+        let other = Tensor::from_vec(vec![1], DType::FieldElement, vec![8]).unwrap();
+        let opening = tensor.opening(0, 8).unwrap();
+        assert!(!opening.verify(&other.descriptor_with_chunk_size(8)));
+
+        let seed = hash_bytes(b"test", &[b"vector-seed"]);
+        assert_eq!(
+            random_field_vector(&seed, b"label", 3),
+            random_field_vector(&seed, b"label", 3)
+        );
+    }
+
+    #[test]
+    fn tensor_row_and_cell_access_reject_out_of_bounds() {
+        let mut tensor =
+            Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
+        assert_eq!(
+            tensor.row(2),
+            Err(TvmError::InvalidIndex { index: 2, len: 2 })
+        );
+        assert_eq!(
+            tensor.get2(2, 0),
+            Err(TvmError::InvalidIndex { index: 2, len: 2 })
+        );
+        assert_eq!(
+            tensor.get2(0, 2),
+            Err(TvmError::InvalidIndex { index: 2, len: 2 })
+        );
+        assert_eq!(
+            tensor.set2(2, 0, 9),
+            Err(TvmError::InvalidIndex { index: 2, len: 2 })
+        );
+        assert_eq!(
+            tensor.set2(0, 2, 9),
+            Err(TvmError::InvalidIndex { index: 2, len: 2 })
+        );
+    }
+}
