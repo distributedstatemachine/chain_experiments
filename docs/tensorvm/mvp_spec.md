@@ -1826,6 +1826,8 @@ real CUDA/C++ kernels exist for any claimed GPU mining path and are checked agai
 production libp2p runtime is used for node discovery, gossip, and request/response propagation
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
+the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
+block-count evidence
 the evidence bundle includes signed node heartbeats, block/finality history, operator identities or
 attestations, data-availability measurements, invalid-work rejection evidence, and reward-settlement records
 the evidence bundle is stored or linked from docs/tensorvm/implementation_status.md
@@ -1998,6 +2000,7 @@ public docs
 deployed public services for RPC, explorer, faucet, and telemetry
 real CUDA/C++ miner kernels where GPU acceleration is claimed
 external public-testnet evidence bundle
+signed public run-window evidence for the 7-day duration
 ```
 
 Success criteria:
@@ -2006,6 +2009,7 @@ Success criteria:
 10+ miners
 5+ validators
 7 days continuous block production
+signed wall-clock run window covering the full 7-day duration
 independent external operator evidence
 invalid work rejected
 rewards paid by verified TensorWork
@@ -2093,6 +2097,7 @@ production libp2p runtime is used for network propagation
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
+the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
 the required Cargo workspace structure is present
 the required verification commands have been executed and their results are documented
 ```

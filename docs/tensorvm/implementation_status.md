@@ -76,15 +76,15 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
 - Typed public-testnet run evidence evaluation for distinct miner/validator operators,
-  signature-verified node heartbeat summaries, observed block continuity, finality rate,
-  data-availability rate, invalid-work rejection evidence, reward-settlement records, production libp2p
-  runtime evidence, and deployed RPC/explorer/faucet/telemetry service reachability with signed
-  health-check summaries
+  signature-verified node heartbeat summaries, signed wall-clock run-window evidence, observed block
+  continuity, finality rate, data-availability rate, invalid-work rejection evidence, reward-settlement
+  records, production libp2p runtime evidence, and deployed RPC/explorer/faucet/telemetry service
+  reachability with signed health-check summaries
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
-  location, a verified manifest publication signature, independent auditor records, block/finality history,
-  operator attestations, signed block/finality/data-availability summary roots, and data-availability
-  measurement records, and derives external-operator evidence from the operator attestation count before
-  full-spec evidence can be considered independently checkable
+  location, a verified manifest publication signature, independent auditor records, a signed run-window
+  record, block/finality history, operator attestations, signed block/finality/data-availability summary
+  roots, and data-availability measurement records, and derives external-operator evidence from the
+  operator attestation count before full-spec evidence can be considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
@@ -112,8 +112,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.59% workspace line coverage
-- 5722/5804 workspace lines covered
+- 98.60% workspace line coverage
+- 5794/5876 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -130,9 +130,9 @@ These spec items require real deployment or non-reference infrastructure and are
   coverage is an optional CUDA field-matmul path checked against canonical CPU outputs
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
-  treating a local test harness as public proof, and now requires invalid-work rejection plus reward-settlement
-  records, production libp2p runtime evidence, and deployed public-service reachability before public
-  evidence can satisfy the gate
+  treating a local test harness as public proof, and now requires a signed wall-clock run window,
+  invalid-work rejection plus reward-settlement records, production libp2p runtime evidence, and deployed
+  public-service reachability before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is available
   yet

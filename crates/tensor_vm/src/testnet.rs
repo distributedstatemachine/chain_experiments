@@ -181,6 +181,10 @@ impl PublicTestnetPreflightPlan {
 pub struct PublicTestnetEvidence {
     pub miner_count: usize,
     pub validator_count: usize,
+    pub run_started_at_unix_seconds: u64,
+    pub run_ended_at_unix_seconds: u64,
+    pub observed_duration_seconds: u64,
+    pub required_duration_seconds: u64,
     pub observed_blocks: u64,
     pub required_blocks: u64,
     pub finality_rate_bps: u64,
@@ -198,6 +202,7 @@ pub struct PublicTestnetEvidence {
     pub has_deployed_public_services: bool,
     pub has_required_miners: bool,
     pub has_required_validators: bool,
+    pub has_required_run_duration: bool,
     pub has_required_block_count: bool,
     pub has_required_finality: bool,
     pub has_required_data_availability: bool,
@@ -516,6 +521,8 @@ pub struct PublicTestnetRunEvidence {
     pub nodes: Vec<PublicNodeEvidence>,
     pub network_runtime: PublicNetworkRuntimeEvidence,
     pub services: Vec<PublicServiceEvidence>,
+    pub run_started_at_unix_seconds: u64,
+    pub run_ended_at_unix_seconds: u64,
     pub observed_blocks: u64,
     pub finalized_blocks: u64,
     pub checked_receipts: u64,
@@ -540,6 +547,7 @@ pub struct PublicEvidenceRecordSummaries {
 pub struct PublicTestnetEvidenceBundle {
     pub run: PublicTestnetRunEvidence,
     pub publication: PublicEvidencePublication,
+    pub run_window_signature: Signature,
     pub block_history_records: u64,
     pub block_history_root: Hash,
     pub block_history_signature: Signature,
@@ -556,6 +564,7 @@ pub struct PublicTestnetEvidenceBundle {
 pub struct PublicTestnetEvidenceBundleReport {
     pub run_evidence: PublicTestnetEvidence,
     pub has_published_evidence_bundle: bool,
+    pub has_signed_run_window: bool,
     pub has_block_history: bool,
     pub has_finality_history: bool,
     pub has_operator_identity_attestations: bool,
@@ -583,6 +592,9 @@ struct PublicEvidenceManifestBuilder {
     data_availability_measurement_records: Option<u64>,
     data_availability_measurement_root: Option<Hash>,
     data_availability_measurement_signature: Option<Signature>,
+    run_started_at_unix_seconds: Option<u64>,
+    run_ended_at_unix_seconds: Option<u64>,
+    run_window_signature: Option<Signature>,
     libp2p_runtime_used: Option<bool>,
     peer_discovery_observed: Option<bool>,
     gossip_propagation_observed: Option<bool>,
@@ -745,6 +757,13 @@ impl PublicEvidenceManifestBuilder {
             "data_availability_measurement_signature" => {
                 self.data_availability_measurement_signature = Some(parse_hash_hex(value)?);
             }
+            "run_started_at_unix_seconds" => {
+                self.run_started_at_unix_seconds = Some(parse_manifest_u64(value)?);
+            }
+            "run_ended_at_unix_seconds" => {
+                self.run_ended_at_unix_seconds = Some(parse_manifest_u64(value)?);
+            }
+            "run_window_signature" => self.run_window_signature = Some(parse_hash_hex(value)?),
             "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(value)?),
             "peer_discovery_observed" => {
                 self.peer_discovery_observed = Some(parse_manifest_bool(value)?);
@@ -793,6 +812,8 @@ impl PublicEvidenceManifestBuilder {
                     dos_controls_enabled: required_bool(self.dos_controls_enabled)?,
                 },
                 services: self.services,
+                run_started_at_unix_seconds: required_u64(self.run_started_at_unix_seconds)?,
+                run_ended_at_unix_seconds: required_u64(self.run_ended_at_unix_seconds)?,
                 observed_blocks: required_u64(self.observed_blocks)?,
                 finalized_blocks: required_u64(self.finalized_blocks)?,
                 checked_receipts: required_u64(self.checked_receipts)?,
@@ -812,6 +833,7 @@ impl PublicEvidenceManifestBuilder {
                 publication.manifest_signature = required_hash(self.manifest_signature)?;
                 publication
             },
+            run_window_signature: required_hash(self.run_window_signature)?,
             block_history_records: required_u64(self.block_history_records)?,
             block_history_root: required_hash(self.block_history_root)?,
             block_history_signature: required_hash(self.block_history_signature)?,
@@ -1069,6 +1091,39 @@ fn sign_public_evidence_record(
     )
 }
 
+fn public_run_window_message(
+    bundle_id: &Hash,
+    run_started_at_unix_seconds: u64,
+    run_ended_at_unix_seconds: u64,
+    observed_blocks: u64,
+) -> Hash {
+    let started = run_started_at_unix_seconds.to_le_bytes();
+    let ended = run_ended_at_unix_seconds.to_le_bytes();
+    let blocks = observed_blocks.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-run-window-v1",
+        &[bundle_id, &started, &ended, &blocks],
+    )
+}
+
+fn sign_public_run_window(
+    signer: &Address,
+    bundle_id: &Hash,
+    run_started_at_unix_seconds: u64,
+    run_ended_at_unix_seconds: u64,
+    observed_blocks: u64,
+) -> Signature {
+    sign(
+        signer,
+        &public_run_window_message(
+            bundle_id,
+            run_started_at_unix_seconds,
+            run_ended_at_unix_seconds,
+            observed_blocks,
+        ),
+    )
+}
+
 fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
     let Some(rest) = uri.strip_prefix(scheme) else {
         return false;
@@ -1143,9 +1198,17 @@ impl PublicTestnetEvidenceBundle {
     ) -> Self {
         let signer = publication.manifest_signer;
         let bundle_id = publication.bundle_id;
+        let run_window_signature = sign_public_run_window(
+            &signer,
+            &bundle_id,
+            run.run_started_at_unix_seconds,
+            run.run_ended_at_unix_seconds,
+            run.observed_blocks,
+        );
         Self {
             run,
             publication,
+            run_window_signature,
             block_history_records: record_summaries.block_history_records,
             block_history_root: record_summaries.block_history_root,
             block_history_signature: sign_public_evidence_record(
@@ -1186,6 +1249,7 @@ impl PublicTestnetEvidenceBundle {
     ) -> PublicTestnetEvidenceBundleReport {
         let has_published_evidence_bundle =
             self.publication.is_published_and_independently_checkable();
+        let has_signed_run_window = self.public_run_window_signature_valid();
         let has_block_history = self.run.observed_blocks > 0
             && self.block_history_records >= self.run.observed_blocks
             && self.public_record_signature_valid(
@@ -1220,6 +1284,7 @@ impl PublicTestnetEvidenceBundle {
                 &self.data_availability_measurement_signature,
             );
         let independently_checkable = has_published_evidence_bundle
+            && has_signed_run_window
             && has_block_history
             && has_finality_history
             && has_operator_identity_attestations
@@ -1230,6 +1295,7 @@ impl PublicTestnetEvidenceBundle {
         PublicTestnetEvidenceBundleReport {
             run_evidence,
             has_published_evidence_bundle,
+            has_signed_run_window,
             has_block_history,
             has_finality_history,
             has_operator_identity_attestations,
@@ -1260,6 +1326,22 @@ impl PublicTestnetEvidenceBundle {
                 signature,
             )
     }
+
+    fn public_run_window_signature_valid(&self) -> bool {
+        self.publication.manifest_signer != [0; 32]
+            && self.publication.bundle_id != [0; 32]
+            && self.run.run_ended_at_unix_seconds >= self.run.run_started_at_unix_seconds
+            && verify_signature(
+                &self.publication.manifest_signer,
+                &public_run_window_message(
+                    &self.publication.bundle_id,
+                    self.run.run_started_at_unix_seconds,
+                    self.run.run_ended_at_unix_seconds,
+                    self.run.observed_blocks,
+                ),
+                &self.run_window_signature,
+            )
+    }
 }
 
 impl PublicTestnetRunEvidence {
@@ -1272,6 +1354,15 @@ impl PublicTestnetRunEvidence {
         let (miner_count, validator_count) = self.independent_operator_counts();
         let required_blocks =
             required_blocks_for_days(criteria.duration_days, block_time_seconds.max(1));
+        let required_duration_seconds = required_duration_seconds_for_days(criteria.duration_days);
+        let has_valid_run_window =
+            self.run_ended_at_unix_seconds >= self.run_started_at_unix_seconds;
+        let observed_duration_seconds = if has_valid_run_window {
+            self.run_ended_at_unix_seconds
+                .saturating_sub(self.run_started_at_unix_seconds)
+        } else {
+            0
+        };
         let finality_rate_bps = ratio_parts_to_bps(self.finalized_blocks, self.observed_blocks);
         let data_availability_bps =
             ratio_parts_to_bps(self.available_receipts, self.checked_receipts);
@@ -1281,6 +1372,8 @@ impl PublicTestnetRunEvidence {
         );
         let has_required_miners = miner_count >= criteria.min_miners;
         let has_required_validators = validator_count >= criteria.min_validators;
+        let has_required_run_duration =
+            has_valid_run_window && observed_duration_seconds >= required_duration_seconds;
         let has_required_block_count = self.observed_blocks >= required_blocks;
         let has_required_finality = finality_rate_bps >= criteria.min_finality_rate_bps;
         let has_required_data_availability =
@@ -1306,6 +1399,7 @@ impl PublicTestnetRunEvidence {
             && has_deployed_telemetry_service;
         let public_criterion_met = has_required_miners
             && has_required_validators
+            && has_required_run_duration
             && has_required_block_count
             && has_required_finality
             && has_required_data_availability
@@ -1317,6 +1411,10 @@ impl PublicTestnetRunEvidence {
         PublicTestnetEvidence {
             miner_count,
             validator_count,
+            run_started_at_unix_seconds: self.run_started_at_unix_seconds,
+            run_ended_at_unix_seconds: self.run_ended_at_unix_seconds,
+            observed_duration_seconds,
+            required_duration_seconds,
             observed_blocks: self.observed_blocks,
             required_blocks,
             finality_rate_bps,
@@ -1334,6 +1432,7 @@ impl PublicTestnetRunEvidence {
             has_deployed_public_services,
             has_required_miners,
             has_required_validators,
+            has_required_run_duration,
             has_required_block_count,
             has_required_finality,
             has_required_data_availability,
@@ -1583,7 +1682,26 @@ impl LocalTestnet {
     ) -> PublicTestnetEvidence {
         let telemetry = self.telemetry();
         let required_blocks = self.expected_blocks_for_days(criteria.duration_days);
+        let required_duration_seconds = required_duration_seconds_for_days(criteria.duration_days);
         let observed_blocks = self.chain.blocks.len() as u64;
+        let run_started_at_unix_seconds = self
+            .chain
+            .blocks
+            .first()
+            .map(|block| block.timestamp)
+            .unwrap_or(0);
+        let run_ended_at_unix_seconds = self
+            .chain
+            .blocks
+            .last()
+            .map(|block| {
+                block
+                    .timestamp
+                    .saturating_add(self.chain.params.block_time_seconds)
+            })
+            .unwrap_or(run_started_at_unix_seconds);
+        let observed_duration_seconds =
+            run_ended_at_unix_seconds.saturating_sub(run_started_at_unix_seconds);
         let finality_rate_bps = ratio_to_bps(telemetry.block_finality_rate);
         let data_availability_bps = ratio_to_bps(telemetry.data_availability_rate);
         let invalid_receipts_submitted = telemetry.invalid_receipts_submitted as u64;
@@ -1594,6 +1712,7 @@ impl LocalTestnet {
         let reward_settlement_records = telemetry.settled_receipt_count as u64;
         let has_required_miners = self.miners.len() >= criteria.min_miners;
         let has_required_validators = self.validators.len() >= criteria.min_validators;
+        let has_required_run_duration = observed_duration_seconds >= required_duration_seconds;
         let has_required_block_count = observed_blocks >= required_blocks;
         let has_required_finality = finality_rate_bps >= criteria.min_finality_rate_bps;
         let has_required_data_availability =
@@ -1615,6 +1734,10 @@ impl LocalTestnet {
         PublicTestnetEvidence {
             miner_count: self.miners.len(),
             validator_count: self.validators.len(),
+            run_started_at_unix_seconds,
+            run_ended_at_unix_seconds,
+            observed_duration_seconds,
+            required_duration_seconds,
             observed_blocks,
             required_blocks,
             finality_rate_bps,
@@ -1632,6 +1755,7 @@ impl LocalTestnet {
             has_deployed_public_services,
             has_required_miners,
             has_required_validators,
+            has_required_run_duration,
             has_required_block_count,
             has_required_finality,
             has_required_data_availability,
@@ -1711,10 +1835,13 @@ fn ratio_parts_to_bps(numerator: u64, denominator: u64) -> u64 {
 }
 
 fn required_blocks_for_days(days: u64, block_time_seconds: u64) -> u64 {
+    required_duration_seconds_for_days(days) / block_time_seconds.max(1)
+}
+
+fn required_duration_seconds_for_days(days: u64) -> u64 {
     days.saturating_mul(24)
         .saturating_mul(60)
         .saturating_mul(60)
-        / block_time_seconds.max(1)
 }
 
 #[cfg(test)]
@@ -1800,6 +1927,8 @@ mod tests {
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
             finalized_blocks: 10,
             checked_receipts: 20,
@@ -1905,6 +2034,9 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
+run_started_at_unix_seconds=1700000000
+run_ended_at_unix_seconds=1700000060
+run_window_signature={}
 observed_blocks=10
 finalized_blocks=10
 checked_receipts=20
@@ -1929,6 +2061,7 @@ service=telemetry,{},0,9,10,10,{}
             hex(&manifest_bundle().finality_history_signature),
             manifest_hash(b"test", b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
+            hex(&manifest_bundle().run_window_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"test", b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -2172,6 +2305,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
             finalized_blocks: 10,
             checked_receipts: 20,
@@ -2211,6 +2346,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert_eq!(sufficient.miner_count, 2);
         assert!(sufficient.has_required_miners);
         assert!(sufficient.has_required_validators);
+        assert!(sufficient.has_required_run_duration);
         assert!(sufficient.has_required_block_count);
         assert!(sufficient.has_required_finality);
         assert!(sufficient.has_required_data_availability);
@@ -2219,6 +2355,21 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(sufficient.has_production_libp2p_runtime);
         assert!(sufficient.has_deployed_public_services);
         assert!(sufficient.public_criterion_met);
+
+        let one_day_criteria = PublicTestnetCriteria {
+            duration_days: 1,
+            ..criteria.clone()
+        };
+        let short_window = run.evaluate(&one_day_criteria, 8_640, true);
+        assert!(short_window.has_required_block_count);
+        assert!(!short_window.has_required_run_duration);
+        assert!(!short_window.public_criterion_met);
+
+        let mut full_window = run.clone();
+        full_window.run_ended_at_unix_seconds = full_window.run_started_at_unix_seconds + 86_400;
+        let full_window = full_window.evaluate(&one_day_criteria, 8_640, true);
+        assert!(full_window.has_required_run_duration);
+        assert!(full_window.public_criterion_met);
 
         let mut tampered_heartbeat = run.clone();
         tampered_heartbeat.nodes[0].heartbeat_signature = [7; 32];
@@ -2271,6 +2422,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: production_runtime_evidence(),
             services: deployed_public_services(9),
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
             finalized_blocks: 10,
             checked_receipts: 20,
@@ -2353,6 +2506,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let complete = bundle.evaluate(&criteria, 6);
         assert!(complete.run_evidence.public_criterion_met);
         assert!(complete.has_published_evidence_bundle);
+        assert!(complete.has_signed_run_window);
         assert!(complete.has_block_history);
         assert!(complete.has_finality_history);
         assert!(complete.has_operator_identity_attestations);
@@ -2365,6 +2519,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!tampered_manifest_signature.has_published_evidence_bundle);
         assert!(!tampered_manifest_signature.independently_checkable);
         assert!(!tampered_manifest_signature.full_spec_evidence_met);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.run_window_signature = [7; 32];
+        let tampered_run_window = bundle.evaluate(&criteria, 6);
+        assert!(!tampered_run_window.has_signed_run_window);
+        assert!(!tampered_run_window.independently_checkable);
+        assert!(!tampered_run_window.full_spec_evidence_met);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.run.run_ended_at_unix_seconds = bundle.run.run_started_at_unix_seconds - 1;
+        let invalid_run_window = bundle.evaluate(&criteria, 6);
+        assert!(!invalid_run_window.has_signed_run_window);
+        assert!(!invalid_run_window.run_evidence.has_required_run_duration);
+        assert!(!invalid_run_window.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.manifest_signer = [0; 32];
@@ -2517,6 +2685,9 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             manifest_without_line(&manifest, "finality_history_signature="),
             manifest_without_line(&manifest, "data_availability_measurement_root="),
             manifest_without_line(&manifest, "data_availability_measurement_signature="),
+            manifest_without_line(&manifest, "run_started_at_unix_seconds="),
+            manifest_without_line(&manifest, "run_ended_at_unix_seconds="),
+            manifest_without_line(&manifest, "run_window_signature="),
             manifest_without_line(&manifest, "observed_blocks="),
             manifest_without_line(&manifest, "dos_controls_enabled="),
             manifest.replace("bundle_id=0x", "bundle_id=0x12"),
@@ -2692,6 +2863,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             ],
             network_runtime: PublicNetworkRuntimeEvidence::default(),
             services: Vec::new(),
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
             observed_blocks: 10,
             finalized_blocks: 11,
             checked_receipts: 0,
@@ -2709,11 +2882,14 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         let report = run.evaluate(&criteria, 6, true);
         assert_eq!(report.miner_count, 0);
         assert_eq!(report.validator_count, 0);
+        assert_eq!(report.observed_duration_seconds, 60);
+        assert_eq!(report.required_duration_seconds, 86_400);
         assert_eq!(report.required_blocks, 14_400);
         assert_eq!(report.finality_rate_bps, 10_000);
         assert_eq!(report.data_availability_bps, 0);
         assert_eq!(report.invalid_work_rejection_rate_bps, 0);
         assert!(!report.external_operator_evidence);
+        assert!(!report.has_required_run_duration);
         assert!(!report.has_production_libp2p_runtime);
         assert!(!report.has_deployed_rpc_service);
         assert!(!report.has_deployed_explorer_service);

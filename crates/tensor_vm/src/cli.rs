@@ -163,17 +163,22 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         ChainParams::default().block_time_seconds,
     );
     Ok(format!(
-        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
+        "public_evidence_full_spec={}\npublic_criterion={}\nindependently_checkable={}\npublished_evidence_bundle={}\nsigned_run_window={}\nblock_history={}\nfinality_history={}\noperator_identity_attestations={}\ndata_availability_measurements={}\nminers={}\nvalidators={}\nrun_started_at_unix_seconds={}\nrun_ended_at_unix_seconds={}\nobserved_duration_seconds={}\nrequired_duration_seconds={}\nobserved_blocks={}\nrequired_blocks={}\nfinality_rate_bps={}\ndata_availability_bps={}\ninvalid_receipts_submitted={}\ninvalid_receipts_rejected={}\ninvalid_work_rejection_rate_bps={}\nreward_settlement_records={}\nexternal_operator_evidence={}\nrequired_miners={}\nrequired_validators={}\nrequired_run_duration={}\nrequired_block_count={}\nrequired_finality={}\nrequired_data_availability={}\ninvalid_work_rejection_evidence={}\nreward_settlement_evidence={}\nproduction_libp2p_runtime={}\ndeployed_rpc_service={}\ndeployed_explorer_service={}\ndeployed_faucet_service={}\ndeployed_telemetry_service={}\ndeployed_public_services={}",
         report.full_spec_evidence_met,
         report.run_evidence.public_criterion_met,
         report.independently_checkable,
         report.has_published_evidence_bundle,
+        report.has_signed_run_window,
         report.has_block_history,
         report.has_finality_history,
         report.has_operator_identity_attestations,
         report.has_data_availability_measurements,
         report.run_evidence.miner_count,
         report.run_evidence.validator_count,
+        report.run_evidence.run_started_at_unix_seconds,
+        report.run_evidence.run_ended_at_unix_seconds,
+        report.run_evidence.observed_duration_seconds,
+        report.run_evidence.required_duration_seconds,
         report.run_evidence.observed_blocks,
         report.run_evidence.required_blocks,
         report.run_evidence.finality_rate_bps,
@@ -185,6 +190,7 @@ pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
         report.run_evidence.external_operator_evidence,
         report.run_evidence.has_required_miners,
         report.run_evidence.has_required_validators,
+        report.run_evidence.has_required_run_duration,
         report.run_evidence.has_required_block_count,
         report.run_evidence.has_required_finality,
         report.run_evidence.has_required_data_availability,
@@ -397,6 +403,8 @@ mod tests {
                         10,
                     ),
                 ],
+                run_started_at_unix_seconds: 1_700_000_000,
+                run_ended_at_unix_seconds: 1_700_000_060,
                 observed_blocks: 10,
                 finalized_blocks: 10,
                 checked_receipts: 20,
@@ -446,6 +454,9 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
+run_started_at_unix_seconds=1700000000
+run_ended_at_unix_seconds=1700000060
+run_window_signature={}
 observed_blocks=10
 finalized_blocks=10
 checked_receipts=20
@@ -470,6 +481,7 @@ service=telemetry,{},0,9,10,10,{}
             hex(&manifest_bundle().finality_history_signature),
             manifest_hash(b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
+            hex(&manifest_bundle().run_window_signature),
             manifest_address(b"miner-a"),
             manifest_hash(b"miner-a-operator"),
             manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
@@ -754,12 +766,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("public_criterion=false"));
         assert!(report.contains("independently_checkable=true"));
         assert!(report.contains("published_evidence_bundle=true"));
+        assert!(report.contains("signed_run_window=true"));
         assert!(report.contains("block_history=true"));
         assert!(report.contains("finality_history=true"));
         assert!(report.contains("operator_identity_attestations=true"));
         assert!(report.contains("data_availability_measurements=true"));
         assert!(report.contains("miners=2"));
         assert!(report.contains("validators=1"));
+        assert!(report.contains("run_started_at_unix_seconds=1700000000"));
+        assert!(report.contains("run_ended_at_unix_seconds=1700000060"));
+        assert!(report.contains("observed_duration_seconds=60"));
+        assert!(report.contains("required_duration_seconds=604800"));
         assert!(report.contains("observed_blocks=10"));
         assert!(report.contains("required_blocks=100800"));
         assert!(report.contains("finality_rate_bps=10000"));
@@ -771,6 +788,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(report.contains("external_operator_evidence=true"));
         assert!(report.contains("required_miners=false"));
         assert!(report.contains("required_validators=false"));
+        assert!(report.contains("required_run_duration=false"));
         assert!(report.contains("required_block_count=false"));
         assert!(report.contains("required_finality=true"));
         assert!(report.contains("required_data_availability=true"));
