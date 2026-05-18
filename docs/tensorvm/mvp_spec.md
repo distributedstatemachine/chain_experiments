@@ -1775,8 +1775,10 @@ The agent should execute this loop until the contract is satisfied:
 9. run cargo tarpaulin when line coverage or test count changes
 10. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
    docs/tensorvm/tarpaulin_report.md
-11. repeat until no local-reference gaps remain
-12. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
+11. commit the completed iteration with a message that names the implemented slice
+12. push the completed iteration to the configured upstream branch
+13. repeat until no local-reference gaps remain
+14. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
     available
 ```
 
@@ -1787,10 +1789,16 @@ the exact tests and experiments that apply to the changed slice
 the exact commands executed from the workspace root
 whether each command passed, failed, or was blocked
 where the resulting evidence is documented
+the commit hash for the completed iteration
+the upstream remote and branch that received the pushed iteration
+whether the push passed, failed, or was blocked
 ```
 
 If any required test or experiment cannot be run, the agent must mark the iteration as blocked or
 incomplete, record the command and failure reason, and avoid claiming that the iteration is complete.
+If commit or push cannot be completed because no upstream exists, credentials are unavailable, network
+access is blocked, or policy forbids publishing the current changes, the agent must record the exact
+blocker and avoid claiming that the iteration is complete.
 
 Local reference completion requires:
 
