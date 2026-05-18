@@ -1,15 +1,16 @@
-# Chain Workspace
+# TensorVM Workspace
 
-Cargo workspace for experimenting with multiple chain designs and proof-of-useful-work consensus
-variants.
+Cargo workspace for TensorVM (TVM) and related proof-of-useful-work chain experiments.
 
 ## Crates
 
 | Crate | Purpose |
 | --- | --- |
-| [pearl_chain](crates/pearl_chain/README.md) | Matrix-multiplication proof-of-useful-work chain prototype based on [`pearl.pdf`](docs/pearl.pdf). |
+| [pearl_chain](crates/pearl_chain/README.md) | Matrix-multiplication proof-of-useful-work chain prototype based on [`pearl.pdf`](docs/pearl/pearl.pdf). |
+| [tensor_vm](crates/tensor_vm/README.md) | Reference implementation of the reviewed TensorVM MVP spec. |
 
 New chain designs should live under `crates/<name>/` and include their own `README.md`.
+Protocol papers and research notes live in [docs](docs/README.md).
 
 ## Workspace Commands
 
@@ -17,21 +18,16 @@ New chain designs should live under `crates/<name>/` and include their own `READ
 cargo test --workspace --release
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check --all
+cargo tarpaulin
 ```
 
 Run a crate example:
 
 ```bash
 cargo run -p pearl_chain --release --example mine
+cargo test -p tensor_vm --release
 ```
 
-## Research Notes
+## Documentation
 
-- [pearl.pdf](docs/pearl.pdf)
-- [Ambient litepaper](docs/Ambient_Litepaper_V1.pdf)
-- [TensorChain MVP spec](docs/tensor_chain_mvp_spec.md)
-- [Paper critique](docs/pearl_critique.md)
-- [Pearl vs Ambient protocol review](docs/pearl_vs_ambient_protocol_review.md)
-- [AI reproducibility schemes](docs/ai_reproducibility_schemes.md)
-- [Attack matrix](docs/attack_matrix.md)
-- [GF(2) bit-packing break](docs/gf2_bitpack_break.md)
+See [docs](docs/README.md) for papers, protocol reviews, implementation notes, and attack writeups.

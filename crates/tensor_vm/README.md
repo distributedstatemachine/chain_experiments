@@ -1,0 +1,36 @@
+# tensor_vm
+
+Reference implementation of the TensorVM (TVM) MVP reviewed in
+[`../../docs/tensorvm/mvp_spec.md`](../../docs/tensorvm/mvp_spec.md).
+
+The crate implements the deterministic local/testnet core:
+
+- row-major finite-field tensors
+- self-contained field arithmetic, SHA-256 hashing, and oracle RNG primitives
+- bounds-checked tensor row/cell access
+- Merkle tensor commitments and openings
+- deterministic TensorVM operations
+- canonical TensorVM program hashing across all MVP operation variants
+- full-output and row-sampled Freivalds checks
+- TensorOp receipts and validator attestations
+- LinearTrainingStep execution and verification
+- settled TensorWork proposer selection and reward settlement
+- operator identity on miner state with operator-separated replication assignment
+- miner hardware-class and GPU utilization telemetry
+- local chain simulation for adversarial tests
+- generic framed P2P message codec and framed TCP transport
+- durable P2P peer-book storage with Kademlia-style closest-peer discovery, peer-count admission, and
+  rate-limit/backoff checks
+- libp2p-primary networking recommendation with Iroh reserved for a later tensor/blob data plane
+- restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
+- explorer, telemetry, and local faucet RPC endpoints
+- local browser-facing explorer, telemetry, and faucet HTML pages
+- watcher scans for invalid receipts, data withholding, validator misconduct, and settlement blockers
+- public-testnet evidence reporting that distinguishes local preflight shape from actual 7-day
+  external-operator proof and checks distinct operators, signed heartbeats, finality, and data availability
+
+Run from the workspace root:
+
+```bash
+cargo test -p tensor_vm --release
+```
