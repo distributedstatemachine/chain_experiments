@@ -146,7 +146,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
   single-label DNS rejection, plus manifest validation that binds one such signed raw record to every
-  counted public operator and to the aggregate network-runtime root,
+  counted public operator and to the aggregate network-runtime root; the process-level `tvmd` service
+  smoke test now derives a public-address observation root from the live libp2p peer/protocol stdout and
+  feeds that root through `record-summary-from-roots` and `record-artifact-from-roots`,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,

@@ -137,6 +137,17 @@ fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
         .expect("expected service stdout field")
 }
 
+fn network_observation_root(line: &str) -> &str {
+    let fields = line
+        .trim()
+        .strip_prefix("network_runtime_observation=")
+        .expect("network observation line must have expected prefix")
+        .split(',')
+        .collect::<Vec<_>>();
+    assert_eq!(fields.len(), 13);
+    fields[11]
+}
+
 fn assert_service_health_evidence_from_response(
     kind: &str,
     endpoint_id: &str,
@@ -486,6 +497,71 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let p2p_gossipsub_topics = stdout_value(&stdout, "p2p_gossipsub_topics");
     let p2p_request_response_protocols = stdout_value(&stdout, "p2p_request_response_protocols");
     let p2p_bootstrap_peers = stdout_value(&stdout, "p2p_bootstrap_peers");
+    let public_observation = run_tvmd(&[
+        "public-evidence",
+        "network-observation",
+        "--operator-id",
+        &"99".repeat(32),
+        "--peer-id",
+        p2p_peer_id,
+        "--listen-address",
+        "/dns/node-a.tensorvm.net/tcp/4001",
+        "--observed-at",
+        "1700000000",
+        "--gossip-topics",
+        p2p_gossipsub_topics,
+        "--request-response-protocols",
+        p2p_request_response_protocols,
+        "--bootstrap-peers",
+        p2p_bootstrap_peers,
+        "--max-transmit-bytes",
+        "1048576",
+        "--request-timeout-seconds",
+        "10",
+        "--max-concurrent-streams",
+        "128",
+        "--idle-timeout-seconds",
+        "60",
+    ]);
+    assert!(public_observation.starts_with("network_runtime_observation="));
+    assert!(public_observation.contains(p2p_peer_id));
+    assert!(public_observation.contains("/dns/node-a.tensorvm.net/tcp/4001"));
+    let observation_root = network_observation_root(&public_observation);
+    let bundle_id = "aa".repeat(32);
+    let manifest_signer = "bb".repeat(32);
+    let summary_from_root = run_tvmd(&[
+        "public-evidence",
+        "record-summary-from-roots",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--record-roots",
+        observation_root,
+    ]);
+    assert!(summary_from_root.contains("network_runtime_observation_records=1"));
+    assert!(summary_from_root.contains("network_runtime_observation_root="));
+    assert!(summary_from_root.contains("network_runtime_observation_signature="));
+    let artifact_from_root = run_tvmd(&[
+        "public-evidence",
+        "record-artifact-from-roots",
+        "--kind",
+        "network-runtime",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--artifact-uri",
+        "https://evidence.tensorvm.net/network-runtime.json",
+        "--record-roots",
+        observation_root,
+    ]);
+    assert!(artifact_from_root.starts_with(
+        "record_artifact=network-runtime,https://evidence.tensorvm.net/network-runtime.json,"
+    ));
+    assert!(artifact_from_root.contains(",1,"));
     let (status, public_observation_stdout, public_observation_stderr) = run_tvmd_failure(&[
         "public-evidence",
         "network-observation",
