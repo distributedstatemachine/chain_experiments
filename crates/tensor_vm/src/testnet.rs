@@ -230,6 +230,15 @@ impl PublicServiceKind {
             Self::Telemetry => b"telemetry",
         }
     }
+
+    fn content_path(self) -> &'static str {
+        match self {
+            Self::Rpc => "/chain/head",
+            Self::Explorer => "/explorer",
+            Self::Faucet => "/faucet/page",
+            Self::Telemetry => "/telemetry/dashboard",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -431,8 +440,8 @@ impl PublicServiceContentEvidence {
             && self.observed_at_unix_seconds > 0
             && self.min_content_bytes > 0
             && public_https_host(&self.public_url).is_some_and(public_host_is_external)
-            && self.content_path.starts_with('/')
-            && self.content_path.len() > 1
+            && self.content_path == self.kind.content_path()
+            && public_https_path(&self.public_url) == Some(self.kind.content_path())
             && self.content_signature_valid()
     }
 }
@@ -1458,6 +1467,15 @@ fn public_https_host(url: &str) -> Option<&str> {
     (!host.is_empty()).then_some(host)
 }
 
+fn public_https_path(url: &str) -> Option<&str> {
+    let rest = url.trim().strip_prefix("https://")?;
+    let path_start = rest.find('/')?;
+    let path = &rest[path_start..];
+    let path_end = path.find(['?', '#']).unwrap_or(path.len());
+    let path = &path[..path_end];
+    (!path.is_empty()).then_some(path)
+}
+
 fn public_host_is_external(host: &str) -> bool {
     let host = host.trim_end_matches('.');
     let lowercase_host = host.to_ascii_lowercase();
@@ -2217,20 +2235,20 @@ impl PublicTestnetRunEvidence {
         let external_operator_evidence =
             external_operator_evidence && miner_count > 0 && validator_count > 0;
         let has_production_libp2p_runtime = self.network_runtime.has_production_libp2p_runtime();
-        let has_rpc_content = self.has_service_content(PublicServiceKind::Rpc);
-        let has_explorer_content = self.has_service_content(PublicServiceKind::Explorer);
-        let has_faucet_content = self.has_service_content(PublicServiceKind::Faucet);
-        let has_telemetry_content = self.has_service_content(PublicServiceKind::Telemetry);
+        let has_rpc_content =
+            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Rpc);
+        let has_explorer_content =
+            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Explorer);
+        let has_faucet_content =
+            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Faucet);
+        let has_telemetry_content =
+            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Telemetry);
         let has_deployed_public_service_content =
             has_rpc_content && has_explorer_content && has_faucet_content && has_telemetry_content;
-        let has_deployed_rpc_service =
-            self.has_reachable_service(PublicServiceKind::Rpc) && has_rpc_content;
-        let has_deployed_explorer_service =
-            self.has_reachable_service(PublicServiceKind::Explorer) && has_explorer_content;
-        let has_deployed_faucet_service =
-            self.has_reachable_service(PublicServiceKind::Faucet) && has_faucet_content;
-        let has_deployed_telemetry_service =
-            self.has_reachable_service(PublicServiceKind::Telemetry) && has_telemetry_content;
+        let has_deployed_rpc_service = has_rpc_content;
+        let has_deployed_explorer_service = has_explorer_content;
+        let has_deployed_faucet_service = has_faucet_content;
+        let has_deployed_telemetry_service = has_telemetry_content;
         let has_deployed_public_services = has_deployed_rpc_service
             && has_deployed_explorer_service
             && has_deployed_faucet_service
@@ -2281,16 +2299,19 @@ impl PublicTestnetRunEvidence {
         }
     }
 
-    fn has_reachable_service(&self, kind: PublicServiceKind) -> bool {
-        self.services.iter().any(|service| {
-            service.kind == kind && service.is_reachable_for_run(self.observed_blocks)
-        })
-    }
-
-    fn has_service_content(&self, kind: PublicServiceKind) -> bool {
-        self.service_content
+    fn has_service_content_for_reachable_endpoint(&self, kind: PublicServiceKind) -> bool {
+        self.services
             .iter()
-            .any(|content| content.kind == kind && content.has_external_content_proof())
+            .filter(|service| {
+                service.kind == kind && service.is_reachable_for_run(self.observed_blocks)
+            })
+            .any(|service| {
+                self.service_content.iter().any(|content| {
+                    content.kind == kind
+                        && content.endpoint_id == service.endpoint_id
+                        && content.has_external_content_proof()
+                })
+            })
     }
 
     fn independent_operator_counts(&self) -> (usize, usize) {
@@ -3542,6 +3563,31 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!local_rpc_content.has_deployed_public_service_content);
         assert!(!local_rpc_content.has_deployed_public_services);
         assert!(!local_rpc_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0] =
+            public_service_content(PublicServiceKind::Rpc, b"independent-rpc-content");
+        let mismatched_rpc_content_endpoint = run.evaluate(&criteria, 6, true);
+        assert!(!mismatched_rpc_content_endpoint.has_deployed_rpc_service);
+        assert!(!mismatched_rpc_content_endpoint.has_deployed_public_service_content);
+        assert!(!mismatched_rpc_content_endpoint.has_deployed_public_services);
+        assert!(!mismatched_rpc_content_endpoint.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
+            "https://rpc.tensorvm.example/wrong",
+            "/wrong",
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_000,
+            64,
+        );
+        let wrong_rpc_content_path = run.evaluate(&criteria, 6, true);
+        assert!(!wrong_rpc_content_path.has_deployed_rpc_service);
+        assert!(!wrong_rpc_content_path.has_deployed_public_service_content);
+        assert!(!wrong_rpc_content_path.has_deployed_public_services);
+        assert!(!wrong_rpc_content_path.public_criterion_met);
         run.service_content = deployed_public_service_content();
 
         run.service_content

@@ -90,8 +90,9 @@ auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` 
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
-must bind the same endpoint IDs to deployed content roots for `GET /chain/head`, `GET /explorer`,
-`GET /faucet/page`, and `GET /telemetry/dashboard`.
+must bind the same endpoint IDs as the corresponding health records to deployed content roots for
+`GET /chain/head`, `GET /explorer`, `GET /faucet/page`, and `GET /telemetry/dashboard`; other content
+paths do not satisfy the deployed-service gate.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -239,9 +240,10 @@ tvmd public-evidence service-content \
 The command rejects local/private service URLs, malformed endpoint IDs, invalid block ranges, and unsigned
 or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
 the evidence manifest. The service-content command rejects local/private content URLs, malformed endpoint
-IDs, non-absolute content paths, zero content roots, empty observation times, and empty content sizes. Its
-output can be inserted directly as a `service_content=...` line in the evidence manifest. The public
-service gate requires both lines for every RPC, explorer, faucet, and telemetry endpoint.
+IDs, content URLs whose path does not match the required service surface, zero content roots, empty
+observation times, and empty content sizes. Its output can be inserted directly as a `service_content=...`
+line in the evidence manifest. The public service gate requires both lines for every RPC, explorer,
+faucet, and telemetry endpoint, with matching endpoint IDs.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:

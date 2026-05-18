@@ -89,8 +89,9 @@ verify manifest publication signatures, signed run-window records, signed
 block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
 network-observation roots, signed external artifact locators for the raw records behind each summary root,
 signed service-health records bound to external HTTPS URLs, signed independent-auditor records bound to
-external audit URIs, signed service-content roots bound to external HTTPS URLs, and external-operator
-evidence derived from signed manifest operator-attestation records.
+external audit URIs, signed service-content roots bound to external HTTPS URLs, matching service endpoint
+IDs, and required content paths, and external-operator evidence derived from signed manifest
+operator-attestation records.
 These blockers therefore require real external infrastructure rather than loopback, private-network,
 unsigned, or out-of-band manifests.
 

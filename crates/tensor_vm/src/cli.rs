@@ -3581,6 +3581,30 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                content_path: "/wrong".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
                 public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
                 content_path: "/chain/head".to_owned(),
                 content_root: [0; 32],

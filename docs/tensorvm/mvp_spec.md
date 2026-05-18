@@ -1751,8 +1751,8 @@ path, observed block range, reachable observation count, and signed health-check
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Deployed
-public service evidence must include both signed health and signed content records for `/chain/head`,
-`/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
+public service evidence must include both signed health and signed content records with matching endpoint
+IDs for `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.
