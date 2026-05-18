@@ -1736,7 +1736,7 @@ Codex goal command from the repository root:
 
 ```bash
 codex exec -C . --sandbox workspace-write --ask-for-approval on-request \
-  "Goal: fully complete docs/tensorvm/mvp_spec.md for TensorVM (TVM). Implement every incomplete local reference item in crates/tensor_vm, keep tensor_vm self-contained and independent of pearl_chain, update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and docs/tensorvm/tarpaulin_report.md, run cargo fmt --check --all, cargo test --workspace --release, cargo clippy --workspace --all-targets -- -D warnings, and cargo tarpaulin from the workspace root, and do not declare full-spec completion unless real CUDA/C++ kernels, production libp2p runtime, deployed RPC/explorer/faucet/telemetry services, and independently checkable 7-day public-testnet evidence are present and documented."
+  "Goal: fully complete docs/tensorvm/mvp_spec.md for TensorVM (TVM). Implement every incomplete local reference item in crates/tensor_vm, keep tensor_vm self-contained and independent of pearl_chain, update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and docs/tensorvm/tarpaulin_report.md, run every relevant test and experiment before claiming each iteration complete, run cargo fmt --check --all, cargo test --workspace --release, cargo clippy --workspace --all-targets -- -D warnings, and cargo tarpaulin from the workspace root, and do not declare full-spec completion unless real CUDA/C++ kernels, production libp2p runtime, deployed RPC/explorer/faucet/telemetry services, and independently checkable 7-day public-testnet evidence are present and documented."
 ```
 
 If the local wrapper is named `docex` instead of `codex`, use the same command with only the binary name
@@ -1751,6 +1751,8 @@ preserve the Cargo workspace structure and keep each chain design in its own cra
 do not make crates/tensor_vm depend on crates/pearl_chain
 prefer deterministic Rust reference implementations before optimized kernels
 add tests for every new consensus-critical branch
+run all relevant tests, study harnesses, simulations, and experiments before claiming any iteration is
+complete
 update the coverage matrix when acceptance criteria move from incomplete to complete
 update the implementation status whenever the local/full-spec boundary changes
 update the Tarpaulin report after every coverage-changing implementation pass
@@ -1767,13 +1769,28 @@ The agent should execute this loop until the contract is satisfied:
 5. run cargo fmt --check --all
 6. run cargo test --workspace --release
 7. run cargo clippy --workspace --all-targets -- -D warnings
-8. run cargo tarpaulin when line coverage or test count changes
-9. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
+8. run every relevant experiment or study command for the slice, including randomness, Freivalds,
+   row-sampling, data-withholding, collusion, TensorWork concentration, zero-work liveness,
+   local-testnet, public-evidence, networking, persistence, and telemetry experiments when touched
+9. run cargo tarpaulin when line coverage or test count changes
+10. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
    docs/tensorvm/tarpaulin_report.md
-10. repeat until no local-reference gaps remain
-11. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
+11. repeat until no local-reference gaps remain
+12. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
     available
 ```
+
+An iteration is not complete until the agent has recorded:
+
+```text
+the exact tests and experiments that apply to the changed slice
+the exact commands executed from the workspace root
+whether each command passed, failed, or was blocked
+where the resulting evidence is documented
+```
+
+If any required test or experiment cannot be run, the agent must mark the iteration as blocked or
+incomplete, record the command and failure reason, and avoid claiming that the iteration is complete.
 
 Local reference completion requires:
 
