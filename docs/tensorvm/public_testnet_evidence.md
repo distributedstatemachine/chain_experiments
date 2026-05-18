@@ -385,6 +385,13 @@ tvmd public-evidence record-artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
+tvmd public-evidence record-artifact-from-roots \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
+  --record-roots <comma-separated-record-roots>
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -399,9 +406,10 @@ checks.
 The `record-artifact` command emits a signed `record_artifact=...` manifest line that binds an external
 raw-record artifact URI to the same record kind, root, and count. The full independently checkable gate
 requires one valid artifact locator for every required supporting-record summary root.
-The `record-summary-from-roots` variant derives a deterministic aggregate root and record count from unique
-provided supporting-record roots before signing those same summary fields; duplicate roots are rejected so a
-summary count cannot be padded by repeating the same raw record root.
+The `record-summary-from-roots` and `record-artifact-from-roots` variants derive a deterministic aggregate
+root and record count from unique provided supporting-record roots before signing the summary fields or
+artifact locator; duplicate roots are rejected so a summary count cannot be padded by repeating the same raw
+record root.
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires the default
 public-testnet criteria or stricter criteria, `public_criterion=true`, and `independently_checkable=true`.

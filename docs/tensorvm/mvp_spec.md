@@ -1794,6 +1794,13 @@ tvmd public-evidence record-artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
+tvmd public-evidence record-artifact-from-roots \
+  --kind network-runtime \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
+  --record-roots <comma-separated-record-roots>
+
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -1868,6 +1875,9 @@ total; signed undercounts or overcounts cannot satisfy independently checkable e
 The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
 artifact URI to the record kind, root, and count; independently checkable public evidence requires one
 valid artifact locator for every required supporting-record summary root.
+The `record-artifact-from-roots` command derives the same aggregate root and count as
+`record-summary-from-roots` before signing the artifact locator, so the summary line and artifact locator
+can be generated from the same raw record-root list.
 The `record-summary-from-roots` command deterministically aggregates unique comma-separated
 supporting-record roots, rejects duplicate roots that would pad the derived count, and emits the same signed
 manifest summary fields so operators do not need an out-of-band root-signing tool for post-run bundles.

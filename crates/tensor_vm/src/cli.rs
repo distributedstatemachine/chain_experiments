@@ -102,6 +102,13 @@ pub enum CliCommand {
         record_root: Hash,
         record_count: u64,
     },
+    PublicEvidenceRecordArtifactFromRoots {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
+        record_roots: Vec<Hash>,
+    },
     PublicEvidenceRecordSummaryFromRoots {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
@@ -386,6 +393,26 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "record-artifact-from-roots",
+            "--kind",
+            kind,
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--artifact-uri",
+            artifact_uri,
+            "--record-roots",
+            record_roots,
+        ] => Ok(CliCommand::PublicEvidenceRecordArtifactFromRoots {
+            kind: parse_public_evidence_record_kind(kind)?,
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            artifact_uri: (*artifact_uri).to_owned(),
+            record_roots: parse_hash_list_argument(record_roots)?,
+        }),
+        [
+            "public-evidence",
             "record-summary-from-roots",
             "--kind",
             kind,
@@ -652,6 +679,18 @@ pub fn describe_command(command: &CliCommand) -> String {
                 public_evidence_record_kind_tag(*kind)
             )
         }
+        CliCommand::PublicEvidenceRecordArtifactFromRoots {
+            kind,
+            artifact_uri,
+            record_roots,
+            ..
+        } => {
+            format!(
+                "generate {} public evidence artifact locator from {} roots artifact_uri={artifact_uri}",
+                public_evidence_record_kind_tag(*kind),
+                record_roots.len()
+            )
+        }
         CliCommand::PublicEvidenceRecordSummaryFromRoots {
             kind, record_roots, ..
         } => {
@@ -896,6 +935,23 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *record_root,
             *record_count,
         ),
+        CliCommand::PublicEvidenceRecordArtifactFromRoots {
+            kind,
+            bundle_id,
+            manifest_signer,
+            artifact_uri,
+            record_roots,
+        } => {
+            let record_root = aggregate_public_evidence_record_roots(*kind, record_roots)?;
+            record_artifact_evidence_line(
+                *kind,
+                *bundle_id,
+                *manifest_signer,
+                artifact_uri,
+                record_root,
+                record_roots.len() as u64,
+            )
+        }
         CliCommand::PublicEvidenceRecordSummaryFromRoots {
             kind,
             bundle_id,
@@ -2907,6 +2963,33 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             }
         );
         assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-artifact-from-roots",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--artifact-uri",
+                "https://evidence.tensorvm.net/network-runtime.json",
+                "--record-roots",
+                &record_roots,
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRecordArtifactFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_roots: vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ],
+            }
+        );
+        assert_eq!(
             parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
             CliCommand::ServiceInit {
                 data_dir: "/var/lib/tensorvm".to_owned(),
@@ -3172,6 +3255,19 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 record_count: 4,
             }),
             "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
+        );
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_roots: vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ],
+            }),
+            "generate network-runtime public evidence artifact locator from 2 roots artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
         );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
@@ -3741,7 +3837,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
-                record_roots: roots,
+                record_roots: roots.clone(),
             })
             .unwrap();
         assert_eq!(
@@ -3750,6 +3846,32 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "network_runtime_observation_records=2\nnetwork_runtime_observation_root={}\nnetwork_runtime_observation_signature={}",
                 hex(&aggregate_root),
                 hex(&aggregate_signature)
+            )
+        );
+        let aggregate_artifact_uri = "https://evidence.tensorvm.net/network-runtime.json";
+        let aggregate_artifact_signature = crate::testnet::sign_public_evidence_artifact(
+            &address(b"public-evidence-publisher"),
+            &hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            aggregate_artifact_uri,
+            &aggregate_root,
+            roots.len() as u64,
+        );
+        let aggregate_artifact_line =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: aggregate_artifact_uri.to_owned(),
+                record_roots: roots,
+            })
+            .unwrap();
+        assert_eq!(
+            aggregate_artifact_line,
+            format!(
+                "record_artifact=network-runtime,{aggregate_artifact_uri},{},2,{}",
+                hex(&aggregate_root),
+                hex(&aggregate_artifact_signature)
             )
         );
     }
@@ -4770,6 +4892,26 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
+                record_roots: vec![duplicate_record_root, duplicate_record_root],
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_roots: Vec::new(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_roots: vec![duplicate_record_root, duplicate_record_root],
             })
             .is_err()
