@@ -35,8 +35,9 @@ implementation artifacts and tests.
   runtime use with signed network-observation records and summary roots, and deployed public-service reachability bound
   to external HTTPS URLs. A local launch preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
-  and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`, and the required
-  post-run evidence-bundle shape is documented in
+  and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
+  `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, and the
+  required post-run evidence-bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is linked yet.
 - Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web
   services remain outside the local reference crate. The crate has mandatory rust-libp2p runtime wiring with

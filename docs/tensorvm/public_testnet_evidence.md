@@ -9,6 +9,9 @@ run, not from the local harness.
 For pre-run launch readiness, use [`public_testnet_preflight.md`](public_testnet_preflight.md). A passing
 preflight report is not a substitute for this post-run evidence bundle.
 
+A deployment runbook for collecting, validating, and publishing the external-run evidence lives at
+[`../../deploy/tensorvm/RUNBOOK.md`](../../deploy/tensorvm/RUNBOOK.md).
+
 A checked example manifest lives at
 [`../../deploy/tensorvm/manifests/public-testnet.evidence.example`](../../deploy/tensorvm/manifests/public-testnet.evidence.example).
 It is useful for validating the post-run manifest shape, signature domains, and reporting fields, but it is

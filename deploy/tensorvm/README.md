@@ -7,6 +7,7 @@ artifacts for launching a service that can later produce independently checkable
 ## Files
 
 - `env/public-testnet.env.example` - environment file consumed by the systemd unit
+- `RUNBOOK.md` - operator runbook for launch, evidence collection, validation, and publication
 - `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
 - `manifests/public-testnet.preflight.example` - manifest accepted by
@@ -63,3 +64,6 @@ The checked example reports `independently_checkable=true` but `public_evidence_
 contains only 60 seconds, 10 observed blocks, 2 miners, and 1 validator. The full-spec gate remains closed
 until a real 7-day public run publishes the evidence bundle documented in
 `docs/tensorvm/public_testnet_evidence.md`.
+
+Use [`RUNBOOK.md`](RUNBOOK.md) for the required external operator flow, including daily evidence
+collection, post-run validation, and final publication.

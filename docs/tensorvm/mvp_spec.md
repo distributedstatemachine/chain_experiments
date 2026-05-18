@@ -1633,6 +1633,8 @@ termination, and the health endpoints required by the public preflight and post-
 Those templates include checked preflight and non-full-spec post-run evidence example manifests; the
 post-run example is only a signature-domain and parser shape check and cannot substitute for the required
 7-day external public-run evidence.
+The external operator flow, daily evidence collection, post-run validation, and publication steps are
+recorded in `deploy/tensorvm/RUNBOOK.md`.
 
 ### 31.4 Public Testnet Evidence CLI
 

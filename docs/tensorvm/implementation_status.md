@@ -94,7 +94,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   private, and link-local hosts
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
-  hostnames, a preflight manifest example validated through
+  hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
+  example validated through
   `cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example`,
   and a checked post-run evidence manifest example that validates structurally while still reporting
   `public_evidence_full_spec=false`
@@ -162,8 +163,9 @@ These spec items require real deployment or non-reference infrastructure and are
   records, and deployed public-service reachability before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), and
-  `deploy/tensorvm/manifests/public-testnet.evidence.example` is checked as a non-full-spec format example,
-  but no complete external bundle is available yet
+  `deploy/tensorvm/RUNBOOK.md` records the external collection and publication flow, while
+  `deploy/tensorvm/manifests/public-testnet.evidence.example` is checked as a non-full-spec format
+  example, but no complete external bundle is available yet
 - externally observed production libp2p operation during a public testnet; current implementation starts
   the mandatory rust-libp2p service runtime locally with bounded Gossipsub payloads, request timeouts,
   concurrent stream limits, idle connection timeouts, Kademlia discovery/address registration, and durable

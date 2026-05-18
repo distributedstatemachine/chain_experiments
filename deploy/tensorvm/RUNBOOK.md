@@ -1,0 +1,138 @@
+# TensorVM Public Testnet Runbook
+
+This runbook is for the external public run required by the TensorVM MVP spec. It does not create public
+testnet evidence by itself. Full-spec completion still requires independently operated public nodes,
+externally reachable HTTPS services, mandatory libp2p propagation, a 7-day run, and a published evidence
+bundle that validates with `public_evidence_full_spec=true`.
+
+## Preconditions
+
+Before advertising a public run:
+
+- Build `tvmd` with the CUDA kernels enabled on the miner hosts that claim GPU execution.
+- Provision at least 10 miner operators and 5 validator operators with independent operator identities.
+- Publish external DNS names and valid TLS certificates for RPC, explorer, faucet, and telemetry.
+- Publish reachable libp2p listen addresses for every node; localhost, private, link-local, and `.local`
+  addresses are not acceptable for public evidence.
+- Replace every placeholder in `env/public-testnet.env.example` and
+  `manifests/public-testnet.preflight.example`.
+- Start services through `systemd/tensorvm.service` or an equivalent unit that invokes
+  `tvmd service serve` with `--p2p-listen`.
+- Configure the reverse proxy from `nginx/tensorvm.conf` or an equivalent TLS proxy.
+
+Run the preflight gate from the repository root or from a host with the same manifest:
+
+```bash
+tvmd public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
+```
+
+The run must not start as a public MVP attempt unless the preflight reports:
+
+```text
+public_testnet_preflight_ready=true
+deployment_plan_ready=true
+production_libp2p_runtime=true
+public_services_planned=true
+```
+
+## Evidence Collection
+
+Assign these identifiers before block production starts:
+
+- one `bundle_id` for the public evidence bundle
+- one `manifest_signer`
+- one or more independent `auditor_id` values
+- one stable node address and one external operator ID per miner and validator
+- one stable endpoint ID for each public RPC, explorer, faucet, and telemetry service
+
+Generate or collect these records during the run:
+
+```bash
+tvmd public-evidence publication ...
+tvmd public-evidence auditor-record ...
+tvmd public-evidence run-window ...
+tvmd public-evidence node-heartbeat ...
+tvmd public-evidence operator-attestation ...
+tvmd public-evidence service-health ...
+tvmd public-evidence network-observation ...
+tvmd public-evidence record-summary ...
+tvmd public-evidence record-summary-from-roots ...
+```
+
+The collected records must cover the full 7-day window, not only a final snapshot. Preserve raw supporting
+records for:
+
+- block history
+- finality history
+- production libp2p observations for discovery, gossip, request/response, and DoS controls
+- data-availability measurements
+- invalid-work submissions and rejections
+- reward-settlement records
+- public service health observations for RPC, explorer, faucet, and telemetry
+
+## Daily Checks
+
+During the run, preserve signed checkpoint batches for every operator and public service each day. The
+final summaries must cover the full observed block range and the full wall-clock run window:
+
+- node heartbeats for every active miner and validator
+- service-health records for every public service
+- libp2p network-observation records from independent observers
+- finalized block count and finality rate
+- tensor receipt availability sample count and available count
+- invalid work submitted and rejected
+- reward settlements paid from verified TensorWork
+
+Any outage or operator replacement must be reflected in the final evidence bundle. Do not backfill
+operator identities or service-health records after the fact.
+
+## Post-Run Validation
+
+Create a real post-run manifest by copying
+`manifests/public-testnet.evidence.example` and replacing every example ID, URI, count, root, and signature
+with records from the external run. Then validate it:
+
+```bash
+tvmd public-evidence validate --manifest path/to/public-testnet.evidence
+```
+
+The public MVP gate requires the report to include at least:
+
+```text
+public_evidence_full_spec=true
+public_criterion=true
+independently_checkable=true
+production_libp2p_runtime=true
+deployed_public_services=true
+required_miners=true
+required_validators=true
+required_run_duration=true
+required_block_count=true
+invalid_work_rejection_evidence=true
+reward_settlement_evidence=true
+```
+
+The default criteria currently require at least 10 miners, 5 validators, 604800 observed seconds, and
+100800 observed blocks at the default block time.
+
+## Publication
+
+Publish the final evidence bundle to an external `https://`, `ipfs://`, or `ar://` URI accepted by the
+validator. The publication must include:
+
+- the validated manifest
+- raw supporting records used to derive each summary root
+- independent auditor records and audit artifacts
+- operator identity artifacts
+- public service health artifacts
+- libp2p network-observation artifacts
+
+After validation returns `public_evidence_full_spec=true`, link the published bundle from
+`docs/tensorvm/implementation_status.md` and rerun the required verification commands from the repository
+root.
+
+## Current Blocker
+
+This repository currently contains the deployment scaffold, preflight example, evidence example, and local
+validators. It does not contain a real external 7-day public run or a published independently checkable
+evidence bundle, so the full MVP spec remains incomplete.
