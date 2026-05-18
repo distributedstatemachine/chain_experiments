@@ -191,15 +191,15 @@ scientific workloads
 
 ---
 
-### 4.5 Gate 0: First MVP Acceptance Gate
+### 4.5 Gate 0: CPU Multi-Participant Local Testnet
 
-Gate 0 is the first non-skippable MVP acceptance gate: a local CPU multi-participant testnet. Before any
-other local acceptance claim, CUDA acceleration, production deployment, public-run evidence, or
-adversarial public-testnet claim can count, the default-feature CPU reference path must run a local
-TensorVM testnet with multiple independently instantiated miners and validators. This gate must use
-canonical CPU semantics and the mandatory libp2p node runtime; it cannot be satisfied by CUDA kernels,
-simulations, local-only networking shims, in-memory propagation substitutes, or single-participant
-shortcuts.
+Gate 0 is the first non-skippable MVP acceptance gate and the first gate in the MVP acceptance sequence:
+a local CPU multi-participant testnet. Before any other local acceptance claim, CUDA acceleration,
+production deployment, public-run evidence, or adversarial public-testnet claim can count, the
+default-feature CPU reference path must run a local TensorVM testnet with multiple independently
+instantiated miners and validators. This gate must use canonical CPU semantics and the mandatory libp2p
+node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking shims, in-memory
+propagation substitutes, or single-participant shortcuts.
 
 Gate 0 is also the first executable gate for every new or resumed MVP implementation iteration. Context
 gathering may happen before it, but no later gate, implementation slice, or completion claim counts until
@@ -224,8 +224,9 @@ mandatory libp2p node startup and propagation paths under default features
 explicit proof that this CPU gate is not public-run evidence and does not satisfy the 7-day deployment gate
 ```
 
-Gate 0 must be executed first when starting or resuming MVP work. Later acceptance criteria may be
-implemented and tested only after this local CPU multi-participant gate is passing in the current codebase.
+Gate 0 must be executed first when starting or resuming MVP work. Any completion transcript must list this
+command before later acceptance-gate commands. Later acceptance criteria may be implemented and tested
+only after this local CPU multi-participant gate is passing in the current codebase.
 
 The MVP must pass these gates before it is treated as a public adversarial testnet:
 
@@ -2005,25 +2006,26 @@ leave unrelated docs, papers, and Pearl experiments intact
 The agent should execute this loop until the contract is satisfied:
 
 ```text
-1. compare code and docs against Sections 32, 33, and 35
-2. list missing local-reference items and missing deployment-gated items
-3. run the Gate 0 CPU local-testnet command as the first executable acceptance gate before any other
+1. read this spec and the linked status/coverage docs
+2. run the Gate 0 CPU local-testnet command as the first executable acceptance gate before any other
    local, CUDA, public preflight, public evidence, or deployment-gated work can count
-4. implement one coherent missing local-reference slice
-5. add or update focused tests for that slice
-6. run cargo fmt --check --all
-7. run cargo test --workspace --release
-8. run cargo clippy --workspace --all-targets -- -D warnings
-9. run every relevant experiment or study command for the slice, including randomness, Freivalds,
+3. compare code and docs against Sections 32, 33, and 35
+4. list missing local-reference items and missing deployment-gated items
+5. implement one coherent missing local-reference slice
+6. add or update focused tests for that slice
+7. run cargo fmt --check --all
+8. run cargo test --workspace --release
+9. run cargo clippy --workspace --all-targets -- -D warnings
+10. run every relevant experiment or study command for the slice, including randomness, Freivalds,
    row-sampling, data-withholding, collusion, TensorWork concentration, zero-work liveness,
    local-testnet, public-evidence, networking, persistence, and telemetry experiments when touched
-10. run cargo tarpaulin when line coverage or test count changes
-11. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
+11. run cargo tarpaulin when line coverage or test count changes
+12. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
    docs/tensorvm/tarpaulin_report.md
-12. commit the completed iteration with a message that names the implemented slice
-13. push the completed iteration to the configured upstream branch
-14. repeat until no local-reference gaps remain
-15. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
+13. commit the completed iteration with a message that names the implemented slice
+14. push the completed iteration to the configured upstream branch
+15. repeat until no local-reference gaps remain
+16. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
     available
 ```
 
