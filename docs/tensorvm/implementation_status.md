@@ -111,6 +111,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
   requiring exact untrimmed service URL/path manifest fields plus distinct endpoint IDs for the planned
   public content paths used by post-run evidence
+- `tvmd` binary tests for the documented spec-path pending manifest commands, proving
+  `tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight` reads the checked
+  manifest and reports `public_testnet_preflight_ready=false`, while
+  `tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence` reads the checked
+  manifest and reports `public_evidence_full_spec=false`
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -177,6 +182,9 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
 - 171 in `tensor_vm`
+
+`cargo test --workspace --release` also runs 2 `tvmd` binary tests for the documented spec-path pending
+manifest commands.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

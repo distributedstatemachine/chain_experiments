@@ -180,3 +180,50 @@ fn serve_service(
         "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\ndata_dir={data_dir}\nserved_requests={served_requests}"
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn workspace_manifest_path(relative_path: &str) -> String {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join(relative_path)
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn docs_public_testnet_preflight_command_reports_pending_status() {
+        let report = execute_command(&CliCommand::PublicTestnetPreflight {
+            manifest: workspace_manifest_path("docs/tensorvm/public-testnet.preflight"),
+        })
+        .unwrap();
+
+        assert!(report.contains("public_testnet_preflight_ready=false"));
+        assert!(report.contains("local_shape_ready=true"));
+        assert!(report.contains("deployment_plan_ready=false"));
+        assert!(report.contains("miners=10"));
+        assert!(report.contains("validators=5"));
+        assert!(report.contains("production_libp2p_runtime=true"));
+        assert!(report.contains("public_services_planned=false"));
+    }
+
+    #[test]
+    fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
+        let report = execute_command(&CliCommand::PublicEvidenceValidate {
+            manifest: workspace_manifest_path("docs/tensorvm/public-testnet.evidence"),
+        })
+        .unwrap();
+
+        assert!(report.contains("public_evidence_full_spec=false"));
+        assert!(report.contains("public_criterion=false"));
+        assert!(report.contains("independently_checkable=false"));
+        assert!(report.contains("published_evidence_bundle=false"));
+        assert!(report.contains("signed_run_window=true"));
+        assert!(report.contains("supporting_record_artifacts=false"));
+        assert!(report.contains("deployed_public_service_content=false"));
+        assert!(report.contains("required_run_duration=false"));
+        assert!(report.contains("required_block_count=false"));
+    }
+}
