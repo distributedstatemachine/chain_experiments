@@ -90,9 +90,10 @@ auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` 
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
-observed block range and carry at least one signed heartbeat per observed block. Every counted service
-health summary must likewise span the full observed block range and carry at least one reachable
-observation and one signed health check per observed block.
+observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
+attestations and service-content records must have observation timestamps inside the signed run window.
+Every counted service health summary must likewise span the full observed block range and carry at least
+one reachable observation and one signed health check per observed block.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
@@ -220,8 +221,8 @@ operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle va
 node toward the public run when its signed heartbeat count covers the manifest's observed block count, and
 miner/validator operator IDs must be disjoint for the role minima to count independently. The
 operator-attestation command rejects zero node addresses, zero operator IDs, local/private identity URIs,
-and empty observation times. Its output can be inserted directly as an `operator=...` line in the evidence
-manifest.
+and empty observation times; bundle validation only counts operator attestations observed inside the signed
+run window. Its output can be inserted directly as an `operator=...` line in the evidence manifest.
 
 Operators can generate signed service-health and service-content manifest lines for RPC, explorer, faucet,
 or telemetry evidence:
@@ -253,9 +254,10 @@ Bundle validation only counts a service as deployed when both reachable observat
 checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
 line in the evidence manifest. The service-content command rejects local/private content URLs, malformed
 endpoint IDs, content URLs whose path does not match the required service surface, zero content roots,
-empty observation times, and empty content sizes. Its output can be inserted directly as a
-`service_content=...` line in the evidence manifest. The public service gate requires both lines for every
-RPC, explorer, faucet, and telemetry endpoint, with matching endpoint IDs.
+empty observation times, and empty content sizes. Bundle validation only counts service-content records
+observed inside the signed run window. Its output can be inserted directly as a `service_content=...` line
+in the evidence manifest. The public service gate requires both lines for every RPC, explorer, faucet, and
+telemetry endpoint, with matching endpoint IDs.
 
 Operators can also generate signed production libp2p runtime observation records before rolling them into
 the required network-runtime summary root:

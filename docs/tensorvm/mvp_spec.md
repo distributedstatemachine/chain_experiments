@@ -1748,7 +1748,8 @@ The `auditor-record` command emits the exact `auditor=...` manifest line for an 
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
 IDs must differ from the manifest signer.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
-identity URI bound to a node address, role, operator ID, and observation time.
+identity URI bound to a node address, role, operator ID, and observation time. Counted operator
+attestations must be observed inside the signed run window.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path
@@ -1756,9 +1757,10 @@ must match the signed health path. Counted service-health records must cover the
 block count with both reachable observations and signed health checks.
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
-HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Deployed
-public service evidence must include both signed health and signed content records with matching endpoint
-IDs for `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
+HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Counted
+service-content records must be observed inside the signed run window. Deployed public service evidence
+must include both signed health and signed content records with matching endpoint IDs for `/chain/head`,
+`/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. Those records are rolled into the `network-runtime` summary root.

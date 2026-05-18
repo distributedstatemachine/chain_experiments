@@ -87,7 +87,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, signed independent auditor records bound to external
   audit URIs and distinct from the manifest signer, a signed run-window record, block/finality history,
-  signed operator identity attestations
+  signed operator identity attestations observed inside the signed run window
   matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, and data-availability
@@ -145,8 +145,8 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.86% workspace line coverage
-- 7142/7224 workspace lines covered
+- 98.87% workspace line coverage
+- 7150/7232 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

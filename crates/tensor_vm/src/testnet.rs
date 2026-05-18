@@ -2224,6 +2224,12 @@ impl PublicTestnetEvidenceBundle {
             if !attestation.has_external_identity_proof() {
                 continue;
             }
+            if !self
+                .run
+                .observation_is_within_run(attestation.observed_at_unix_seconds)
+            {
+                continue;
+            }
             let matches_public_node = self.run.nodes.iter().any(|node| {
                 node.is_live_for_run(self.run.observed_blocks) && attestation.matches_node(node)
             });
@@ -2361,8 +2367,14 @@ impl PublicTestnetRunEvidence {
                     content.kind == kind
                         && content.endpoint_id == service.endpoint_id
                         && content.has_external_content_proof()
+                        && self.observation_is_within_run(content.observed_at_unix_seconds)
                 })
             })
+    }
+
+    fn observation_is_within_run(&self, observed_at_unix_seconds: u64) -> bool {
+        self.run_started_at_unix_seconds <= observed_at_unix_seconds
+            && observed_at_unix_seconds <= self.run_ended_at_unix_seconds
     }
 
     fn independent_operator_counts(&self) -> (usize, usize) {
@@ -3676,6 +3688,22 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!wrong_rpc_content_path.public_criterion_met);
         run.service_content = deployed_public_service_content();
 
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
+            public_service_content_url(PublicServiceKind::Rpc),
+            public_service_content_path(PublicServiceKind::Rpc),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_061,
+            64,
+        );
+        let content_after_run = run.evaluate(&criteria, 6, true);
+        assert!(!content_after_run.has_deployed_rpc_service);
+        assert!(!content_after_run.has_deployed_public_service_content);
+        assert!(!content_after_run.has_deployed_public_services);
+        assert!(!content_after_run.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
         run.service_content
             .retain(|content| content.kind != PublicServiceKind::Faucet);
         let missing_faucet_content = run.evaluate(&criteria, 6, true);
@@ -3979,6 +4007,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let local_operator_attestation = bundle.evaluate(&criteria, 6);
         assert!(!local_operator_attestation.has_operator_identity_attestations);
         assert!(!local_operator_attestation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let stale_operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
+        bundle.operator_identity_attestations[0] = PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Miner,
+            address(b"miner-a"),
+            stale_operator_id,
+            manifest_operator_identity_uri(&stale_operator_id),
+            bundle.run.run_started_at_unix_seconds - 1,
+        );
+        let stale_operator_attestation = bundle.evaluate(&criteria, 6);
+        assert!(!stale_operator_attestation.has_operator_identity_attestations);
+        assert!(
+            !stale_operator_attestation
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(!stale_operator_attestation.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestations.clear();
