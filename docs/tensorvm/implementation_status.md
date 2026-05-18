@@ -156,10 +156,10 @@ Gate 0 is the first non-skippable CPU local multi-participant testnet required b
 preflight, public evidence, or deployment-gated work can count:
 
 - `cargo test -p tensor_vm local_testnet --release`: 3 TensorVM tests passed, covering the local
-  10-miner/5-validator bootstrap shape, separate participant identities and endpoints, mandatory libp2p
-  node paths under default features, matmul settlement/rewards, LinearTrainingStep state transition,
-  tensor-server availability, no simulation or local-only networking-shim credit, and the explicit
-  non-public-run evidence boundary
+  10-miner/5-validator bootstrap shape, separate participant identities and libp2p endpoints, live
+  mandatory libp2p control-plane startup under default features, matmul settlement/rewards,
+  LinearTrainingStep state transition, tensor-server availability, no simulation or local-only
+  networking-shim credit, and the explicit non-public-run evidence boundary
 
 The workspace currently has 181 passing library tests under Tarpaulin:
 
@@ -169,8 +169,8 @@ The workspace currently has 181 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.90% workspace line coverage
-- 7402/7484 workspace lines covered
+- 98.91% workspace line coverage
+- 7454/7536 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

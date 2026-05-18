@@ -19,10 +19,11 @@ That filtered test run covers:
 - `testnet::tests::local_testnet_runs_linear_training_receipt_state_transition_round`
 
 These tests exercise the CPU reference path with the default local 10-miner/5-validator shape, separate
-local participant identities and endpoints, mandatory libp2p node paths under default features, local
-block production, matmul receipt validation/attestation/settlement/rewards, LinearTrainingStep validation
-and state transition, local tensor-server availability, no simulation or local-only networking-shim credit,
-and the explicit separation between local evidence and the 7-day public deployment gate.
+local participant identities and libp2p endpoints, a live mandatory libp2p control-plane startup under
+default features, local block production, matmul receipt validation/attestation/settlement/rewards,
+LinearTrainingStep validation and state transition, local tensor-server availability, no simulation or
+local-only networking-shim credit, and the explicit separation between local evidence and the 7-day public
+deployment gate.
 
 ## Acceptance Criteria
 

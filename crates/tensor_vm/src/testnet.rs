@@ -13,6 +13,8 @@ use crate::tensor_server::TensorServer;
 use crate::txpool::TxPool;
 use crate::types::{Address, Hash, Signature, address, hash_bytes, sign, verify_signature};
 use crate::validator::ValidatorNode;
+use libp2p::Multiaddr;
+use libp2p::multiaddr::Protocol;
 use std::collections::BTreeSet;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -2633,6 +2635,48 @@ pub struct LocalTestnet {
     pub faucet: Faucet,
     pub miners: Vec<Address>,
     pub validators: Vec<Address>,
+    pub participant_endpoints: Vec<LocalParticipantEndpoint>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LocalParticipantEndpoint {
+    pub role: PublicNodeRole,
+    pub address: Address,
+    pub operator_id: Hash,
+    pub node_endpoint: String,
+}
+
+impl LocalParticipantEndpoint {
+    pub fn has_mandatory_libp2p_node_path(&self) -> bool {
+        self.address != [0; 32]
+            && self.operator_id != [0; 32]
+            && local_libp2p_multiaddr_has_tcp_node_path(&self.node_endpoint)
+    }
+}
+
+fn local_participant_tcp_port(base: u16, index: usize) -> u16 {
+    base.saturating_add(u16::try_from(index).unwrap_or(u16::MAX.saturating_sub(base)))
+}
+
+fn local_libp2p_multiaddr_has_tcp_node_path(endpoint: &str) -> bool {
+    let Ok(address) = endpoint.parse::<Multiaddr>() else {
+        return false;
+    };
+    let mut has_node_address = false;
+    let mut has_tcp_port = false;
+    for protocol in address.iter() {
+        match protocol {
+            Protocol::Ip4(_)
+            | Protocol::Ip6(_)
+            | Protocol::Dns(_)
+            | Protocol::Dns4(_)
+            | Protocol::Dns6(_) => has_node_address = true,
+            Protocol::Tcp(port) if port != 0 => has_tcp_port = true,
+            Protocol::Tcp(_) => return false,
+            _ => {}
+        }
+    }
+    has_node_address && has_tcp_port
 }
 
 impl LocalTestnet {
@@ -2641,10 +2685,22 @@ impl LocalTestnet {
         let mut chain = LocalChain::with_params(params, finalized_randomness);
         let mut miners = Vec::with_capacity(config.miner_count);
         let mut validators = Vec::with_capacity(config.validator_count);
+        let mut participant_endpoints =
+            Vec::with_capacity(config.miner_count + config.validator_count);
         for i in 0..config.miner_count {
             let miner = address(format!("testnet-miner-{i}").as_bytes());
             chain.register_miner(miner, config.miner_stake).unwrap();
             miners.push(miner);
+            let index = (i as u64).to_le_bytes();
+            participant_endpoints.push(LocalParticipantEndpoint {
+                role: PublicNodeRole::Miner,
+                address: miner,
+                operator_id: hash_bytes(b"tensor-vm-local-operator-v1", &[b"miner", &index]),
+                node_endpoint: format!(
+                    "/ip4/127.0.0.1/tcp/{}",
+                    local_participant_tcp_port(4_001, i)
+                ),
+            });
         }
         for i in 0..config.validator_count {
             let validator = address(format!("testnet-validator-{i}").as_bytes());
@@ -2652,13 +2708,47 @@ impl LocalTestnet {
                 .register_validator(validator, config.validator_stake)
                 .unwrap();
             validators.push(validator);
+            let index = (i as u64).to_le_bytes();
+            participant_endpoints.push(LocalParticipantEndpoint {
+                role: PublicNodeRole::Validator,
+                address: validator,
+                operator_id: hash_bytes(b"tensor-vm-local-operator-v1", &[b"validator", &index]),
+                node_endpoint: format!(
+                    "/ip4/127.0.0.1/tcp/{}",
+                    local_participant_tcp_port(5_001, i)
+                ),
+            });
         }
         Self {
             chain,
             faucet: Faucet::new(config.faucet_balance, config.faucet_drip),
             miners,
             validators,
+            participant_endpoints,
         }
+    }
+
+    pub fn has_mandatory_libp2p_participant_paths(&self) -> bool {
+        if self.participant_endpoints.len() != self.miners.len() + self.validators.len() {
+            return false;
+        }
+        let mut node_endpoints = BTreeSet::new();
+        let mut operator_ids = BTreeSet::new();
+        let mut miner_endpoints = 0;
+        let mut validator_endpoints = 0;
+        for participant in &self.participant_endpoints {
+            if !participant.has_mandatory_libp2p_node_path()
+                || !node_endpoints.insert(participant.node_endpoint.clone())
+                || !operator_ids.insert(participant.operator_id)
+            {
+                return false;
+            }
+            match participant.role {
+                PublicNodeRole::Miner => miner_endpoints += 1,
+                PublicNodeRole::Validator => validator_endpoints += 1,
+            }
+        }
+        miner_endpoints == self.miners.len() && validator_endpoints == self.validators.len()
     }
 
     pub fn run_blocks(&mut self, count: u64) {
@@ -3714,6 +3804,45 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             LocalTestnet::new(TestnetConfig::default(), hash_bytes(b"test", &[b"beacon"]));
         assert_eq!(testnet.miners.len(), 10);
         assert_eq!(testnet.validators.len(), 5);
+        assert_eq!(testnet.participant_endpoints.len(), 15);
+        assert!(testnet.has_mandatory_libp2p_participant_paths());
+        assert!(
+            testnet
+                .participant_endpoints
+                .iter()
+                .all(LocalParticipantEndpoint::has_mandatory_libp2p_node_path)
+        );
+        assert!(!local_libp2p_multiaddr_has_tcp_node_path("not-a-multiaddr"));
+        assert!(!local_libp2p_multiaddr_has_tcp_node_path(
+            "/ip4/127.0.0.1/tcp/0"
+        ));
+        let gate0_peer = libp2p::PeerId::random();
+        assert!(local_libp2p_multiaddr_has_tcp_node_path(&format!(
+            "/ip4/127.0.0.1/tcp/4001/p2p/{gate0_peer}"
+        )));
+        let mut missing_endpoint = testnet.clone();
+        missing_endpoint.participant_endpoints.pop();
+        assert!(!missing_endpoint.has_mandatory_libp2p_participant_paths());
+        let mut duplicate_endpoint = testnet.clone();
+        duplicate_endpoint.participant_endpoints[0].node_endpoint = duplicate_endpoint
+            .participant_endpoints[1]
+            .node_endpoint
+            .clone();
+        assert!(!duplicate_endpoint.has_mandatory_libp2p_participant_paths());
+        let libp2p_service =
+            crate::p2p::spawn_libp2p_service(crate::p2p::Libp2pControlPlaneConfig {
+                listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+                ..crate::p2p::Libp2pControlPlaneConfig::default()
+            })
+            .expect("Gate 0 must construct the mandatory libp2p control-plane runtime");
+        assert_eq!(libp2p_service.info().subscribed_topics.len(), 5);
+        assert_eq!(libp2p_service.info().request_response_protocols.len(), 3);
+        assert!(
+            libp2p_service
+                .info()
+                .identify_protocol
+                .starts_with(crate::p2p::LIBP2P_PROTOCOL_PREFIX)
+        );
         testnet.run_blocks(12);
         let summary = testnet.explorer_summary();
         assert_eq!(summary.block_count, 12);
