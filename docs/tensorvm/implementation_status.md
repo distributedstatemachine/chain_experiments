@@ -79,7 +79,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   signature-verified node heartbeat summaries, signed wall-clock run-window evidence, observed block
   continuity, finality rate, data-availability rate, invalid-work rejection evidence, reward-settlement
   records, production libp2p runtime evidence, and deployed RPC/explorer/faucet/telemetry service
-  reachability with signed health-check summaries
+  reachability with signed health-check summaries bound to external HTTPS service URLs and health paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, independent auditor records, a signed run-window
   record, block/finality history, operator attestations, signed block/finality/data-availability summary
@@ -112,8 +112,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.60% workspace line coverage
-- 5794/5876 workspace lines covered
+- 98.61% workspace line coverage
+- 5813/5895 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -143,7 +143,7 @@ These spec items require real deployment or non-reference infrastructure and are
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
   wrapper, in-process auth/body-size/rate-limit enforcement, and a restartable reference `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
-  persistence
+  persistence, while public evidence validation now rejects local or private service URLs
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims

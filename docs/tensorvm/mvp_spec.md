@@ -1825,6 +1825,7 @@ evidence:
 real CUDA/C++ kernels exist for any claimed GPU mining path and are checked against canonical CPU outputs
 production libp2p runtime is used for node discovery, gossip, and request/response propagation
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
+public service evidence includes external HTTPS URLs and signed health-check summaries for those services
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
 the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
 block-count evidence
@@ -1998,6 +1999,7 @@ faucet
 telemetry dashboard
 public docs
 deployed public services for RPC, explorer, faucet, and telemetry
+signed service-health evidence bound to external HTTPS public service URLs
 real CUDA/C++ miner kernels where GPU acceleration is claimed
 external public-testnet evidence bundle
 signed public run-window evidence for the 7-day duration
@@ -2015,6 +2017,7 @@ invalid work rejected
 rewards paid by verified TensorWork
 production libp2p networking used for node propagation
 deployed services remain reachable during the public run
+deployed service reachability is evidenced by signed health checks bound to external HTTPS service URLs
 GPU kernel outputs match canonical deterministic CPU semantics
 ```
 
@@ -2095,6 +2098,7 @@ implementation:
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
+public service evidence includes externally reachable HTTPS URLs and signed health-check summaries
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient

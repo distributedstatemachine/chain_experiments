@@ -39,7 +39,7 @@ The objective decomposes into these deliverables:
 | GPU miner backend | `runtime::GpuMinerBackend` default shim plus optional CUDA feature | Present locally |
 | Native CUDA/C++ checked against CPU outputs | `cuda-kernels` feature builds `kernels/cuda/field_matmul.cu`; `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` | Present for field matmul |
 | Restartable node storage | `storage::NodeStore`, snapshots, append-only block log, chain state, peer book tests | Reference implementation present |
-| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, and `rpc` socketed HTTP tests | Reference implementation present |
+| P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, Kademlia/bootstrap, protocol tests, P2P codec tests, `rpc` socketed HTTP tests, and public evidence service URLs rejected when local or private | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain` and 163 `tensor_vm` tests | Passed |
@@ -78,14 +78,15 @@ These are not satisfied by local tests or manifests alone:
 - a public testnet must run for 7 consecutive days with independent external miner and validator operators
 - the public evidence bundle must include a signed wall-clock run window, signed node heartbeats,
   block/finality history, operator attestations, data-availability measurements, invalid-work rejection
-  evidence, and reward-settlement records
+  evidence, reward-settlement records, and signed deployed-service health records bound to external HTTPS
+  URLs
 - the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
 
 Local evidence validators reject localhost, private, link-local, and empty publication endpoints, and they
 verify manifest publication signatures, signed run-window records, signed block/finality/data-availability
-summary roots, and external-operator evidence derived from manifest operator-attestation records. These
-blockers therefore require real external infrastructure rather than loopback, private-network, unsigned, or
-out-of-band manifests.
+summary roots, signed service-health records bound to external HTTPS URLs, and external-operator evidence
+derived from manifest operator-attestation records. These blockers therefore require real external
+infrastructure rather than loopback, private-network, unsigned, or out-of-band manifests.
 
 ## Completion Decision
 

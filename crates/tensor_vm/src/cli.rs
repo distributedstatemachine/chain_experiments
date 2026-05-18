@@ -281,8 +281,8 @@ mod tests {
     use crate::testnet::{
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
         PublicEvidencePublication, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
-        PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence, PublicServiceKind,
-        PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
+        PublicNodeEvidence, PublicNodeRole, PublicServiceEndpoint, PublicServiceEvidence,
+        PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
     };
     use crate::types::{address, hash_bytes};
 
@@ -310,8 +310,28 @@ mod tests {
         hex(&node.heartbeat_signature)
     }
 
+    fn public_service_url(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/health",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/health",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/health",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.example/health",
+        }
+    }
+
     fn manifest_service_signature(kind: PublicServiceKind, label: &[u8]) -> String {
-        let service = PublicServiceEvidence::new(kind, hash_bytes(b"test", &[label]), 0, 9, 10, 10);
+        let service = PublicServiceEvidence::new(
+            kind,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[label]),
+                public_service_url(kind),
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
         hex(&service.health_check_signature)
     }
 
@@ -372,7 +392,11 @@ mod tests {
                 services: vec![
                     PublicServiceEvidence::new(
                         PublicServiceKind::Rpc,
-                        hash_bytes(b"test", &[b"rpc-service"]),
+                        PublicServiceEndpoint::new(
+                            hash_bytes(b"test", &[b"rpc-service"]),
+                            public_service_url(PublicServiceKind::Rpc),
+                            "/health",
+                        ),
                         0,
                         9,
                         10,
@@ -380,7 +404,11 @@ mod tests {
                     ),
                     PublicServiceEvidence::new(
                         PublicServiceKind::Explorer,
-                        hash_bytes(b"test", &[b"explorer-service"]),
+                        PublicServiceEndpoint::new(
+                            hash_bytes(b"test", &[b"explorer-service"]),
+                            public_service_url(PublicServiceKind::Explorer),
+                            "/health",
+                        ),
                         0,
                         9,
                         10,
@@ -388,7 +416,11 @@ mod tests {
                     ),
                     PublicServiceEvidence::new(
                         PublicServiceKind::Faucet,
-                        hash_bytes(b"test", &[b"faucet-service"]),
+                        PublicServiceEndpoint::new(
+                            hash_bytes(b"test", &[b"faucet-service"]),
+                            public_service_url(PublicServiceKind::Faucet),
+                            "/health",
+                        ),
                         0,
                         9,
                         10,
@@ -396,7 +428,11 @@ mod tests {
                     ),
                     PublicServiceEvidence::new(
                         PublicServiceKind::Telemetry,
-                        hash_bytes(b"test", &[b"telemetry-service"]),
+                        PublicServiceEndpoint::new(
+                            hash_bytes(b"test", &[b"telemetry-service"]),
+                            public_service_url(PublicServiceKind::Telemetry),
+                            "/health",
+                        ),
                         0,
                         9,
                         10,
@@ -467,10 +503,10 @@ reward_settlement_records=1
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
-service=rpc,{},0,9,10,10,{}
-service=explorer,{},0,9,10,10,{}
-service=faucet,{},0,9,10,10,{}
-service=telemetry,{},0,9,10,10,{}
+service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
+service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
+service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
 ",
             manifest_hash(b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),

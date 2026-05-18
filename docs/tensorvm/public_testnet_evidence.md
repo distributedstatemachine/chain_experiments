@@ -25,7 +25,8 @@ A complete evidence bundle must include:
 - invalid-work submission and rejection evidence
 - reward-settlement records for verified TensorWork
 - proof that production libp2p was used for peer discovery, gossip, and request/response propagation
-- reachability records for deployed RPC, explorer, faucet, and telemetry services
+- external HTTPS URLs, health paths, and reachability records for deployed RPC, explorer, faucet, and
+  telemetry services
 
 A public `https://` evidence URI must use an external host. The local validator rejects localhost, `.local`
 names, loopback, unspecified, private, and link-local IP addresses. `ipfs://` and `ar://` publication URIs
@@ -59,8 +60,10 @@ signature covers the bundle ID, public URI, manifest signature count, and indepe
 finality, and data-availability signatures cover the bundle ID, record-set kind, record-set root, and record
 count. The run-window signature covers the bundle ID, Unix start time, Unix end time, and observed block
 count. Heartbeat signatures cover the node role, address, operator ID, first/last observed block, and
-heartbeat count. Service-health signatures cover the service kind, endpoint ID, first/last observed block,
-reachable observation count, and signed health-check count.
+heartbeat count. Service-health signatures cover the service kind, endpoint ID, public URL, health path,
+first/last observed block, reachable observation count, and signed health-check count. Service URLs must be
+external HTTPS endpoints; localhost, `.local`, loopback, private, link-local, and unspecified hosts are
+rejected.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -97,10 +100,10 @@ invalid_receipts_rejected=1
 reward_settlement_records=1
 node=miner,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
 node=validator,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
-service=rpc,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=explorer,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=faucet,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=telemetry,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
 ```
 
 The CLI reads a manifest file and reports the default full-spec evidence status:

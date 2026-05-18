@@ -230,6 +230,33 @@ impl PublicServiceKind {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicServiceEndpoint {
+    pub endpoint_id: Hash,
+    pub public_url: String,
+    pub health_path: String,
+}
+
+impl PublicServiceEndpoint {
+    pub fn new(
+        endpoint_id: Hash,
+        public_url: impl Into<String>,
+        health_path: impl Into<String>,
+    ) -> Self {
+        Self {
+            endpoint_id,
+            public_url: public_url.into(),
+            health_path: health_path.into(),
+        }
+    }
+
+    fn has_external_health_url(&self) -> bool {
+        public_https_host(&self.public_url).is_some_and(public_host_is_external)
+            && self.health_path.starts_with('/')
+            && self.health_path.len() > 1
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct PublicNetworkRuntimeEvidence {
     pub libp2p_runtime_used: bool,
@@ -253,6 +280,8 @@ impl PublicNetworkRuntimeEvidence {
 pub struct PublicServiceEvidence {
     pub kind: PublicServiceKind,
     pub endpoint_id: Hash,
+    pub public_url: String,
+    pub health_path: String,
     pub first_seen_block: u64,
     pub last_seen_block: u64,
     pub reachable_observation_count: u64,
@@ -263,7 +292,7 @@ pub struct PublicServiceEvidence {
 impl PublicServiceEvidence {
     pub fn new(
         kind: PublicServiceKind,
-        endpoint_id: Hash,
+        endpoint: PublicServiceEndpoint,
         first_seen_block: u64,
         last_seen_block: u64,
         reachable_observation_count: u64,
@@ -271,15 +300,18 @@ impl PublicServiceEvidence {
     ) -> Self {
         let message = public_service_health_message(
             kind,
-            &endpoint_id,
+            &endpoint,
             first_seen_block,
             last_seen_block,
             reachable_observation_count,
             signed_health_check_count,
         );
+        let endpoint_id = endpoint.endpoint_id;
         Self {
             kind,
             endpoint_id,
+            public_url: endpoint.public_url,
+            health_path: endpoint.health_path,
             first_seen_block,
             last_seen_block,
             reachable_observation_count,
@@ -299,7 +331,7 @@ impl PublicServiceEvidence {
             &self.endpoint_id,
             &public_service_health_message(
                 self.kind,
-                &self.endpoint_id,
+                &self.endpoint(),
                 self.first_seen_block,
                 self.last_seen_block,
                 self.reachable_observation_count,
@@ -311,6 +343,7 @@ impl PublicServiceEvidence {
 
     pub fn has_reachable_endpoint_proof(&self) -> bool {
         self.endpoint_id != [0; 32]
+            && self.endpoint().has_external_health_url()
             && self.reachable_observation_count > 0
             && self.signed_health_check_count > 0
             && self.signed_health_check_valid()
@@ -318,6 +351,14 @@ impl PublicServiceEvidence {
 
     pub fn is_reachable_for_run(&self, observed_blocks: u64) -> bool {
         self.covers_run(observed_blocks) && self.has_reachable_endpoint_proof()
+    }
+
+    fn endpoint(&self) -> PublicServiceEndpoint {
+        PublicServiceEndpoint {
+            endpoint_id: self.endpoint_id,
+            public_url: self.public_url.clone(),
+            health_path: self.health_path.clone(),
+        }
     }
 }
 
@@ -890,24 +931,26 @@ fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
     let fields: Vec<&str> = value.split(',').map(str::trim).collect();
-    if fields.len() != 7 {
+    if fields.len() != 9 {
         return Err(TvmError::InvalidReceipt("malformed service evidence"));
     }
     let kind = parse_service_kind(fields[0])?;
     let endpoint_id = parse_hash_hex(fields[1])?;
-    let first_seen_block = parse_manifest_u64(fields[2])?;
-    let last_seen_block = parse_manifest_u64(fields[3])?;
-    let reachable_observation_count = parse_manifest_u64(fields[4])?;
-    let signed_health_check_count = parse_manifest_u64(fields[5])?;
+    let public_url = fields[2].to_owned();
+    let health_path = fields[3].to_owned();
+    let first_seen_block = parse_manifest_u64(fields[4])?;
+    let last_seen_block = parse_manifest_u64(fields[5])?;
+    let reachable_observation_count = parse_manifest_u64(fields[6])?;
+    let signed_health_check_count = parse_manifest_u64(fields[7])?;
     let mut evidence = PublicServiceEvidence::new(
         kind,
-        endpoint_id,
+        PublicServiceEndpoint::new(endpoint_id, public_url, health_path),
         first_seen_block,
         last_seen_block,
         reachable_observation_count,
         signed_health_check_count,
     );
-    evidence.health_check_signature = parse_hash_hex(fields[6])?;
+    evidence.health_check_signature = parse_hash_hex(fields[8])?;
     Ok(evidence)
 }
 
@@ -1167,7 +1210,7 @@ fn public_node_heartbeat_message(
 
 fn public_service_health_message(
     kind: PublicServiceKind,
-    endpoint_id: &Hash,
+    endpoint: &PublicServiceEndpoint,
     first_seen_block: u64,
     last_seen_block: u64,
     reachable_observation_count: u64,
@@ -1181,7 +1224,9 @@ fn public_service_health_message(
         b"tensor-vm-public-service-health-v1",
         &[
             kind.evidence_tag(),
-            endpoint_id,
+            &endpoint.endpoint_id,
+            endpoint.public_url.as_bytes(),
+            endpoint.health_path.as_bytes(),
             &first_seen,
             &last_seen,
             &reachable_count,
@@ -1868,12 +1913,25 @@ mod tests {
     ) -> PublicServiceEvidence {
         PublicServiceEvidence::new(
             kind,
-            hash_bytes(b"test", &[label]),
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[label]),
+                public_service_url(kind),
+                "/health",
+            ),
             first_seen_block,
             last_seen_block,
             10,
             10,
         )
+    }
+
+    fn public_service_url(kind: PublicServiceKind) -> &'static str {
+        match kind {
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/health",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/health",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/health",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.example/health",
+        }
     }
 
     fn deployed_public_services(last_seen_block: u64) -> Vec<PublicServiceEvidence> {
@@ -2047,10 +2105,10 @@ reward_settlement_records=1
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
-service=rpc,{},0,9,10,10,{}
-service=explorer,{},0,9,10,10,{}
-service=faucet,{},0,9,10,10,{}
-service=telemetry,{},0,9,10,10,{}
+service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
+service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
+service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
+service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
 ",
             manifest_hash(b"test", b"public-evidence-bundle"),
             manifest_address(b"public-evidence-publisher"),
@@ -2450,6 +2508,42 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(!tampered_rpc_health.public_criterion_met);
         run.services = deployed_public_services(9);
 
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"local-rpc-service"]),
+                "https://localhost/health",
+                "/health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
+        let local_rpc_url = run.evaluate(&criteria, 6, true);
+        assert!(!local_rpc_url.has_deployed_rpc_service);
+        assert!(!local_rpc_url.has_deployed_public_services);
+        assert!(!local_rpc_url.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"bad-health-path-rpc-service"]),
+                public_service_url(PublicServiceKind::Rpc),
+                "health",
+            ),
+            0,
+            9,
+            10,
+            10,
+        );
+        let bad_health_path = run.evaluate(&criteria, 6, true);
+        assert!(!bad_health_path.has_deployed_rpc_service);
+        assert!(!bad_health_path.has_deployed_public_services);
+        assert!(!bad_health_path.public_criterion_met);
+        run.services = deployed_public_services(9);
+
         run.network_runtime.request_response_observed = false;
         let no_request_response = run.evaluate(&criteria, 6, true);
         assert!(!no_request_response.has_production_libp2p_runtime);
@@ -2657,6 +2751,17 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 .evaluate(&criteria, 6)
                 .full_spec_evidence_met
         );
+
+        let local_rpc_service = manifest.replace(
+            "https://rpc.tensorvm.example/health",
+            "https://localhost/health",
+        );
+        let parsed_local_rpc_service =
+            parse_public_testnet_evidence_manifest(&local_rpc_service).unwrap();
+        let local_rpc_report = parsed_local_rpc_service.evaluate(&criteria, 6);
+        assert!(!local_rpc_report.run_evidence.has_deployed_rpc_service);
+        assert!(!local_rpc_report.run_evidence.has_deployed_public_services);
+        assert!(!local_rpc_report.full_spec_evidence_met);
 
         let uppercase_hash = manifest_hash(b"test", b"public-evidence-bundle").to_uppercase();
         assert_eq!(
