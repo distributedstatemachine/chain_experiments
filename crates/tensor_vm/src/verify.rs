@@ -1,0 +1,925 @@
+use crate::error::{Result, TvmError};
+use crate::field::{self, Elem};
+use crate::jobs::{
+    LinearTrainingStepJob, LinearTrainingStepOutput, LinearTrainingStepReceipt, MatmulJob,
+    PrimitiveType, TensorOpReceipt,
+};
+use crate::tensor::{Tensor, random_field_vector};
+use crate::types::{Address, Hash, Signature, hash_bytes, sign, verify_signature};
+use crate::vm;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FreivaldsParams {
+    pub full_rounds: usize,
+    pub audit_rows: usize,
+    pub validators_per_job: usize,
+    pub minimum_validators: usize,
+    pub minimum_stake_numerator: u64,
+    pub minimum_stake_denominator: u64,
+}
+
+impl Default for FreivaldsParams {
+    fn default() -> Self {
+        Self {
+            full_rounds: 1,
+            audit_rows: 16,
+            validators_per_job: 8,
+            minimum_validators: 5,
+            minimum_stake_numerator: 2,
+            minimum_stake_denominator: 3,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VerificationResult {
+    Valid,
+    Invalid,
+    Unavailable,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TensorOpVerificationReport {
+    pub result: VerificationResult,
+    pub full_freivalds_passed: bool,
+    pub sampled_rows_checked: usize,
+    pub data_availability_passed: bool,
+    pub checks_root: Hash,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinearVerificationReport {
+    pub result: VerificationResult,
+    pub forward_passed: bool,
+    pub error_relation_passed: bool,
+    pub backward_passed: bool,
+    pub optimizer_passed: bool,
+    pub data_availability_passed: bool,
+    pub checks_root: Hash,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValidatorAttestation {
+    pub validator: Address,
+    pub receipt_id: Hash,
+    pub job_id: Hash,
+    pub primitive_type: PrimitiveType,
+    pub result: VerificationResult,
+    pub checks_root: Hash,
+    pub data_availability_passed: bool,
+    pub stake: u64,
+    pub signature: Signature,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttestationStatement {
+    pub receipt_id: Hash,
+    pub job_id: Hash,
+    pub primitive_type: PrimitiveType,
+    pub result: VerificationResult,
+    pub checks_root: Hash,
+    pub data_availability_passed: bool,
+}
+
+impl ValidatorAttestation {
+    pub fn new(validator: Address, stake: u64, statement: AttestationStatement) -> Self {
+        let message = attestation_digest(&validator, stake, &statement);
+        Self {
+            validator,
+            receipt_id: statement.receipt_id,
+            job_id: statement.job_id,
+            primitive_type: statement.primitive_type,
+            result: statement.result,
+            checks_root: statement.checks_root,
+            data_availability_passed: statement.data_availability_passed,
+            stake,
+            signature: sign(&validator, &message),
+        }
+    }
+
+    pub fn verify_signature(&self) -> bool {
+        let statement = AttestationStatement {
+            receipt_id: self.receipt_id,
+            job_id: self.job_id,
+            primitive_type: self.primitive_type,
+            result: self.result,
+            checks_root: self.checks_root,
+            data_availability_passed: self.data_availability_passed,
+        };
+        let message = attestation_digest(&self.validator, self.stake, &statement);
+        verify_signature(&self.validator, &message, &self.signature)
+    }
+}
+
+pub fn full_freivalds(
+    a: &Tensor,
+    b: &Tensor,
+    c: &Tensor,
+    seed: &Hash,
+    rounds: usize,
+) -> Result<bool> {
+    if a.rows()? != c.rows()? || b.cols()? != c.cols()? || a.cols()? != b.rows()? {
+        return Err(TvmError::DimensionMismatch {
+            left: a.shape().to_vec(),
+            right: b.shape().to_vec(),
+        });
+    }
+
+    for round in 0..rounds.max(1) {
+        let round_seed = hash_bytes(
+            b"tensor-vm-full-freivalds-round-v1",
+            &[seed, &(round as u64).to_le_bytes()],
+        );
+        let r = random_field_vector(&round_seed, b"tensor-vm-freivalds-vector-v1", c.cols()?);
+        let br = b.dot_vector(&r)?;
+        let abr = a.dot_vector(&br)?;
+        let cr = c.dot_vector(&r)?;
+        if abr != cr {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+pub fn row_sampled_freivalds(
+    a: &Tensor,
+    b: &Tensor,
+    c: &Tensor,
+    seed: &Hash,
+    rows_to_check: usize,
+) -> Result<bool> {
+    if rows_to_check == 0 {
+        return Ok(true);
+    }
+    let rows = c.rows()?;
+    let r = random_field_vector(seed, b"tensor-vm-row-freivalds-vector-v1", c.cols()?);
+    let br = b.dot_vector(&r)?;
+    let sample_rows = sample_distinct_rows(seed, rows, rows_to_check.min(rows));
+    for row in sample_rows {
+        let lhs = c.row_dot(row, &r)?;
+        let rhs = a.row_dot(row, &br)?;
+        if lhs != rhs {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+pub fn row_sample_detection_probability(
+    total_rows: usize,
+    corrupted_rows: usize,
+    sampled_rows: usize,
+) -> f64 {
+    if total_rows == 0 || corrupted_rows == 0 || sampled_rows == 0 {
+        return 0.0;
+    }
+    if corrupted_rows >= total_rows || sampled_rows >= total_rows {
+        return 1.0;
+    }
+    let mut miss = 1.0_f64;
+    for draw in 0..sampled_rows {
+        let clean_remaining = total_rows - corrupted_rows - draw.min(total_rows - corrupted_rows);
+        let total_remaining = total_rows - draw;
+        if clean_remaining == 0 {
+            return 1.0;
+        }
+        miss *= clean_remaining as f64 / total_remaining as f64;
+    }
+    1.0 - miss
+}
+
+pub fn verify_tensor_op(
+    job: &MatmulJob,
+    receipt: &TensorOpReceipt,
+    a: &Tensor,
+    b: &Tensor,
+    c: &Tensor,
+    validation_seed: &Hash,
+    params: &FreivaldsParams,
+) -> Result<TensorOpVerificationReport> {
+    if receipt.job_id != job.job_id {
+        return Err(TvmError::InvalidReceipt("job id mismatch"));
+    }
+    if receipt.submitted_at_block > job.deadline_block {
+        return Err(TvmError::InvalidReceipt("receipt submitted after deadline"));
+    }
+    if receipt.receipt_id != receipt.recompute_receipt_id() {
+        return Err(TvmError::InvalidReceipt("receipt digest mismatch"));
+    }
+    if !verify_signature(&receipt.miner, &receipt.receipt_id, &receipt.signature) {
+        return Err(TvmError::InvalidReceipt("bad receipt signature"));
+    }
+    if receipt.program_hash != job.program_hash() {
+        return Err(TvmError::InvalidReceipt("program hash mismatch"));
+    }
+    if receipt.input_roots != vec![a.commitment_root(), b.commitment_root()] {
+        return Err(TvmError::InvalidReceipt("input roots mismatch"));
+    }
+    if receipt.output_roots != vec![c.commitment_root()] {
+        return Err(TvmError::InvalidReceipt("output root mismatch"));
+    }
+    let expected_trace_root = hash_bytes(
+        b"tensor-vm-tensorop-trace-v1",
+        &[
+            &a.commitment_root(),
+            &b.commitment_root(),
+            &c.commitment_root(),
+        ],
+    );
+    if receipt.trace_root != expected_trace_root {
+        return Err(TvmError::InvalidReceipt("trace root mismatch"));
+    }
+    if a.shape() != [job.m, job.k] || b.shape() != [job.k, job.n] {
+        return Err(TvmError::InvalidReceipt("input shape mismatch"));
+    }
+    if c.shape() != [job.m, job.n] {
+        return Err(TvmError::InvalidReceipt("output shape mismatch"));
+    }
+
+    let data_availability_passed = true;
+    let full_freivalds_passed = full_freivalds(a, b, c, validation_seed, params.full_rounds)?;
+    let sampled_passed = row_sampled_freivalds(a, b, c, validation_seed, params.audit_rows)?;
+    let result = if data_availability_passed && full_freivalds_passed && sampled_passed {
+        VerificationResult::Valid
+    } else {
+        VerificationResult::Invalid
+    };
+    let checks_root = hash_bytes(
+        b"tensor-vm-tensorop-checks-v1",
+        &[
+            validation_seed,
+            &[full_freivalds_passed as u8],
+            &[sampled_passed as u8],
+            &(params.audit_rows as u64).to_le_bytes(),
+        ],
+    );
+    Ok(TensorOpVerificationReport {
+        result,
+        full_freivalds_passed,
+        sampled_rows_checked: params.audit_rows.min(job.m),
+        data_availability_passed,
+        checks_root,
+    })
+}
+
+pub fn verify_linear_training_step(
+    job: &LinearTrainingStepJob,
+    receipt: &LinearTrainingStepReceipt,
+    weights_before: &Tensor,
+    output: &LinearTrainingStepOutput,
+    validation_seed: &Hash,
+    params: &FreivaldsParams,
+) -> Result<LinearVerificationReport> {
+    if receipt.job_id != job.job_id {
+        return Err(TvmError::InvalidReceipt("job id mismatch"));
+    }
+    if receipt.submitted_at_block > job.deadline_block {
+        return Err(TvmError::InvalidReceipt("receipt submitted after deadline"));
+    }
+    if receipt.receipt_id != receipt.recompute_receipt_id(&job.program_hash()) {
+        return Err(TvmError::InvalidReceipt("receipt digest mismatch"));
+    }
+    if !verify_signature(&receipt.miner, &receipt.receipt_id, &receipt.signature) {
+        return Err(TvmError::InvalidReceipt("bad receipt signature"));
+    }
+    if weights_before.commitment_root() != job.weight_root_before {
+        return Err(TvmError::InvalidReceipt("weight root mismatch"));
+    }
+    if receipt.weight_root_before != job.weight_root_before
+        || receipt.y_root != output.y.commitment_root()
+        || receipt.grad_w_root != output.grad_w.commitment_root()
+        || receipt.weight_root_after != output.weight_after.commitment_root()
+        || receipt.loss_commitment != output.loss_commitment
+    {
+        return Err(TvmError::InvalidReceipt("linear output root mismatch"));
+    }
+
+    let (expected_x, expected_target) = job.batch_tensors()?;
+    if output.x != expected_x || output.target != expected_target {
+        return Err(TvmError::InvalidReceipt("batch tensor mismatch"));
+    }
+    let expected_batch_root = hash_bytes(
+        b"tensor-vm-linear-batch-root-v1",
+        &[
+            &output.x.commitment_root(),
+            &output.target.commitment_root(),
+        ],
+    );
+    if receipt.batch_root != expected_batch_root {
+        return Err(TvmError::InvalidReceipt("batch root mismatch"));
+    }
+    let expected_trace_root = hash_bytes(
+        b"tensor-vm-linear-trace-v1",
+        &[
+            &job.weight_root_before,
+            &expected_batch_root,
+            &output.y.commitment_root(),
+            &output.dy.commitment_root(),
+            &output.grad_w.commitment_root(),
+            &output.weight_after.commitment_root(),
+        ],
+    );
+    if receipt.trace_root != expected_trace_root {
+        return Err(TvmError::InvalidReceipt("trace root mismatch"));
+    }
+
+    let forward_passed = full_freivalds(
+        &output.x,
+        weights_before,
+        &output.y,
+        &hash_bytes(b"tensor-vm-linear-forward-seed-v1", &[validation_seed]),
+        params.full_rounds,
+    )?;
+    let expected_dy = output.y.sub(&output.target)?;
+    let error_relation_passed = random_linear_equal(
+        &output.dy,
+        &expected_dy,
+        &hash_bytes(b"tensor-vm-linear-error-seed-v1", &[validation_seed]),
+    )?;
+    let x_t = output.x.transpose()?;
+    let backward_passed = full_freivalds(
+        &x_t,
+        &output.dy,
+        &output.grad_w,
+        &hash_bytes(b"tensor-vm-linear-backward-seed-v1", &[validation_seed]),
+        params.full_rounds,
+    )?;
+    let expected_weight = weights_before.sub(&output.grad_w.scalar_mul(job.lr)?)?;
+    let optimizer_passed = random_linear_equal(
+        &output.weight_after,
+        &expected_weight,
+        &hash_bytes(b"tensor-vm-linear-optimizer-seed-v1", &[validation_seed]),
+    )?;
+    let loss_passed = vm::mse_loss(&output.y, &output.target)? == output.loss_commitment;
+    let data_availability_passed = true;
+    let result = if forward_passed
+        && error_relation_passed
+        && backward_passed
+        && optimizer_passed
+        && loss_passed
+        && data_availability_passed
+    {
+        VerificationResult::Valid
+    } else {
+        VerificationResult::Invalid
+    };
+    let checks_root = hash_bytes(
+        b"tensor-vm-linear-checks-v1",
+        &[
+            validation_seed,
+            &[forward_passed as u8],
+            &[error_relation_passed as u8],
+            &[backward_passed as u8],
+            &[optimizer_passed as u8],
+            &[loss_passed as u8],
+        ],
+    );
+    Ok(LinearVerificationReport {
+        result,
+        forward_passed,
+        error_relation_passed,
+        backward_passed,
+        optimizer_passed,
+        data_availability_passed,
+        checks_root,
+    })
+}
+
+fn random_linear_equal(left: &Tensor, right: &Tensor, seed: &Hash) -> Result<bool> {
+    if left.shape() != right.shape() {
+        return Err(TvmError::ShapeMismatch {
+            left: left.shape().to_vec(),
+            right: right.shape().to_vec(),
+        });
+    }
+    let q = random_field_vector(seed, b"tensor-vm-random-linear-v1", left.len());
+    Ok(left.linear_combination(&q)? == right.linear_combination(&q)?)
+}
+
+fn sample_distinct_rows(seed: &Hash, rows: usize, count: usize) -> Vec<usize> {
+    let mut selected = Vec::with_capacity(count);
+    let mut cursor = 0_u64;
+    while selected.len() < count {
+        let h = hash_bytes(
+            b"tensor-vm-sample-row-v1",
+            &[seed, &cursor.to_le_bytes(), &(rows as u64).to_le_bytes()],
+        );
+        let mut bytes = [0_u8; 8];
+        bytes.copy_from_slice(&h[..8]);
+        let row = (u64::from_le_bytes(bytes) as usize) % rows;
+        if !selected.contains(&row) {
+            selected.push(row);
+        }
+        cursor += 1;
+    }
+    selected
+}
+
+fn attestation_digest(validator: &Address, stake: u64, statement: &AttestationStatement) -> Hash {
+    let primitive = match statement.primitive_type {
+        PrimitiveType::TensorOp => 1_u8,
+        PrimitiveType::LinearTrainingStep => 2_u8,
+    };
+    let result = match statement.result {
+        VerificationResult::Valid => 1_u8,
+        VerificationResult::Invalid => 2_u8,
+        VerificationResult::Unavailable => 3_u8,
+    };
+    hash_bytes(
+        b"tensor-vm-attestation-v1",
+        &[
+            validator,
+            &statement.receipt_id,
+            &statement.job_id,
+            &[primitive, result, statement.data_availability_passed as u8],
+            &statement.checks_root,
+            &stake.to_le_bytes(),
+        ],
+    )
+}
+
+#[allow(dead_code)]
+fn linear_relation(left: Elem, right: Elem) -> bool {
+    field::sub(left, right) == 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::jobs::{
+        LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, TensorOpReceipt,
+    };
+    use crate::tensor::DType;
+    use crate::types::{address, hash_bytes};
+
+    #[test]
+    fn full_freivalds_accepts_honest_and_rejects_corruption() {
+        let a = Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let b = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![7, 8, 9, 10]).unwrap();
+        let mut c = a.matmul(&b).unwrap();
+        let seed = hash_bytes(b"test", &[b"freivalds"]);
+        assert!(full_freivalds(&a, &b, &c, &seed, 2).unwrap());
+        let bad = field::add(c.get2(1, 1).unwrap(), 1);
+        c.set2(1, 1, bad).unwrap();
+        assert!(!full_freivalds(&a, &b, &c, &seed, 2).unwrap());
+    }
+
+    #[test]
+    fn row_sampling_probability_exposes_sparse_weakness() {
+        let p = row_sample_detection_probability(1024, 1, 16);
+        assert!((p - 16.0 / 1024.0).abs() < 1e-12);
+        assert!(row_sample_detection_probability(1024, 1024, 16) == 1.0);
+        assert_eq!(row_sample_detection_probability(10, 9, 2), 1.0);
+        assert!(linear_relation(7, 7));
+        assert!(!linear_relation(7, 8));
+    }
+
+    #[test]
+    fn tensor_op_verifier_rejects_bad_output() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let job = MatmulJob::synthetic(0, 0, 8, 4, 4, &beacon, 10);
+        let miner = address(b"miner");
+        let (receipt, a, b, mut c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
+        let seed = hash_bytes(b"test", &[b"validation"]);
+        let report = verify_tensor_op(
+            &job,
+            &receipt,
+            &a,
+            &b,
+            &c,
+            &seed,
+            &FreivaldsParams::default(),
+        )
+        .unwrap();
+        assert_eq!(report.result, VerificationResult::Valid);
+        c.set2(0, 0, field::add(c.get2(0, 0).unwrap(), 1)).unwrap();
+        let bad = TensorOpReceipt::from_output(&job, miner, 1, 5, &a, &b, &c).unwrap();
+        let report =
+            verify_tensor_op(&job, &bad, &a, &b, &c, &seed, &FreivaldsParams::default()).unwrap();
+        assert_eq!(report.result, VerificationResult::Invalid);
+    }
+
+    #[test]
+    fn tensor_op_verifier_rejects_deadline_and_signature_failures() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
+        let miner = address(b"miner");
+        let (mut receipt, a, b, c) = TensorOpReceipt::from_job(&job, miner, 11, 5).unwrap();
+        let seed = hash_bytes(b"test", &[b"validation"]);
+        assert_eq!(
+            verify_tensor_op(
+                &job,
+                &receipt,
+                &a,
+                &b,
+                &c,
+                &seed,
+                &FreivaldsParams::default()
+            ),
+            Err(TvmError::InvalidReceipt("receipt submitted after deadline"))
+        );
+
+        receipt = TensorOpReceipt::from_output(&job, miner, 1, 5, &a, &b, &c).unwrap();
+        receipt.signature = [9; 32];
+        assert_eq!(
+            verify_tensor_op(
+                &job,
+                &receipt,
+                &a,
+                &b,
+                &c,
+                &seed,
+                &FreivaldsParams::default()
+            ),
+            Err(TvmError::InvalidReceipt("bad receipt signature"))
+        );
+    }
+
+    #[test]
+    fn tensor_op_verifier_rejects_digest_and_trace_mismatch() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
+        let miner = address(b"miner");
+        let (receipt, a, b, c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
+        let seed = hash_bytes(b"test", &[b"validation"]);
+
+        let mut bad_digest = receipt.clone();
+        bad_digest.tensor_work_units += 1;
+        assert_eq!(
+            verify_tensor_op(
+                &job,
+                &bad_digest,
+                &a,
+                &b,
+                &c,
+                &seed,
+                &FreivaldsParams::default()
+            ),
+            Err(TvmError::InvalidReceipt("receipt digest mismatch"))
+        );
+
+        let mut bad_trace = receipt.clone();
+        bad_trace.trace_root = hash_bytes(b"test", &[b"bad-trace"]);
+        bad_trace.receipt_id = bad_trace.recompute_receipt_id();
+        bad_trace.signature = sign(&bad_trace.miner, &bad_trace.receipt_id);
+        assert_eq!(
+            verify_tensor_op(
+                &job,
+                &bad_trace,
+                &a,
+                &b,
+                &c,
+                &seed,
+                &FreivaldsParams::default()
+            ),
+            Err(TvmError::InvalidReceipt("trace root mismatch"))
+        );
+    }
+
+    #[test]
+    fn tensor_op_verifier_rejects_metadata_and_shape_mismatches() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
+        let miner = address(b"miner");
+        let (receipt, a, b, c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
+        let seed = hash_bytes(b"test", &[b"validation"]);
+        let params = FreivaldsParams::default();
+
+        let mut bad_job = receipt.clone();
+        bad_job.job_id = hash_bytes(b"test", &[b"other-job"]);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_job, &a, &b, &c, &seed, &params),
+            Err(TvmError::InvalidReceipt("job id mismatch"))
+        );
+
+        let mut bad_program = receipt.clone();
+        bad_program.program_hash = hash_bytes(b"test", &[b"bad-program"]);
+        bad_program.receipt_id = bad_program.recompute_receipt_id();
+        bad_program.signature = sign(&bad_program.miner, &bad_program.receipt_id);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_program, &a, &b, &c, &seed, &params),
+            Err(TvmError::InvalidReceipt("program hash mismatch"))
+        );
+
+        let mut bad_inputs = receipt.clone();
+        bad_inputs.input_roots[0] = hash_bytes(b"test", &[b"bad-input"]);
+        bad_inputs.receipt_id = bad_inputs.recompute_receipt_id();
+        bad_inputs.signature = sign(&bad_inputs.miner, &bad_inputs.receipt_id);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_inputs, &a, &b, &c, &seed, &params),
+            Err(TvmError::InvalidReceipt("input roots mismatch"))
+        );
+
+        let mut bad_outputs = receipt.clone();
+        bad_outputs.output_roots[0] = hash_bytes(b"test", &[b"bad-output"]);
+        bad_outputs.receipt_id = bad_outputs.recompute_receipt_id();
+        bad_outputs.signature = sign(&bad_outputs.miner, &bad_outputs.receipt_id);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_outputs, &a, &b, &c, &seed, &params),
+            Err(TvmError::InvalidReceipt("output root mismatch"))
+        );
+
+        let wrong_a = Tensor::from_vec(
+            vec![2, 4],
+            DType::FieldElement,
+            vec![1, 2, 3, 4, 5, 6, 7, 8],
+        )
+        .unwrap();
+        let mut bad_input_shape = receipt.clone();
+        bad_input_shape.input_roots = vec![wrong_a.commitment_root(), b.commitment_root()];
+        bad_input_shape.trace_root = hash_bytes(
+            b"tensor-vm-tensorop-trace-v1",
+            &[
+                &wrong_a.commitment_root(),
+                &b.commitment_root(),
+                &c.commitment_root(),
+            ],
+        );
+        bad_input_shape.receipt_id = bad_input_shape.recompute_receipt_id();
+        bad_input_shape.signature = sign(&bad_input_shape.miner, &bad_input_shape.receipt_id);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_input_shape, &wrong_a, &b, &c, &seed, &params),
+            Err(TvmError::InvalidReceipt("input shape mismatch"))
+        );
+
+        let wrong_c = Tensor::from_vec(
+            vec![4, 3],
+            DType::FieldElement,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        )
+        .unwrap();
+        let mut bad_output_shape = receipt.clone();
+        bad_output_shape.output_roots = vec![wrong_c.commitment_root()];
+        bad_output_shape.trace_root = hash_bytes(
+            b"tensor-vm-tensorop-trace-v1",
+            &[
+                &a.commitment_root(),
+                &b.commitment_root(),
+                &wrong_c.commitment_root(),
+            ],
+        );
+        bad_output_shape.receipt_id = bad_output_shape.recompute_receipt_id();
+        bad_output_shape.signature = sign(&bad_output_shape.miner, &bad_output_shape.receipt_id);
+        assert_eq!(
+            verify_tensor_op(&job, &bad_output_shape, &a, &b, &wrong_c, &seed, &params),
+            Err(TvmError::InvalidReceipt("output shape mismatch"))
+        );
+
+        assert!(row_sampled_freivalds(&a, &b, &c, &seed, 0).unwrap());
+        assert_eq!(row_sample_detection_probability(0, 1, 1), 0.0);
+        assert!(matches!(
+            full_freivalds(&a, &b, &wrong_c, &seed, 1),
+            Err(TvmError::DimensionMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn linear_training_verifier_rejects_sparse_weight_poisoning() {
+        let seed = hash_bytes(b"test", &[b"batch"]);
+        let weights =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(b"test", &[b"model"]),
+            step: 0,
+            batch_seed: seed,
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![4, 3],
+            weight_shape: vec![3, 2],
+            target_shape: vec![4, 2],
+            lr: 3,
+            deadline_block: 10,
+        });
+        let (receipt, mut output) =
+            LinearTrainingStepReceipt::from_job(&job, address(b"miner"), &weights, 1, 5).unwrap();
+        let validation_seed = hash_bytes(b"test", &[b"validation"]);
+        let report = verify_linear_training_step(
+            &job,
+            &receipt,
+            &weights,
+            &output,
+            &validation_seed,
+            &FreivaldsParams::default(),
+        )
+        .unwrap();
+        assert_eq!(report.result, VerificationResult::Valid);
+
+        output
+            .weight_after
+            .set2(0, 0, field::add(output.weight_after.get2(0, 0).unwrap(), 1))
+            .unwrap();
+        let bad_receipt =
+            LinearTrainingStepReceipt::from_output(&job, receipt.miner, &output, 1, 5);
+        let report = verify_linear_training_step(
+            &job,
+            &bad_receipt,
+            &weights,
+            &output,
+            &validation_seed,
+            &FreivaldsParams::default(),
+        )
+        .unwrap();
+        assert_eq!(report.result, VerificationResult::Invalid);
+        assert!(!report.optimizer_passed);
+    }
+
+    #[test]
+    fn linear_training_verifier_rejects_sparse_error_poisoning() {
+        let seed = hash_bytes(b"test", &[b"batch"]);
+        let weights =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(b"test", &[b"model"]),
+            step: 0,
+            batch_seed: seed,
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![4, 3],
+            weight_shape: vec![3, 2],
+            target_shape: vec![4, 2],
+            lr: 3,
+            deadline_block: 10,
+        });
+        let (receipt, mut output) =
+            LinearTrainingStepReceipt::from_job(&job, address(b"miner"), &weights, 1, 5).unwrap();
+        output
+            .dy
+            .set2(0, 0, field::add(output.dy.get2(0, 0).unwrap(), 1))
+            .unwrap();
+        let bad_receipt =
+            LinearTrainingStepReceipt::from_output(&job, receipt.miner, &output, 1, 5);
+
+        let report = verify_linear_training_step(
+            &job,
+            &bad_receipt,
+            &weights,
+            &output,
+            &hash_bytes(b"test", &[b"validation"]),
+            &FreivaldsParams::default(),
+        )
+        .unwrap();
+
+        assert_eq!(report.result, VerificationResult::Invalid);
+        assert!(!report.error_relation_passed);
+    }
+
+    #[test]
+    fn linear_training_verifier_rejects_metadata_and_commitment_mismatches() {
+        let seed = hash_bytes(b"test", &[b"batch"]);
+        let weights =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(b"test", &[b"model"]),
+            step: 0,
+            batch_seed: seed,
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![4, 3],
+            weight_shape: vec![3, 2],
+            target_shape: vec![4, 2],
+            lr: 3,
+            deadline_block: 10,
+        });
+        let (receipt, output) =
+            LinearTrainingStepReceipt::from_job(&job, address(b"miner"), &weights, 1, 5).unwrap();
+        let validation_seed = hash_bytes(b"test", &[b"validation"]);
+        let params = FreivaldsParams::default();
+
+        let mut bad_job = receipt.clone();
+        bad_job.job_id = hash_bytes(b"test", &[b"wrong-linear-job"]);
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &bad_job,
+                &weights,
+                &output,
+                &validation_seed,
+                &params
+            ),
+            Err(TvmError::InvalidReceipt("job id mismatch"))
+        );
+
+        let mut late = LinearTrainingStepReceipt::from_output(&job, receipt.miner, &output, 11, 5);
+        assert_eq!(
+            verify_linear_training_step(&job, &late, &weights, &output, &validation_seed, &params),
+            Err(TvmError::InvalidReceipt("receipt submitted after deadline"))
+        );
+
+        late.submitted_at_block = 1;
+        assert_eq!(
+            verify_linear_training_step(&job, &late, &weights, &output, &validation_seed, &params),
+            Err(TvmError::InvalidReceipt("receipt digest mismatch"))
+        );
+
+        let mut bad_signature = receipt.clone();
+        bad_signature.signature = [7; 32];
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &bad_signature,
+                &weights,
+                &output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("bad receipt signature"))
+        );
+
+        let wrong_weights =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![6, 5, 4, 3, 2, 1]).unwrap();
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &receipt,
+                &wrong_weights,
+                &output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("weight root mismatch"))
+        );
+
+        let mut bad_output_root = receipt.clone();
+        bad_output_root.y_root = hash_bytes(b"test", &[b"wrong-y"]);
+        bad_output_root.receipt_id = bad_output_root.recompute_receipt_id(&job.program_hash());
+        bad_output_root.signature = sign(&bad_output_root.miner, &bad_output_root.receipt_id);
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &bad_output_root,
+                &weights,
+                &output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("linear output root mismatch"))
+        );
+
+        let mut bad_batch_output = output.clone();
+        bad_batch_output.x.set2(0, 0, 99).unwrap();
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &receipt,
+                &weights,
+                &bad_batch_output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("batch tensor mismatch"))
+        );
+
+        let mut bad_batch_root = receipt.clone();
+        bad_batch_root.batch_root = hash_bytes(b"test", &[b"wrong-batch-root"]);
+        bad_batch_root.receipt_id = bad_batch_root.recompute_receipt_id(&job.program_hash());
+        bad_batch_root.signature = sign(&bad_batch_root.miner, &bad_batch_root.receipt_id);
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &bad_batch_root,
+                &weights,
+                &output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("batch root mismatch"))
+        );
+
+        let mut bad_trace = receipt.clone();
+        bad_trace.trace_root = hash_bytes(b"test", &[b"wrong-linear-trace"]);
+        bad_trace.receipt_id = bad_trace.recompute_receipt_id(&job.program_hash());
+        bad_trace.signature = sign(&bad_trace.miner, &bad_trace.receipt_id);
+        assert_eq!(
+            verify_linear_training_step(
+                &job,
+                &bad_trace,
+                &weights,
+                &output,
+                &validation_seed,
+                &params,
+            ),
+            Err(TvmError::InvalidReceipt("trace root mismatch"))
+        );
+
+        let short = Tensor::from_vec(vec![1], DType::FieldElement, vec![1]).unwrap();
+        assert!(matches!(
+            random_linear_equal(&output.y, &short, &validation_seed),
+            Err(TvmError::ShapeMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn attestation_signatures_verify() {
+        let validator = address(b"validator");
+        let att = ValidatorAttestation::new(
+            validator,
+            100,
+            AttestationStatement {
+                receipt_id: hash_bytes(b"test", &[b"receipt"]),
+                job_id: hash_bytes(b"test", &[b"job"]),
+                primitive_type: PrimitiveType::TensorOp,
+                result: VerificationResult::Valid,
+                checks_root: hash_bytes(b"test", &[b"checks"]),
+                data_availability_passed: true,
+            },
+        );
+        assert!(att.verify_signature());
+    }
+}
