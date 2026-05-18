@@ -190,7 +190,7 @@ test that starts the mandatory libp2p service path and serves authenticated `/he
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
 `/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
-`/attestation` submissions with reference payloads.
+`/attestation` submissions with reference payloads and read-back of registered miner/validator state.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):

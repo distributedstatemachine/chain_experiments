@@ -160,7 +160,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "15",
+            "18",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
@@ -212,6 +212,27 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(tx.contains("HTTP/1.1 202 Accepted"));
     assert!(tx.contains("\"accepted\":true"));
 
+    let validator_address = "44".repeat(32);
+    let validator_tx = authenticated_request(
+        rpc_port,
+        "POST",
+        "/tx",
+        &format!("register_validator {validator_address}"),
+    );
+    assert!(validator_tx.contains("HTTP/1.1 202 Accepted"));
+    assert!(validator_tx.contains("\"accepted\":true"));
+
+    let miner_state = authenticated_get_request(rpc_port, &format!("/miners/{miner_address}"));
+    assert!(miner_state.contains("HTTP/1.1 200 OK"));
+    assert!(miner_state.contains(&format!("\"address\":\"{miner_address}\"")));
+    assert!(miner_state.contains("\"stake\":100"));
+
+    let validator_state =
+        authenticated_get_request(rpc_port, &format!("/validators/{validator_address}"));
+    assert!(validator_state.contains("HTTP/1.1 200 OK"));
+    assert!(validator_state.contains(&format!("\"address\":\"{validator_address}\"")));
+    assert!(validator_state.contains("\"stake\":10000"));
+
     let receipt = authenticated_request(rpc_port, "POST", "/receipt", &"22".repeat(32));
     assert!(receipt.contains("HTTP/1.1 202 Accepted"));
     assert!(receipt.contains("\"accepted\":true"));
@@ -247,7 +268,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=15"));
+    assert!(stdout.contains("served_requests=18"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
