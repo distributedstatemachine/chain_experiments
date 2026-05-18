@@ -22,8 +22,8 @@ Result:
 - 14 pearl_chain library tests
 - 163 tensor_vm library tests
 
-98.63% workspace line coverage
-5898/5980 workspace lines covered
+98.65% workspace line coverage
+5998/6080 workspace lines covered
 
 100.00% tensor_vm crate line coverage
 ```

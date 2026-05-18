@@ -91,7 +91,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
   private, and link-local hosts
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
-  `tvmd public-evidence validate --manifest <path>`
+  `tvmd public-evidence validate --manifest <path>`, plus
+  `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
+  `service=...` manifest records bound to external HTTPS health URLs and observation counts
 
 ## Verified Gates
 
@@ -114,8 +116,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.63% workspace line coverage
-- 5898/5980 workspace lines covered
+- 98.65% workspace line coverage
+- 5998/6080 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

@@ -120,6 +120,25 @@ The CLI reads a manifest file and reports the default full-spec evidence status:
 tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
 ```
 
+Operators can generate a signed service-health manifest line for RPC, explorer, faucet, or telemetry
+evidence:
+
+```bash
+tvmd public-evidence service-health \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.example.test/health \
+  --health-path /health \
+  --first-block 0 \
+  --last-block 100799 \
+  --reachable-count 100800 \
+  --signed-health-check-count 100800
+```
+
+The command rejects local/private service URLs, malformed endpoint IDs, invalid block ranges, and unsigned
+or unreachable service-health summaries. Its output can be inserted directly as a `service=...` line in
+the evidence manifest.
+
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires both
 `public_criterion=true` and `independently_checkable=true`. The `external_operator_evidence` field is true
 only when enough signed node evidence and operator identity attestation records are present. The individual

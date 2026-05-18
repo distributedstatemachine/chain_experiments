@@ -1620,6 +1620,30 @@ tvmd service serve \
 `--max-requests 0` means serve continuously; positive values are for supervised smoke tests and controlled
 rollout checks.
 
+### 31.4 Public Testnet Evidence CLI
+
+```bash
+tvmd public-testnet preflight \
+  --manifest docs/tensorvm/public-testnet.preflight
+
+tvmd public-evidence validate \
+  --manifest docs/tensorvm/public-testnet.evidence
+
+tvmd public-evidence service-health \
+  --kind rpc \
+  --endpoint-id <endpoint-id-hex> \
+  --public-url https://rpc.example.test/health \
+  --health-path /health \
+  --first-block 0 \
+  --last-block 100799 \
+  --reachable-count 100800 \
+  --signed-health-check-count 100800
+```
+
+The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
+telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
+path, observed block range, reachable observation count, and signed health-check count.
+
 ---
 
 ## 32. Reference Implementation

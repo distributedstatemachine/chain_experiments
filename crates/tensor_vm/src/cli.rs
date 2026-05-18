@@ -2,10 +2,10 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
-    PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
-    parse_public_testnet_preflight_manifest,
+    PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind, PublicTestnetCriteria,
+    parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
 };
-use crate::types::address;
+use crate::types::{Hash, address};
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -38,6 +38,16 @@ pub enum CliCommand {
     },
     PublicEvidenceValidate {
         manifest: String,
+    },
+    PublicEvidenceServiceHealth {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        health_path: String,
+        first_seen_block: u64,
+        last_seen_block: u64,
+        reachable_observation_count: u64,
+        signed_health_check_count: u64,
     },
     PublicTestnetPreflight {
         manifest: String,
@@ -104,6 +114,35 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
                 manifest: (*manifest).to_owned(),
             })
         }
+        [
+            "public-evidence",
+            "service-health",
+            "--kind",
+            kind,
+            "--endpoint-id",
+            endpoint_id,
+            "--public-url",
+            public_url,
+            "--health-path",
+            health_path,
+            "--first-block",
+            first_seen_block,
+            "--last-block",
+            last_seen_block,
+            "--reachable-count",
+            reachable_observation_count,
+            "--signed-health-check-count",
+            signed_health_check_count,
+        ] => Ok(CliCommand::PublicEvidenceServiceHealth {
+            kind: parse_public_service_kind(kind)?,
+            endpoint_id: parse_hash_argument(endpoint_id)?,
+            public_url: (*public_url).to_owned(),
+            health_path: (*health_path).to_owned(),
+            first_seen_block: parse_u64(first_seen_block)?,
+            last_seen_block: parse_u64(last_seen_block)?,
+            reachable_observation_count: parse_u64(reachable_observation_count)?,
+            signed_health_check_count: parse_u64(signed_health_check_count)?,
+        }),
         ["public-testnet", "preflight", "--manifest", manifest] => {
             Ok(CliCommand::PublicTestnetPreflight {
                 manifest: (*manifest).to_owned(),
@@ -142,6 +181,17 @@ pub fn describe_command(command: &CliCommand) -> String {
         }
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
+        }
+        CliCommand::PublicEvidenceServiceHealth {
+            kind,
+            public_url,
+            health_path,
+            ..
+        } => {
+            format!(
+                "generate {} service health evidence public_url={public_url} health_path={health_path}",
+                public_service_kind_tag(*kind)
+            )
         }
         CliCommand::PublicTestnetPreflight { manifest } => {
             format!("run public testnet preflight manifest {manifest}")
@@ -212,10 +262,71 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
                 "command=service_serve\nlisten={listen}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true"
             ))
         }
+        CliCommand::PublicEvidenceServiceHealth {
+            kind,
+            endpoint_id,
+            public_url,
+            health_path,
+            first_seen_block,
+            last_seen_block,
+            reachable_observation_count,
+            signed_health_check_count,
+        } => service_health_evidence_line(ServiceHealthEvidenceLine {
+            kind: *kind,
+            endpoint_id: *endpoint_id,
+            public_url,
+            health_path,
+            first_seen_block: *first_seen_block,
+            last_seen_block: *last_seen_block,
+            reachable_observation_count: *reachable_observation_count,
+            signed_health_check_count: *signed_health_check_count,
+        }),
         CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
             Ok(describe_command(command))
         }
     }
+}
+
+struct ServiceHealthEvidenceLine<'a> {
+    kind: PublicServiceKind,
+    endpoint_id: Hash,
+    public_url: &'a str,
+    health_path: &'a str,
+    first_seen_block: u64,
+    last_seen_block: u64,
+    reachable_observation_count: u64,
+    signed_health_check_count: u64,
+}
+
+fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>) -> Result<String> {
+    if input.last_seen_block < input.first_seen_block {
+        return Err(TvmError::InvalidReceipt(
+            "service health block range is invalid",
+        ));
+    }
+    let evidence = PublicServiceEvidence::new(
+        input.kind,
+        PublicServiceEndpoint::new(input.endpoint_id, input.public_url, input.health_path),
+        input.first_seen_block,
+        input.last_seen_block,
+        input.reachable_observation_count,
+        input.signed_health_check_count,
+    );
+    if !evidence.has_reachable_endpoint_proof() {
+        return Err(TvmError::InvalidReceipt("invalid service health evidence"));
+    }
+    Ok(format!(
+        "service={},{},{},{},{},{},{},{},{}",
+        public_service_kind_tag(input.kind),
+        hex(&evidence.endpoint_id),
+        evidence.public_url,
+        evidence.health_path,
+        evidence.first_seen_block,
+        evidence.last_seen_block,
+        evidence.reachable_observation_count,
+        evidence.signed_health_check_count,
+        hex(&evidence.health_check_signature)
+    ))
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -303,6 +414,48 @@ fn parse_usize(value: &str) -> Result<usize> {
     value
         .parse()
         .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
+}
+
+fn parse_public_service_kind(value: &str) -> Result<PublicServiceKind> {
+    match value {
+        "rpc" => Ok(PublicServiceKind::Rpc),
+        "explorer" => Ok(PublicServiceKind::Explorer),
+        "faucet" => Ok(PublicServiceKind::Faucet),
+        "telemetry" => Ok(PublicServiceKind::Telemetry),
+        _ => Err(TvmError::InvalidReceipt("invalid public service kind")),
+    }
+}
+
+fn public_service_kind_tag(kind: PublicServiceKind) -> &'static str {
+    match kind {
+        PublicServiceKind::Rpc => "rpc",
+        PublicServiceKind::Explorer => "explorer",
+        PublicServiceKind::Faucet => "faucet",
+        PublicServiceKind::Telemetry => "telemetry",
+    }
+}
+
+fn parse_hash_argument(value: &str) -> Result<Hash> {
+    let value = value.strip_prefix("0x").unwrap_or(value);
+    if value.len() != 64 {
+        return Err(TvmError::InvalidReceipt("invalid hash argument"));
+    }
+    let mut out = [0u8; 32];
+    for (index, byte) in out.iter_mut().enumerate() {
+        let high = parse_hash_nibble(value.as_bytes()[index * 2])?;
+        let low = parse_hash_nibble(value.as_bytes()[index * 2 + 1])?;
+        *byte = (high << 4) | low;
+    }
+    Ok(out)
+}
+
+fn parse_hash_nibble(value: u8) -> Result<u8> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        b'A'..=b'F' => Ok(value - b'A' + 10),
+        _ => Err(TvmError::InvalidReceipt("invalid hash argument")),
+    }
 }
 
 fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
@@ -746,6 +899,40 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
             }
         );
+        let endpoint_id = manifest_hash(b"rpc-service");
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "service-health",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.example/health",
+                "--health-path",
+                "/health",
+                "--first-block",
+                "0",
+                "--last-block",
+                "9",
+                "--reachable-count",
+                "10",
+                "--signed-health-check-count",
+                "10",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            }
+        );
         assert_eq!(
             parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
             CliCommand::ServiceInit {
@@ -849,6 +1036,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         for (command, description) in commands {
             assert_eq!(describe_command(&command), description);
         }
+
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            }),
+            "generate rpc service health evidence public_url=https://rpc.tensorvm.example/health health_path=/health"
+        );
     }
 
     #[test]
@@ -923,6 +1124,50 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
             execute_reference_cli_command(&public_command).unwrap(),
             describe_command(&public_command)
         );
+
+        let service_health =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .unwrap();
+        assert!(service_health.starts_with("service=rpc,"));
+        assert!(service_health.contains("https://rpc.tensorvm.example/health,/health,0,9,10,10"));
+        assert!(service_health.ends_with(&manifest_service_signature(
+            PublicServiceKind::Rpc,
+            b"rpc-service"
+        )));
+        let additional_service_cases: [(PublicServiceKind, &[u8], &str); 3] = [
+            (PublicServiceKind::Explorer, b"explorer-service", "explorer"),
+            (PublicServiceKind::Faucet, b"faucet-service", "faucet"),
+            (
+                PublicServiceKind::Telemetry,
+                b"telemetry-service",
+                "telemetry",
+            ),
+        ];
+        for (kind, label, tag) in additional_service_cases {
+            let line = execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind,
+                endpoint_id: hash_bytes(b"test", &[label]),
+                public_url: public_service_url(kind).to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .unwrap();
+            assert!(line.starts_with(&format!("service={tag},")));
+            assert!(line.contains(public_service_url(kind)));
+            assert!(line.ends_with(&manifest_service_signature(kind, label)));
+        }
     }
 
     #[test]
@@ -1000,6 +1245,74 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
                 "--max-requests",
                 "abc",
             ])
+            .is_err()
+        );
+        assert!(parse_public_service_kind("archive").is_err());
+        assert!(parse_hash_argument("12").is_err());
+        assert!(parse_hash_argument(&"g".repeat(64)).is_err());
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "http://127.0.0.1/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 10,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: [0; 32],
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 0,
+                signed_health_check_count: 10,
+            })
             .is_err()
         );
     }
