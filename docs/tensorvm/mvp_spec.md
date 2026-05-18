@@ -193,9 +193,32 @@ scientific workloads
 
 ### 4.5 Security Gates Before Public Testnet
 
+Gate 0 is a local CPU multi-participant testnet. Before CUDA acceleration, production deployment,
+public-run evidence, or any adversarial public-testnet claim can count, the default-feature CPU reference
+path must run a local TensorVM testnet with multiple miners and validators. This gate must use the
+canonical CPU semantics, not CUDA kernels, local-only shims, or single-participant shortcuts.
+
+Required Gate 0 command from the repository root:
+
+```bash
+cargo test -p tensor_vm local_testnet --release
+```
+
+The Gate 0 run must cover:
+
+```text
+at least two miners and one validator, with the default local target remaining 10 miners and 5 validators
+block production from the local testnet harness
+matmul receipt submission, full Freivalds validation, attestation, settlement, and rewards
+LinearTrainingStep receipt validation and state transition
+data availability through the local tensor server path
+explicit proof that this CPU gate is not public-run evidence and does not satisfy the 7-day deployment gate
+```
+
 The MVP must pass these gates before it is treated as a public adversarial testnet:
 
 ```text
+Gate 0 local CPU multi-participant testnet passes
 explicit threat model for miners, validators, proposers, and data servers
 unbiasable validation randomness from a finalized beacon or commit-reveal protocol
 settled-epoch TensorWork only for proposer eligibility
@@ -1958,21 +1981,22 @@ The agent should execute this loop until the contract is satisfied:
 ```text
 1. compare code and docs against Sections 32, 33, and 35
 2. list missing local-reference items and missing deployment-gated items
-3. implement one coherent missing local-reference slice
-4. add or update focused tests for that slice
-5. run cargo fmt --check --all
-6. run cargo test --workspace --release
-7. run cargo clippy --workspace --all-targets -- -D warnings
-8. run every relevant experiment or study command for the slice, including randomness, Freivalds,
+3. run the Gate 0 CPU local-testnet command before CUDA, public preflight, public evidence, or deployment-gated work can count
+4. implement one coherent missing local-reference slice
+5. add or update focused tests for that slice
+6. run cargo fmt --check --all
+7. run cargo test --workspace --release
+8. run cargo clippy --workspace --all-targets -- -D warnings
+9. run every relevant experiment or study command for the slice, including randomness, Freivalds,
    row-sampling, data-withholding, collusion, TensorWork concentration, zero-work liveness,
    local-testnet, public-evidence, networking, persistence, and telemetry experiments when touched
-9. run cargo tarpaulin when line coverage or test count changes
-10. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
+10. run cargo tarpaulin when line coverage or test count changes
+11. update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
    docs/tensorvm/tarpaulin_report.md
-11. commit the completed iteration with a message that names the implemented slice
-12. push the completed iteration to the configured upstream branch
-13. repeat until no local-reference gaps remain
-14. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
+12. commit the completed iteration with a message that names the implemented slice
+13. push the completed iteration to the configured upstream branch
+14. repeat until no local-reference gaps remain
+15. only then attempt deployment-gated items if infrastructure, credentials, and public endpoints are
     available
 ```
 
@@ -1998,6 +2022,7 @@ Local reference completion requires:
 
 ```text
 all modules listed in the recommended internal module structure exist or have documented replacements
+Gate 0 CPU local multi-participant testnet passes with cargo test -p tensor_vm local_testnet --release
 all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing tests
 Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
 not yet complete
@@ -2303,6 +2328,7 @@ Full-spec completion additionally requires deployment evidence, not only a local
 implementation:
 
 ```text
+Gate 0 CPU local multi-participant testnet passes before any deployment evidence is counted
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
 production libp2p operation is supported by signed network-observation evidence
