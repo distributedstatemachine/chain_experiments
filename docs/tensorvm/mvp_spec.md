@@ -229,6 +229,7 @@ matmul receipt submission, full Freivalds validation, attestation, settlement, a
 LinearTrainingStep receipt validation and state transition
 data availability through the local tensor server path
 mandatory libp2p node startup and propagation paths under default features
+real loopback libp2p gossipsub and request-response exchange using TensorVM P2P messages
 explicit proof that this CPU gate is not public-run evidence and does not satisfy the 7-day deployment gate
 ```
 

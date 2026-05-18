@@ -787,6 +787,8 @@ impl<'a> Reader<'a> {
 mod tests {
     use super::*;
     use crate::types::{address, hash_bytes};
+    use futures::FutureExt;
+    use libp2p::swarm::SwarmEvent;
 
     #[test]
     fn p2p_messages_roundtrip() {
@@ -955,6 +957,234 @@ mod tests {
         assert_eq!(service.info().subscribed_topics.len(), 5);
         assert_eq!(service.info().request_response_protocols.len(), 3);
         std::thread::sleep(Duration::from_millis(150));
+    }
+
+    #[test]
+    fn local_testnet_libp2p_swarms_exchange_gossip_and_request_response() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .enable_time()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let mut producer = build_libp2p_node(&Libp2pControlPlaneConfig {
+                listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+                ..Libp2pControlPlaneConfig::default()
+            })
+            .unwrap();
+            let mut consumer = build_libp2p_node(&Libp2pControlPlaneConfig::default()).unwrap();
+            let listen_addr = wait_for_listen_addr(&mut producer).await;
+            let mut dial_addr = listen_addr;
+            dial_addr.push(Protocol::P2p(producer.peer_id));
+            consumer.swarm.dial(dial_addr).unwrap();
+
+            wait_for_connection(&mut producer, &mut consumer).await;
+            producer
+                .swarm
+                .behaviour_mut()
+                .gossipsub
+                .add_explicit_peer(&consumer.peer_id);
+            consumer
+                .swarm
+                .behaviour_mut()
+                .gossipsub
+                .add_explicit_peer(&producer.peer_id);
+            wait_for_block_subscription(&mut producer, consumer.peer_id).await;
+
+            let block_hash = hash_bytes(b"test", &[b"gate-0-libp2p-block"]);
+            let (topic, payload) =
+                encode_gossipsub_message(&P2pMessage::NewBlock(block_hash)).unwrap();
+            producer
+                .swarm
+                .behaviour_mut()
+                .gossipsub
+                .publish(topic, payload)
+                .unwrap();
+            wait_for_gossip_message(
+                &mut producer,
+                &mut consumer,
+                P2pMessage::NewBlock(block_hash),
+            )
+            .await;
+
+            let tensor_id = hash_bytes(b"test", &[b"gate-0-libp2p-tensor"]);
+            let request = P2pMessage::RequestTensorRow {
+                tensor_id,
+                row_index: 2,
+            };
+            let response = P2pMessage::TensorRowResponse {
+                tensor_id,
+                row_index: 2,
+                values: vec![3, 5, 8],
+            };
+            let request_id = consumer
+                .swarm
+                .behaviour_mut()
+                .request_response
+                .send_request(&producer.peer_id, request.clone());
+            wait_for_request_response(
+                &mut producer,
+                &mut consumer,
+                &request,
+                &response,
+                request_id,
+            )
+            .await;
+        });
+    }
+
+    async fn wait_for_listen_addr(node: &mut TensorVmLibp2pNode) -> Multiaddr {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                if let SwarmEvent::NewListenAddr { address, .. } =
+                    node.swarm.select_next_some().await
+                {
+                    break address;
+                }
+            }
+        })
+        .await
+        .expect("libp2p node must begin listening")
+    }
+
+    async fn wait_for_connection(
+        producer: &mut TensorVmLibp2pNode,
+        consumer: &mut TensorVmLibp2pNode,
+    ) {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            let mut producer_connected = false;
+            let mut consumer_connected = false;
+            while !(producer_connected && consumer_connected) {
+                let producer_event = producer.swarm.select_next_some().fuse();
+                let consumer_event = consumer.swarm.select_next_some().fuse();
+                futures::pin_mut!(producer_event, consumer_event);
+                futures::select! {
+                    event = producer_event => {
+                        if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
+                            producer_connected |= peer_id == consumer.peer_id;
+                        }
+                    }
+                    event = consumer_event => {
+                        if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
+                            consumer_connected |= peer_id == producer.peer_id;
+                        }
+                    }
+                }
+            }
+        })
+        .await
+        .expect("libp2p swarms must connect");
+    }
+
+    async fn wait_for_block_subscription(node: &mut TensorVmLibp2pNode, expected_peer: PeerId) {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
+                    libp2p::gossipsub::Event::Subscribed { peer_id, topic },
+                )) = node.swarm.select_next_some().await
+                    && peer_id == expected_peer
+                    && topic.to_string() == GossipTopic::Blocks.as_str()
+                {
+                    break;
+                }
+            }
+        })
+        .await
+        .expect("libp2p peer must advertise block-topic subscription");
+    }
+
+    async fn wait_for_gossip_message(
+        producer: &mut TensorVmLibp2pNode,
+        consumer: &mut TensorVmLibp2pNode,
+        expected: P2pMessage,
+    ) {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let producer_event = producer.swarm.select_next_some().fuse();
+                let consumer_event = consumer.swarm.select_next_some().fuse();
+                futures::pin_mut!(producer_event, consumer_event);
+                futures::select! {
+                    _ = producer_event => {}
+                    event = consumer_event => {
+                        if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
+                            libp2p::gossipsub::Event::Message {
+                                propagation_source,
+                                message,
+                                ..
+                            },
+                        )) = event
+                        {
+                            assert_eq!(propagation_source, producer.peer_id);
+                            assert_eq!(decode_message(&message.data).unwrap(), expected);
+                            break;
+                        }
+                    }
+                }
+            }
+        })
+        .await
+        .expect("libp2p gossipsub message must be delivered");
+    }
+
+    async fn wait_for_request_response(
+        producer: &mut TensorVmLibp2pNode,
+        consumer: &mut TensorVmLibp2pNode,
+        expected_request: &P2pMessage,
+        response: &P2pMessage,
+        expected_request_id: libp2p::request_response::OutboundRequestId,
+    ) {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let producer_event = producer.swarm.select_next_some().fuse();
+                let consumer_event = consumer.swarm.select_next_some().fuse();
+                futures::pin_mut!(producer_event, consumer_event);
+                futures::select! {
+                    event = producer_event => {
+                        if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::RequestResponse(
+                            libp2p::request_response::Event::Message {
+                                peer,
+                                message:
+                                    libp2p::request_response::Message::Request {
+                                        request,
+                                        channel,
+                                        ..
+                                    },
+                            },
+                        )) = event
+                        {
+                            assert_eq!(peer, consumer.peer_id);
+                            assert_eq!(&request, expected_request);
+                            producer
+                                .swarm
+                                .behaviour_mut()
+                                .request_response
+                                .send_response(channel, response.clone())
+                                .unwrap();
+                        }
+                    }
+                    event = consumer_event => {
+                        if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::RequestResponse(
+                            libp2p::request_response::Event::Message {
+                                peer,
+                                message:
+                                    libp2p::request_response::Message::Response {
+                                        request_id,
+                                        response: actual_response,
+                                    },
+                            },
+                        )) = event
+                        {
+                            assert_eq!(peer, producer.peer_id);
+                            assert_eq!(request_id, expected_request_id);
+                            assert_eq!(&actual_response, response);
+                            break;
+                        }
+                    }
+                }
+            }
+        })
+        .await
+        .expect("libp2p request-response exchange must complete");
     }
 
     #[test]

@@ -200,16 +200,17 @@ cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 Gate 0 is the first non-skippable CPU local multi-participant testnet required before CUDA, public
 preflight, public evidence, or deployment-gated work can count:
 
-- `cargo test -p tensor_vm local_testnet --release`: 3 TensorVM tests passed, covering the local
+- `cargo test -p tensor_vm local_testnet --release`: 4 TensorVM tests passed, covering the local
   10-miner/5-validator bootstrap shape, separate participant identities and libp2p endpoints, live
-  mandatory libp2p control-plane startup under default features, matmul settlement/rewards,
-  LinearTrainingStep state transition, tensor-server availability, no simulation or local-only
+  mandatory libp2p control-plane startup under default features, real loopback libp2p gossipsub and
+  request-response delivery for TensorVM P2P messages, matmul settlement/rewards, LinearTrainingStep
+  state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 185 passing library tests under Tarpaulin:
+The workspace currently has 186 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 171 in `tensor_vm`
+- 172 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
@@ -240,7 +241,7 @@ The current instrumented Tarpaulin line coverage is documented in
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 175 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 176 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed

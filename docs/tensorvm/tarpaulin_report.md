@@ -18,9 +18,9 @@ Host notes:
 Result:
 
 ```text
-185 tests passed under instrumentation:
+186 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 171 tensor_vm library tests
+- 172 tensor_vm library tests
 
 99.03% workspace line coverage
 8345/8427 workspace lines covered
@@ -34,7 +34,7 @@ the portable default feature set:
 
 ```text
 cargo test -p tensor_vm --features cuda-kernels --release
-175 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
+176 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
 canonical CPU output
 ```
 

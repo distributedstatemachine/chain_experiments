@@ -17,10 +17,12 @@ That filtered test run covers:
 - `testnet::tests::local_testnet_bootstraps_required_public_shape`
 - `testnet::tests::local_testnet_runs_full_matmul_receipt_attestation_settlement_round`
 - `testnet::tests::local_testnet_runs_linear_training_receipt_state_transition_round`
+- `p2p::tests::local_testnet_libp2p_swarms_exchange_gossip_and_request_response`
 
 These tests exercise the CPU reference path with the default local 10-miner/5-validator shape, separate
 local participant identities and libp2p endpoints, a live mandatory libp2p control-plane startup under
-default features, local block production, matmul receipt validation/attestation/settlement/rewards,
+default features, real loopback libp2p gossipsub and request-response delivery for TensorVM P2P messages,
+local block production, matmul receipt validation/attestation/settlement/rewards,
 LinearTrainingStep validation and state transition, local tensor-server availability, no simulation or
 local-only networking-shim credit, and the explicit separation between local evidence and the 7-day public
 deployment gate.
