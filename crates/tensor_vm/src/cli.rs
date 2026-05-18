@@ -1,9 +1,11 @@
 use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
+use crate::hash::hex;
 use crate::testnet::{
     PublicTestnetCriteria, parse_public_testnet_evidence_manifest,
     parse_public_testnet_preflight_manifest,
 };
+use crate::types::address;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -104,6 +106,56 @@ pub fn describe_command(command: &CliCommand) -> String {
     }
 }
 
+pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
+    let params = ChainParams::default();
+    match command {
+        CliCommand::MinerRegister { stake } => {
+            ensure_minimum_stake(*stake, params.miner_min_stake)?;
+            Ok(format!(
+                "command=miner_register\nstake={stake}\nmin_stake={}\nstake_sufficient=true",
+                params.miner_min_stake
+            ))
+        }
+        CliCommand::MinerStart {
+            wallet,
+            device,
+            node,
+        } => {
+            let address = wallet_address_hex(wallet)?;
+            ensure_device(device)?;
+            ensure_node_endpoint(node)?;
+            Ok(format!(
+                "command=miner_start\nwallet={wallet}\naddress={address}\ndevice={device}\nnode={node}\nreference_backend_ready=true"
+            ))
+        }
+        CliCommand::MinerStatus => Ok(format!(
+            "command=miner_status\nmin_stake={}\nreference_backend_ready=true\nstatus_source=rpc_or_node_store_required",
+            params.miner_min_stake
+        )),
+        CliCommand::ValidatorRegister { stake } => {
+            ensure_minimum_stake(*stake, params.validator_min_stake)?;
+            Ok(format!(
+                "command=validator_register\nstake={stake}\nmin_stake={}\nstake_sufficient=true",
+                params.validator_min_stake
+            ))
+        }
+        CliCommand::ValidatorStart { wallet, node } => {
+            let address = wallet_address_hex(wallet)?;
+            ensure_node_endpoint(node)?;
+            Ok(format!(
+                "command=validator_start\nwallet={wallet}\naddress={address}\nnode={node}\nreference_verifier_ready=true"
+            ))
+        }
+        CliCommand::ValidatorStatus => Ok(format!(
+            "command=validator_status\nmin_stake={}\nreference_verifier_ready=true\nstatus_source=rpc_or_node_store_required",
+            params.validator_min_stake
+        )),
+        CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
+            Ok(describe_command(command))
+        }
+    }
+}
+
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
     let bundle = parse_public_testnet_evidence_manifest(input)?;
     let report = bundle.evaluate(
@@ -144,6 +196,44 @@ fn parse_u64(value: &str) -> Result<u64> {
     value
         .parse()
         .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
+}
+
+fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
+    if stake < minimum {
+        return Err(TvmError::InsufficientStake);
+    }
+    Ok(())
+}
+
+fn wallet_address_hex(wallet: &str) -> Result<String> {
+    let wallet = wallet.trim();
+    if wallet.is_empty() {
+        return Err(TvmError::InvalidReceipt("wallet argument is empty"));
+    }
+    Ok(hex(&address(wallet.as_bytes())))
+}
+
+fn ensure_device(device: &str) -> Result<()> {
+    if device.trim().is_empty() {
+        return Err(TvmError::InvalidReceipt("device argument is empty"));
+    }
+    Ok(())
+}
+
+fn ensure_node_endpoint(node: &str) -> Result<()> {
+    let node = node.trim();
+    if node.starts_with("http://")
+        || node.starts_with("https://")
+        || node.starts_with("tcp://")
+        || node.starts_with("/ip4/")
+        || node.starts_with("/ip6/")
+        || node.starts_with("/dns/")
+        || node.starts_with("/dns4/")
+        || node.starts_with("/dns6/")
+    {
+        return Ok(());
+    }
+    Err(TvmError::InvalidReceipt("unsupported node endpoint"))
 }
 
 #[cfg(test)]
@@ -377,6 +467,89 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         for (command, description) in commands {
             assert_eq!(describe_command(&command), description);
         }
+    }
+
+    #[test]
+    fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
+        let miner_register =
+            execute_reference_cli_command(&CliCommand::MinerRegister { stake: 100 }).unwrap();
+        assert!(miner_register.contains("command=miner_register"));
+        assert!(miner_register.contains("min_stake=100"));
+        assert!(miner_register.contains("stake_sufficient=true"));
+
+        let miner_start = execute_reference_cli_command(&CliCommand::MinerStart {
+            wallet: "miner.key".to_owned(),
+            device: "cuda:0".to_owned(),
+            node: "http://localhost:8545".to_owned(),
+        })
+        .unwrap();
+        assert!(miner_start.contains("command=miner_start"));
+        assert!(miner_start.contains("wallet=miner.key"));
+        assert!(miner_start.contains("device=cuda:0"));
+        assert!(miner_start.contains("node=http://localhost:8545"));
+        assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
+        assert!(miner_start.contains("reference_backend_ready=true"));
+
+        let validator_register =
+            execute_reference_cli_command(&CliCommand::ValidatorRegister { stake: 10_000 })
+                .unwrap();
+        assert!(validator_register.contains("command=validator_register"));
+        assert!(validator_register.contains("min_stake=10000"));
+
+        let validator_start = execute_reference_cli_command(&CliCommand::ValidatorStart {
+            wallet: "validator.key".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+        })
+        .unwrap();
+        assert!(validator_start.contains("command=validator_start"));
+        assert!(validator_start.contains("reference_verifier_ready=true"));
+
+        let miner_status = execute_reference_cli_command(&CliCommand::MinerStatus).unwrap();
+        assert!(miner_status.contains("command=miner_status"));
+        assert!(miner_status.contains("status_source=rpc_or_node_store_required"));
+
+        let validator_status = execute_reference_cli_command(&CliCommand::ValidatorStatus).unwrap();
+        assert!(validator_status.contains("command=validator_status"));
+        assert!(validator_status.contains("status_source=rpc_or_node_store_required"));
+
+        let public_command = CliCommand::PublicEvidenceValidate {
+            manifest: "evidence.txt".to_owned(),
+        };
+        assert_eq!(
+            execute_reference_cli_command(&public_command).unwrap(),
+            describe_command(&public_command)
+        );
+    }
+
+    #[test]
+    fn execute_reference_cli_command_rejects_invalid_local_args() {
+        assert!(execute_reference_cli_command(&CliCommand::MinerRegister { stake: 99 }).is_err());
+        assert!(
+            execute_reference_cli_command(&CliCommand::ValidatorRegister { stake: 9_999 }).is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: " ".to_owned(),
+                device: "cuda:0".to_owned(),
+                node: "http://localhost:8545".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: "miner.key".to_owned(),
+                device: " ".to_owned(),
+                node: "http://localhost:8545".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ValidatorStart {
+                wallet: "validator.key".to_owned(),
+                node: "localhost:8545".to_owned(),
+            })
+            .is_err()
+        );
     }
 
     #[test]

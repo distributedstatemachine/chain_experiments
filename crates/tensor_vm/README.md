@@ -25,6 +25,7 @@ The crate implements the deterministic local/testnet core:
 - restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
 - explorer, telemetry, and local faucet RPC endpoints
 - local browser-facing explorer, telemetry, and faucet HTML pages
+- executable reference `tvmd` miner/validator CLI validation and readiness reports
 - watcher scans for invalid receipts, data withholding, validator misconduct, and settlement blockers
 - public-testnet evidence reporting that distinguishes local preflight shape from actual 7-day
   external-operator proof and checks distinct operators, signed heartbeats, finality, and data availability

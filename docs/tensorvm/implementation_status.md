@@ -62,7 +62,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   explorer/telemetry/faucet HTML pages, mutable transaction submission, job lookup, HTTP response
   formatting, generic HTTP request reading, socketed stdlib HTTP serving, and gateway
   auth/body-size/rate-limit enforcement
-- CLI parser and `tvmd` binary entrypoint for documented miner/validator commands
+- CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
+  wallet, device, and node-endpoint validation plus structured readiness reports
 - CPU reference backend and deterministic GPU-miner backend shim for portable default builds
 - Optional `cuda-kernels` feature that builds `kernels/cuda/field_matmul.cu` with `nvcc`, routes the
   `GpuMinerBackend` matmul path and LinearTrainingStep matmul substeps through a native CUDA field-matmul
@@ -99,21 +100,21 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The workspace currently has 184 passing library tests under Tarpaulin:
+The workspace currently has 186 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 170 in `tensor_vm`
+- 172 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.56% workspace line coverage
-- 5610/5692 workspace lines covered
+- 98.57% workspace line coverage
+- 5668/5750 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 171 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 173 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
 

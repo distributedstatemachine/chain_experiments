@@ -41,7 +41,7 @@ pub use chain::{
 };
 pub use challenge::{ChallengeOutcome, FraudChallenge, TensorOpChallengeInput, TraceStep};
 pub use cli::{
-    CliCommand, parse_cli_args, validate_public_evidence_manifest,
+    CliCommand, execute_reference_cli_command, parse_cli_args, validate_public_evidence_manifest,
     validate_public_testnet_preflight_manifest,
 };
 pub use error::{Result, TvmError};

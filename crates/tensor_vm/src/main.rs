@@ -1,7 +1,7 @@
 use tensor_vm::{
     CliCommand,
     cli::{
-        describe_command, validate_public_evidence_manifest,
+        execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
     parse_cli_args,
@@ -37,6 +37,6 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        _ => Ok(describe_command(command)),
+        _ => execute_reference_cli_command(command).map_err(|error| error.to_string()),
     }
 }
