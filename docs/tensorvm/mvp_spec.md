@@ -1779,7 +1779,8 @@ The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operat
 emit the signed manifest fields for the public evidence location, independent auditor records, wall-clock
 run duration, external operator node heartbeats, and operator identity attestations. Counted node
 heartbeats must cover the manifest's full observed block count, and counted miner and validator operator
-sets must be disjoint.
+sets must be disjoint. The current evidence manifest has exactly one `manifest_signature` field, so
+`manifest_signature_count` must be `1`.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
 IDs must differ from the manifest signer and must be observed at or after the signed run-window end.
@@ -2365,6 +2366,7 @@ public service evidence includes externally reachable HTTPS URLs, signed health-
 signed service-content roots
 the public testnet runs for 7 consecutive days with independent external operators
 evidence for the 7-day run is published and independently checkable
+the evidence bundle includes exactly one manifest publication signature in the current manifest format
 HTTPS public evidence URIs include concrete query-free paths
 the evidence includes a signed wall-clock run window; expected block count alone is not sufficient
 the evidence includes signed external artifact locators for the raw supporting records behind summary roots

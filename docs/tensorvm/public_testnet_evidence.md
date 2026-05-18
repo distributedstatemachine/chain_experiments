@@ -23,7 +23,7 @@ sample, so it is not independently checkable or full-spec public-testnet evidenc
 A complete evidence bundle must include:
 
 - a public `https://`, `ipfs://`, or `ar://` location for the evidence manifest
-- manifest signature records
+- one manifest signature record for the current manifest format
 - signed independent auditor or verifier records observed at or after the signed run end
 - signed wall-clock run window covering the full 7-day run
 - signed miner and validator heartbeat history for the full run
@@ -63,8 +63,9 @@ service-health summaries, signed public service-content summaries, special-use D
 signed independent auditor records
 whose auditor IDs differ from the manifest signer and whose observation timestamps are at or after the
 signed run end, and an external publication URI. It verifies
-a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
-auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
+a manifest publication signature over the bundle ID, public URI, exact manifest signature count, and
+independent auditor count. It also verifies signed auditor records over the bundle ID, public URI, external
+audit URI,
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
 end time, and observed block count. It verifies signed supporting-record roots for block history, finality
 history, production libp2p observations, data-availability measurements, invalid-work rejections, and
@@ -85,7 +86,9 @@ validator operator.
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
-signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
+signature covers the bundle ID, public URI, manifest signature count, and independent auditor count. The
+current manifest format carries exactly one `manifest_signature` field, so `manifest_signature_count` must
+be `1`; claimed extra manifest signatures cannot count until multiple signature records are modeled.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
 Counted auditor records must be observed at or after the signed run-window end so an audit cannot count
 before the public run has completed.
@@ -242,7 +245,8 @@ tvmd public-evidence operator-attestation \
 ```
 
 The publication command rejects non-public or malformed evidence URIs, HTTPS evidence URIs without a
-query-free path, zero bundle IDs, zero manifest signers, and zero signature or auditor counts. The
+query-free path, zero bundle IDs, zero manifest signers, manifest signature counts other than `1`, and
+zero auditor counts. The
 auditor-record command rejects zero bundle IDs, non-public or malformed public or audit URIs, zero auditor
 IDs, and empty observation times; bundle validation only counts auditor records whose auditor ID differs
 from the manifest signer and whose observation timestamp is at or after the signed run-window end. Its

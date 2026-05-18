@@ -534,7 +534,7 @@ impl PublicEvidencePublication {
         self.bundle_id != [0; 32]
             && public_evidence_uri_is_external(&self.public_uri)
             && self.manifest_signer != [0; 32]
-            && self.manifest_signature_count > 0
+            && self.manifest_signature_count == 1
             && self.manifest_signature_valid()
             && self.independent_auditor_count > 0
     }
@@ -4208,6 +4208,19 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!tampered_manifest_signature.has_published_evidence_bundle);
         assert!(!tampered_manifest_signature.independently_checkable);
         assert!(!tampered_manifest_signature.full_spec_evidence_met);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication = PublicEvidencePublication::new(
+            bundle.publication.bundle_id,
+            bundle.publication.public_uri.clone(),
+            bundle.publication.manifest_signer,
+            2,
+            bundle.publication.independent_auditor_count,
+        );
+        let overreported_manifest_signature_count = bundle.evaluate(&criteria, 6);
+        assert!(!overreported_manifest_signature_count.has_published_evidence_bundle);
+        assert!(!overreported_manifest_signature_count.independently_checkable);
+        assert!(!overreported_manifest_signature_count.full_spec_evidence_met);
 
         bundle = complete_public_evidence_bundle();
         bundle.run_window_signature = [7; 32];
