@@ -91,15 +91,16 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   at or after the signed run-window end, a signed run-window record, block/finality history, signed
   operator identity attestations observed inside the signed run window
   matched to signed node-heartbeat records with no overreported operator-attestation counts, signed
-  production libp2p network-observation records, signed
+  per-operator production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, well-formed whitespace-free
   `ipfs://`/`ar://` content identifiers, HTTPS evidence URI path enforcement with query/fragment
   rejection, exact untrimmed URI/path manifest-field validation, duplicate scalar manifest-field
   rejection, whitespace-padded field-key rejection, and
   exact run-derived block/finality/network-runtime/data-availability/invalid-work summary counts, distinct node-address
-  counting for public operators, plus network-runtime observation count rejection for undercounts and
-  overcounts against every counted public operator before full-spec evidence can be considered
+  counting for public operators, plus network-runtime observation rejection for missing records,
+  unmatched operators, non-public listen addresses, stale timestamps, undercounts, and overcounts against
+  every counted public operator before full-spec evidence can be considered
   independently checkable; the `public_evidence_full_spec`
   report flag also requires the default 7-day, 10-miner, 5-validator public-testnet criteria or stricter
   criteria, so relaxed local harness criteria cannot mark an evidence bundle full-spec
@@ -131,7 +132,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   distinct content roots, and at least 64 observed bytes,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
-  single-label DNS rejection,
+  single-label DNS rejection, plus manifest validation that binds one such signed raw record to every
+  counted public operator and to the aggregate network-runtime root,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
@@ -162,18 +164,18 @@ preflight, public evidence, or deployment-gated work can count:
   LinearTrainingStep state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 181 passing library tests under Tarpaulin:
+The workspace currently has 182 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 167 in `tensor_vm`
+- 168 in `tensor_vm`
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.92% workspace line coverage
-- 7515/7597 workspace lines covered
+- 98.95% workspace line coverage
+- 7711/7793 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 1679/1679 `tensor_vm` lines covered
+- 7143/7143 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
@@ -192,8 +194,8 @@ These spec items require real deployment or non-reference infrastructure and are
 - long-running public 7-day testnet with independent external operators; current implementation exposes
   typed `PublicTestnetRunEvidence`/`PublicTestnetEvidence` so this criterion can be measured without
   treating a local test harness as public proof, and now requires a signed wall-clock run window,
-  invalid-work rejection plus reward-settlement records, signed production libp2p runtime observation
-  records, signed external artifact locators for raw supporting records, deployed public-service
+  invalid-work rejection plus reward-settlement records, signed per-operator production libp2p runtime
+  observation records that aggregate to the network-runtime root, signed external artifact locators for raw supporting records, deployed public-service
   reachability, and signed public-service content roots before public evidence can satisfy the gate
 - published external public-testnet evidence bundle; the required bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), and

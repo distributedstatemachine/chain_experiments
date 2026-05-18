@@ -70,9 +70,11 @@ heartbeat count and each public service's reachable and signed health-check coun
 manifest's observed block count. Operator-attestation and service-content observation times must fall
 inside the signed run window, and every service-content URL must use the same HTTPS authority as the
 matching service-health URL for that endpoint ID. Finalized blocks must not exceed observed blocks, and
-available tensor receipts must not exceed checked tensor receipts. Every `record-summary` root must have a
-matching signed `record-artifact` locator for the external raw-record artifact. Preserve raw supporting
-records for:
+available tensor receipts must not exceed checked tensor receipts. The network-runtime summary must be
+derived from exactly one signed `network_runtime_observation=...` line per counted miner and validator
+operator, with each observation using a public libp2p listen multiaddr and an observation timestamp inside
+the signed run window. Every `record-summary` root must have a matching signed `record-artifact` locator
+for the external raw-record artifact. Preserve raw supporting records for:
 
 - block history
 - finality history
@@ -147,7 +149,8 @@ publication must include:
 - operator identity artifacts
 - public service health artifacts
 - public service content artifacts and content-root observations
-- libp2p network-observation artifacts
+- libp2p network-observation artifacts, including the per-operator `network_runtime_observation=...`
+  manifest lines and the roots passed to `record-summary-from-roots --kind network-runtime`
 
 After validation returns `public_evidence_full_spec=true`, link the published bundle from
 `docs/tensorvm/implementation_status.md` and rerun the required verification commands from the repository

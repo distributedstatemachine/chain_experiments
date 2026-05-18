@@ -90,7 +90,7 @@ External evidence can be represented as a line-oriented manifest parsed by
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Field names
 must be exact with no leading or trailing whitespace around the key before `=`. Scalar manifest fields must
 appear exactly once; repeated record fields are allowed only for `auditor`, `record_artifact`, `operator`,
-`node`, `service`, and `service_content`. The manifest signature covers the bundle ID, public URI,
+`network_runtime_observation`, `node`, `service`, and `service_content`. The manifest signature covers the bundle ID, public URI,
 manifest signature count, and independent auditor count. The current manifest format carries exactly one
 `manifest_signature` field, so `manifest_signature_count` must be `1`; claimed extra manifest signatures
 cannot count until multiple signature records are modeled.
@@ -107,6 +107,9 @@ block, reachable observation count, and signed health-check count. Supporting-ar
 bundle ID, record-set kind, external artifact URI, record root, and record count. Service-content
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
 and minimum observed content bytes; counted public service content must prove at least 64 observed bytes.
+Network-runtime observation signatures cover the operator ID and raw observation root derived from the
+public peer ID, public libp2p listen address, observation time, discovery/bootstrap counts,
+Gossipsub/request-response protocol counts, and DoS-control limits.
 The RPC, explorer, faucet, and telemetry services must have distinct endpoint IDs and distinct deployed
 content roots. Reusing a health endpoint ID or content root across service kinds does not satisfy the
 deployed public-service gate.
@@ -133,7 +136,11 @@ one reachable observation and one signed health check per observed block.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
 checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
 public gate. Signed overcounts or undercounts for block-history, finality-history, data-availability,
-invalid-work, or network-runtime summary records do not satisfy the independently checkable gate.
+invalid-work, or network-runtime summary records do not satisfy the independently checkable gate. The
+network-runtime summary must also be backed by exactly one valid signed `network_runtime_observation`
+record for every counted public miner and validator operator; each observation must name that operator,
+use a valid libp2p peer ID, use a public nonzero-TCP listen multiaddr, have an observation timestamp inside
+the signed run window, and aggregate to the signed network-runtime root.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
@@ -166,6 +173,7 @@ finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
 operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
 operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
+network_runtime_observation=<operator-id-hex>,<libp2p-peer-id>,/dns/node-a.tensorvm.net/tcp/4001,<unix-seconds>,5,3,2,1048576,10,128,60,<observation-root-hex>,<observation-signature-hex>
 network_runtime_observation_records=<operator-count>
 network_runtime_observation_root=<network-runtime-root-hex>
 network_runtime_observation_signature=<network-runtime-signature-hex>
@@ -331,9 +339,10 @@ The command rejects zero operator IDs, malformed peer IDs, malformed libp2p mult
 without a nonzero TCP port, malformed DNS labels, single-label DNS hosts, and listen multiaddrs using
 localhost, `.local`, special-use DNS names, loopback, unspecified, private, link-local, documentation,
 shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects missing discovery/bootstrap
-observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its output is a signed
-`network_runtime_observation=...` line suitable for external aggregation into the `network-runtime` record
-summary.
+observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its
+output is a signed `network_runtime_observation=...` line. Full-spec evidence must include one such line
+per counted public miner or validator operator and must derive the `network-runtime` summary with
+`record-summary-from-roots` over those observation roots.
 
 Operators can also generate signed supporting-record summary lines, including the production libp2p
 network-observation summary required by full-spec evidence:

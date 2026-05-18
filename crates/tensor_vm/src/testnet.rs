@@ -13,8 +13,8 @@ use crate::tensor_server::TensorServer;
 use crate::txpool::TxPool;
 use crate::types::{Address, Hash, Signature, address, hash_bytes, sign, verify_signature};
 use crate::validator::ValidatorNode;
-use libp2p::Multiaddr;
 use libp2p::multiaddr::Protocol;
+use libp2p::{Multiaddr, PeerId};
 use std::collections::BTreeSet;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -343,6 +343,102 @@ impl PublicNetworkRuntimeEvidence {
             && self.gossip_propagation_observed
             && self.request_response_observed
             && self.dos_controls_enabled
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PublicNetworkRuntimeObservation {
+    pub operator_id: Hash,
+    pub peer_id: String,
+    pub listen_address: String,
+    pub observed_at_unix_seconds: u64,
+    pub gossip_topic_count: u64,
+    pub request_response_protocol_count: u64,
+    pub bootstrap_peer_count: u64,
+    pub max_transmit_bytes: u64,
+    pub request_timeout_seconds: u64,
+    pub max_concurrent_streams: u64,
+    pub idle_connection_timeout_seconds: u64,
+    pub record_root: Hash,
+    pub observation_signature: Signature,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PublicNetworkRuntimeObservationDetails {
+    operator_id: Hash,
+    peer_id: String,
+    listen_address: String,
+    observed_at_unix_seconds: u64,
+    gossip_topic_count: u64,
+    request_response_protocol_count: u64,
+    bootstrap_peer_count: u64,
+    max_transmit_bytes: u64,
+    request_timeout_seconds: u64,
+    max_concurrent_streams: u64,
+    idle_connection_timeout_seconds: u64,
+}
+
+impl PublicNetworkRuntimeObservation {
+    fn new(details: PublicNetworkRuntimeObservationDetails) -> Self {
+        let record_root = public_network_runtime_observation_root(&details);
+        let observation_signature =
+            public_network_runtime_observation_signature(&details.operator_id, &record_root);
+        Self {
+            operator_id: details.operator_id,
+            peer_id: details.peer_id,
+            listen_address: details.listen_address,
+            observed_at_unix_seconds: details.observed_at_unix_seconds,
+            gossip_topic_count: details.gossip_topic_count,
+            request_response_protocol_count: details.request_response_protocol_count,
+            bootstrap_peer_count: details.bootstrap_peer_count,
+            max_transmit_bytes: details.max_transmit_bytes,
+            request_timeout_seconds: details.request_timeout_seconds,
+            max_concurrent_streams: details.max_concurrent_streams,
+            idle_connection_timeout_seconds: details.idle_connection_timeout_seconds,
+            record_root,
+            observation_signature,
+        }
+    }
+
+    fn details(&self) -> PublicNetworkRuntimeObservationDetails {
+        PublicNetworkRuntimeObservationDetails {
+            operator_id: self.operator_id,
+            peer_id: self.peer_id.clone(),
+            listen_address: self.listen_address.clone(),
+            observed_at_unix_seconds: self.observed_at_unix_seconds,
+            gossip_topic_count: self.gossip_topic_count,
+            request_response_protocol_count: self.request_response_protocol_count,
+            bootstrap_peer_count: self.bootstrap_peer_count,
+            max_transmit_bytes: self.max_transmit_bytes,
+            request_timeout_seconds: self.request_timeout_seconds,
+            max_concurrent_streams: self.max_concurrent_streams,
+            idle_connection_timeout_seconds: self.idle_connection_timeout_seconds,
+        }
+    }
+
+    fn has_public_network_observation_proof(&self) -> bool {
+        let details = self.details();
+        self.operator_id != [0; 32]
+            && self.record_root != [0; 32]
+            && self.observed_at_unix_seconds > 0
+            && self.gossip_topic_count > 0
+            && self.request_response_protocol_count > 0
+            && self.bootstrap_peer_count > 0
+            && self.max_transmit_bytes > 0
+            && self.request_timeout_seconds > 0
+            && self.max_concurrent_streams > 0
+            && self.idle_connection_timeout_seconds > 0
+            && self.peer_id.parse::<PeerId>().is_ok()
+            && self
+                .listen_address
+                .parse::<Multiaddr>()
+                .is_ok_and(|address| public_network_runtime_multiaddr_is_external(&address))
+            && self.record_root == public_network_runtime_observation_root(&details)
+            && self.observation_signature
+                == public_network_runtime_observation_signature(
+                    &self.operator_id,
+                    &self.record_root,
+                )
     }
 }
 
@@ -742,7 +838,13 @@ fn reject_manifest_key_whitespace(key: &str) -> Result<()> {
 fn public_evidence_manifest_field_allows_repeated(key: &str) -> bool {
     matches!(
         key,
-        "auditor" | "record_artifact" | "operator" | "node" | "service" | "service_content"
+        "auditor"
+            | "record_artifact"
+            | "operator"
+            | "network_runtime_observation"
+            | "node"
+            | "service"
+            | "service_content"
     )
 }
 
@@ -978,6 +1080,7 @@ pub struct PublicTestnetEvidenceBundle {
     pub finality_history_signature: Signature,
     pub operator_identity_attestation_records: u64,
     pub operator_identity_attestations: Vec<PublicOperatorIdentityAttestation>,
+    pub network_runtime_observations: Vec<PublicNetworkRuntimeObservation>,
     pub network_runtime_observation_records: u64,
     pub network_runtime_observation_root: Hash,
     pub network_runtime_observation_signature: Signature,
@@ -1028,6 +1131,7 @@ struct PublicEvidenceManifestBuilder {
     finality_history_signature: Option<Signature>,
     operator_identity_attestation_records: Option<u64>,
     operator_identity_attestations: Vec<PublicOperatorIdentityAttestation>,
+    network_runtime_observations: Vec<PublicNetworkRuntimeObservation>,
     network_runtime_observation_records: Option<u64>,
     network_runtime_observation_root: Option<Hash>,
     network_runtime_observation_signature: Option<Signature>,
@@ -1211,6 +1315,9 @@ impl PublicEvidenceManifestBuilder {
             "operator" => self
                 .operator_identity_attestations
                 .push(parse_manifest_operator_identity_attestation(value)?),
+            "network_runtime_observation" => self
+                .network_runtime_observations
+                .push(parse_manifest_network_runtime_observation(value)?),
             "network_runtime_observation_records" => {
                 self.network_runtime_observation_records = Some(parse_manifest_u64(scalar)?);
             }
@@ -1337,6 +1444,7 @@ impl PublicEvidenceManifestBuilder {
                 self.operator_identity_attestation_records,
             )?,
             operator_identity_attestations: self.operator_identity_attestations,
+            network_runtime_observations: self.network_runtime_observations,
             network_runtime_observation_records: required_u64(
                 self.network_runtime_observation_records,
             )?,
@@ -1437,6 +1545,34 @@ fn parse_manifest_operator_identity_attestation(
     );
     attestation.operator_signature = parse_hash_hex(fields[5].trim())?;
     Ok(attestation)
+}
+
+fn parse_manifest_network_runtime_observation(
+    value: &str,
+) -> Result<PublicNetworkRuntimeObservation> {
+    let fields: Vec<&str> = value.split(',').collect();
+    if fields.len() != 13 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed network runtime observation",
+        ));
+    }
+    let mut observation =
+        PublicNetworkRuntimeObservation::new(PublicNetworkRuntimeObservationDetails {
+            operator_id: parse_hash_hex(fields[0].trim())?,
+            peer_id: fields[1].to_owned(),
+            listen_address: fields[2].to_owned(),
+            observed_at_unix_seconds: parse_manifest_u64(fields[3].trim())?,
+            gossip_topic_count: parse_manifest_u64(fields[4].trim())?,
+            request_response_protocol_count: parse_manifest_u64(fields[5].trim())?,
+            bootstrap_peer_count: parse_manifest_u64(fields[6].trim())?,
+            max_transmit_bytes: parse_manifest_u64(fields[7].trim())?,
+            request_timeout_seconds: parse_manifest_u64(fields[8].trim())?,
+            max_concurrent_streams: parse_manifest_u64(fields[9].trim())?,
+            idle_connection_timeout_seconds: parse_manifest_u64(fields[10].trim())?,
+        });
+    observation.record_root = parse_hash_hex(fields[11].trim())?;
+    observation.observation_signature = parse_hash_hex(fields[12].trim())?;
+    Ok(observation)
 }
 
 fn parse_manifest_auditor_record(value: &str) -> Result<PublicEvidenceAuditorRecord> {
@@ -2100,6 +2236,139 @@ fn public_service_content_message(
     )
 }
 
+fn public_network_runtime_observation_root(
+    details: &PublicNetworkRuntimeObservationDetails,
+) -> Hash {
+    let observed_at = details.observed_at_unix_seconds.to_le_bytes();
+    let gossip_topics = details.gossip_topic_count.to_le_bytes();
+    let request_response_protocols = details.request_response_protocol_count.to_le_bytes();
+    let bootstrap_peers = details.bootstrap_peer_count.to_le_bytes();
+    let max_transmit = details.max_transmit_bytes.to_le_bytes();
+    let request_timeout = details.request_timeout_seconds.to_le_bytes();
+    let max_streams = details.max_concurrent_streams.to_le_bytes();
+    let idle_timeout = details.idle_connection_timeout_seconds.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-network-runtime-observation-v1",
+        &[
+            &details.operator_id,
+            details.peer_id.as_bytes(),
+            details.listen_address.as_bytes(),
+            &observed_at,
+            &gossip_topics,
+            &request_response_protocols,
+            &bootstrap_peers,
+            &max_transmit,
+            &request_timeout,
+            &max_streams,
+            &idle_timeout,
+        ],
+    )
+}
+
+fn public_network_runtime_observation_signature(
+    operator_id: &Hash,
+    record_root: &Hash,
+) -> Signature {
+    hash_bytes(
+        b"tensor-vm-network-runtime-observation-signature-v1",
+        &[operator_id, record_root],
+    )
+}
+
+pub(crate) fn aggregate_public_evidence_record_roots(
+    kind: PublicEvidenceRecordKind,
+    record_roots: &[Hash],
+) -> Result<Hash> {
+    if record_roots.is_empty() {
+        return Err(TvmError::InvalidReceipt("record roots argument is empty"));
+    }
+    if record_roots.contains(&[0; 32]) {
+        return Err(TvmError::InvalidReceipt("record root argument is empty"));
+    }
+    let mut unique_roots = BTreeSet::new();
+    if record_roots.iter().any(|root| !unique_roots.insert(*root)) {
+        return Err(TvmError::InvalidReceipt("duplicate record root argument"));
+    }
+    let record_count = (record_roots.len() as u64).to_le_bytes();
+    let mut encoded_roots = Vec::with_capacity(record_roots.len() * 32);
+    for root in record_roots {
+        encoded_roots.extend_from_slice(root);
+    }
+    Ok(hash_bytes(
+        b"tensor-vm-public-evidence-record-root-aggregation-v1",
+        &[
+            kind.manifest_tag().as_bytes(),
+            &record_count,
+            &encoded_roots,
+        ],
+    ))
+}
+
+fn public_network_runtime_multiaddr_is_external(address: &Multiaddr) -> bool {
+    let mut saw_public_address = false;
+    let mut saw_tcp_listen_port = false;
+    for protocol in address.iter() {
+        match protocol {
+            Protocol::Ip4(ip) => {
+                if !public_host_is_external(&ip.to_string()) {
+                    return false;
+                }
+                saw_public_address = true;
+            }
+            Protocol::Ip6(ip) => {
+                if !public_host_is_external(&ip.to_string()) {
+                    return false;
+                }
+                saw_public_address = true;
+            }
+            Protocol::Dns(host) | Protocol::Dns4(host) | Protocol::Dns6(host) => {
+                if !public_host_is_external(host.as_ref()) {
+                    return false;
+                }
+                saw_public_address = true;
+            }
+            Protocol::Tcp(port) if port != 0 => saw_tcp_listen_port = true,
+            Protocol::Tcp(_) => return false,
+            _ => {}
+        }
+    }
+    saw_public_address && saw_tcp_listen_port
+}
+
+fn deterministic_public_network_peer_id(operator_id: &Hash) -> String {
+    let seed = hash_bytes(
+        b"tensor-vm-public-network-observation-peer-id-v1",
+        &[operator_id],
+    );
+    let keypair = libp2p::identity::Keypair::ed25519_from_bytes(seed)
+        .expect("hashed operator id should form an ed25519 secret key");
+    PeerId::from(keypair.public()).to_string()
+}
+
+pub(crate) fn public_network_runtime_observations_for_run(
+    run: &PublicTestnetRunEvidence,
+) -> Vec<PublicNetworkRuntimeObservation> {
+    run.nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| {
+            PublicNetworkRuntimeObservation::new(PublicNetworkRuntimeObservationDetails {
+                operator_id: node.operator_id,
+                peer_id: deterministic_public_network_peer_id(&node.operator_id),
+                listen_address: format!("/dns/node-{index}.tensorvm.net/tcp/{}", 4_001 + index),
+                observed_at_unix_seconds: run.run_started_at_unix_seconds,
+                gossip_topic_count: 5,
+                request_response_protocol_count: 3,
+                bootstrap_peer_count: 2,
+                max_transmit_bytes: 1_048_576,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_connection_timeout_seconds: 60,
+            })
+        })
+        .collect()
+}
+
 impl PublicTestnetEvidenceBundle {
     pub fn new(
         run: PublicTestnetRunEvidence,
@@ -2138,6 +2407,7 @@ impl PublicTestnetEvidenceBundle {
                 )
             })
             .collect();
+        let network_runtime_observations = public_network_runtime_observations_for_run(&run);
         let run_window_signature = sign_public_run_window(
             &signer,
             &bundle_id,
@@ -2217,6 +2487,7 @@ impl PublicTestnetEvidenceBundle {
             operator_identity_attestation_records: record_summaries
                 .operator_identity_attestation_records,
             operator_identity_attestations,
+            network_runtime_observations,
             network_runtime_observation_records: record_summaries
                 .network_runtime_observation_records,
             network_runtime_observation_root: record_summaries.network_runtime_observation_root,
@@ -2297,12 +2568,17 @@ impl PublicTestnetEvidenceBundle {
             block_time_seconds,
             has_operator_identity_attestations,
         );
-        let required_network_runtime_observations = required_operator_attestations;
+        let required_network_runtime_observation_count = miner_count + validator_count;
+        let required_network_runtime_observations =
+            required_network_runtime_observation_count as u64;
         let has_network_runtime_observations =
             self.run.network_runtime.has_production_libp2p_runtime()
                 && required_network_runtime_observations > 0
                 && self.network_runtime_observation_records
                     == required_network_runtime_observations
+                && self.has_network_runtime_observation_records_for_public_operators(
+                    required_network_runtime_observation_count,
+                )
                 && self.public_record_signature_valid(
                     PublicEvidenceRecordKind::NetworkRuntimeObservations,
                     &self.network_runtime_observation_root,
@@ -2491,6 +2767,60 @@ impl PublicTestnetEvidenceBundle {
             }
         }
         valid_attestations.len()
+    }
+
+    fn live_public_operator_ids(&self) -> BTreeSet<Hash> {
+        let mut miner_operator_ids = BTreeSet::new();
+        let mut validator_operator_ids = BTreeSet::new();
+        for node in &self.run.nodes {
+            if !node.is_live_for_run(self.run.observed_blocks) {
+                continue;
+            }
+            match node.role {
+                PublicNodeRole::Miner => {
+                    miner_operator_ids.insert(node.operator_id);
+                }
+                PublicNodeRole::Validator => {
+                    validator_operator_ids.insert(node.operator_id);
+                }
+            }
+        }
+        validator_operator_ids.retain(|operator_id| !miner_operator_ids.contains(operator_id));
+        miner_operator_ids.extend(validator_operator_ids);
+        miner_operator_ids
+    }
+
+    fn has_network_runtime_observation_records_for_public_operators(
+        &self,
+        required_count: usize,
+    ) -> bool {
+        if self.network_runtime_observations.len() != required_count {
+            return false;
+        }
+        let expected_operator_ids = self.live_public_operator_ids();
+        if expected_operator_ids.len() != required_count {
+            return false;
+        }
+        let mut observed_operator_ids = BTreeSet::new();
+        let mut record_roots = Vec::with_capacity(required_count);
+        for observation in &self.network_runtime_observations {
+            if !expected_operator_ids.contains(&observation.operator_id)
+                || !self
+                    .run
+                    .observation_is_within_run(observation.observed_at_unix_seconds)
+                || !observation.has_public_network_observation_proof()
+                || !observed_operator_ids.insert(observation.operator_id)
+            {
+                return false;
+            }
+            record_roots.push(observation.record_root);
+        }
+        observed_operator_ids == expected_operator_ids
+            && aggregate_public_evidence_record_roots(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &record_roots,
+            )
+            .is_ok_and(|record_root| record_root == self.network_runtime_observation_root)
     }
 }
 
@@ -3383,8 +3713,10 @@ mod tests {
     }
 
     fn complete_public_evidence_bundle() -> PublicTestnetEvidenceBundle {
+        let run = complete_public_run_evidence();
+        let network_runtime_observation_root = network_runtime_root_for_run(&run);
         PublicTestnetEvidenceBundle::new(
-            complete_public_run_evidence(),
+            run,
             PublicEvidencePublication::new(
                 hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
@@ -3399,7 +3731,7 @@ mod tests {
                 finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
                 operator_identity_attestation_records: 3,
                 network_runtime_observation_records: 3,
-                network_runtime_observation_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                network_runtime_observation_root,
                 data_availability_measurement_records: 20,
                 data_availability_measurement_root: hash_bytes(
                     b"test",
@@ -3491,6 +3823,7 @@ mod tests {
             invalid_receipts_rejected: 1,
             reward_settlement_records: 1,
         };
+        let network_runtime_observation_root = network_runtime_root_for_run(&run);
         PublicTestnetEvidenceBundle::new(
             run,
             PublicEvidencePublication::new(
@@ -3507,10 +3840,7 @@ mod tests {
                 finality_history_root: hash_bytes(b"test", &[b"full-spec-finality-history-root"]),
                 operator_identity_attestation_records: operator_records,
                 network_runtime_observation_records: operator_records,
-                network_runtime_observation_root: hash_bytes(
-                    b"test",
-                    &[b"full-spec-network-runtime-root"],
-                ),
+                network_runtime_observation_root,
                 data_availability_measurement_records: checked_receipts,
                 data_availability_measurement_root: hash_bytes(
                     b"test",
@@ -3521,6 +3851,67 @@ mod tests {
                 reward_settlement_root: hash_bytes(b"test", &[b"full-spec-reward-settlement-root"]),
             },
         )
+    }
+
+    fn network_runtime_root_for_run(run: &PublicTestnetRunEvidence) -> Hash {
+        let record_roots = public_network_runtime_observations_for_run(run)
+            .iter()
+            .map(|observation| observation.record_root)
+            .collect::<Vec<_>>();
+        aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &record_roots,
+        )
+        .expect("generated network observation roots should aggregate")
+    }
+
+    #[test]
+    fn network_runtime_observation_helpers_reject_bad_roots_addresses_and_counts() {
+        let root_a = hash_bytes(b"test", &[b"network-observation-a"]);
+        assert!(
+            aggregate_public_evidence_record_roots(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &[]
+            )
+            .is_err()
+        );
+        assert!(
+            aggregate_public_evidence_record_roots(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &[[0; 32]]
+            )
+            .is_err()
+        );
+        assert!(
+            aggregate_public_evidence_record_roots(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &[root_a, root_a]
+            )
+            .is_err()
+        );
+
+        let public_ipv4: Multiaddr = "/ip4/8.8.8.8/tcp/4001".parse().unwrap();
+        let private_ipv4: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        let public_ipv6: Multiaddr = "/ip6/2606:4700:4700::1111/tcp/4001".parse().unwrap();
+        let local_ipv6: Multiaddr = "/ip6/::1/tcp/4001".parse().unwrap();
+        let special_dns: Multiaddr = "/dns/example.test/tcp/4001".parse().unwrap();
+        let zero_tcp_port: Multiaddr = "/ip4/8.8.8.8/tcp/0".parse().unwrap();
+        let ignored_protocol: Multiaddr = "/ip4/8.8.8.8/udp/4001/tcp/4001".parse().unwrap();
+        assert!(public_network_runtime_multiaddr_is_external(&public_ipv4));
+        assert!(!public_network_runtime_multiaddr_is_external(&private_ipv4));
+        assert!(public_network_runtime_multiaddr_is_external(&public_ipv6));
+        assert!(!public_network_runtime_multiaddr_is_external(&local_ipv6));
+        assert!(!public_network_runtime_multiaddr_is_external(&special_dns));
+        assert!(!public_network_runtime_multiaddr_is_external(
+            &zero_tcp_port
+        ));
+        assert!(public_network_runtime_multiaddr_is_external(
+            &ignored_protocol
+        ));
+
+        let mut bundle = complete_public_evidence_bundle();
+        bundle.run.nodes[0].signed_heartbeat_count = 0;
+        assert!(!bundle.has_network_runtime_observation_records_for_public_operators(3));
     }
 
     fn manifest_hash(domain: &[u8], label: &[u8]) -> String {
@@ -3611,9 +4002,16 @@ mod tests {
         root_label: &[u8],
         record_count: u64,
     ) -> String {
+        manifest_artifact_line_for_root(kind, hash_bytes(b"test", &[root_label]), record_count)
+    }
+
+    fn manifest_artifact_line_for_root(
+        kind: PublicEvidenceRecordKind,
+        record_root: Hash,
+        record_count: u64,
+    ) -> String {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let artifact_uri = public_evidence_supporting_artifact_uri(&bundle_id, kind);
-        let record_root = hash_bytes(b"test", &[root_label]);
         let signature = sign_public_evidence_artifact(
             &address(b"public-evidence-publisher"),
             &bundle_id,
@@ -3630,6 +4028,31 @@ mod tests {
             record_count,
             hex(&signature)
         )
+    }
+
+    fn manifest_network_observation_lines() -> String {
+        public_network_runtime_observations_for_run(&complete_public_run_evidence())
+            .iter()
+            .map(|observation| {
+                format!(
+                    "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
+                    hex(&observation.operator_id),
+                    observation.peer_id,
+                    observation.listen_address,
+                    observation.observed_at_unix_seconds,
+                    observation.gossip_topic_count,
+                    observation.request_response_protocol_count,
+                    observation.bootstrap_peer_count,
+                    observation.max_transmit_bytes,
+                    observation.request_timeout_seconds,
+                    observation.max_concurrent_streams,
+                    observation.idle_connection_timeout_seconds,
+                    hex(&observation.record_root),
+                    hex(&observation.observation_signature)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn resign_record_summary_and_artifact(
@@ -3721,6 +4144,7 @@ operator_identity_attestation_records=3
 operator=miner,{},{},{},1700000000,{}
 operator=miner,{},{},{},1700000000,{}
 operator=validator,{},{},{},1700000000,{}
+{}
 network_runtime_observation_records=3
 network_runtime_observation_root={}
 network_runtime_observation_signature={}
@@ -3775,9 +4199,9 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
                 b"finality-history-root",
                 10
             ),
-            manifest_artifact_line(
+            manifest_artifact_line_for_root(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
-                b"network-runtime-root",
+                manifest_bundle().network_runtime_observation_root,
                 3
             ),
             manifest_artifact_line(
@@ -3815,7 +4239,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
                 b"validator-a",
                 b"validator-a-operator"
             ),
-            manifest_hash(b"test", b"network-runtime-root"),
+            manifest_network_observation_lines(),
+            hex(&manifest_bundle().network_runtime_observation_root),
             hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"test", b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
@@ -5018,6 +5443,33 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!missing_network_runtime_observations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observations.pop();
+        let missing_signed_network_runtime_observation = bundle.evaluate(&criteria, 6);
+        assert!(!missing_signed_network_runtime_observation.has_network_runtime_observations);
+        assert!(!missing_signed_network_runtime_observation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observations[0].operator_id =
+            hash_bytes(b"test", &[b"unmatched-network-operator"]);
+        let unmatched_network_operator = bundle.evaluate(&criteria, 6);
+        assert!(!unmatched_network_operator.has_network_runtime_observations);
+        assert!(!unmatched_network_operator.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observations[0].listen_address =
+            String::from("/ip4/127.0.0.1/tcp/4001");
+        let local_network_observation = bundle.evaluate(&criteria, 6);
+        assert!(!local_network_observation.has_network_runtime_observations);
+        assert!(!local_network_observation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.network_runtime_observations[0].observed_at_unix_seconds =
+            bundle.run.run_started_at_unix_seconds - 1;
+        let stale_network_observation = bundle.evaluate(&criteria, 6);
+        assert!(!stale_network_observation.has_network_runtime_observations);
+        assert!(!stale_network_observation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
         let network_runtime_root = bundle.network_runtime_observation_root;
         let underreported_network_runtime_count = bundle
             .operator_identity_attestation_records
@@ -5377,7 +5829,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(report.has_block_history);
         assert!(report.has_finality_history);
         assert!(!report.has_operator_identity_attestations);
-        assert!(report.has_network_runtime_observations);
+        assert!(!report.has_network_runtime_observations);
         assert!(report.has_data_availability_measurements);
         assert!(report.has_invalid_work_rejection_records);
         assert!(report.has_reward_settlement_record_summary);
@@ -5440,6 +5892,10 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             manifest.replace(
                 "operator=miner,",
                 "operator=miner,too,few,fields\n# removed original operator=",
+            ),
+            manifest.replace(
+                "network_runtime_observation=",
+                "network_runtime_observation=too,few,fields\n# removed original network_runtime_observation=",
             ),
             manifest.replace(
                 "auditor=",

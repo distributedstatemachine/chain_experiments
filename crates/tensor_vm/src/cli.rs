@@ -1705,8 +1705,9 @@ mod tests {
         PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
         PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence,
         PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
+        aggregate_public_evidence_record_roots, public_network_runtime_observations_for_run,
     };
-    use crate::types::{address, hash_bytes};
+    use crate::types::{Hash, address, hash_bytes};
 
     fn manifest_hash(label: &[u8]) -> String {
         hex(&hash_bytes(b"test", &[label]))
@@ -1871,13 +1872,20 @@ mod tests {
         root_label: &[u8],
         record_count: u64,
     ) -> String {
+        manifest_artifact_line_for_root(kind, hash_bytes(b"test", &[root_label]), record_count)
+    }
+
+    fn manifest_artifact_line_for_root(
+        kind: PublicEvidenceRecordKind,
+        record_root: Hash,
+        record_count: u64,
+    ) -> String {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let artifact_uri = format!(
             "https://evidence.tensorvm.net/{}/{}.json",
             manifest_hash(b"public-evidence-bundle"),
             public_evidence_record_kind_tag(kind)
         );
-        let record_root = hash_bytes(b"test", &[root_label]);
         let signature = crate::testnet::sign_public_evidence_artifact(
             &address(b"public-evidence-publisher"),
             &bundle_id,
@@ -1896,105 +1904,144 @@ mod tests {
         )
     }
 
+    fn network_runtime_root_for_run(run: &PublicTestnetRunEvidence) -> Hash {
+        let record_roots = public_network_runtime_observations_for_run(run)
+            .iter()
+            .map(|observation| observation.record_root)
+            .collect::<Vec<_>>();
+        aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &record_roots,
+        )
+        .expect("generated network observation roots should aggregate")
+    }
+
+    fn manifest_network_observation_lines() -> String {
+        public_network_runtime_observations_for_run(&manifest_bundle().run)
+            .iter()
+            .map(|observation| {
+                format!(
+                    "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
+                    hex(&observation.operator_id),
+                    observation.peer_id,
+                    observation.listen_address,
+                    observation.observed_at_unix_seconds,
+                    observation.gossip_topic_count,
+                    observation.request_response_protocol_count,
+                    observation.bootstrap_peer_count,
+                    observation.max_transmit_bytes,
+                    observation.request_timeout_seconds,
+                    observation.max_concurrent_streams,
+                    observation.idle_connection_timeout_seconds,
+                    hex(&observation.record_root),
+                    hex(&observation.observation_signature)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
     fn manifest_bundle() -> PublicTestnetEvidenceBundle {
-        PublicTestnetEvidenceBundle::new(
-            PublicTestnetRunEvidence {
-                nodes: vec![
-                    PublicNodeEvidence::miner(
-                        address(b"miner-a"),
-                        hash_bytes(b"test", &[b"miner-a-operator"]),
-                        0,
-                        9,
-                        10,
-                    ),
-                    PublicNodeEvidence::miner(
-                        address(b"miner-b"),
-                        hash_bytes(b"test", &[b"miner-b-operator"]),
-                        0,
-                        9,
-                        10,
-                    ),
-                    PublicNodeEvidence::validator(
-                        address(b"validator-a"),
-                        hash_bytes(b"test", &[b"validator-a-operator"]),
-                        0,
-                        9,
-                        10,
-                    ),
-                ],
-                network_runtime: PublicNetworkRuntimeEvidence {
-                    libp2p_runtime_used: true,
-                    peer_discovery_observed: true,
-                    gossip_propagation_observed: true,
-                    request_response_observed: true,
-                    dos_controls_enabled: true,
-                },
-                services: vec![
-                    PublicServiceEvidence::new(
-                        PublicServiceKind::Rpc,
-                        PublicServiceEndpoint::new(
-                            hash_bytes(b"test", &[b"rpc-service"]),
-                            public_service_url(PublicServiceKind::Rpc),
-                            "/health",
-                        ),
-                        0,
-                        9,
-                        10,
-                        10,
-                    ),
-                    PublicServiceEvidence::new(
-                        PublicServiceKind::Explorer,
-                        PublicServiceEndpoint::new(
-                            hash_bytes(b"test", &[b"explorer-service"]),
-                            public_service_url(PublicServiceKind::Explorer),
-                            "/health",
-                        ),
-                        0,
-                        9,
-                        10,
-                        10,
-                    ),
-                    PublicServiceEvidence::new(
-                        PublicServiceKind::Faucet,
-                        PublicServiceEndpoint::new(
-                            hash_bytes(b"test", &[b"faucet-service"]),
-                            public_service_url(PublicServiceKind::Faucet),
-                            "/health",
-                        ),
-                        0,
-                        9,
-                        10,
-                        10,
-                    ),
-                    PublicServiceEvidence::new(
-                        PublicServiceKind::Telemetry,
-                        PublicServiceEndpoint::new(
-                            hash_bytes(b"test", &[b"telemetry-service"]),
-                            public_service_url(PublicServiceKind::Telemetry),
-                            "/health",
-                        ),
-                        0,
-                        9,
-                        10,
-                        10,
-                    ),
-                ],
-                service_content: vec![
-                    public_service_content(PublicServiceKind::Rpc, b"rpc-service"),
-                    public_service_content(PublicServiceKind::Explorer, b"explorer-service"),
-                    public_service_content(PublicServiceKind::Faucet, b"faucet-service"),
-                    public_service_content(PublicServiceKind::Telemetry, b"telemetry-service"),
-                ],
-                run_started_at_unix_seconds: 1_700_000_000,
-                run_ended_at_unix_seconds: 1_700_000_060,
-                observed_blocks: 10,
-                finalized_blocks: 10,
-                checked_receipts: 20,
-                available_receipts: 19,
-                invalid_receipts_submitted: 1,
-                invalid_receipts_rejected: 1,
-                reward_settlement_records: 1,
+        let run = PublicTestnetRunEvidence {
+            nodes: vec![
+                PublicNodeEvidence::miner(
+                    address(b"miner-a"),
+                    hash_bytes(b"test", &[b"miner-a-operator"]),
+                    0,
+                    9,
+                    10,
+                ),
+                PublicNodeEvidence::miner(
+                    address(b"miner-b"),
+                    hash_bytes(b"test", &[b"miner-b-operator"]),
+                    0,
+                    9,
+                    10,
+                ),
+                PublicNodeEvidence::validator(
+                    address(b"validator-a"),
+                    hash_bytes(b"test", &[b"validator-a-operator"]),
+                    0,
+                    9,
+                    10,
+                ),
+            ],
+            network_runtime: PublicNetworkRuntimeEvidence {
+                libp2p_runtime_used: true,
+                peer_discovery_observed: true,
+                gossip_propagation_observed: true,
+                request_response_observed: true,
+                dos_controls_enabled: true,
             },
+            services: vec![
+                PublicServiceEvidence::new(
+                    PublicServiceKind::Rpc,
+                    PublicServiceEndpoint::new(
+                        hash_bytes(b"test", &[b"rpc-service"]),
+                        public_service_url(PublicServiceKind::Rpc),
+                        "/health",
+                    ),
+                    0,
+                    9,
+                    10,
+                    10,
+                ),
+                PublicServiceEvidence::new(
+                    PublicServiceKind::Explorer,
+                    PublicServiceEndpoint::new(
+                        hash_bytes(b"test", &[b"explorer-service"]),
+                        public_service_url(PublicServiceKind::Explorer),
+                        "/health",
+                    ),
+                    0,
+                    9,
+                    10,
+                    10,
+                ),
+                PublicServiceEvidence::new(
+                    PublicServiceKind::Faucet,
+                    PublicServiceEndpoint::new(
+                        hash_bytes(b"test", &[b"faucet-service"]),
+                        public_service_url(PublicServiceKind::Faucet),
+                        "/health",
+                    ),
+                    0,
+                    9,
+                    10,
+                    10,
+                ),
+                PublicServiceEvidence::new(
+                    PublicServiceKind::Telemetry,
+                    PublicServiceEndpoint::new(
+                        hash_bytes(b"test", &[b"telemetry-service"]),
+                        public_service_url(PublicServiceKind::Telemetry),
+                        "/health",
+                    ),
+                    0,
+                    9,
+                    10,
+                    10,
+                ),
+            ],
+            service_content: vec![
+                public_service_content(PublicServiceKind::Rpc, b"rpc-service"),
+                public_service_content(PublicServiceKind::Explorer, b"explorer-service"),
+                public_service_content(PublicServiceKind::Faucet, b"faucet-service"),
+                public_service_content(PublicServiceKind::Telemetry, b"telemetry-service"),
+            ],
+            run_started_at_unix_seconds: 1_700_000_000,
+            run_ended_at_unix_seconds: 1_700_000_060,
+            observed_blocks: 10,
+            finalized_blocks: 10,
+            checked_receipts: 20,
+            available_receipts: 19,
+            invalid_receipts_submitted: 1,
+            invalid_receipts_rejected: 1,
+            reward_settlement_records: 1,
+        };
+        let network_runtime_observation_root = network_runtime_root_for_run(&run);
+        PublicTestnetEvidenceBundle::new(
+            run,
             manifest_publication(),
             PublicEvidenceRecordSummaries {
                 block_history_records: 10,
@@ -2003,7 +2050,7 @@ mod tests {
                 finality_history_root: hash_bytes(b"test", &[b"finality-history-root"]),
                 operator_identity_attestation_records: 3,
                 network_runtime_observation_records: 3,
-                network_runtime_observation_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                network_runtime_observation_root,
                 data_availability_measurement_records: 20,
                 data_availability_measurement_root: hash_bytes(
                     b"test",
@@ -2043,6 +2090,7 @@ operator_identity_attestation_records=3
 operator=miner,{},{},{},1700000000,{}
 operator=miner,{},{},{},1700000000,{}
 operator=validator,{},{},{},1700000000,{}
+{}
 network_runtime_observation_records=3
 network_runtime_observation_root={}
 network_runtime_observation_signature={}
@@ -2097,9 +2145,9 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
                 b"finality-history-root",
                 10
             ),
-            manifest_artifact_line(
+            manifest_artifact_line_for_root(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
-                b"network-runtime-root",
+                manifest_bundle().network_runtime_observation_root,
                 3
             ),
             manifest_artifact_line(
@@ -2137,7 +2185,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
                 b"validator-a",
                 b"validator-a-operator"
             ),
-            manifest_hash(b"network-runtime-root"),
+            manifest_network_observation_lines(),
+            hex(&manifest_bundle().network_runtime_observation_root),
             hex(&manifest_bundle().network_runtime_observation_signature),
             manifest_hash(b"data-availability-root"),
             hex(&manifest_bundle().data_availability_measurement_signature),
@@ -3249,14 +3298,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             ),
         ];
         for (kind, root_label, count, field_prefix, expected_signature) in record_cases {
-            let root = manifest_hash(root_label);
+            let record_root =
+                if matches!(kind, PublicEvidenceRecordKind::NetworkRuntimeObservations) {
+                    manifest_bundle().network_runtime_observation_root
+                } else {
+                    hash_bytes(b"test", &[root_label])
+                };
+            let root = hex(&record_root);
             let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
             let manifest_signer = address(b"public-evidence-publisher");
             let line = execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
                 kind,
                 bundle_id,
                 manifest_signer,
-                record_root: hash_bytes(b"test", &[root_label]),
+                record_root,
                 record_count: count,
             })
             .unwrap();
@@ -3277,7 +3332,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 &bundle_id,
                 kind,
                 &artifact_uri,
-                &hash_bytes(b"test", &[root_label]),
+                &record_root,
                 count,
             );
             let artifact_line =
@@ -3286,7 +3341,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     bundle_id,
                     manifest_signer,
                     artifact_uri: artifact_uri.clone(),
-                    record_root: hash_bytes(b"test", &[root_label]),
+                    record_root,
                     record_count: count,
                 })
                 .unwrap();

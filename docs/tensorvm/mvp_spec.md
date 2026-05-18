@@ -1821,7 +1821,13 @@ public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/reque
 counts, and DoS-control limits. The public libp2p multiaddr must include a nonzero TCP listen port and
 must not use localhost, `.local`, loopback, unspecified, private, link-local, special-use DNS names,
 malformed DNS labels, single-label DNS hosts, documentation, shared-address, benchmarking, multicast, or
-reserved IP hosts. Those records are rolled into the `network-runtime` summary root.
+reserved IP hosts. Full-spec evidence must include exactly one valid signed network-runtime observation
+record for every counted public miner and validator operator. Each record must be bound to that operator
+ID, a valid libp2p peer ID, a public listen multiaddr, an observation timestamp inside the signed run
+window, nonzero discovery/gossip/request-response/DoS-control counters, a matching observation root, and a
+matching observation signature. The `network-runtime` summary root must aggregate those raw observation
+roots; a signed summary root without the corresponding per-operator `network_runtime_observation` manifest
+lines does not satisfy the public evidence gate.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
@@ -2080,8 +2086,9 @@ evidence:
 ```text
 real CUDA/C++ kernels exist for any claimed GPU mining path and are checked against canonical CPU outputs
 production libp2p runtime is used for node discovery, gossip, and request/response propagation
-production libp2p evidence includes signed network-observation records for discovery, gossip,
-request/response, and DoS controls
+production libp2p evidence includes one signed network-observation record for every counted public
+operator, covering discovery, gossip, request/response, and DoS controls, and those records aggregate to
+the signed network-runtime root
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes external HTTPS URLs, signed health-check summaries, and signed
 service-content roots for those services, with distinct endpoint IDs and distinct content roots across
@@ -2373,8 +2380,9 @@ canonical CPU semantics, mandatory libp2p node paths, separate participant ident
 simulations or local-only networking shims
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
-production libp2p operation is supported by signed network-observation evidence exactly matching every
-counted public miner and validator operator
+production libp2p operation is supported by signed per-operator network-observation records exactly
+matching every counted public miner and validator operator and aggregating to the signed network-runtime
+root
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes externally reachable HTTPS URLs, signed health-check summaries, and
 signed service-content roots with distinct endpoint IDs and distinct content roots across RPC, explorer,
