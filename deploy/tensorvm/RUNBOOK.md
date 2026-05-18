@@ -42,8 +42,9 @@ Assign these identifiers before block production starts:
 
 - one `bundle_id` for the public evidence bundle
 - one `manifest_signer`
-- one or more independent `auditor_id` values
-- one stable node address and one external operator ID per miner and validator
+- one or more independent `auditor_id` values distinct from the `manifest_signer`
+- one stable node address and one external operator ID per miner and validator, with disjoint operator
+  IDs across miner and validator roles
 - one stable endpoint ID for each public RPC, explorer, faucet, and telemetry service
 
 Generate or collect these records during the run:

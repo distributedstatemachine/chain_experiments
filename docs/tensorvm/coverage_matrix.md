@@ -33,8 +33,9 @@ implementation artifacts and tests.
   validation exists for checking it when a real external run is available, including signed wall-clock
   run-window evidence, invalid-work rejection evidence, reward-settlement records, production libp2p
   runtime use with signed network-observation records and summary roots, signed external artifact locators
-  for raw supporting records, observed-block coverage for node heartbeat and service health counts, and
-  deployed public-service reachability plus content roots bound to external HTTPS URLs. A local
+  for raw supporting records, disjoint miner/validator operator IDs, auditor IDs distinct from the manifest
+  signer, observed-block coverage for node heartbeat and service health counts, and deployed
+  public-service reachability plus content roots bound to external HTTPS URLs. A local
   launch preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), deployment templates plus checked preflight
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,

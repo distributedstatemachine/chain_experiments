@@ -77,7 +77,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   missing quorum, missing redundant agreement, and conflicting learning-state transitions
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
-- Typed public-testnet run evidence evaluation for distinct miner/validator operators,
+- Typed public-testnet run evidence evaluation for disjoint distinct miner/validator operators,
   signature-verified node heartbeat summaries that cover the observed block count, signed wall-clock
   run-window evidence, observed block continuity, finality rate, data-availability rate, invalid-work
   rejection evidence, reward-settlement records, production libp2p runtime evidence, and deployed
@@ -86,7 +86,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   and paths
 - Typed public-testnet evidence-bundle evaluation that additionally requires an external public manifest
   location, a verified manifest publication signature, signed independent auditor records bound to external
-  audit URIs, a signed run-window record, block/finality history, signed operator identity attestations
+  audit URIs and distinct from the manifest signer, a signed run-window record, block/finality history,
+  signed operator identity attestations
   matched to signed node-heartbeat records, signed production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root, and data-availability
@@ -145,7 +146,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.86% workspace line coverage
-- 7139/7221 workspace lines covered
+- 7142/7224 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

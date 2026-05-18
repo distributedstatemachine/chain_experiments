@@ -2205,6 +2205,9 @@ impl PublicTestnetEvidenceBundle {
     fn valid_auditor_record_count(&self) -> usize {
         let mut valid_auditors = BTreeSet::new();
         for auditor in &self.auditor_records {
+            if auditor.auditor_id == self.publication.manifest_signer {
+                continue;
+            }
             if auditor.has_external_auditor_proof(
                 &self.publication.bundle_id,
                 &self.publication.public_uri,
@@ -2378,6 +2381,7 @@ impl PublicTestnetRunEvidence {
                 }
             }
         }
+        validators.retain(|operator_id| !miners.contains(operator_id));
         (miners.len(), validators.len())
     }
 }
@@ -3508,6 +3512,15 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(sufficient.has_deployed_public_services);
         assert!(sufficient.public_criterion_met);
 
+        let mut shared_cross_role_operator = run.clone();
+        shared_cross_role_operator.nodes[2] =
+            PublicNodeEvidence::validator(address(b"validator-a"), shared_operator, 0, 9, 10);
+        let shared_cross_role_operator = shared_cross_role_operator.evaluate(&criteria, 6, true);
+        assert_eq!(shared_cross_role_operator.miner_count, 2);
+        assert_eq!(shared_cross_role_operator.validator_count, 0);
+        assert!(!shared_cross_role_operator.has_required_validators);
+        assert!(!shared_cross_role_operator.public_criterion_met);
+
         let mut sparse_heartbeat = run.clone();
         sparse_heartbeat.nodes[0] = PublicNodeEvidence::miner(
             address(b"miner-a"),
@@ -3890,6 +3903,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let local_auditor_record = bundle.evaluate(&criteria, 6);
         assert!(!local_auditor_record.has_independent_auditor_records);
         assert!(!local_auditor_record.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.auditor_records[0] = PublicEvidenceAuditorRecord::new(
+            &bundle.publication.bundle_id,
+            &bundle.publication.public_uri,
+            bundle.publication.manifest_signer,
+            "https://auditors.tensorvm.example/signer-audit.json",
+            1_700_000_000,
+        );
+        let signer_as_auditor = bundle.evaluate(&criteria, 6);
+        assert!(!signer_as_auditor.has_independent_auditor_records);
+        assert!(!signer_as_auditor.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.block_history_records = 9;

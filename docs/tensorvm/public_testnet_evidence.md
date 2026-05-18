@@ -55,8 +55,8 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
-service-health summaries, signed public service-content summaries, signed independent auditor records,
-and an external publication URI. It verifies
+service-health summaries, signed public service-content summaries, signed independent auditor records
+whose auditor IDs differ from the manifest signer, and an external publication URI. It verifies
 a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
 auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
@@ -87,7 +87,8 @@ and minimum observed content bytes. Service URLs, service-content URLs, supporti
 auditor HTTPS URIs, and operator identity HTTPS URIs must use external hosts;
 localhost, `.local`, loopback, private, link-local, and unspecified hosts are rejected. Supporting artifact,
 auditor, and operator identity URIs may also use non-empty `ipfs://` or `ar://` content identifiers.
-The service-health URL path must match the signed health path.
+The service-health URL path must match the signed health path. Counted miner and validator operator sets
+must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Every counted service
 health summary must likewise span the full observed block range and carry at least one reachable
@@ -211,11 +212,13 @@ tvmd public-evidence operator-attestation \
 
 The publication command rejects local/private evidence URIs, zero bundle IDs, zero manifest signers, and
 zero signature or auditor counts. The auditor-record command rejects zero bundle IDs, local/private public
-or audit URIs, zero auditor IDs, and empty observation times. Its output can be inserted directly as an
+or audit URIs, zero auditor IDs, and empty observation times; bundle validation only counts auditor records
+whose auditor ID differs from the manifest signer. Its output can be inserted directly as an
 `auditor=...` line in the evidence manifest. The run-window command rejects zero IDs/signers, inverted
 time windows, and empty block counts. The node-heartbeat command rejects zero node addresses, zero
 operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation only counts a
-node toward the public run when its signed heartbeat count covers the manifest's observed block count. The
+node toward the public run when its signed heartbeat count covers the manifest's observed block count, and
+miner/validator operator IDs must be disjoint for the role minima to count independently. The
 operator-attestation command rejects zero node addresses, zero operator IDs, local/private identity URIs,
 and empty observation times. Its output can be inserted directly as an `operator=...` line in the evidence
 manifest.
