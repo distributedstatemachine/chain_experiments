@@ -1311,6 +1311,7 @@ fn network_observation_root(
 
 fn network_observation_multiaddr_is_public(address: &Multiaddr) -> bool {
     let mut saw_public_address = false;
+    let mut saw_tcp_listen_port = false;
     for protocol in address.iter() {
         match protocol {
             Protocol::Ip4(ip) if public_ipv4(ip) => saw_public_address = true,
@@ -1319,6 +1320,10 @@ fn network_observation_multiaddr_is_public(address: &Multiaddr) -> bool {
                 if public_dns_host(host.as_ref()) =>
             {
                 saw_public_address = true;
+            }
+            Protocol::Tcp(port) if port != 0 => saw_tcp_listen_port = true,
+            Protocol::Tcp(_) => {
+                return false;
             }
             Protocol::Ip4(_)
             | Protocol::Ip6(_)
@@ -1330,7 +1335,7 @@ fn network_observation_multiaddr_is_public(address: &Multiaddr) -> bool {
             _ => {}
         }
     }
-    saw_public_address
+    saw_public_address && saw_tcp_listen_port
 }
 
 fn public_ipv4(ip: Ipv4Addr) -> bool {
@@ -3543,6 +3548,36 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             make_network_observation(
                 operator_id,
                 peer_id.clone(),
+                "/ip4/8.8.8.8".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/ip4/8.8.8.8/tcp/0".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
+                "/ip4/8.8.8.8/udp/4001".to_owned(),
+                1_700_000_000,
+                5,
+                3,
+                2,
+                1_048_576,
+            ),
+            make_network_observation(
+                operator_id,
+                peer_id.clone(),
                 "/ip4/203.0.113.10/tcp/4001".to_owned(),
                 1_700_000_000,
                 5,
@@ -4184,6 +4219,15 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
     fn network_observation_public_address_filter_rejects_local_targets() {
         assert!(network_observation_multiaddr_is_public(
             &"/ip4/8.8.8.8/tcp/4001".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip4/8.8.8.8".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip4/8.8.8.8/tcp/0".parse().unwrap()
+        ));
+        assert!(!network_observation_multiaddr_is_public(
+            &"/ip4/8.8.8.8/udp/4001".parse().unwrap()
         ));
         assert!(!network_observation_multiaddr_is_public(
             &"/ip4/0.0.0.0/tcp/4001".parse().unwrap()

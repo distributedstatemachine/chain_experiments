@@ -1801,10 +1801,10 @@ special-use DNS names such as `.localhost`, `.local`, `.test`, `.example`, `.inv
 `example.net`, and `example.org`.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
-counts, and DoS-control limits. The public libp2p multiaddr must not use localhost, `.local`, loopback,
-unspecified, private, link-local, special-use DNS names, malformed DNS labels, single-label DNS hosts,
-documentation, shared-address, benchmarking, multicast, or reserved IP hosts. Those records are rolled
-into the `network-runtime` summary root.
+counts, and DoS-control limits. The public libp2p multiaddr must include a nonzero TCP listen port and
+must not use localhost, `.local`, loopback, unspecified, private, link-local, special-use DNS names,
+malformed DNS labels, single-label DNS hosts, documentation, shared-address, benchmarking, multicast, or
+reserved IP hosts. Those records are rolled into the `network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
