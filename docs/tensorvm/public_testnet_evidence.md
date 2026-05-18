@@ -360,6 +360,12 @@ tvmd public-evidence network-observation \
   --request-timeout-seconds 10 \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
+
+tvmd public-evidence network-observation-from-service-log \
+  --operator-id <operator-id-hex> \
+  --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
+  --observed-at <unix-seconds> \
+  --service-log artifacts/node-a-tvmd-service.log
 ```
 
 The command rejects zero operator IDs, malformed peer IDs, malformed libp2p multiaddrs, listen multiaddrs
@@ -370,6 +376,10 @@ observations, missing gossip or request-response protocol counts, and missing Do
 output is a signed `network_runtime_observation=...` line. Full-spec evidence must include one such line
 per counted public miner or validator operator and must derive the `network-runtime` summary with
 `record-summary-from-roots` over those observation roots.
+The `network-observation-from-service-log` form derives the peer ID, protocol counts, bootstrap-peer count,
+and DoS-control limits from an exact captured `tvmd service serve` log, while still requiring the supplied
+listen multiaddr to be public. It rejects logs that do not show `command=service_serve` and
+`p2p_runtime=libp2p`, duplicate log fields, and missing runtime fields.
 
 Operators can also generate signed supporting-record summary lines, including the production libp2p
 network-observation summary required by full-spec evidence:

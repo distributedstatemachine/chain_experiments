@@ -897,11 +897,18 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
+    assert!(stdout.contains("p2p_max_transmit_bytes=1048576"));
+    assert!(stdout.contains("p2p_request_timeout_seconds=10"));
+    assert!(stdout.contains("p2p_max_concurrent_streams=128"));
+    assert!(stdout.contains("p2p_idle_timeout_seconds=60"));
     assert!(stdout.contains("served_requests=19"));
     let p2p_peer_id = stdout_value(&stdout, "p2p_peer_id");
     let p2p_gossipsub_topics = stdout_value(&stdout, "p2p_gossipsub_topics");
     let p2p_request_response_protocols = stdout_value(&stdout, "p2p_request_response_protocols");
     let p2p_bootstrap_peers = stdout_value(&stdout, "p2p_bootstrap_peers");
+    let service_log = data_dir.join("service.log");
+    std::fs::write(&service_log, stdout.as_bytes()).expect("service log fixture must be written");
+    let service_log_text = service_log.to_string_lossy().into_owned();
     let public_observation = run_tvmd(&[
         "public-evidence",
         "network-observation",
@@ -931,6 +938,19 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(public_observation.starts_with("network_runtime_observation="));
     assert!(public_observation.contains(p2p_peer_id));
     assert!(public_observation.contains("/dns/node-a.tensorvm.net/tcp/4001"));
+    let public_observation_from_service_log = run_tvmd(&[
+        "public-evidence",
+        "network-observation-from-service-log",
+        "--operator-id",
+        &"99".repeat(32),
+        "--listen-address",
+        "/dns/node-a.tensorvm.net/tcp/4001",
+        "--observed-at",
+        "1700000000",
+        "--service-log",
+        &service_log_text,
+    ]);
+    assert_eq!(public_observation_from_service_log, public_observation);
     let observation_root = network_observation_root(&public_observation);
     let bundle_id = "aa".repeat(32);
     let manifest_signer = "bb".repeat(32);
@@ -996,6 +1016,21 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert_eq!(status, 1);
     assert!(public_observation_stdout.is_empty());
     assert!(public_observation_stderr.contains("network observation address is not public"));
+    let (status, log_observation_stdout, log_observation_stderr) = run_tvmd_failure(&[
+        "public-evidence",
+        "network-observation-from-service-log",
+        "--operator-id",
+        &"99".repeat(32),
+        "--listen-address",
+        "/ip4/127.0.0.1/tcp/4001",
+        "--observed-at",
+        "1700000000",
+        "--service-log",
+        &service_log_text,
+    ]);
+    assert_eq!(status, 1);
+    assert!(log_observation_stdout.is_empty());
+    assert!(log_observation_stderr.contains("network observation address is not public"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }

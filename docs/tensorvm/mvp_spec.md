@@ -1785,6 +1785,12 @@ tvmd public-evidence network-observation \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
 
+tvmd public-evidence network-observation-from-service-log \
+  --operator-id <operator-id-hex> \
+  --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
+  --observed-at <unix-seconds> \
+  --service-log artifacts/node-a-tvmd-service.log
+
 tvmd public-evidence record-summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
@@ -1871,6 +1877,10 @@ window, nonzero discovery/gossip/request-response/DoS-control counters, a matchi
 matching observation signature. The `network-runtime` summary root must aggregate those raw observation
 roots; a signed summary root without the corresponding per-operator `network_runtime_observation` manifest
 lines does not satisfy the public evidence gate.
+The `network-observation-from-service-log` command derives the peer ID, protocol counts, bootstrap-peer
+count, and DoS-control settings from an exact captured `tvmd service serve` log. It must reject logs that
+do not show `command=service_serve` and `p2p_runtime=libp2p`, and it still requires the observer-supplied
+public listen multiaddr above; a loopback or private service log cannot be promoted into public evidence.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported

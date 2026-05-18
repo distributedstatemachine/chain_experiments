@@ -144,12 +144,17 @@ fn serve_service(
         Vec::new()
     };
     let bootstrap_peer_count = bootstrap_addresses.len();
-    let p2p_service = spawn_libp2p_service(Libp2pControlPlaneConfig {
+    let p2p_config = Libp2pControlPlaneConfig {
         listen_addresses: vec![p2p_listen.to_owned()],
         bootstrap_addresses,
         ..Libp2pControlPlaneConfig::default()
-    })
-    .map_err(|error| format!("failed to start mandatory libp2p service: {error}"))?;
+    };
+    let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
+    let request_timeout_seconds = p2p_config.request_timeout_seconds;
+    let max_concurrent_streams = p2p_config.max_concurrent_request_streams;
+    let idle_timeout_seconds = p2p_config.idle_connection_timeout_seconds;
+    let p2p_service = spawn_libp2p_service(p2p_config)
+        .map_err(|error| format!("failed to start mandatory libp2p service: {error}"))?;
     let p2p_peer_id = p2p_service.peer_id().to_string();
     let p2p_topics = p2p_service.info().subscribed_topics.len();
     let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
@@ -177,7 +182,7 @@ fn serve_service(
         served_requests = served_requests.saturating_add(1);
     }
     Ok(format!(
-        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\ndata_dir={data_dir}\nserved_requests={served_requests}"
+        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={data_dir}\nserved_requests={served_requests}"
     ))
 }
 

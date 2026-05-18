@@ -40,6 +40,8 @@ external URL, signed service-content records for the deployed content paths usin
 as each corresponding health URL, exact health/content paths without query strings or fragments, and
 one signed `network_runtime_observation=...` record per counted public operator proving libp2p discovery,
 gossip, request/response, and configured DoS controls during the external run. Those observation roots
+can be generated directly from captured `tvmd service serve` logs with
+`network-observation-from-service-log`, but the supplied listen multiaddr still has to be public. They
 must be aggregated into the signed network-runtime summary. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
 the raw records behind that root.

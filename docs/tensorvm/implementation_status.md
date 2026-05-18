@@ -147,10 +147,13 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   that derives them directly from captured response-body files,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
-  single-label DNS rejection, plus manifest validation that binds one such signed raw record to every
-  counted public operator and to the aggregate network-runtime root; the process-level `tvmd` service
-  smoke test now derives a public-address observation root from the live libp2p peer/protocol stdout and
-  feeds that root through `record-summary-from-roots` and `record-artifact-from-roots`,
+  single-label DNS rejection, plus `tvmd public-evidence network-observation-from-service-log ...`
+  generation that derives the peer ID, protocol counts, bootstrap-peer count, and DoS-control settings
+  from captured `tvmd service serve` logs while still requiring a public listen multiaddr, plus manifest
+  validation that binds one such signed raw record to every counted public operator and to the aggregate
+  network-runtime root; the process-level `tvmd` service smoke test now derives a public-address
+  observation root from the live libp2p peer/protocol/control stdout and feeds that root through
+  `record-summary-from-roots` and `record-artifact-from-roots`,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
@@ -212,14 +215,14 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.97% workspace line coverage
-- 7898/7980 workspace lines covered
+- 98.98% workspace line coverage
+- 7967/8049 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7330/7330 `tensor_vm` lines covered
+- 7399/7399 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 171 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 175 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed

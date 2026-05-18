@@ -65,6 +65,7 @@ tvmd public-evidence service-content ...
 tvmd public-evidence service-content-from-bytes ...
 tvmd public-evidence service-content-from-file ...
 tvmd public-evidence network-observation ...
+tvmd public-evidence network-observation-from-service-log ...
 tvmd public-evidence record-summary ...
 tvmd public-evidence record-artifact ...
 tvmd public-evidence record-artifact-from-roots ...
@@ -79,8 +80,11 @@ matching service-health URL for that endpoint ID. Finalized blocks must not exce
 available tensor receipts must not exceed checked tensor receipts. The network-runtime summary must be
 derived from exactly one signed `network_runtime_observation=...` line per counted miner and validator
 operator, with each observation using a public libp2p listen multiaddr and an observation timestamp inside
-the signed run window. Every `record-summary` root must have a matching signed `record-artifact` locator
-for the external raw-record artifact. Preserve raw supporting records for:
+the signed run window. Prefer `network-observation-from-service-log` when the raw `tvmd service serve`
+stdout/stderr log is available, so the peer ID, protocol counts, bootstrap-peer count, and DoS-control
+settings are derived from the captured service runtime instead of being copied by hand. Every
+`record-summary` root must have a matching signed `record-artifact` locator for the external raw-record
+artifact. Preserve raw supporting records for:
 
 - block history
 - finality history
@@ -157,7 +161,9 @@ publication must include:
 - public service content artifacts and content-root observations generated from exact captured response
   files with `service-content-from-file` when possible, or exact hex bytes with `service-content-from-bytes`
 - libp2p network-observation artifacts, including the per-operator `network_runtime_observation=...`
-  manifest lines and the roots passed to `record-summary-from-roots --kind network-runtime`
+  manifest lines, the source `tvmd service serve` logs used with
+  `network-observation-from-service-log`, and the roots passed to
+  `record-summary-from-roots --kind network-runtime`
 
 After validation returns `public_evidence_full_spec=true`, link the published bundle from
 `docs/tensorvm/implementation_status.md` and rerun the required verification commands from the repository

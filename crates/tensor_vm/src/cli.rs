@@ -1,6 +1,7 @@
 use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
+use crate::p2p::Libp2pControlPlaneConfig;
 use crate::testnet::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
     PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
@@ -127,6 +128,12 @@ pub enum CliCommand {
         request_timeout_seconds: u64,
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
+    },
+    PublicEvidenceNetworkObservationFromServiceLog {
+        operator_id: Hash,
+        listen_address: String,
+        observed_at_unix_seconds: u64,
+        service_log: String,
     },
     PublicEvidencePublication {
         bundle_id: Hash,
@@ -468,6 +475,23 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "network-observation-from-service-log",
+            "--operator-id",
+            operator_id,
+            "--listen-address",
+            listen_address,
+            "--observed-at",
+            observed_at_unix_seconds,
+            "--service-log",
+            service_log,
+        ] => Ok(CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+            operator_id: parse_hash_argument(operator_id)?,
+            listen_address: (*listen_address).to_owned(),
+            observed_at_unix_seconds: parse_u64(observed_at_unix_seconds)?,
+            service_log: (*service_log).to_owned(),
+        }),
+        [
+            "public-evidence",
             "publication",
             "--bundle-id",
             bundle_id,
@@ -611,8 +635,13 @@ pub fn describe_command(command: &CliCommand) -> String {
             auth_token: _,
             max_requests,
         } => {
+            let p2p_config = Libp2pControlPlaneConfig::default();
             format!(
-                "serve RPC explorer faucet telemetry over mandatory libp2p listen={listen} p2p_listen={p2p_listen} data_dir={data_dir} max_requests={max_requests}"
+                "serve RPC explorer faucet telemetry over mandatory libp2p listen={listen} p2p_listen={p2p_listen} data_dir={data_dir} max_requests={max_requests} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
             )
         }
         CliCommand::PublicEvidenceValidate { manifest } => {
@@ -707,6 +736,15 @@ pub fn describe_command(command: &CliCommand) -> String {
         } => {
             format!(
                 "generate signed libp2p network observation peer_id={peer_id} listen_address={listen_address}"
+            )
+        }
+        CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+            listen_address,
+            service_log,
+            ..
+        } => {
+            format!(
+                "generate signed libp2p network observation from service log service_log={service_log} listen_address={listen_address}"
             )
         }
         CliCommand::PublicEvidencePublication { public_uri, .. } => {
@@ -830,8 +868,13 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             ensure_libp2p_multiaddr(p2p_listen)?;
             ensure_data_dir(data_dir)?;
             ensure_auth_token(auth_token)?;
+            let p2p_config = Libp2pControlPlaneConfig::default();
             Ok(format!(
-                "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true"
+                "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
             ))
         }
         CliCommand::PublicEvidenceServiceHealth {
@@ -992,6 +1035,21 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             max_concurrent_streams: *max_concurrent_streams,
             idle_connection_timeout_seconds: *idle_connection_timeout_seconds,
         }),
+        CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+            operator_id,
+            listen_address,
+            observed_at_unix_seconds,
+            service_log,
+        } => {
+            let log_contents = std::fs::read_to_string(service_log)
+                .map_err(|_| TvmError::Storage("failed to read service log file"))?;
+            network_observation_evidence_line_from_service_log(
+                *operator_id,
+                listen_address,
+                *observed_at_unix_seconds,
+                &log_contents,
+            )
+        }
         CliCommand::PublicEvidencePublication {
             bundle_id,
             public_uri,
@@ -1526,6 +1584,64 @@ fn network_observation_evidence_line(input: NetworkObservationEvidenceLine<'_>) 
         hex(&root),
         hex(&signature)
     ))
+}
+
+fn network_observation_evidence_line_from_service_log(
+    operator_id: Hash,
+    listen_address: &str,
+    observed_at_unix_seconds: u64,
+    service_log: &str,
+) -> Result<String> {
+    if service_log_field(service_log, "command")? != "service_serve" {
+        return Err(TvmError::InvalidReceipt("service log is not service_serve"));
+    }
+    if service_log_field(service_log, "p2p_runtime")? != "libp2p" {
+        return Err(TvmError::InvalidReceipt(
+            "service log does not prove libp2p runtime",
+        ));
+    }
+    network_observation_evidence_line(NetworkObservationEvidenceLine {
+        operator_id,
+        peer_id: service_log_field(service_log, "p2p_peer_id")?,
+        listen_address,
+        observed_at_unix_seconds,
+        gossip_topic_count: parse_u64(service_log_field(service_log, "p2p_gossipsub_topics")?)?,
+        request_response_protocol_count: parse_u64(service_log_field(
+            service_log,
+            "p2p_request_response_protocols",
+        )?)?,
+        bootstrap_peer_count: parse_u64(service_log_field(service_log, "p2p_bootstrap_peers")?)?,
+        max_transmit_bytes: parse_u64(service_log_field(service_log, "p2p_max_transmit_bytes")?)?,
+        request_timeout_seconds: parse_u64(service_log_field(
+            service_log,
+            "p2p_request_timeout_seconds",
+        )?)?,
+        max_concurrent_streams: parse_u64(service_log_field(
+            service_log,
+            "p2p_max_concurrent_streams",
+        )?)?,
+        idle_connection_timeout_seconds: parse_u64(service_log_field(
+            service_log,
+            "p2p_idle_timeout_seconds",
+        )?)?,
+    })
+}
+
+fn service_log_field<'a>(service_log: &'a str, key: &str) -> Result<&'a str> {
+    let prefix = format!("{key}=");
+    let mut found = None;
+    for line in service_log.lines() {
+        if let Some(value) = line.strip_prefix(&prefix) {
+            if found.is_some() {
+                return Err(TvmError::InvalidReceipt("duplicate service log field"));
+            }
+            if value.is_empty() || value.trim() != value {
+                return Err(TvmError::InvalidReceipt("invalid service log field"));
+            }
+            found = Some(value);
+        }
+    }
+    found.ok_or(TvmError::InvalidReceipt("missing service log field"))
 }
 
 fn network_observation_root(
@@ -2869,7 +2985,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             .unwrap(),
             CliCommand::PublicEvidenceNetworkObservation {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
-                peer_id,
+                peer_id: peer_id.clone(),
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
@@ -2879,6 +2995,27 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 request_timeout_seconds: 10,
                 max_concurrent_streams: 128,
                 idle_connection_timeout_seconds: 60,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "network-observation-from-service-log",
+                "--operator-id",
+                &manifest_hash(b"network-operator"),
+                "--listen-address",
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                "--observed-at",
+                "1700000000",
+                "--service-log",
+                "artifacts/node-a-service.log",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+                operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                service_log: "artifacts/node-a-service.log".to_owned(),
             }
         );
         let record_root = manifest_hash(b"network-runtime-root");
@@ -3107,7 +3244,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     auth_token: "secret".to_owned(),
                     max_requests: 0,
                 },
-                "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0",
+                "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
             ),
             (
                 CliCommand::PublicEvidenceValidate {
@@ -3288,6 +3425,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "generate signed libp2p network observation peer_id={peer_id} listen_address=/dns/node-a.tensorvm.net/tcp/4001"
             )
         );
+        assert_eq!(
+            describe_command(
+                &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+                    operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                    listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+                    observed_at_unix_seconds: 1_700_000_000,
+                    service_log: "artifacts/node-a-service.log".to_owned(),
+                }
+            ),
+            "generate signed libp2p network observation from service log service_log=artifacts/node-a-service.log listen_address=/dns/node-a.tensorvm.net/tcp/4001"
+        );
 
         let node_roles = [
             (
@@ -3436,6 +3584,10 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_serve.contains("p2p_identify=enabled"));
         assert!(service_serve.contains("p2p_kademlia=enabled"));
         assert!(service_serve.contains("p2p_request_response=enabled"));
+        assert!(service_serve.contains("p2p_max_transmit_bytes=1048576"));
+        assert!(service_serve.contains("p2p_request_timeout_seconds=10"));
+        assert!(service_serve.contains("p2p_max_concurrent_streams=128"));
+        assert!(service_serve.contains("p2p_idle_timeout_seconds=60"));
         assert!(service_serve.contains("auth_enabled=true"));
         assert!(service_serve.contains("rpc_routes=enabled"));
         assert!(service_serve.contains("explorer_routes=enabled"));
@@ -3712,6 +3864,105 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 hex(&observation_root),
                 hex(&observation_signature)
             )
+        );
+        let service_log = format!(
+            "\
+command=service_serve
+p2p_runtime=libp2p
+p2p_peer_id={peer_id}
+p2p_gossipsub_topics=5
+p2p_request_response_protocols=3
+p2p_bootstrap_peers=2
+p2p_max_transmit_bytes=1048576
+p2p_request_timeout_seconds=10
+p2p_max_concurrent_streams=128
+p2p_idle_timeout_seconds=60
+"
+        );
+        assert_eq!(
+            service_log_field(&service_log, "p2p_peer_id").unwrap(),
+            peer_id
+        );
+        let network_observation_from_service_log =
+            network_observation_evidence_line_from_service_log(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+                &service_log,
+            )
+            .unwrap();
+        assert_eq!(network_observation_from_service_log, network_observation);
+
+        let service_log_file = std::env::temp_dir().join(format!(
+            "tensor-vm-service-log-{}-{}.log",
+            std::process::id(),
+            observation_root[0]
+        ));
+        std::fs::write(&service_log_file, &service_log).unwrap();
+        let network_observation_from_file = execute_reference_cli_command(
+            &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+                operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+                service_log: service_log_file.to_string_lossy().into_owned(),
+            },
+        )
+        .unwrap();
+        std::fs::remove_file(&service_log_file).unwrap();
+        assert_eq!(network_observation_from_file, network_observation);
+
+        assert_eq!(
+            execute_reference_cli_command(
+                &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+                    operator_id: hash_bytes(b"test", &[b"network-operator"]),
+                    listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+                    observed_at_unix_seconds: 1_700_000_000,
+                    service_log: service_log_file.to_string_lossy().into_owned(),
+                }
+            )
+            .unwrap_err()
+            .to_string(),
+            "storage error: failed to read service log file"
+        );
+        assert_eq!(
+            network_observation_evidence_line_from_service_log(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+                "command=service_init\np2p_runtime=libp2p\n",
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: service log is not service_serve"
+        );
+        assert_eq!(
+            network_observation_evidence_line_from_service_log(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+                "command=service_serve\np2p_runtime=shim\n",
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: service log does not prove libp2p runtime"
+        );
+        assert_eq!(
+            service_log_field("command=service_serve\n", "p2p_peer_id")
+                .unwrap_err()
+                .to_string(),
+            "invalid receipt: missing service log field"
+        );
+        assert_eq!(
+            service_log_field("p2p_runtime=libp2p\np2p_runtime=libp2p\n", "p2p_runtime")
+                .unwrap_err()
+                .to_string(),
+            "invalid receipt: duplicate service log field"
+        );
+        assert_eq!(
+            service_log_field("p2p_runtime= libp2p\n", "p2p_runtime")
+                .unwrap_err()
+                .to_string(),
+            "invalid receipt: invalid service log field"
         );
 
         let record_cases: [(PublicEvidenceRecordKind, &[u8], u64, &str, String); 6] = [

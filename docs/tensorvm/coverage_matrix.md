@@ -75,8 +75,10 @@ deployment gate.
   and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
   `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, signed public
   libp2p network-observation CLI generation rejects missing or zero TCP listen ports plus non-public and
-  single-label DNS multiaddrs, process-level network-runtime observation roots can be summarized and
-  artifact-bound from external-addressed records, service health/content evidence must use matching HTTPS authorities for each
+  single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
+  from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level
+  network-runtime observation roots can be summarized and artifact-bound from external-addressed records,
+  service health/content evidence must use matching HTTPS authorities for each
   endpoint ID, and the required post-run evidence-bundle shape is documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is linked yet.
 - Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web
