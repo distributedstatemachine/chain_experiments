@@ -2234,9 +2234,12 @@ impl PublicTestnetEvidenceBundle {
             block_time_seconds,
             has_operator_identity_attestations,
         );
+        let required_network_runtime_observations = required_operator_attestations;
         let has_network_runtime_observations =
             self.run.network_runtime.has_production_libp2p_runtime()
-                && self.network_runtime_observation_records >= 4
+                && required_network_runtime_observations > 0
+                && self.network_runtime_observation_records
+                    >= required_network_runtime_observations
                 && self.public_record_signature_valid(
                     PublicEvidenceRecordKind::NetworkRuntimeObservations,
                     &self.network_runtime_observation_root,
@@ -4493,10 +4496,27 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!missing_signed_operator_records.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
-        bundle.network_runtime_observation_records = 3;
+        bundle.network_runtime_observation_records = 2;
         let missing_network_runtime_observations = bundle.evaluate(&criteria, 6);
         assert!(!missing_network_runtime_observations.has_network_runtime_observations);
         assert!(!missing_network_runtime_observations.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let network_runtime_root = bundle.network_runtime_observation_root;
+        let underreported_network_runtime_count = bundle
+            .operator_identity_attestation_records
+            .saturating_sub(1);
+        resign_record_summary_and_artifact(
+            &mut bundle,
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            network_runtime_root,
+            underreported_network_runtime_count,
+        );
+        let underreported_network_runtime_observations = bundle.evaluate(&criteria, 6);
+        assert!(!underreported_network_runtime_observations.has_network_runtime_observations);
+        assert!(underreported_network_runtime_observations.has_operator_identity_attestations);
+        assert!(underreported_network_runtime_observations.has_public_supporting_record_artifacts);
+        assert!(!underreported_network_runtime_observations.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.network_runtime_observation_signature = [3; 32];

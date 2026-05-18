@@ -2352,7 +2352,8 @@ canonical CPU semantics, mandatory libp2p node paths, separate participant ident
 simulations or local-only networking shims
 real CUDA/C++ kernels exist where GPU mining is claimed
 production libp2p runtime is used for network propagation
-production libp2p operation is supported by signed network-observation evidence
+production libp2p operation is supported by signed network-observation evidence covering every counted
+public miner and validator operator
 RPC, explorer, faucet, and telemetry services are deployed outside the local test harness
 public service evidence includes externally reachable HTTPS URLs, signed health-check summaries, and
 signed service-content roots

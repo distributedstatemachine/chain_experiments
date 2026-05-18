@@ -74,7 +74,9 @@ external run publishes real records. Run-level finality and data-availability co
 internally consistent: finalized blocks cannot exceed observed blocks, and available receipts cannot exceed
 checked receipts. The run-derived supporting-record counts must be exact, not padded: block-history and
 finality-history record counts must match observed blocks, data-availability measurement count must match
-checked receipts, and invalid-work rejection record count must match invalid receipts submitted.
+checked receipts, and invalid-work rejection record count must match invalid receipts submitted. The
+production-libp2p network-runtime observation count must also cover every counted independent miner and
+validator operator.
 
 ## Manifest Format
 
@@ -114,7 +116,9 @@ one reachable observation and one signed health check per observed block.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
 checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
 public gate. Signed overcounts for block-history, finality-history, data-availability, or invalid-work
-summary records also do not satisfy the independently checkable gate.
+summary records also do not satisfy the independently checkable gate. Signed network-runtime observation
+undercounts do not satisfy the independently checkable gate when fewer observations exist than counted
+public operators.
 The reference service process serves `GET /health` for shared-host deployments and scoped
 `GET /rpc/health`, `GET /explorer/health`, `GET /faucet/health`, and `GET /telemetry/health` endpoints
 when operators publish distinct public service hostnames or paths. Public service-content observations
