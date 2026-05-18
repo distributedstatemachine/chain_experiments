@@ -259,6 +259,12 @@ tvmd public-evidence node-heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
+tvmd public-evidence node-heartbeat-from-file \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --heartbeat-file artifacts/miner-a-heartbeats.records
+
 tvmd public-evidence operator-attestation \
   --role miner \
   --address <node-address-hex> \
@@ -279,6 +285,11 @@ IDs/signers, inverted time windows, and empty block counts. The node-heartbeat c
 addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
 only counts a node toward the public run when its signed heartbeat count covers the manifest's observed
 block count, and miner/validator operator IDs must be disjoint for the role minima to count independently.
+The `node-heartbeat-from-file` form derives the same signed `node=...` line from raw
+`node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. It ignores blank
+lines and `#` comments, rejects duplicate or non-contiguous block observations, identity mismatches,
+unsupported lines, and whitespace-padded records, then derives the signed first block, last block, and
+heartbeat count.
 The operator-attestation command rejects zero node addresses, zero operator IDs, non-public or malformed
 identity URIs, and empty observation times; bundle validation only counts operator attestations observed
 inside the signed run window and matching signed live node-heartbeat records. The

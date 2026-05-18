@@ -184,6 +184,12 @@ pub enum CliCommand {
         last_seen_block: u64,
         signed_heartbeat_count: u64,
     },
+    PublicEvidenceNodeHeartbeatFromFile {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        heartbeat_file: String,
+    },
     PublicEvidenceOperatorAttestation {
         role: PublicNodeRole,
         address: Address,
@@ -652,6 +658,23 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "node-heartbeat-from-file",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--heartbeat-file",
+            heartbeat_file,
+        ] => Ok(CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+            role: parse_public_node_role(role)?,
+            address: parse_hash_argument(address)?,
+            operator_id: parse_hash_argument(operator_id)?,
+            heartbeat_file: (*heartbeat_file).to_owned(),
+        }),
+        [
+            "public-evidence",
             "operator-attestation",
             "--role",
             role,
@@ -881,6 +904,18 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::PublicEvidenceNodeHeartbeat { role, address, .. } => {
             format!(
                 "generate {} node heartbeat evidence address={}",
+                public_node_role_tag(*role),
+                hex(address)
+            )
+        }
+        CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+            role,
+            address,
+            heartbeat_file,
+            ..
+        } => {
+            format!(
+                "generate {} node heartbeat evidence from captured observations heartbeat_file={heartbeat_file} address={}",
                 public_node_role_tag(*role),
                 hex(address)
             )
@@ -1259,6 +1294,12 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *last_seen_block,
             *signed_heartbeat_count,
         ),
+        CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+            role,
+            address,
+            operator_id,
+            heartbeat_file,
+        } => node_heartbeat_evidence_line_from_file(*role, *address, *operator_id, heartbeat_file),
         CliCommand::PublicEvidenceOperatorAttestation {
             role,
             address,
@@ -1622,6 +1663,111 @@ fn node_heartbeat_evidence_line(
         node.last_seen_block,
         node.signed_heartbeat_count,
         hex(&node.heartbeat_signature)
+    ))
+}
+
+struct NodeHeartbeatObservationSummary {
+    first_seen_block: u64,
+    last_seen_block: u64,
+    signed_heartbeat_count: u64,
+}
+
+fn node_heartbeat_evidence_line_from_file(
+    role: PublicNodeRole,
+    address: Address,
+    operator_id: Hash,
+    heartbeat_file: &str,
+) -> Result<String> {
+    let contents = std::fs::read_to_string(heartbeat_file)
+        .map_err(|_| TvmError::Storage("failed to read node heartbeat observation file"))?;
+    let summary =
+        node_heartbeat_observation_summary_from_file(role, address, operator_id, &contents)?;
+    node_heartbeat_evidence_line(
+        role,
+        address,
+        operator_id,
+        summary.first_seen_block,
+        summary.last_seen_block,
+        summary.signed_heartbeat_count,
+    )
+}
+
+fn node_heartbeat_observation_summary_from_file(
+    expected_role: PublicNodeRole,
+    expected_address: Address,
+    expected_operator_id: Hash,
+    contents: &str,
+) -> Result<NodeHeartbeatObservationSummary> {
+    let mut observed_blocks = BTreeSet::new();
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line != raw_line {
+            return Err(TvmError::InvalidReceipt(
+                "node heartbeat observation line has leading or trailing whitespace",
+            ));
+        }
+        let (role, address, operator_id, block) = parse_node_heartbeat_observation_line(line)?;
+        if role != expected_role
+            || address != expected_address
+            || operator_id != expected_operator_id
+        {
+            return Err(TvmError::InvalidReceipt(
+                "node heartbeat observation identity mismatch",
+            ));
+        }
+        if !observed_blocks.insert(block) {
+            return Err(TvmError::InvalidReceipt(
+                "duplicate node heartbeat observation block",
+            ));
+        }
+    }
+    let Some(first_seen_block) = observed_blocks.iter().next().copied() else {
+        return Err(TvmError::InvalidReceipt(
+            "node heartbeat observation file has no observations",
+        ));
+    };
+    let last_seen_block = observed_blocks.iter().next_back().copied().unwrap();
+    let signed_heartbeat_count = observed_blocks.len() as u64;
+    let expected_heartbeat_count = last_seen_block
+        .checked_sub(first_seen_block)
+        .and_then(|span| span.checked_add(1))
+        .ok_or(TvmError::InvalidReceipt(
+            "node heartbeat observation block range is invalid",
+        ))?;
+    if signed_heartbeat_count != expected_heartbeat_count {
+        return Err(TvmError::InvalidReceipt(
+            "node heartbeat observation blocks must be contiguous",
+        ));
+    }
+    Ok(NodeHeartbeatObservationSummary {
+        first_seen_block,
+        last_seen_block,
+        signed_heartbeat_count,
+    })
+}
+
+fn parse_node_heartbeat_observation_line(
+    line: &str,
+) -> Result<(PublicNodeRole, Address, Hash, u64)> {
+    let record =
+        line.strip_prefix("node_heartbeat_observation=")
+            .ok_or(TvmError::InvalidReceipt(
+                "unsupported node heartbeat observation line",
+            ))?;
+    let fields: Vec<&str> = record.split(',').collect();
+    if fields.len() != 4 {
+        return Err(TvmError::InvalidReceipt(
+            "malformed node heartbeat observation",
+        ));
+    }
+    Ok((
+        parse_public_node_role(fields[0])?,
+        parse_hash_argument(fields[1])?,
+        parse_hash_argument(fields[2])?,
+        parse_u64(fields[3])?,
     ))
 }
 
@@ -3127,6 +3273,27 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             parse_cli_parts(&[
                 "public-evidence",
+                "node-heartbeat-from-file",
+                "--role",
+                "miner",
+                "--address",
+                &manifest_address(b"miner-a"),
+                "--operator-id",
+                &manifest_hash(b"miner-a-operator"),
+                "--heartbeat-file",
+                "artifacts/miner-a-heartbeats.records",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                heartbeat_file: "artifacts/miner-a-heartbeats.records".to_owned(),
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
                 "operator-attestation",
                 "--role",
                 "miner",
@@ -3874,6 +4041,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 format!("{prefix}{}", hex(&node_address))
             );
         }
+        assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"operator"]),
+                heartbeat_file: "artifacts/miner-a-heartbeats.records".to_owned(),
+            }),
+            format!(
+                "generate miner node heartbeat evidence from captured observations heartbeat_file=artifacts/miner-a-heartbeats.records address={}",
+                hex(&address(b"miner-a"))
+            )
+        );
 
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceOperatorAttestation {
@@ -4110,6 +4289,33 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 address_label,
                 operator_label
             )));
+            let heartbeat_file = std::env::temp_dir().join(format!(
+                "tensor-vm-node-heartbeat-{}-{}.records",
+                std::process::id(),
+                tag
+            ));
+            let heartbeat_records = (0..10)
+                .map(|block| {
+                    format!(
+                        "node_heartbeat_observation={tag},{},{},{}",
+                        hex(&address(address_label)),
+                        hex(&hash_bytes(b"test", &[operator_label])),
+                        block
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
+            let node_from_file =
+                execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+                    role,
+                    address: address(address_label),
+                    operator_id: hash_bytes(b"test", &[operator_label]),
+                    heartbeat_file: heartbeat_file.to_string_lossy().into_owned(),
+                })
+                .unwrap();
+            std::fs::remove_file(&heartbeat_file).unwrap();
+            assert_eq!(node_from_file, node);
         }
 
         let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
@@ -5517,6 +5723,66 @@ p2p_idle_timeout_seconds=60
                 first_seen_block: 0,
                 last_seen_block: 9,
                 signed_heartbeat_count: 0,
+            })
+            .is_err()
+        );
+        let miner_address_hex = manifest_address(b"miner-a");
+        let miner_operator_hex = manifest_hash(b"miner-a-operator");
+        let heartbeat_summary = node_heartbeat_observation_summary_from_file(
+            PublicNodeRole::Miner,
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            &format!(
+                "node_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},0\nnode_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},1\n"
+            ),
+        )
+        .unwrap();
+        assert_eq!(heartbeat_summary.first_seen_block, 0);
+        assert_eq!(heartbeat_summary.last_seen_block, 1);
+        assert_eq!(heartbeat_summary.signed_heartbeat_count, 2);
+        for invalid_heartbeat_observations in [
+            "# no observations\n\n".to_owned(),
+            format!(
+                " node_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},0\n"
+            ),
+            format!(
+                "node_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},0\nnode_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},0\n"
+            ),
+            format!(
+                "node_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},0\nnode_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex},2\n"
+            ),
+            format!(
+                "node_heartbeat_observation=validator,{miner_address_hex},{miner_operator_hex},0\n"
+            ),
+            format!(
+                "node_heartbeat_observation=miner,{},{} ,0\n",
+                miner_address_hex, miner_operator_hex
+            ),
+            format!("node_heartbeat_observation=miner,{miner_address_hex},{miner_operator_hex}\n"),
+            "service_health_observation=0,reachable\n".to_owned(),
+        ] {
+            assert!(
+                node_heartbeat_observation_summary_from_file(
+                    PublicNodeRole::Miner,
+                    address(b"miner-a"),
+                    hash_bytes(b"test", &[b"miner-a-operator"]),
+                    &invalid_heartbeat_observations,
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                heartbeat_file: std::env::temp_dir()
+                    .join(format!(
+                        "missing-tensor-vm-node-heartbeat-{}.records",
+                        std::process::id()
+                    ))
+                    .to_string_lossy()
+                    .into_owned(),
             })
             .is_err()
         );

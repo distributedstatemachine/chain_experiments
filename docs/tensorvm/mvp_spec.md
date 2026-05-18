@@ -1730,6 +1730,12 @@ tvmd public-evidence node-heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
+tvmd public-evidence node-heartbeat-from-file \
+  --role miner \
+  --address <node-address-hex> \
+  --operator-id <operator-id-hex> \
+  --heartbeat-file artifacts/miner-a-heartbeats.records
+
 tvmd public-evidence operator-attestation \
   --role miner \
   --address <node-address-hex> \
@@ -1860,6 +1866,12 @@ identity URI bound to a node address, role, operator ID, and observation time. C
 attestations must be observed inside the signed run window, and the
 `operator_identity_attestation_records` manifest count must not exceed the number of valid signed
 operator-attestation records that match live node-heartbeat evidence.
+The `node-heartbeat-from-file` command derives the same signed `node=...` line from a saved
+line-oriented heartbeat observation file using
+`node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. Blank lines and
+`#` comments are ignored; duplicate blocks, non-contiguous block observations, identity mismatches,
+unsupported lines, and whitespace-padded records are rejected so first block, last block, and heartbeat
+count are derived rather than copied by hand.
 The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path

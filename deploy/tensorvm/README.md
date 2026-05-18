@@ -49,6 +49,9 @@ the raw records behind that root.
 Service-health records can likewise be derived from saved per-block observation files with
 `service_health_observation=<block>,reachable` or
 `service_health_observation=<block>,unreachable` lines using `service-health-from-file`.
+Node-heartbeat records can be derived from saved per-block
+`node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` files with
+`node-heartbeat-from-file`.
 
 ## Minimal Operator Flow
 

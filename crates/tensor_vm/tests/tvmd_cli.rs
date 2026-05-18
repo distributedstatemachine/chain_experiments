@@ -452,7 +452,7 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             "--observed-at",
             "1700000000",
         ]));
-        node_lines.push(trimmed_tvmd(&[
+        let node_heartbeat = trimmed_tvmd(&[
             "public-evidence",
             "node-heartbeat",
             "--role",
@@ -467,7 +467,31 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             "9",
             "--heartbeat-count",
             "10",
-        ]));
+        ]);
+        let heartbeat_file = data_dir.join(format!("{role}-{port}-heartbeats.records"));
+        let heartbeat_records = (0..10)
+            .map(|block| {
+                format!("node_heartbeat_observation={role},{address},{operator_id},{block}")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(&heartbeat_file, heartbeat_records)
+            .expect("node heartbeat file must be written");
+        let heartbeat_file_text = heartbeat_file.to_string_lossy().into_owned();
+        let node_heartbeat_from_file = trimmed_tvmd(&[
+            "public-evidence",
+            "node-heartbeat-from-file",
+            "--role",
+            role,
+            "--address",
+            address,
+            "--operator-id",
+            operator_id,
+            "--heartbeat-file",
+            &heartbeat_file_text,
+        ]);
+        assert_eq!(node_heartbeat_from_file, node_heartbeat);
+        node_lines.push(node_heartbeat);
         let peer_id = PeerId::random().to_string();
         let listen_address = format!("/dns/{host}/tcp/{port}");
         let observation = trimmed_tvmd(&[
