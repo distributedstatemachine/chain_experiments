@@ -1794,16 +1794,16 @@ service-content records must be observed inside the signed run window. Deployed 
 must include both signed health and signed content records with matching endpoint IDs and matching HTTPS
 authorities for `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
 External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
-DNS host labels, invalid ports, malformed bracketed IPv6 authorities, localhost, private, link-local,
-documentation, shared-address, benchmarking, multicast, reserved IP literals, or special-use DNS names
-such as `.localhost`, `.local`, `.test`, `.example`, `.invalid`, `example.com`, `example.net`, and
-`example.org`.
+DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed IPv6 authorities, localhost,
+private, link-local, documentation, shared-address, benchmarking, multicast, reserved IP literals, or
+special-use DNS names such as `.localhost`, `.local`, `.test`, `.example`, `.invalid`, `example.com`,
+`example.net`, and `example.org`.
 The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. The public libp2p multiaddr must not use localhost, `.local`, loopback,
-unspecified, private, link-local, special-use DNS names, malformed DNS labels, documentation,
-shared-address, benchmarking, multicast, or reserved IP hosts. Those records are rolled into the
-`network-runtime` summary root.
+unspecified, private, link-local, special-use DNS names, malformed DNS labels, single-label DNS hosts,
+documentation, shared-address, benchmarking, multicast, or reserved IP hosts. Those records are rolled
+into the `network-runtime` summary root.
 The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported

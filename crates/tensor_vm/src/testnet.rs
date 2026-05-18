@@ -1638,8 +1638,10 @@ fn public_dns_host_is_well_formed(host: &str) -> bool {
     if host.is_empty() || host.len() > 253 {
         return false;
     }
+    let mut label_count = 0;
     let mut labels = host.split('.').peekable();
     while let Some(label) = labels.next() {
+        label_count += 1;
         if label.is_empty() || label.len() > 63 {
             return false;
         }
@@ -1657,7 +1659,7 @@ fn public_dns_host_is_well_formed(host: &str) -> bool {
             return false;
         }
     }
-    true
+    label_count >= 2
 }
 
 fn public_ipv4_is_external(ip: Ipv4Addr) -> bool {
@@ -4654,6 +4656,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             public_https_host("https://rpc.tensorvm.net:bad/health"),
             None
         );
+        assert_eq!(public_https_host("https://node/health"), None);
         assert_eq!(
             public_https_host("https://bad_host.tensorvm.net/health"),
             None
@@ -4745,6 +4748,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(public_host_is_external("8.8.8.8"));
         assert!(public_host_is_external("2001:4860:4860::8888"));
         assert!(!public_host_is_external(""));
+        assert!(!public_host_is_external("node"));
         assert!(!public_host_is_external("bad..tensorvm.net"));
         assert!(!public_host_is_external("123.456"));
         for host in [

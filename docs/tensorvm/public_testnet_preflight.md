@@ -21,10 +21,11 @@ The local preflight report checks:
 
 Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities,
 and each service's health and content URLs must use the same HTTPS authority. The local checker rejects
-userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
-localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, loopback,
-unspecified, private, and link-local IP addresses, including bracketed IPv6 loopback literals. Direct IP
-literals from documentation, shared-address, benchmarking, multicast, or reserved ranges are also rejected.
+userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed
+IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
+domains, loopback, unspecified, private, and link-local IP addresses, including bracketed IPv6 loopback
+literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or reserved
+ranges are also rejected.
 
 ## Manifest Format
 

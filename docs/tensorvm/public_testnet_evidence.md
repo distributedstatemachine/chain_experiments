@@ -41,11 +41,11 @@ A complete evidence bundle must include:
   observations for deployed RPC, explorer, faucet, and telemetry services
 
 A public `https://` evidence URI must use a well-formed external host authority. The local validator
-rejects userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6
-authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains,
-loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast, and
-reserved IP addresses. `ipfs://` and `ar://` publication URIs must start with a well-formed content
-identifier segment using only ASCII alphanumerics, `-`, or `_`.
+rejects userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed
+bracketed IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC
+example domains, loopback, unspecified, private, link-local, documentation, shared-address, benchmarking,
+multicast, and reserved IP addresses. `ipfs://` and `ar://` publication URIs must start with a
+well-formed content identifier segment using only ASCII alphanumerics, `-`, or `_`.
 
 ## Current Repository Evidence
 
@@ -92,11 +92,11 @@ bundle ID, record-set kind, external artifact URI, record root, and record count
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
 and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed external host authorities;
-userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
-localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, loopback,
-private, link-local, unspecified, documentation, shared-address, benchmarking, multicast, and reserved IP
-hosts are rejected. Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` or
-`ar://` identifiers with the same well-formed first-segment rule.
+userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed
+IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
+domains, loopback, private, link-local, unspecified, documentation, shared-address, benchmarking,
+multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator identity URIs
+may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
@@ -297,11 +297,12 @@ tvmd public-evidence network-observation \
 ```
 
 The command rejects zero operator IDs, malformed peer IDs, malformed libp2p multiaddrs, malformed DNS
-labels, and listen multiaddrs using localhost, `.local`, special-use DNS names, loopback, unspecified,
-private, link-local, documentation, shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects missing discovery/bootstrap
-observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its
-output is a signed `network_runtime_observation=...` line suitable for external aggregation into the
-`network-runtime` record summary.
+labels, single-label DNS hosts, and listen multiaddrs using localhost, `.local`, special-use DNS names,
+loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast, or
+reserved IP hosts. It also rejects missing discovery/bootstrap observations, missing gossip or
+request-response protocol counts, and missing DoS-control limits. Its output is a signed
+`network_runtime_observation=...` line suitable for external aggregation into the `network-runtime` record
+summary.
 
 Operators can also generate signed supporting-record summary lines, including the production libp2p
 network-observation summary required by full-spec evidence:

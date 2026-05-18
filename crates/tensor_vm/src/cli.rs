@@ -1409,8 +1409,10 @@ fn public_dns_host_is_well_formed(host: &str) -> bool {
     if host.is_empty() || host.len() > 253 {
         return false;
     }
+    let mut label_count = 0;
     let mut labels = host.split('.').peekable();
     while let Some(label) = labels.next() {
+        label_count += 1;
         if label.is_empty() || label.len() > 63 {
             return false;
         }
@@ -1428,7 +1430,7 @@ fn public_dns_host_is_well_formed(host: &str) -> bool {
             return false;
         }
     }
-    true
+    label_count >= 2
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -4226,8 +4228,10 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             &"/dns/node.tensorvm.net/tcp/4001".parse().unwrap()
         ));
         assert!(!public_dns_host_is_well_formed(""));
+        assert!(!public_dns_host_is_well_formed("node"));
         assert!(!public_dns_host_is_well_formed(&"a".repeat(254)));
         for address in [
+            "/dns/node/tcp/4001",
             "/dns/bad_host.tensorvm.net/tcp/4001",
             "/dns/-bad.tensorvm.net/tcp/4001",
             "/dns/bad-.tensorvm.net/tcp/4001",

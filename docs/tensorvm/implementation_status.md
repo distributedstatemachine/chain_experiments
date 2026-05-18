@@ -96,8 +96,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   considered independently checkable
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
   `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
-  private, link-local, special-use DNS, documentation, shared-address, benchmarking, multicast, reserved,
-  and malformed HTTPS authorities and requiring the planned public content paths used by post-run evidence
+  private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
+  multicast, reserved, and malformed HTTPS authorities and requiring the planned public content paths used
+  by post-run evidence
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
@@ -118,7 +119,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, and content roots,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
-  records with non-public multiaddr and malformed DNS-label rejection,
+  records with non-public multiaddr, malformed DNS-label, and single-label DNS rejection,
   `tvmd public-evidence record-summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
@@ -158,7 +159,7 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 98.90% workspace line coverage
-- 7339/7421 workspace lines covered
+- 7343/7425 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
@@ -195,8 +196,8 @@ These spec items require real deployment or non-reference infrastructure and are
   wrapper, `tvmd service init/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
-  public evidence validation now rejects local, private, special-use DNS, documentation, shared-address,
-  benchmarking, multicast, reserved, and malformed service URLs
+  public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,
+  shared-address, benchmarking, multicast, reserved, and malformed service URLs
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims
