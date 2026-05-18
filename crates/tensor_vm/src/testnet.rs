@@ -10,7 +10,7 @@ use crate::telemetry::TelemetrySnapshot;
 use crate::tensor::{DType, Tensor};
 use crate::tensor_server::TensorServer;
 use crate::txpool::TxPool;
-use crate::types::{Address, Hash, address, hash_bytes};
+use crate::types::{Address, Hash, Signature, address, hash_bytes, sign, verify_signature};
 use crate::validator::ValidatorNode;
 use std::collections::BTreeSet;
 
@@ -214,6 +214,17 @@ pub enum PublicServiceKind {
     Telemetry,
 }
 
+impl PublicServiceKind {
+    fn evidence_tag(self) -> &'static [u8] {
+        match self {
+            Self::Rpc => b"rpc",
+            Self::Explorer => b"explorer",
+            Self::Faucet => b"faucet",
+            Self::Telemetry => b"telemetry",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct PublicNetworkRuntimeEvidence {
     pub libp2p_runtime_used: bool,
@@ -241,19 +252,63 @@ pub struct PublicServiceEvidence {
     pub last_seen_block: u64,
     pub reachable_observation_count: u64,
     pub signed_health_check_count: u64,
+    pub health_check_signature: Signature,
 }
 
 impl PublicServiceEvidence {
+    pub fn new(
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        first_seen_block: u64,
+        last_seen_block: u64,
+        reachable_observation_count: u64,
+        signed_health_check_count: u64,
+    ) -> Self {
+        let message = public_service_health_message(
+            kind,
+            &endpoint_id,
+            first_seen_block,
+            last_seen_block,
+            reachable_observation_count,
+            signed_health_check_count,
+        );
+        Self {
+            kind,
+            endpoint_id,
+            first_seen_block,
+            last_seen_block,
+            reachable_observation_count,
+            signed_health_check_count,
+            health_check_signature: sign(&endpoint_id, &message),
+        }
+    }
+
     pub fn covers_run(&self, observed_blocks: u64) -> bool {
         observed_blocks == 0
             || (self.first_seen_block == 0
                 && self.last_seen_block.saturating_add(1) >= observed_blocks)
     }
 
+    pub fn signed_health_check_valid(&self) -> bool {
+        verify_signature(
+            &self.endpoint_id,
+            &public_service_health_message(
+                self.kind,
+                &self.endpoint_id,
+                self.first_seen_block,
+                self.last_seen_block,
+                self.reachable_observation_count,
+                self.signed_health_check_count,
+            ),
+            &self.health_check_signature,
+        )
+    }
+
     pub fn has_reachable_endpoint_proof(&self) -> bool {
         self.endpoint_id != [0; 32]
             && self.reachable_observation_count > 0
             && self.signed_health_check_count > 0
+            && self.signed_health_check_valid()
     }
 
     pub fn is_reachable_for_run(&self, observed_blocks: u64) -> bool {
@@ -325,6 +380,7 @@ pub struct PublicNodeEvidence {
     pub first_seen_block: u64,
     pub last_seen_block: u64,
     pub signed_heartbeat_count: u64,
+    pub heartbeat_signature: Signature,
 }
 
 impl PublicNodeEvidence {
@@ -369,7 +425,24 @@ impl PublicNodeEvidence {
     }
 
     pub fn has_external_operator_proof(&self) -> bool {
-        self.operator_id != [0; 32] && self.signed_heartbeat_count > 0
+        self.operator_id != [0; 32]
+            && self.signed_heartbeat_count > 0
+            && self.heartbeat_signature_valid()
+    }
+
+    pub fn heartbeat_signature_valid(&self) -> bool {
+        verify_signature(
+            &self.address,
+            &public_node_heartbeat_message(
+                &self.address,
+                &self.operator_id,
+                self.role,
+                self.first_seen_block,
+                self.last_seen_block,
+                self.signed_heartbeat_count,
+            ),
+            &self.heartbeat_signature,
+        )
     }
 
     fn new(
@@ -380,6 +453,14 @@ impl PublicNodeEvidence {
         last_seen_block: u64,
         signed_heartbeat_count: u64,
     ) -> Self {
+        let message = public_node_heartbeat_message(
+            &address,
+            &operator_id,
+            role,
+            first_seen_block,
+            last_seen_block,
+            signed_heartbeat_count,
+        );
         Self {
             address,
             operator_id,
@@ -387,6 +468,7 @@ impl PublicNodeEvidence {
             first_seen_block,
             last_seen_block,
             signed_heartbeat_count,
+            heartbeat_signature: sign(&address, &message),
         }
     }
 }
@@ -660,7 +742,7 @@ impl PublicEvidenceManifestBuilder {
 
 fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
     let fields: Vec<&str> = value.split(',').map(str::trim).collect();
-    if fields.len() != 6 {
+    if fields.len() != 7 {
         return Err(TvmError::InvalidReceipt("malformed node evidence"));
     }
     let address = parse_hash_hex(fields[1])?;
@@ -668,38 +750,49 @@ fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
     let first_seen_block = parse_manifest_u64(fields[3])?;
     let last_seen_block = parse_manifest_u64(fields[4])?;
     let signed_heartbeat_count = parse_manifest_u64(fields[5])?;
-    match fields[0] {
-        "miner" => Ok(PublicNodeEvidence::miner(
+    let heartbeat_signature = parse_hash_hex(fields[6])?;
+    let mut evidence = match fields[0] {
+        "miner" => PublicNodeEvidence::miner(
             address,
             operator_id,
             first_seen_block,
             last_seen_block,
             signed_heartbeat_count,
-        )),
-        "validator" => Ok(PublicNodeEvidence::validator(
+        ),
+        "validator" => PublicNodeEvidence::validator(
             address,
             operator_id,
             first_seen_block,
             last_seen_block,
             signed_heartbeat_count,
-        )),
-        _ => Err(TvmError::InvalidReceipt("unknown node evidence role")),
-    }
+        ),
+        _ => return Err(TvmError::InvalidReceipt("unknown node evidence role")),
+    };
+    evidence.heartbeat_signature = heartbeat_signature;
+    Ok(evidence)
 }
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
     let fields: Vec<&str> = value.split(',').map(str::trim).collect();
-    if fields.len() != 6 {
+    if fields.len() != 7 {
         return Err(TvmError::InvalidReceipt("malformed service evidence"));
     }
-    Ok(PublicServiceEvidence {
-        kind: parse_service_kind(fields[0])?,
-        endpoint_id: parse_hash_hex(fields[1])?,
-        first_seen_block: parse_manifest_u64(fields[2])?,
-        last_seen_block: parse_manifest_u64(fields[3])?,
-        reachable_observation_count: parse_manifest_u64(fields[4])?,
-        signed_health_check_count: parse_manifest_u64(fields[5])?,
-    })
+    let kind = parse_service_kind(fields[0])?;
+    let endpoint_id = parse_hash_hex(fields[1])?;
+    let first_seen_block = parse_manifest_u64(fields[2])?;
+    let last_seen_block = parse_manifest_u64(fields[3])?;
+    let reachable_observation_count = parse_manifest_u64(fields[4])?;
+    let signed_health_check_count = parse_manifest_u64(fields[5])?;
+    let mut evidence = PublicServiceEvidence::new(
+        kind,
+        endpoint_id,
+        first_seen_block,
+        last_seen_block,
+        reachable_observation_count,
+        signed_health_check_count,
+    );
+    evidence.health_check_signature = parse_hash_hex(fields[6])?;
+    Ok(evidence)
 }
 
 fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
@@ -784,6 +877,62 @@ fn public_https_host(url: &str) -> Option<&str> {
     let host_with_port = rest.split('/').next().unwrap_or_default();
     let host = host_with_port.split(':').next().unwrap_or(host_with_port);
     (!host.is_empty()).then_some(host)
+}
+
+fn public_node_role_tag(role: PublicNodeRole) -> &'static [u8] {
+    match role {
+        PublicNodeRole::Miner => b"miner",
+        PublicNodeRole::Validator => b"validator",
+    }
+}
+
+fn public_node_heartbeat_message(
+    address: &Address,
+    operator_id: &Hash,
+    role: PublicNodeRole,
+    first_seen_block: u64,
+    last_seen_block: u64,
+    signed_heartbeat_count: u64,
+) -> Hash {
+    let first_seen = first_seen_block.to_le_bytes();
+    let last_seen = last_seen_block.to_le_bytes();
+    let heartbeat_count = signed_heartbeat_count.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-node-heartbeat-v1",
+        &[
+            address,
+            operator_id,
+            public_node_role_tag(role),
+            &first_seen,
+            &last_seen,
+            &heartbeat_count,
+        ],
+    )
+}
+
+fn public_service_health_message(
+    kind: PublicServiceKind,
+    endpoint_id: &Hash,
+    first_seen_block: u64,
+    last_seen_block: u64,
+    reachable_observation_count: u64,
+    signed_health_check_count: u64,
+) -> Hash {
+    let first_seen = first_seen_block.to_le_bytes();
+    let last_seen = last_seen_block.to_le_bytes();
+    let reachable_count = reachable_observation_count.to_le_bytes();
+    let signed_count = signed_health_check_count.to_le_bytes();
+    hash_bytes(
+        b"tensor-vm-public-service-health-v1",
+        &[
+            kind.evidence_tag(),
+            endpoint_id,
+            &first_seen,
+            &last_seen,
+            &reachable_count,
+            &signed_count,
+        ],
+    )
 }
 
 impl PublicTestnetEvidenceBundle {
@@ -1306,14 +1455,14 @@ mod tests {
         first_seen_block: u64,
         last_seen_block: u64,
     ) -> PublicServiceEvidence {
-        PublicServiceEvidence {
+        PublicServiceEvidence::new(
             kind,
-            endpoint_id: hash_bytes(b"test", &[label]),
+            hash_bytes(b"test", &[label]),
             first_seen_block,
             last_seen_block,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        }
+            10,
+            10,
+        )
     }
 
     fn deployed_public_services(last_seen_block: u64) -> Vec<PublicServiceEvidence> {
@@ -1401,6 +1550,26 @@ mod tests {
         hex(&address(label))
     }
 
+    fn manifest_node_signature(
+        role: PublicNodeRole,
+        address_label: &[u8],
+        operator_label: &[u8],
+    ) -> String {
+        let node_address = address(address_label);
+        let operator_id = hash_bytes(b"test", &[operator_label]);
+        let node = match role {
+            PublicNodeRole::Miner => PublicNodeEvidence::miner(node_address, operator_id, 0, 9, 10),
+            PublicNodeRole::Validator => {
+                PublicNodeEvidence::validator(node_address, operator_id, 0, 9, 10)
+            }
+        };
+        hex(&node.heartbeat_signature)
+    }
+
+    fn manifest_service_signature(kind: PublicServiceKind, label: &[u8]) -> String {
+        hex(&public_service(kind, label, 0, 9).health_check_signature)
+    }
+
     fn complete_public_evidence_manifest_text() -> String {
         format!(
             "\
@@ -1427,25 +1596,36 @@ available_receipts=19
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
 reward_settlement_records=1
-node=miner,{},{},0,9,10
-node=miner,{},{},0,9,10
-node=validator,{},{},0,9,10
-service=rpc,{},0,9,10,10
-service=explorer,{},0,9,10,10
-service=faucet,{},0,9,10,10
-service=telemetry,{},0,9,10,10
+node=miner,{},{},0,9,10,{}
+node=miner,{},{},0,9,10,{}
+node=validator,{},{},0,9,10,{}
+service=rpc,{},0,9,10,10,{}
+service=explorer,{},0,9,10,10,{}
+service=faucet,{},0,9,10,10,{}
+service=telemetry,{},0,9,10,10,{}
 ",
             manifest_hash(b"test", b"public-evidence-bundle"),
             manifest_address(b"miner-a"),
             manifest_hash(b"test", b"miner-a-operator"),
+            manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
             manifest_address(b"miner-b"),
             manifest_hash(b"test", b"miner-b-operator"),
+            manifest_node_signature(PublicNodeRole::Miner, b"miner-b", b"miner-b-operator"),
             manifest_address(b"validator-a"),
             manifest_hash(b"test", b"validator-a-operator"),
+            manifest_node_signature(
+                PublicNodeRole::Validator,
+                b"validator-a",
+                b"validator-a-operator"
+            ),
             manifest_hash(b"test", b"rpc-service"),
+            manifest_service_signature(PublicServiceKind::Rpc, b"rpc-service"),
             manifest_hash(b"test", b"explorer-service"),
+            manifest_service_signature(PublicServiceKind::Explorer, b"explorer-service"),
             manifest_hash(b"test", b"faucet-service"),
+            manifest_service_signature(PublicServiceKind::Faucet, b"faucet-service"),
             manifest_hash(b"test", b"telemetry-service"),
+            manifest_service_signature(PublicServiceKind::Telemetry, b"telemetry-service"),
         )
     }
 
@@ -1692,7 +1872,13 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(insufficient.has_reward_settlement_records);
         assert!(!insufficient.public_criterion_met);
 
-        run.nodes[1].operator_id = hash_bytes(b"test", &[b"miner-b-operator"]);
+        run.nodes[1] = PublicNodeEvidence::miner(
+            address(b"miner-b"),
+            hash_bytes(b"test", &[b"miner-b-operator"]),
+            0,
+            9,
+            10,
+        );
         let no_external_flag = run.evaluate(&criteria, 6, false);
         assert!(!no_external_flag.external_operator_evidence);
         assert!(!no_external_flag.public_criterion_met);
@@ -1709,6 +1895,13 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(sufficient.has_production_libp2p_runtime);
         assert!(sufficient.has_deployed_public_services);
         assert!(sufficient.public_criterion_met);
+
+        let mut tampered_heartbeat = run.clone();
+        tampered_heartbeat.nodes[0].heartbeat_signature = [7; 32];
+        let tampered_heartbeat = tampered_heartbeat.evaluate(&criteria, 6, true);
+        assert_eq!(tampered_heartbeat.miner_count, 1);
+        assert!(!tampered_heartbeat.has_required_miners);
+        assert!(!tampered_heartbeat.public_criterion_met);
 
         run.invalid_receipts_rejected = 1;
         let accepted_invalid_work = run.evaluate(&criteria, 6, true);
@@ -1772,6 +1965,13 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,true,true
         assert!(complete.has_deployed_telemetry_service);
         assert!(complete.has_deployed_public_services);
         assert!(complete.public_criterion_met);
+
+        run.services[0].health_check_signature = [8; 32];
+        let tampered_rpc_health = run.evaluate(&criteria, 6, true);
+        assert!(!tampered_rpc_health.has_deployed_rpc_service);
+        assert!(!tampered_rpc_health.has_deployed_public_services);
+        assert!(!tampered_rpc_health.public_criterion_met);
+        run.services = deployed_public_services(9);
 
         run.network_runtime.request_response_observed = false;
         let no_request_response = run.evaluate(&criteria, 6, true);

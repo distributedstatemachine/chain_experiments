@@ -35,13 +35,18 @@ The local reference crate exposes typed validation for this future bundle throug
 - `PublicTestnetEvidenceBundle`, which additionally checks publication, signatures, auditors, and
   independently checkable supporting records
 
-The current local reference implementation and docs do not satisfy this bundle requirement.
+The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
+validator requires signed node-heartbeat summaries and signed service-health summaries, but those local
+signature checks are only evidence-format validation until an external run publishes real records.
 
 ## Manifest Format
 
 External evidence can be represented as a line-oriented manifest parsed by
 `parse_public_testnet_evidence_manifest`. Blank lines and `#` comments are ignored. Hash values are
-64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`.
+64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Heartbeat
+signatures cover the node role, address, operator ID, first/last observed block, and heartbeat count.
+Service-health signatures cover the service kind, endpoint ID, first/last observed block, reachable
+observation count, and signed health-check count.
 
 ```text
 version=tensor-vm-public-testnet-evidence-v1
@@ -65,12 +70,12 @@ available_receipts=1000
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
 reward_settlement_records=1
-node=miner,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>
-node=validator,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>
-service=rpc,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>
-service=explorer,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>
-service=faucet,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>
-service=telemetry,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>
+node=miner,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
+node=validator,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
+service=rpc,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=explorer,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=faucet,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=telemetry,<endpoint-id-hex>,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
 ```
 
 The CLI reads a manifest file and reports the default full-spec evidence status:

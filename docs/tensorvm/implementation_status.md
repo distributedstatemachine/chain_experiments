@@ -75,10 +75,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   missing quorum, missing redundant agreement, and conflicting learning-state transitions
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
-- Typed public-testnet run evidence evaluation for distinct miner/validator operators, signed node
-  heartbeats, observed block continuity, finality rate, data-availability rate, invalid-work rejection
-  evidence, reward-settlement records, production libp2p runtime evidence, and deployed
-  RPC/explorer/faucet/telemetry service reachability
+- Typed public-testnet run evidence evaluation for distinct miner/validator operators,
+  signature-verified node heartbeat summaries, observed block continuity, finality rate,
+  data-availability rate, invalid-work rejection evidence, reward-settlement records, production libp2p
+  runtime evidence, and deployed RPC/explorer/faucet/telemetry service reachability with signed
+  health-check summaries
 - Typed public-testnet evidence-bundle evaluation that additionally requires a public manifest location,
   signatures, independent auditor records, block/finality history, operator attestations, and
   data-availability measurement records before full-spec evidence can be considered independently checkable
@@ -108,8 +109,8 @@ The workspace currently has 177 passing library tests under Tarpaulin:
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.54% workspace line coverage
-- 5519/5601 workspace lines covered
+- 98.56% workspace line coverage
+- 5599/5681 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:

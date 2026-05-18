@@ -275,6 +275,7 @@ mod tests {
     use crate::hash::hex;
     use crate::testnet::{
         PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
+        PublicNodeEvidence, PublicNodeRole, PublicServiceEvidence, PublicServiceKind,
     };
     use crate::types::{address, hash_bytes};
 
@@ -284,6 +285,27 @@ mod tests {
 
     fn manifest_address(label: &[u8]) -> String {
         hex(&address(label))
+    }
+
+    fn manifest_node_signature(
+        role: PublicNodeRole,
+        address_label: &[u8],
+        operator_label: &[u8],
+    ) -> String {
+        let node_address = address(address_label);
+        let operator_id = hash_bytes(b"test", &[operator_label]);
+        let node = match role {
+            PublicNodeRole::Miner => PublicNodeEvidence::miner(node_address, operator_id, 0, 9, 10),
+            PublicNodeRole::Validator => {
+                PublicNodeEvidence::validator(node_address, operator_id, 0, 9, 10)
+            }
+        };
+        hex(&node.heartbeat_signature)
+    }
+
+    fn manifest_service_signature(kind: PublicServiceKind, label: &[u8]) -> String {
+        let service = PublicServiceEvidence::new(kind, hash_bytes(b"test", &[label]), 0, 9, 10, 10);
+        hex(&service.health_check_signature)
     }
 
     fn evidence_manifest() -> String {
@@ -310,25 +332,36 @@ available_receipts=19
 invalid_receipts_submitted=1
 invalid_receipts_rejected=1
 reward_settlement_records=1
-node=miner,{},{},0,9,10
-node=miner,{},{},0,9,10
-node=validator,{},{},0,9,10
-service=rpc,{},0,9,10,10
-service=explorer,{},0,9,10,10
-service=faucet,{},0,9,10,10
-service=telemetry,{},0,9,10,10
+node=miner,{},{},0,9,10,{}
+node=miner,{},{},0,9,10,{}
+node=validator,{},{},0,9,10,{}
+service=rpc,{},0,9,10,10,{}
+service=explorer,{},0,9,10,10,{}
+service=faucet,{},0,9,10,10,{}
+service=telemetry,{},0,9,10,10,{}
 ",
             manifest_hash(b"public-evidence-bundle"),
             manifest_address(b"miner-a"),
             manifest_hash(b"miner-a-operator"),
+            manifest_node_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
             manifest_address(b"miner-b"),
             manifest_hash(b"miner-b-operator"),
+            manifest_node_signature(PublicNodeRole::Miner, b"miner-b", b"miner-b-operator"),
             manifest_address(b"validator-a"),
             manifest_hash(b"validator-a-operator"),
+            manifest_node_signature(
+                PublicNodeRole::Validator,
+                b"validator-a",
+                b"validator-a-operator"
+            ),
             manifest_hash(b"rpc-service"),
+            manifest_service_signature(PublicServiceKind::Rpc, b"rpc-service"),
             manifest_hash(b"explorer-service"),
+            manifest_service_signature(PublicServiceKind::Explorer, b"explorer-service"),
             manifest_hash(b"faucet-service"),
+            manifest_service_signature(PublicServiceKind::Faucet, b"faucet-service"),
             manifest_hash(b"telemetry-service"),
+            manifest_service_signature(PublicServiceKind::Telemetry, b"telemetry-service"),
         )
     }
 
