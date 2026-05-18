@@ -191,14 +191,15 @@ scientific workloads
 
 ---
 
-### 4.5 Security Gates Before Public Testnet
+### 4.5 Gate 0: First MVP Acceptance Gate
 
-Gate 0 is the first non-skippable gate: a local CPU multi-participant testnet. Before CUDA acceleration,
-production deployment, public-run evidence, or any adversarial public-testnet claim can count, the
-default-feature CPU reference path must run a local TensorVM testnet with multiple independently
-instantiated miners and validators. This gate must use canonical CPU semantics and the mandatory libp2p
-node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking shims,
-in-memory propagation substitutes, or single-participant shortcuts.
+Gate 0 is the first non-skippable MVP acceptance gate: a local CPU multi-participant testnet. Before any
+other local acceptance claim, CUDA acceleration, production deployment, public-run evidence, or
+adversarial public-testnet claim can count, the default-feature CPU reference path must run a local
+TensorVM testnet with multiple independently instantiated miners and validators. This gate must use
+canonical CPU semantics and the mandatory libp2p node runtime; it cannot be satisfied by CUDA kernels,
+simulations, local-only networking shims, in-memory propagation substitutes, or single-participant
+shortcuts.
 
 Required Gate 0 command from the repository root:
 
@@ -218,6 +219,9 @@ data availability through the local tensor server path
 mandatory libp2p node startup and propagation paths under default features
 explicit proof that this CPU gate is not public-run evidence and does not satisfy the 7-day deployment gate
 ```
+
+Gate 0 must be executed first when starting or resuming MVP work. Later acceptance criteria may be
+implemented and tested only after this local CPU multi-participant gate is passing in the current codebase.
 
 The MVP must pass these gates before it is treated as a public adversarial testnet:
 
@@ -1993,7 +1997,8 @@ The agent should execute this loop until the contract is satisfied:
 ```text
 1. compare code and docs against Sections 32, 33, and 35
 2. list missing local-reference items and missing deployment-gated items
-3. run the Gate 0 CPU local-testnet command before CUDA, public preflight, public evidence, or deployment-gated work can count
+3. run the Gate 0 CPU local-testnet command as the first acceptance gate before any other local,
+   CUDA, public preflight, public evidence, or deployment-gated work can count
 4. implement one coherent missing local-reference slice
 5. add or update focused tests for that slice
 6. run cargo fmt --check --all
@@ -2034,9 +2039,9 @@ Local reference completion requires:
 
 ```text
 all modules listed in the recommended internal module structure exist or have documented replacements
-Gate 0 CPU local multi-participant testnet passes with cargo test -p tensor_vm local_testnet --release,
-using canonical CPU semantics, mandatory libp2p node paths, separate participant identities/endpoints,
-and no simulations or local-only networking shims
+Gate 0 CPU local multi-participant testnet is the first satisfied local-reference gate and passes with
+cargo test -p tensor_vm local_testnet --release, using canonical CPU semantics, mandatory libp2p node
+paths, separate participant identities/endpoints, and no simulations or local-only networking shims
 all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing tests
 Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
 not yet complete
