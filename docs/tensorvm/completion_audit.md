@@ -76,17 +76,17 @@ The objective decomposes into these deliverables:
 
 These are not satisfied by local tests or manifests alone:
 
-- independently checkable public-run evidence must show production libp2p was used for discovery, gossip,
-  and request/response propagation
-- RPC, explorer, faucet, and telemetry must be deployed outside the local harness
-- a public testnet must run for 7 consecutive days with independent external miner and validator operators
-- the public evidence bundle must include a signed wall-clock run window, signed node heartbeats,
-  block/finality history, signed independent-auditor records, operator attestations, data-availability
-  measurements, invalid-work rejection evidence, reward-settlement records, signed per-operator production
-  libp2p network-observation records that aggregate to the network-runtime root, signed external raw-record artifact locators, signed deployed-service health
-  records that cover the observed block count, and signed deployed-service content-root records bound to
-  external HTTPS URLs with distinct deployed service endpoint IDs and distinct service-content roots
-- the external evidence bundle must be published and linked from [`implementation_status.md`](implementation_status.md)
+| Missing full-spec artifact | Required evidence | Current repository evidence | Blocker |
+| --- | --- | --- | --- |
+| Production public libp2p operation | Signed per-operator `network_runtime_observation=...` records for every counted public miner and validator operator, proving discovery, gossip, request/response, and DoS controls, with roots aggregated into the signed network-runtime summary | Local runtime wiring, CLI record generation, manifest validation, and non-full-spec examples | Needs external observers and public libp2p addresses from a real run |
+| Deployed RPC service | External HTTPS RPC endpoint, signed service-health record, signed `/chain/head` content-root record, matching endpoint ID and authority | `tvmd service serve`, nginx/systemd templates, local route tests, and service-content verifier | Needs owned public DNS/TLS and a reachable deployed service |
+| Deployed explorer service | External HTTPS explorer endpoint, signed service-health record, signed `/explorer` content-root record, matching endpoint ID and authority | Local explorer route, nginx/systemd templates, and service-content verifier | Needs owned public DNS/TLS and a reachable deployed service |
+| Deployed faucet service | External HTTPS faucet endpoint, signed service-health record, signed `/faucet/page` content-root record, matching endpoint ID and authority | Local faucet route, nginx/systemd templates, and service-content verifier | Needs owned public DNS/TLS and a reachable deployed service |
+| Deployed telemetry service | External HTTPS telemetry endpoint, signed service-health record, signed `/telemetry/dashboard` content-root record, matching endpoint ID and authority | Local telemetry route, nginx/systemd templates, and service-content verifier | Needs owned public DNS/TLS and a reachable deployed service |
+| 7-day public testnet run | Signed wall-clock run window of at least 604800 seconds, at least 100800 observed blocks at default block time, 10 independent miners, and 5 independent validators | Gate 0 local CPU multi-participant testnet and AC13 evidence validator | Needs independent external operators and a completed public run |
+| Raw supporting records | External artifact locators signed against every block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary root | CLI generators and validator support for `record_artifact=...` lines | Needs published raw records from the external run |
+| Independent audit records | Signed auditor records whose auditor IDs differ from the manifest signer and whose observations occur at or after the run end | CLI generator and manifest validation | Needs independent external auditors or verifiers |
+| Published evidence bundle | Public `https://`, `ipfs://`, or `ar://` manifest URI that validates with `public_evidence_full_spec=true` and is linked from [`implementation_status.md`](implementation_status.md) | Manifest format, parser, validator, and non-full-spec example | Needs the completed external run bundle to be published |
 
 Local evidence validators reject malformed HTTPS authorities, userinfo, whitespace, invalid DNS host
 labels, invalid ports, missing HTTPS evidence paths, HTTPS evidence query strings or fragments, localhost,
