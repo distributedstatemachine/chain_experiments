@@ -1374,6 +1374,7 @@ fn public_dns_host(host: &str) -> bool {
         || host == "localhost"
         || host.ends_with(".localhost")
         || host.ends_with(".local")
+        || special_use_dns_name(&host)
         || host.contains('@')
         || host
             .bytes()
@@ -1386,6 +1387,22 @@ fn public_dns_host(host: &str) -> bool {
         Ok(IpAddr::V6(ip)) => public_ipv6(ip),
         Err(_) => true,
     }
+}
+
+fn special_use_dns_name(host: &str) -> bool {
+    host == "local"
+        || host == "test"
+        || host == "example"
+        || host == "invalid"
+        || host == "example.com"
+        || host == "example.net"
+        || host == "example.org"
+        || host.ends_with(".example.com")
+        || host.ends_with(".example.net")
+        || host.ends_with(".example.org")
+        || host.ends_with(".test")
+        || host.ends_with(".example")
+        || host.ends_with(".invalid")
 }
 
 pub fn validate_public_evidence_manifest(input: &str) -> Result<String> {
@@ -1678,7 +1695,7 @@ mod tests {
     }
 
     fn manifest_operator_identity_uri(operator_id: &Hash) -> String {
-        format!("https://operators.tensorvm.example/{}", hex(operator_id))
+        format!("https://operators.tensorvm.net/{}", hex(operator_id))
     }
 
     fn manifest_operator_signature(
@@ -1700,10 +1717,10 @@ mod tests {
 
     fn public_service_url(kind: PublicServiceKind) -> &'static str {
         match kind {
-            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/health",
-            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/health",
-            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/health",
-            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.example/health",
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.net/health",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.net/health",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.net/health",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.net/health",
         }
     }
 
@@ -1725,12 +1742,10 @@ mod tests {
 
     fn public_service_content_url(kind: PublicServiceKind) -> &'static str {
         match kind {
-            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/chain/head",
-            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/explorer",
-            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/faucet/page",
-            PublicServiceKind::Telemetry => {
-                "https://telemetry.tensorvm.example/telemetry/dashboard"
-            }
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.net/chain/head",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.net/explorer",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.net/faucet/page",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.net/telemetry/dashboard",
         }
     }
 
@@ -1776,7 +1791,7 @@ mod tests {
     fn manifest_publication_signature() -> String {
         let publication = PublicEvidencePublication::new(
             hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            String::from("https://example.test/tensorvm/public-evidence.json"),
+            String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
             address(b"public-evidence-publisher"),
             1,
             1,
@@ -1787,7 +1802,7 @@ mod tests {
     fn manifest_publication() -> PublicEvidencePublication {
         PublicEvidencePublication::new(
             hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            String::from("https://example.test/tensorvm/public-evidence.json"),
+            String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
             address(b"public-evidence-publisher"),
             1,
             1,
@@ -1796,7 +1811,7 @@ mod tests {
 
     fn manifest_auditor_uri() -> String {
         format!(
-            "https://auditors.tensorvm.example/{}/0",
+            "https://auditors.tensorvm.net/{}/0",
             manifest_hash(b"public-evidence-bundle")
         )
     }
@@ -1805,7 +1820,7 @@ mod tests {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let record = PublicEvidenceAuditorRecord::new(
             &bundle_id,
-            "https://example.test/tensorvm/public-evidence.json",
+            "https://tensorvm.net/tensorvm/public-evidence.json",
             address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
             1_700_000_000,
@@ -1820,7 +1835,7 @@ mod tests {
     ) -> String {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let artifact_uri = format!(
-            "https://evidence.tensorvm.example/{}/{}.json",
+            "https://evidence.tensorvm.net/{}/{}.json",
             manifest_hash(b"public-evidence-bundle"),
             public_evidence_record_kind_tag(kind)
         );
@@ -1968,7 +1983,7 @@ mod tests {
             "\
 version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
 bundle_id={}
-public_uri=https://example.test/tensorvm/public-evidence.json
+public_uri=https://tensorvm.net/tensorvm/public-evidence.json
 manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
@@ -2019,10 +2034,10 @@ reward_settlement_signature={}
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
-service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
-service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
-service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
+service=rpc,{},https://rpc.tensorvm.net/health,/health,0,9,10,10,{}
+service=explorer,{},https://explorer.tensorvm.net/health,/health,0,9,10,10,{}
+service=faucet,{},https://faucet.tensorvm.net/health,/health,0,9,10,10,{}
+service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
 {}
 {}
 {}
@@ -2137,10 +2152,10 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,{},https://rpc.tensorvm.example/health,/health,https://rpc.tensorvm.example/chain/head,/chain/head,true,true
-service=explorer,{},https://explorer.tensorvm.example/health,/health,https://explorer.tensorvm.example/explorer,/explorer,true,true
-service=faucet,{},https://faucet.tensorvm.example/health,/health,https://faucet.tensorvm.example/faucet/page,/faucet/page,true,true
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true
+service=rpc,{},https://rpc.tensorvm.net/health,/health,https://rpc.tensorvm.net/chain/head,/chain/head,true,true
+service=explorer,{},https://explorer.tensorvm.net/health,/health,https://explorer.tensorvm.net/explorer,/explorer,true,true
+service=faucet,{},https://faucet.tensorvm.net/health,/health,https://faucet.tensorvm.net/faucet/page,/faucet/page,true,true
+service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true
 ",
             manifest_hash(b"rpc-service"),
             manifest_hash(b"explorer-service"),
@@ -2237,7 +2252,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--bundle-id",
                 &bundle_id,
                 "--public-uri",
-                "https://example.test/tensorvm/public-evidence.json",
+                "https://tensorvm.net/tensorvm/public-evidence.json",
                 "--manifest-signer",
                 &manifest_signer,
                 "--manifest-signature-count",
@@ -2248,7 +2263,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             .unwrap(),
             CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
@@ -2261,7 +2276,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--bundle-id",
                 &bundle_id,
                 "--public-uri",
-                "https://example.test/tensorvm/public-evidence.json",
+                "https://tensorvm.net/tensorvm/public-evidence.json",
                 "--auditor-id",
                 &manifest_address(b"public-evidence-auditor-0"),
                 "--audit-uri",
@@ -2272,7 +2287,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             .unwrap(),
             CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -2340,7 +2355,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--operator-id",
                 &manifest_hash(b"miner-a-operator"),
                 "--identity-uri",
-                "https://operators.tensorvm.example/miner-a",
+                "https://operators.tensorvm.net/miner-a",
                 "--observed-at",
                 "1700000000",
             ])
@@ -2349,7 +2364,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 role: PublicNodeRole::Miner,
                 address: address(b"miner-a"),
                 operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
             }
         );
@@ -2363,7 +2378,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--endpoint-id",
                 &endpoint_id,
                 "--public-url",
-                "https://rpc.tensorvm.example/health",
+                "https://rpc.tensorvm.net/health",
                 "--health-path",
                 "/health",
                 "--first-block",
@@ -2379,7 +2394,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -2397,7 +2412,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--endpoint-id",
                 &endpoint_id,
                 "--public-url",
-                "https://rpc.tensorvm.example/chain/head",
+                "https://rpc.tensorvm.net/chain/head",
                 "--content-path",
                 "/chain/head",
                 "--content-root",
@@ -2411,7 +2426,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
                 content_path: "/chain/head".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service-content"]),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -2428,7 +2443,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--peer-id",
                 &peer_id,
                 "--listen-address",
-                "/dns/node-a.tensorvm.example/tcp/4001",
+                "/dns/node-a.tensorvm.net/tcp/4001",
                 "--observed-at",
                 "1700000000",
                 "--gossip-topics",
@@ -2450,7 +2465,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             CliCommand::PublicEvidenceNetworkObservation {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 peer_id,
-                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
                 request_response_protocol_count: 3,
@@ -2497,7 +2512,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--manifest-signer",
                 &manifest_signer,
                 "--artifact-uri",
-                "https://evidence.tensorvm.example/network-runtime.json",
+                "https://evidence.tensorvm.net/network-runtime.json",
                 "--record-root",
                 &record_root,
                 "--record-count",
@@ -2508,7 +2523,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 4,
             }
@@ -2654,36 +2669,36 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             describe_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
                 reachable_observation_count: 10,
                 signed_health_check_count: 10,
             }),
-            "generate rpc service health evidence public_url=https://rpc.tensorvm.example/health health_path=/health"
+            "generate rpc service health evidence public_url=https://rpc.tensorvm.net/health health_path=/health"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Explorer,
                 endpoint_id: hash_bytes(b"test", &[b"explorer-service"]),
-                public_url: "https://explorer.tensorvm.example/explorer".to_owned(),
+                public_url: "https://explorer.tensorvm.net/explorer".to_owned(),
                 content_path: "/explorer".to_owned(),
                 content_root: hash_bytes(b"test", &[b"explorer-service-content"]),
                 observed_at_unix_seconds: 1_700_000_000,
                 min_content_bytes: 64,
             }),
-            "generate explorer service content evidence public_url=https://explorer.tensorvm.example/explorer content_path=/explorer"
+            "generate explorer service content evidence public_url=https://explorer.tensorvm.net/explorer content_path=/explorer"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
             }),
-            "generate public evidence publication signature public_uri=https://example.test/tensorvm/public-evidence.json"
+            "generate public evidence publication signature public_uri=https://tensorvm.net/tensorvm/public-evidence.json"
         );
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceRunWindow {
@@ -2698,7 +2713,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -2746,18 +2761,18 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 4,
             }),
-            "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.example/network-runtime.json"
+            "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
         );
         let peer_id = PeerId::random().to_string();
         assert_eq!(
             describe_command(&CliCommand::PublicEvidenceNetworkObservation {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 peer_id: peer_id.clone(),
-                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
                 request_response_protocol_count: 3,
@@ -2768,7 +2783,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 idle_connection_timeout_seconds: 60,
             }),
             format!(
-                "generate signed libp2p network observation peer_id={peer_id} listen_address=/dns/node-a.tensorvm.example/tcp/4001"
+                "generate signed libp2p network observation peer_id={peer_id} listen_address=/dns/node-a.tensorvm.net/tcp/4001"
             )
         );
 
@@ -2803,11 +2818,11 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 role: PublicNodeRole::Miner,
                 address: address(b"miner-a"),
                 operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
             }),
             format!(
-                "generate miner operator identity attestation address={} identity_uri=https://operators.tensorvm.example/miner-a",
+                "generate miner operator identity attestation address={} identity_uri=https://operators.tensorvm.net/miner-a",
                 manifest_address(b"miner-a")
             )
         );
@@ -2925,7 +2940,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
 
         let publication = execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+            public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
             manifest_signature_count: 1,
             independent_auditor_count: 1,
@@ -2936,7 +2951,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             manifest_hash(b"public-evidence-bundle")
         )));
         assert!(
-            publication.contains("public_uri=https://example.test/tensorvm/public-evidence.json")
+            publication.contains("public_uri=https://tensorvm.net/tensorvm/public-evidence.json")
         );
         assert!(publication.contains(&format!(
             "manifest_signer={}",
@@ -2952,7 +2967,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let auditor_record =
             execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3045,7 +3060,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -3054,7 +3069,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             })
             .unwrap();
         assert!(service_health.starts_with("service=rpc,"));
-        assert!(service_health.contains("https://rpc.tensorvm.example/health,/health,0,9,10,10"));
+        assert!(service_health.contains("https://rpc.tensorvm.net/health,/health,0,9,10,10"));
         assert!(service_health.ends_with(&manifest_service_signature(
             PublicServiceKind::Rpc,
             b"rpc-service"
@@ -3097,7 +3112,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             })
             .unwrap();
         assert!(service_content.starts_with("service_content=rpc,"));
-        assert!(service_content.contains("https://rpc.tensorvm.example/chain/head,/chain/head"));
+        assert!(service_content.contains("https://rpc.tensorvm.net/chain/head,/chain/head"));
         assert_eq!(
             service_content,
             manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service")
@@ -3108,7 +3123,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceNetworkObservation {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 peer_id: peer_id.clone(),
-                listen_address: "/dns/node-a.tensorvm.example/tcp/4001".to_owned(),
+                listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
                 request_response_protocol_count: 3,
@@ -3122,7 +3137,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let observation_input = NetworkObservationEvidenceLine {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: &peer_id,
-            listen_address: "/dns/node-a.tensorvm.example/tcp/4001",
+            listen_address: "/dns/node-a.tensorvm.net/tcp/4001",
             observed_at_unix_seconds: 1_700_000_000,
             gossip_topic_count: 5,
             request_response_protocol_count: 3,
@@ -3135,7 +3150,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         let observation_root = network_observation_root(
             &observation_input,
             &peer_id,
-            "/dns/node-a.tensorvm.example/tcp/4001",
+            "/dns/node-a.tensorvm.net/tcp/4001",
         );
         let observation_signature = hash_bytes(
             b"tensor-vm-network-runtime-observation-signature-v1",
@@ -3144,7 +3159,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert_eq!(
             network_observation,
             format!(
-                "network_runtime_observation={},{peer_id},/dns/node-a.tensorvm.example/tcp/4001,1700000000,5,3,2,1048576,10,128,60,{},{}",
+                "network_runtime_observation={},{peer_id},/dns/node-a.tensorvm.net/tcp/4001,1700000000,5,3,2,1048576,10,128,60,{},{}",
                 hex(&observation_input.operator_id),
                 hex(&observation_root),
                 hex(&observation_signature)
@@ -3215,7 +3230,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             );
 
             let artifact_uri = format!(
-                "https://evidence.tensorvm.example/{}/{}.json",
+                "https://evidence.tensorvm.net/{}/{}.json",
                 manifest_hash(b"public-evidence-bundle"),
                 public_evidence_record_kind_tag(kind)
             );
@@ -3405,7 +3420,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             }
         };
         let operator_id = hash_bytes(b"test", &[b"network-operator"]);
-        let public_listen_address = "/dns/node-a.tensorvm.example/tcp/4001".to_owned();
+        let public_listen_address = "/dns/node-a.tensorvm.net/tcp/4001".to_owned();
         for invalid in [
             make_network_observation(
                 [0; 32],
@@ -3564,7 +3579,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.example.test/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -3577,7 +3605,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -3590,7 +3618,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 10,
                 last_seen_block: 9,
@@ -3603,7 +3631,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: [0; 32],
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -3616,7 +3644,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/health".to_owned(),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
                 last_seen_block: 9,
@@ -3641,7 +3669,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
                 content_path: "chain/head".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3653,7 +3681,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
                 content_path: "/chain/head".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3665,7 +3693,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/wrong".to_owned(),
+                public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
                 content_path: "/wrong".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3677,7 +3705,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
                 content_path: "/chain/head".to_owned(),
                 content_root: [0; 32],
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3689,11 +3717,21 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-                public_url: "https://rpc.tensorvm.example/chain/head".to_owned(),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
                 content_path: "/chain/head".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 0,
                 min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://evidence.tensorvm.example/public-evidence.json".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
             })
             .is_err()
         );
@@ -3710,7 +3748,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: [0; 32],
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
@@ -3720,7 +3758,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: [0; 32],
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
@@ -3730,7 +3768,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 0,
                 independent_auditor_count: 1,
@@ -3740,7 +3778,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
                 manifest_signature_count: 1,
                 independent_auditor_count: 0,
@@ -3750,7 +3788,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: [0; 32],
                 audit_uri: manifest_auditor_uri(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3770,7 +3808,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: "https://localhost/audit.json".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -3780,7 +3818,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                public_uri: "https://example.test/tensorvm/public-evidence.json".to_owned(),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
                 observed_at_unix_seconds: 0,
@@ -3876,7 +3914,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 role: PublicNodeRole::Miner,
                 address: [0; 32],
                 operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
             })
             .is_err()
@@ -3886,7 +3924,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 role: PublicNodeRole::Miner,
                 address: address(b"miner-a"),
                 operator_id: [0; 32],
-                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
             })
             .is_err()
@@ -3906,7 +3944,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 role: PublicNodeRole::Miner,
                 address: address(b"miner-a"),
                 operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-                identity_uri: "https://operators.tensorvm.example/miner-a".to_owned(),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 0,
             })
             .is_err()
@@ -3939,7 +3977,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 "--manifest-signer",
                 &manifest_address(b"public-evidence-publisher"),
                 "--artifact-uri",
-                "https://evidence.tensorvm.example/network-runtime.json",
+                "https://evidence.tensorvm.net/network-runtime.json",
                 "--record-root",
                 &manifest_hash(b"network-runtime-root"),
                 "--record-count",
@@ -3974,7 +4012,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
-            artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+            artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
             record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
             record_count: 4,
         };
@@ -4024,7 +4062,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: [0; 32],
                 manifest_signer: address(b"public-evidence-publisher"),
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 4,
             })
@@ -4035,7 +4073,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: [0; 32],
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 4,
             })
@@ -4057,7 +4095,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: [0; 32],
                 record_count: 4,
             })
@@ -4068,7 +4106,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
                 kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
-                artifact_uri: "https://evidence.tensorvm.example/network-runtime.json".to_owned(),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 0,
             })
@@ -4139,7 +4177,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             &"/ip6/ff02::1/tcp/4001".parse().unwrap()
         ));
         assert!(network_observation_multiaddr_is_public(
-            &"/dns/node.tensorvm.example/tcp/4001".parse().unwrap()
+            &"/dns/node.tensorvm.net/tcp/4001".parse().unwrap()
         ));
         assert!(!network_observation_multiaddr_is_public(
             &"/dns/localhost/tcp/4001".parse().unwrap()

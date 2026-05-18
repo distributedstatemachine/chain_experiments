@@ -22,9 +22,9 @@ The local preflight report checks:
 Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities,
 and each service's health and content URLs must use the same HTTPS authority. The local checker rejects
 userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
-localhost, `.local` names, loopback, unspecified, private, and link-local IP addresses, including bracketed
-IPv6 loopback literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or
-reserved ranges are also rejected.
+localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, loopback,
+unspecified, private, and link-local IP addresses, including bracketed IPv6 loopback literals. Direct IP
+literals from documentation, shared-address, benchmarking, multicast, or reserved ranges are also rejected.
 
 ## Manifest Format
 
@@ -45,10 +45,10 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,https://rpc.example.test/chain/head,/chain/head,true,true
-service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,https://explorer.example.test/explorer,/explorer,true,true
-service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,https://faucet.example.test/faucet/page,/faucet/page,true,true
-service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,https://telemetry.example.test/telemetry/dashboard,/telemetry/dashboard,true,true
+service=rpc,<endpoint-id-hex>,https://rpc.tensorvm.net/health,/health,https://rpc.tensorvm.net/chain/head,/chain/head,true,true
+service=explorer,<endpoint-id-hex>,https://explorer.tensorvm.net/health,/health,https://explorer.tensorvm.net/explorer,/explorer,true,true
+service=faucet,<endpoint-id-hex>,https://faucet.tensorvm.net/health,/health,https://faucet.tensorvm.net/faucet/page,/faucet/page,true,true
+service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true
 ```
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
@@ -78,6 +78,10 @@ The example manifest can be checked from the repository root with:
 ```bash
 cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
 ```
+
+The checked deployment example intentionally uses reserved placeholder hostnames, so it parses but reports
+`deployment_plan_ready=false` until those hosts and endpoint IDs are replaced with owned public HTTPS
+authorities.
 
 The reference service process can be prepared and launched with:
 

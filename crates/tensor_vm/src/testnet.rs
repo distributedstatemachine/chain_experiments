@@ -1603,7 +1603,10 @@ fn public_https_path(url: &str) -> Option<&str> {
 fn public_host_is_external(host: &str) -> bool {
     let host = host.trim_end_matches('.');
     let lowercase_host = host.to_ascii_lowercase();
-    if lowercase_host == "localhost" || lowercase_host.ends_with(".local") {
+    if lowercase_host == "localhost"
+        || lowercase_host.ends_with(".local")
+        || special_use_dns_name(&lowercase_host)
+    {
         return false;
     }
     match host.parse::<IpAddr>() {
@@ -1611,6 +1614,23 @@ fn public_host_is_external(host: &str) -> bool {
         Ok(IpAddr::V6(ip)) => public_ipv6_is_external(ip),
         Err(_) => public_dns_host_is_well_formed(host),
     }
+}
+
+fn special_use_dns_name(host: &str) -> bool {
+    host == "local"
+        || host == "test"
+        || host == "example"
+        || host == "invalid"
+        || host == "example.com"
+        || host == "example.net"
+        || host == "example.org"
+        || host.ends_with(".example.com")
+        || host.ends_with(".example.net")
+        || host.ends_with(".example.org")
+        || host.ends_with(".localhost")
+        || host.ends_with(".test")
+        || host.ends_with(".example")
+        || host.ends_with(".invalid")
 }
 
 fn public_dns_host_is_well_formed(host: &str) -> bool {
@@ -1833,7 +1853,7 @@ fn public_evidence_supporting_artifact_uri(
     kind: PublicEvidenceRecordKind,
 ) -> String {
     format!(
-        "https://evidence.tensorvm.example/{}/{}.json",
+        "https://evidence.tensorvm.net/{}/{}.json",
         hex(bundle_id),
         kind.manifest_tag()
     )
@@ -2011,7 +2031,7 @@ impl PublicTestnetEvidenceBundle {
                     &public_uri,
                     address(auditor_label.as_bytes()),
                     format!(
-                        "https://auditors.tensorvm.example/{}/{}",
+                        "https://auditors.tensorvm.net/{}/{}",
                         hex(&bundle_id),
                         index
                     ),
@@ -2027,10 +2047,7 @@ impl PublicTestnetEvidenceBundle {
                     node.role,
                     node.address,
                     node.operator_id,
-                    format!(
-                        "https://operators.tensorvm.example/{}",
-                        hex(&node.operator_id)
-                    ),
+                    format!("https://operators.tensorvm.net/{}", hex(&node.operator_id)),
                     run.run_started_at_unix_seconds,
                 )
             })
@@ -2954,21 +2971,19 @@ mod tests {
 
     fn public_service_url(kind: PublicServiceKind) -> &'static str {
         match kind {
-            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/health",
-            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/health",
-            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/health",
-            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.example/health",
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.net/health",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.net/health",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.net/health",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.net/health",
         }
     }
 
     fn public_service_content_url(kind: PublicServiceKind) -> &'static str {
         match kind {
-            PublicServiceKind::Rpc => "https://rpc.tensorvm.example/chain/head",
-            PublicServiceKind::Explorer => "https://explorer.tensorvm.example/explorer",
-            PublicServiceKind::Faucet => "https://faucet.tensorvm.example/faucet/page",
-            PublicServiceKind::Telemetry => {
-                "https://telemetry.tensorvm.example/telemetry/dashboard"
-            }
+            PublicServiceKind::Rpc => "https://rpc.tensorvm.net/chain/head",
+            PublicServiceKind::Explorer => "https://explorer.tensorvm.net/explorer",
+            PublicServiceKind::Faucet => "https://faucet.tensorvm.net/faucet/page",
+            PublicServiceKind::Telemetry => "https://telemetry.tensorvm.net/telemetry/dashboard",
         }
     }
 
@@ -3098,7 +3113,7 @@ mod tests {
             complete_public_run_evidence(),
             PublicEvidencePublication::new(
                 hash_bytes(b"test", &[b"public-evidence-bundle"]),
-                String::from("https://example.test/tensorvm/public-evidence.json"),
+                String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
                 address(b"public-evidence-publisher"),
                 1,
                 1,
@@ -3134,7 +3149,7 @@ mod tests {
     fn manifest_publication_signature() -> String {
         let publication = PublicEvidencePublication::new(
             hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            String::from("https://example.test/tensorvm/public-evidence.json"),
+            String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
             address(b"public-evidence-publisher"),
             1,
             1,
@@ -3144,7 +3159,7 @@ mod tests {
 
     fn manifest_auditor_uri() -> String {
         format!(
-            "https://auditors.tensorvm.example/{}/0",
+            "https://auditors.tensorvm.net/{}/0",
             manifest_hash(b"test", b"public-evidence-bundle")
         )
     }
@@ -3153,7 +3168,7 @@ mod tests {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let record = PublicEvidenceAuditorRecord::new(
             &bundle_id,
-            "https://example.test/tensorvm/public-evidence.json",
+            "https://tensorvm.net/tensorvm/public-evidence.json",
             address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
             1_700_000_000,
@@ -3182,7 +3197,7 @@ mod tests {
     }
 
     fn manifest_operator_identity_uri(operator_id: &Hash) -> String {
-        format!("https://operators.tensorvm.example/{}", hex(operator_id))
+        format!("https://operators.tensorvm.net/{}", hex(operator_id))
     }
 
     fn manifest_operator_signature(
@@ -3239,7 +3254,7 @@ mod tests {
 version={PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION}
 
 bundle_id=0x{}
-public_uri=https://example.test/tensorvm/public-evidence.json
+public_uri=https://tensorvm.net/tensorvm/public-evidence.json
 manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
@@ -3290,10 +3305,10 @@ reward_settlement_signature={}
 node=miner,{},{},0,9,10,{}
 node=miner,{},{},0,9,10,{}
 node=validator,{},{},0,9,10,{}
-service=rpc,{},https://rpc.tensorvm.example/health,/health,0,9,10,10,{}
-service=explorer,{},https://explorer.tensorvm.example/health,/health,0,9,10,10,{}
-service=faucet,{},https://faucet.tensorvm.example/health,/health,0,9,10,10,{}
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,0,9,10,10,{}
+service=rpc,{},https://rpc.tensorvm.net/health,/health,0,9,10,10,{}
+service=explorer,{},https://explorer.tensorvm.net/health,/health,0,9,10,10,{}
+service=faucet,{},https://faucet.tensorvm.net/health,/health,0,9,10,10,{}
+service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
 {}
 {}
 {}
@@ -3409,10 +3424,10 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-service=rpc,{},https://rpc.tensorvm.example/health,/health,https://rpc.tensorvm.example/chain/head,/chain/head,true,true
-service=explorer,{},https://explorer.tensorvm.example/health,/health,https://explorer.tensorvm.example/explorer,/explorer,true,true
-service=faucet,{},https://faucet.tensorvm.example/health,/health,https://faucet.tensorvm.example/faucet/page,/faucet/page,true,true
-service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true
+service=rpc,{},https://rpc.tensorvm.net/health,/health,https://rpc.tensorvm.net/chain/head,/chain/head,true,true
+service=explorer,{},https://explorer.tensorvm.net/health,/health,https://explorer.tensorvm.net/explorer,/explorer,true,true
+service=faucet,{},https://faucet.tensorvm.net/health,/health,https://faucet.tensorvm.net/faucet/page,/faucet/page,true,true
+service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true
 ",
             manifest_hash(b"test", b"rpc-service"),
             manifest_hash(b"test", b"explorer-service"),
@@ -3820,7 +3835,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         run.service_content[0] = PublicServiceContentEvidence::new(
             PublicServiceKind::Rpc,
             hash_bytes(b"test", &[b"rpc-service"]),
-            "https://rpc.tensorvm.example@localhost/chain/head",
+            "https://rpc.tensorvm.net@localhost/chain/head",
             public_service_content_path(PublicServiceKind::Rpc),
             hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
             1_700_000_000,
@@ -3845,7 +3860,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         run.service_content[0] = PublicServiceContentEvidence::new(
             PublicServiceKind::Rpc,
             hash_bytes(b"test", &[b"rpc-service"]),
-            "https://rpc-content.tensorvm.example/chain/head",
+            "https://rpc-content.tensorvm.net/chain/head",
             public_service_content_path(PublicServiceKind::Rpc),
             hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
             1_700_000_000,
@@ -3861,7 +3876,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         run.service_content[0] = PublicServiceContentEvidence::new(
             PublicServiceKind::Rpc,
             hash_bytes(b"test", &[b"rpc-service"]),
-            "https://rpc.tensorvm.example/wrong",
+            "https://rpc.tensorvm.net/wrong",
             "/wrong",
             hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
             1_700_000_000,
@@ -3928,7 +3943,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             PublicServiceKind::Rpc,
             PublicServiceEndpoint::new(
                 hash_bytes(b"test", &[b"obfuscated-local-rpc-service"]),
-                "https://rpc.tensorvm.example@localhost/health",
+                "https://rpc.tensorvm.net@localhost/health",
                 "/health",
             ),
             0,
@@ -4111,7 +4126,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!private_https_uri.independently_checkable);
 
         assert!(public_evidence_uri_is_external(
-            "https://evidence.tensorvm.example:443/public-evidence.json"
+            "https://evidence.tensorvm.net:443/public-evidence.json"
         ));
         assert!(public_evidence_uri_is_external(
             "https://[2001:4860:4860::8888]/public-evidence.json"
@@ -4120,11 +4135,16 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             "https://[2001:4860:4860::8888]:443/public-evidence.json"
         ));
         for uri in [
-            "https://evidence.tensorvm.example@localhost/public-evidence.json",
-            "https://localhost@evidence.tensorvm.example/public-evidence.json",
-            "https://evidence.tensorvm.example /public-evidence.json",
-            "https://evidence.tensorvm.example:bad/public-evidence.json",
-            "https://evidence.tensorvm.example:0/public-evidence.json",
+            "https://evidence.tensorvm.net@localhost/public-evidence.json",
+            "https://localhost@evidence.tensorvm.net/public-evidence.json",
+            "https://evidence.tensorvm.net /public-evidence.json",
+            "https://evidence.tensorvm.net:bad/public-evidence.json",
+            "https://evidence.tensorvm.net:0/public-evidence.json",
+            "https://evidence.example.test/public-evidence.json",
+            "https://evidence.tensorvm.example/public-evidence.json",
+            "https://example.com/public-evidence.json",
+            "https://sub.example.org/public-evidence.json",
+            "https://evidence.invalid/public-evidence.json",
             "https://[2001:db8::1]x/public-evidence.json",
             "https://[2001:4860:4860::8888]:/public-evidence.json",
             "https:///public-evidence.json",
@@ -4134,7 +4154,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri =
-            String::from("https://evidence.tensorvm.example@localhost/public-evidence.json");
+            String::from("https://evidence.tensorvm.net@localhost/public-evidence.json");
         let userinfo_obfuscated_uri = bundle.evaluate(&criteria, 6);
         assert!(!userinfo_obfuscated_uri.has_published_evidence_bundle);
         assert!(!userinfo_obfuscated_uri.independently_checkable);
@@ -4191,7 +4211,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             &bundle.publication.bundle_id,
             &bundle.publication.public_uri,
             bundle.publication.manifest_signer,
-            "https://auditors.tensorvm.example/signer-audit.json",
+            "https://auditors.tensorvm.net/signer-audit.json",
             1_700_000_000,
         );
         let signer_as_auditor = bundle.evaluate(&criteria, 6);
@@ -4437,7 +4457,7 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         );
 
         let local_rpc_service = manifest.replace(
-            "https://rpc.tensorvm.example/health",
+            "https://rpc.tensorvm.net/health",
             "https://localhost/health",
         );
         let parsed_local_rpc_service =
@@ -4500,19 +4520,19 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             ChainParams::default().block_time_seconds,
         );
 
-        assert!(report.has_published_evidence_bundle);
-        assert!(report.has_independent_auditor_records);
+        assert!(!report.has_published_evidence_bundle);
+        assert!(!report.has_independent_auditor_records);
         assert!(report.has_signed_run_window);
         assert!(report.has_block_history);
         assert!(report.has_finality_history);
-        assert!(report.has_operator_identity_attestations);
+        assert!(!report.has_operator_identity_attestations);
         assert!(report.has_network_runtime_observations);
         assert!(report.has_data_availability_measurements);
         assert!(report.has_invalid_work_rejection_records);
         assert!(report.has_reward_settlement_record_summary);
-        assert!(report.has_public_supporting_record_artifacts);
-        assert!(report.run_evidence.has_deployed_public_service_content);
-        assert!(report.independently_checkable);
+        assert!(!report.has_public_supporting_record_artifacts);
+        assert!(!report.run_evidence.has_deployed_public_service_content);
+        assert!(!report.independently_checkable);
         assert!(!report.run_evidence.public_criterion_met);
         assert!(!report.run_evidence.has_required_miners);
         assert!(!report.run_evidence.has_required_validators);
@@ -4627,29 +4647,23 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             .unwrap();
         assert_eq!(public_https_host("https:///missing-host"), None);
         assert_eq!(
-            public_https_host("https://rpc.tensorvm.example@localhost/health"),
+            public_https_host("https://rpc.tensorvm.net@localhost/health"),
             None
         );
         assert_eq!(
-            public_https_host("https://rpc.tensorvm.example:bad/health"),
+            public_https_host("https://rpc.tensorvm.net:bad/health"),
             None
         );
         assert_eq!(
-            public_https_host("https://bad_host.tensorvm.example/health"),
+            public_https_host("https://bad_host.tensorvm.net/health"),
             None
         );
+        assert_eq!(public_https_host("https://-bad.tensorvm.net/health"), None);
         assert_eq!(
-            public_https_host("https://-bad.tensorvm.example/health"),
+            public_https_host("https://rpc.tensorvm.net\\evil/health"),
             None
         );
-        assert_eq!(
-            public_https_host("https://rpc.tensorvm.example\\evil/health"),
-            None
-        );
-        assert_eq!(
-            public_https_host("https://rpc.tensorvm.example /health"),
-            None
-        );
+        assert_eq!(public_https_host("https://rpc.tensorvm.net /health"), None);
         assert_eq!(public_https_host("https://rpc[bad]/health"), None);
         assert_eq!(public_https_host("https://[not-ip]/health"), None);
         assert_eq!(
@@ -4657,24 +4671,24 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
             None
         );
         assert_eq!(
-            public_https_host("https://rpc.tensorvm.example:443/health"),
-            Some("rpc.tensorvm.example")
+            public_https_host("https://rpc.tensorvm.net:443/health"),
+            Some("rpc.tensorvm.net")
         );
         assert!(public_https_authorities_match(
-            "https://rpc.tensorvm.example:443/health",
-            "https://rpc.tensorvm.example/chain/head"
+            "https://rpc.tensorvm.net:443/health",
+            "https://rpc.tensorvm.net/chain/head"
         ));
         assert!(!public_https_authorities_match(
-            "https://rpc.tensorvm.example:444/health",
-            "https://rpc.tensorvm.example/chain/head"
+            "https://rpc.tensorvm.net:444/health",
+            "https://rpc.tensorvm.net/chain/head"
         ));
         assert!(!public_https_authorities_match(
-            "https://rpc.tensorvm.example/health",
-            "http://rpc.tensorvm.example/chain/head"
+            "https://rpc.tensorvm.net/health",
+            "http://rpc.tensorvm.net/chain/head"
         ));
         assert!(!public_https_authorities_match(
-            "https://rpc.tensorvm.example/health",
-            "https://rpc-content.tensorvm.example/chain/head"
+            "https://rpc.tensorvm.net/health",
+            "https://rpc-content.tensorvm.net/chain/head"
         ));
         assert!(public_https_authorities_match(
             "https://[2001:4860:4860::8888]/health",
@@ -4689,20 +4703,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(rpc.has_public_content_surface());
         assert!(rpc.is_ready_for_public_run());
         let mut http_rpc = rpc.clone();
-        http_rpc.public_url = String::from("http://rpc.tensorvm.example/health");
+        http_rpc.public_url = String::from("http://rpc.tensorvm.net/health");
         assert!(!http_rpc.is_public_https_endpoint());
 
         let mut mismatched_health_path_rpc = rpc.clone();
-        mismatched_health_path_rpc.public_url = String::from("https://rpc.tensorvm.example/wrong");
+        mismatched_health_path_rpc.public_url = String::from("https://rpc.tensorvm.net/wrong");
         assert!(!mismatched_health_path_rpc.is_ready_for_public_run());
 
         let mut wrong_content_path_rpc = rpc.clone();
-        wrong_content_path_rpc.content_url = String::from("https://rpc.tensorvm.example/wrong");
+        wrong_content_path_rpc.content_url = String::from("https://rpc.tensorvm.net/wrong");
         assert!(!wrong_content_path_rpc.has_public_content_surface());
         assert!(!wrong_content_path_rpc.is_ready_for_public_run());
 
         let mut http_content_rpc = rpc.clone();
-        http_content_rpc.content_url = String::from("http://rpc.tensorvm.example/chain/head");
+        http_content_rpc.content_url = String::from("http://rpc.tensorvm.net/chain/head");
         assert!(!http_content_rpc.has_public_content_surface());
         assert!(!http_content_rpc.is_ready_for_public_run());
 
@@ -4731,11 +4745,20 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(public_host_is_external("8.8.8.8"));
         assert!(public_host_is_external("2001:4860:4860::8888"));
         assert!(!public_host_is_external(""));
-        assert!(!public_host_is_external("bad..tensorvm.example"));
+        assert!(!public_host_is_external("bad..tensorvm.net"));
         assert!(!public_host_is_external("123.456"));
+        for host in [
+            "example.com",
+            "www.example.net",
+            "rpc.example.test",
+            "rpc.tensorvm.example",
+            "operator.invalid",
+        ] {
+            assert!(!public_host_is_external(host));
+        }
 
         let local_rpc = manifest.replace(
-            "https://rpc.tensorvm.example/health",
+            "https://rpc.tensorvm.net/health",
             "https://localhost:8545/health",
         );
         let local_rpc_report = parse_public_testnet_preflight_manifest(&local_rpc)
@@ -4746,8 +4769,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!local_rpc_report.can_start_public_run);
 
         let obfuscated_local_rpc = manifest.replace(
-            "https://rpc.tensorvm.example/health",
-            "https://rpc.tensorvm.example@localhost/health",
+            "https://rpc.tensorvm.net/health",
+            "https://rpc.tensorvm.net@localhost/health",
         );
         let obfuscated_local_rpc_report =
             parse_public_testnet_preflight_manifest(&obfuscated_local_rpc)
@@ -4758,8 +4781,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!obfuscated_local_rpc_report.can_start_public_run);
 
         let bad_content_path = manifest.replace(
-            "https://rpc.tensorvm.example/chain/head,/chain/head",
-            "https://rpc.tensorvm.example/wrong,/chain/head",
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            "https://rpc.tensorvm.net/wrong,/chain/head",
         );
         let bad_content_path_report = parse_public_testnet_preflight_manifest(&bad_content_path)
             .unwrap()
@@ -4770,8 +4793,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!bad_content_path_report.can_start_public_run);
 
         let mismatched_content_authority = manifest.replace(
-            "https://rpc.tensorvm.example/chain/head,/chain/head",
-            "https://rpc-content.tensorvm.example/chain/head,/chain/head",
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            "https://rpc-content.tensorvm.net/chain/head,/chain/head",
         );
         let mismatched_content_authority_report =
             parse_public_testnet_preflight_manifest(&mismatched_content_authority)
@@ -4795,8 +4818,8 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
         assert!(!no_cuda_report.can_start_public_run);
 
         let no_auth = manifest.replace(
-            "https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,true,true",
-            "https://telemetry.tensorvm.example/health,/health,https://telemetry.tensorvm.example/telemetry/dashboard,/telemetry/dashboard,false,true",
+            "https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true",
+            "https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,false,true",
         );
         let no_auth_report = parse_public_testnet_preflight_manifest(&no_auth)
             .unwrap()
@@ -4806,15 +4829,15 @@ service=telemetry,{},https://telemetry.tensorvm.example/health,/health,https://t
     }
 
     #[test]
-    fn deployed_public_testnet_preflight_example_reports_launch_readiness() {
+    fn deployed_public_testnet_preflight_example_rejects_placeholder_domains() {
         let manifest =
             include_str!("../../../deploy/tensorvm/manifests/public-testnet.preflight.example");
         let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
         let report = plan.evaluate(ChainParams::default().block_time_seconds);
 
         assert!(report.local_shape_ready);
-        assert!(report.deployment_plan_ready);
-        assert!(report.can_start_public_run);
+        assert!(!report.deployment_plan_ready);
+        assert!(!report.can_start_public_run);
     }
 
     #[test]

@@ -13,8 +13,8 @@ Before advertising a public run:
 - Provision at least 10 miner operators and 5 validator operators with independent operator identities.
 - Publish external DNS names and valid TLS certificates for RPC, explorer, faucet, and telemetry.
 - Publish reachable libp2p listen addresses for every node; localhost, private, link-local, `.local`,
-  documentation, shared-address, benchmarking, multicast, and reserved addresses are not acceptable for
-  public evidence.
+  `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, documentation, shared-address,
+  benchmarking, multicast, and reserved addresses are not acceptable for public evidence.
 - Replace every placeholder in `env/public-testnet.env.example` and
   `manifests/public-testnet.preflight.example`.
 - Start services through `systemd/tensorvm.service` or an equivalent unit that invokes

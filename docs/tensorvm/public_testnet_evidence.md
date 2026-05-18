@@ -15,8 +15,8 @@ A deployment runbook for collecting, validating, and publishing the external-run
 A checked example manifest lives at
 [`../../deploy/tensorvm/manifests/public-testnet.evidence.example`](../../deploy/tensorvm/manifests/public-testnet.evidence.example).
 It is useful for validating the post-run manifest shape, signature domains, and reporting fields, but it is
-deliberately only a 60-second, 10-block, 2-miner, 1-validator sample and is not full-spec public-testnet
-evidence.
+deliberately uses special-use placeholder hosts and only a 60-second, 10-block, 2-miner, 1-validator
+sample, so it is not independently checkable or full-spec public-testnet evidence.
 
 ## Required Bundle
 
@@ -42,9 +42,10 @@ A complete evidence bundle must include:
 
 A public `https://` evidence URI must use a well-formed external host authority. The local validator
 rejects userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6
-authorities, localhost, `.local` names, loopback, unspecified, private, link-local, documentation,
-shared-address, benchmarking, multicast, and reserved IP addresses. `ipfs://` and `ar://` publication URIs
-must start with a well-formed content identifier segment using only ASCII alphanumerics, `-`, or `_`.
+authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains,
+loopback, unspecified, private, link-local, documentation, shared-address, benchmarking, multicast, and
+reserved IP addresses. `ipfs://` and `ar://` publication URIs must start with a well-formed content
+identifier segment using only ASCII alphanumerics, `-`, or `_`.
 
 ## Current Repository Evidence
 
@@ -57,7 +58,8 @@ The local reference crate exposes typed validation for this future bundle throug
 
 The current local reference implementation and docs do not satisfy this bundle requirement. The manifest
 validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
-service-health summaries, signed public service-content summaries, signed independent auditor records
+service-health summaries, signed public service-content summaries, special-use DNS placeholder rejection,
+signed independent auditor records
 whose auditor IDs differ from the manifest signer, and an external publication URI. It verifies
 a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
 auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
@@ -91,9 +93,10 @@ signatures cover the service kind, endpoint ID, public URL, content path, conten
 and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed external host authorities;
 userinfo, whitespace, invalid DNS host labels, invalid ports, malformed bracketed IPv6 authorities,
-localhost, `.local`, loopback, private, link-local, unspecified, documentation, shared-address,
-benchmarking, multicast, and reserved IP hosts are rejected. Supporting artifact, auditor, and operator
-identity URIs may also use `ipfs://` or `ar://` identifiers with the same well-formed first-segment rule.
+localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, loopback,
+private, link-local, unspecified, documentation, shared-address, benchmarking, multicast, and reserved IP
+hosts are rejected. Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` or
+`ar://` identifiers with the same well-formed first-segment rule.
 The service-health URL path must match the signed health path. Counted miner and validator operator sets
 must be disjoint; the same operator ID cannot satisfy both role minima in a public-run bundle.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
@@ -117,18 +120,18 @@ deployed-service gate.
 ```text
 version=tensor-vm-public-testnet-evidence-v1
 bundle_id=0x<64-hex>
-public_uri=https://example.test/tensorvm/public-evidence.json
+public_uri=https://tensorvm.net/tensorvm/public-evidence.json
 manifest_signer=<address-hex>
 manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
-auditor=<auditor-address-hex>,https://auditor.example.test/tensorvm/audit.json,<unix-seconds>,<auditor-signature-hex>
-record_artifact=block-history,https://evidence.example.test/tensorvm/block-history.json,<history-root-hex>,100800,<artifact-signature-hex>
-record_artifact=finality-history,https://evidence.example.test/tensorvm/finality-history.json,<finality-root-hex>,100800,<artifact-signature-hex>
-record_artifact=network-runtime,https://evidence.example.test/tensorvm/network-runtime.json,<network-runtime-root-hex>,4,<artifact-signature-hex>
-record_artifact=data-availability,https://evidence.example.test/tensorvm/data-availability.json,<da-root-hex>,1000,<artifact-signature-hex>
-record_artifact=invalid-work,https://evidence.example.test/tensorvm/invalid-work.json,<invalid-work-root-hex>,1,<artifact-signature-hex>
-record_artifact=reward-settlement,https://evidence.example.test/tensorvm/reward-settlement.json,<reward-settlement-root-hex>,1,<artifact-signature-hex>
+auditor=<auditor-address-hex>,https://auditor.tensorvm.net/tensorvm/audit.json,<unix-seconds>,<auditor-signature-hex>
+record_artifact=block-history,https://evidence.tensorvm.net/tensorvm/block-history.json,<history-root-hex>,100800,<artifact-signature-hex>
+record_artifact=finality-history,https://evidence.tensorvm.net/tensorvm/finality-history.json,<finality-root-hex>,100800,<artifact-signature-hex>
+record_artifact=network-runtime,https://evidence.tensorvm.net/tensorvm/network-runtime.json,<network-runtime-root-hex>,4,<artifact-signature-hex>
+record_artifact=data-availability,https://evidence.tensorvm.net/tensorvm/data-availability.json,<da-root-hex>,1000,<artifact-signature-hex>
+record_artifact=invalid-work,https://evidence.tensorvm.net/tensorvm/invalid-work.json,<invalid-work-root-hex>,1,<artifact-signature-hex>
+record_artifact=reward-settlement,https://evidence.tensorvm.net/tensorvm/reward-settlement.json,<reward-settlement-root-hex>,1,<artifact-signature-hex>
 block_history_records=100800
 block_history_root=<history-root-hex>
 block_history_signature=<history-signature-hex>
@@ -136,8 +139,8 @@ finality_history_records=100800
 finality_history_root=<finality-root-hex>
 finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
-operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.example.test/tensorvm.json,<unix-seconds>,<operator-signature-hex>
-operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.example.test/tensorvm.json,<unix-seconds>,<operator-signature-hex>
+operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
+operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
 network_runtime_observation_records=4
 network_runtime_observation_root=<network-runtime-root-hex>
 network_runtime_observation_signature=<network-runtime-signature-hex>
@@ -166,14 +169,14 @@ reward_settlement_root=<reward-settlement-root-hex>
 reward_settlement_signature=<reward-settlement-signature-hex>
 node=miner,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
 node=validator,<address-hex>,<operator-id-hex>,0,100799,<heartbeat-count>,<heartbeat-signature-hex>
-service=rpc,<endpoint-id-hex>,https://rpc.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=explorer,<endpoint-id-hex>,https://explorer.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=faucet,<endpoint-id-hex>,https://faucet.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service=telemetry,<endpoint-id-hex>,https://telemetry.example.test/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
-service_content=rpc,<endpoint-id-hex>,https://rpc.example.test/chain/head,/chain/head,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
-service_content=explorer,<endpoint-id-hex>,https://explorer.example.test/explorer,/explorer,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
-service_content=faucet,<endpoint-id-hex>,https://faucet.example.test/faucet/page,/faucet/page,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
-service_content=telemetry,<endpoint-id-hex>,https://telemetry.example.test/telemetry/dashboard,/telemetry/dashboard,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service=rpc,<endpoint-id-hex>,https://rpc.tensorvm.net/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=explorer,<endpoint-id-hex>,https://explorer.tensorvm.net/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=faucet,<endpoint-id-hex>,https://faucet.tensorvm.net/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/health,0,100799,<reachable-count>,<signed-health-check-count>,<health-signature-hex>
+service_content=rpc,<endpoint-id-hex>,https://rpc.tensorvm.net/chain/head,/chain/head,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=explorer,<endpoint-id-hex>,https://explorer.tensorvm.net/explorer,/explorer,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=faucet,<endpoint-id-hex>,https://faucet.tensorvm.net/faucet/page,/faucet/page,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
+service_content=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,<content-root-hex>,<unix-seconds>,<min-content-bytes>,<content-signature-hex>
 ```
 
 The CLI reads a manifest file and reports the default full-spec evidence status:
@@ -189,16 +192,16 @@ manifest fields:
 ```bash
 tvmd public-evidence publication \
   --bundle-id <bundle-id-hex> \
-  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --manifest-signer <manifest-signer-address-hex> \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
 tvmd public-evidence auditor-record \
   --bundle-id <bundle-id-hex> \
-  --public-uri https://example.test/tensorvm/public-evidence.json \
+  --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --auditor-id <auditor-address-hex> \
-  --audit-uri https://auditor.example.test/tensorvm/audit.json \
+  --audit-uri https://auditor.tensorvm.net/tensorvm/audit.json \
   --observed-at <unix-seconds>
 
 tvmd public-evidence run-window \
@@ -220,7 +223,7 @@ tvmd public-evidence operator-attestation \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
-  --identity-uri https://operator-a.example.test/tensorvm.json \
+  --identity-uri https://operator-a.tensorvm.net/tensorvm.json \
   --observed-at <unix-seconds>
 ```
 
@@ -246,7 +249,7 @@ or telemetry evidence:
 tvmd public-evidence service-health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
-  --public-url https://rpc.example.test/health \
+  --public-url https://rpc.tensorvm.net/health \
   --health-path /health \
   --first-block 0 \
   --last-block 100799 \
@@ -256,7 +259,7 @@ tvmd public-evidence service-health \
 tvmd public-evidence service-content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
-  --public-url https://rpc.example.test/chain/head \
+  --public-url https://rpc.tensorvm.net/chain/head \
   --content-path /chain/head \
   --content-root <content-root-hex> \
   --observed-at <unix-seconds> \
@@ -282,7 +285,7 @@ the required network-runtime summary root:
 tvmd public-evidence network-observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
-  --listen-address /dns/node-a.example.test/tcp/4001 \
+  --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
   --gossip-topics 5 \
   --request-response-protocols 3 \
@@ -294,8 +297,8 @@ tvmd public-evidence network-observation \
 ```
 
 The command rejects zero operator IDs, malformed peer IDs, malformed libp2p multiaddrs, and listen
-multiaddrs using localhost, `.local`, loopback, unspecified, private, link-local, documentation,
-shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects missing discovery/bootstrap
+multiaddrs using localhost, `.local`, special-use DNS names, loopback, unspecified, private, link-local,
+documentation, shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects missing discovery/bootstrap
 observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its
 output is a signed `network_runtime_observation=...` line suitable for external aggregation into the
 `network-runtime` record summary.
@@ -315,7 +318,7 @@ tvmd public-evidence record-artifact \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
-  --artifact-uri https://evidence.example.test/tensorvm/network-runtime.json \
+  --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-root <network-runtime-root-hex> \
   --record-count 4
 

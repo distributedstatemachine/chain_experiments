@@ -10,13 +10,12 @@ artifacts for launching a service that can later produce independently checkable
 - `RUNBOOK.md` - operator runbook for launch, evidence collection, validation, and publication
 - `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
-- `manifests/public-testnet.preflight.example` - manifest accepted by
-  `tvmd public-testnet preflight --manifest <path>` after replacing example IDs, hosts, and public
-  content URLs
+- `manifests/public-testnet.preflight.example` - manifest shape accepted by the parser, but not launch-ready
+  until the special-use example hosts, IDs, and public content URLs are replaced
 - `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
-  `tvmd public-evidence validate --manifest <path>`, but intentionally too short and too small to satisfy
-  the default full-spec 7-day public-testnet criteria; it includes the required signed external
-  supporting-record artifact locators and signed public-service content records
+  `tvmd public-evidence validate --manifest <path>`, but intentionally not independently checkable or
+  full-spec evidence because it uses special-use example hosts and contains only a 60-second, 10-block,
+  2-miner, 1-validator sample
 
 ## Deployment Shape
 
@@ -70,9 +69,9 @@ After a run, operators can use the post-run evidence shape with real roots and s
 tvmd public-evidence validate --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
-The checked example reports `independently_checkable=true` but `public_evidence_full_spec=false` because it
-contains only 60 seconds, 10 observed blocks, 2 miners, and 1 validator. The full-spec gate remains closed
-until a real 7-day public run publishes the evidence bundle documented in
+The checked example reports `independently_checkable=false` and `public_evidence_full_spec=false` because
+it uses reserved placeholder hosts and contains only 60 seconds, 10 observed blocks, 2 miners, and 1
+validator. The full-spec gate remains closed until a real 7-day public run publishes the evidence bundle documented in
 `docs/tensorvm/public_testnet_evidence.md`.
 
 Use [`RUNBOOK.md`](RUNBOOK.md) for the required external operator flow, including daily evidence
