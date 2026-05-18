@@ -114,8 +114,9 @@ Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` 
 with the same well-formed first-segment rule and no raw whitespace or control characters.
 The service-health URL path must match the signed health path exactly and must not include a query string
 or fragment. Public service-content URLs use the same exact-path rule for their required content path.
-Counted miner and validator operator sets must be disjoint; the same operator ID cannot satisfy both role
-minima in a public-run bundle.
+Counted miner and validator operator and node-address sets must be disjoint; the same operator ID or node
+address cannot satisfy both role minima in a public-run bundle, and repeated node addresses cannot inflate a
+single role's independent participant count.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
 attestations must have observation timestamps inside the signed run window, match live node-heartbeat

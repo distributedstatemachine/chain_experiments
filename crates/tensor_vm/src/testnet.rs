@@ -2596,23 +2596,31 @@ impl PublicTestnetRunEvidence {
     }
 
     fn independent_operator_counts(&self) -> (usize, usize) {
-        let mut miners = BTreeSet::new();
-        let mut validators = BTreeSet::new();
+        let mut miner_operator_ids = BTreeSet::new();
+        let mut miner_addresses = BTreeSet::new();
+        let mut validator_operator_ids = BTreeSet::new();
+        let mut validator_addresses = BTreeSet::new();
         for node in &self.nodes {
             if !node.is_live_for_run(self.observed_blocks) {
                 continue;
             }
             match node.role {
                 PublicNodeRole::Miner => {
-                    miners.insert(node.operator_id);
+                    miner_operator_ids.insert(node.operator_id);
+                    miner_addresses.insert(node.address);
                 }
                 PublicNodeRole::Validator => {
-                    validators.insert(node.operator_id);
+                    validator_operator_ids.insert(node.operator_id);
+                    validator_addresses.insert(node.address);
                 }
             }
         }
-        validators.retain(|operator_id| !miners.contains(operator_id));
-        (miners.len(), validators.len())
+        validator_operator_ids.retain(|operator_id| !miner_operator_ids.contains(operator_id));
+        validator_addresses.retain(|address| !miner_addresses.contains(address));
+        (
+            miner_operator_ids.len().min(miner_addresses.len()),
+            validator_operator_ids.len().min(validator_addresses.len()),
+        )
     }
 }
 
@@ -3774,6 +3782,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(insufficient.has_invalid_work_rejection_evidence);
         assert!(insufficient.has_reward_settlement_records);
         assert!(!insufficient.public_criterion_met);
+
+        run.nodes[1] = PublicNodeEvidence::miner(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-b-operator"]),
+            0,
+            9,
+            10,
+        );
+        let shared_node_address = run.evaluate(&criteria, 6, true);
+        assert_eq!(shared_node_address.miner_count, 1);
+        assert!(!shared_node_address.has_required_miners);
+        assert!(!shared_node_address.public_criterion_met);
 
         run.nodes[1] = PublicNodeEvidence::miner(
             address(b"miner-b"),

@@ -1778,8 +1778,9 @@ tvmd public-evidence record-summary-from-roots \
 The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operator-attestation` commands
 emit the signed manifest fields for the public evidence location, independent auditor records, wall-clock
 run duration, external operator node heartbeats, and operator identity attestations. Counted node
-heartbeats must cover the manifest's full observed block count, and counted miner and validator operator
-sets must be disjoint. The current evidence manifest has exactly one `manifest_signature` field, so
+heartbeats must cover the manifest's full observed block count, counted operators must also have distinct
+node addresses, and counted miner and validator operator/address sets must be disjoint. The current evidence
+manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
 scalar fields and whitespace-padded field keys; only explicitly repeated record fields such as `node=`,
 `service=`, `auditor=`, `record_artifact=`, `operator=`, and `service_content=` may appear more than once.

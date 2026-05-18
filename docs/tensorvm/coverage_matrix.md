@@ -55,7 +55,7 @@ and the explicit separation between local evidence and the 7-day public deployme
   run-window evidence, invalid-work rejection evidence, reward-settlement records, production libp2p
   runtime use with signed network-observation records and summary roots covering counted public operators,
   an exact one-signature manifest publication count for the current manifest format, signed external
-  artifact locators for raw supporting records, disjoint miner/validator operator IDs, auditor IDs distinct
+  artifact locators for raw supporting records, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
   from the manifest signer with auditor observations at or after the signed run end,
   operator-attestation and service-content timestamps inside the signed run window, observed-block
   coverage for node heartbeat and service health counts, internally consistent finality/data-availability
@@ -64,7 +64,7 @@ and the explicit separation between local evidence and the 7-day public deployme
   malformed HTTPS authority rejection for public endpoints, raw-whitespace rejection for external evidence
   URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, HTTPS evidence
   URI path enforcement with query and fragment rejection, duplicate scalar manifest-field rejection,
-  whitespace-padded field-key rejection, duplicate supporting-record root rejection, exact service URL path matching with query and fragment rejection, no overreported operator-attestation counts,
+  whitespace-padded field-key rejection, duplicate supporting-record root rejection, repeated node-address count rejection, exact service URL path matching with query and fragment rejection, no overreported operator-attestation counts,
   well-formed `ipfs://`/`ar://` identifier validation, and deployed public-service reachability plus
   content roots bound to external HTTPS URLs. A local launch
   preflight manifest is documented in
