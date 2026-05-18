@@ -1856,7 +1856,7 @@ mod tests {
             "https://tensorvm.net/tensorvm/public-evidence.json",
             address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
-            1_700_000_000,
+            1_700_000_060,
         );
         hex(&record.auditor_signature)
     }
@@ -2021,7 +2021,7 @@ manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
-auditor={},{},1700000000,{}
+auditor={},{},1700000060,{}
 {}
 {}
 {}
@@ -2315,7 +2315,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "--audit-uri",
                 &manifest_auditor_uri(),
                 "--observed-at",
-                "1700000000",
+                "1700000060",
             ])
             .unwrap(),
             CliCommand::PublicEvidenceAuditorRecord {
@@ -2323,7 +2323,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
-                observed_at_unix_seconds: 1_700_000_000,
+                observed_at_unix_seconds: 1_700_000_060,
             }
         );
         assert_eq!(
@@ -3003,13 +3003,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: manifest_auditor_uri(),
-                observed_at_unix_seconds: 1_700_000_000,
+                observed_at_unix_seconds: 1_700_000_060,
             })
             .unwrap();
         assert_eq!(
             auditor_record,
             format!(
-                "auditor={},{},1700000000,{}",
+                "auditor={},{},1700000060,{}",
                 manifest_address(b"public-evidence-auditor-0"),
                 manifest_auditor_uri(),
                 manifest_auditor_signature()

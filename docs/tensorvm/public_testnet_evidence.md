@@ -24,7 +24,7 @@ A complete evidence bundle must include:
 
 - a public `https://`, `ipfs://`, or `ar://` location for the evidence manifest
 - manifest signature records
-- signed independent auditor or verifier records
+- signed independent auditor or verifier records observed at or after the signed run end
 - signed wall-clock run window covering the full 7-day run
 - signed miner and validator heartbeat history for the full run
 - independent operator identity or attestation records
@@ -61,7 +61,8 @@ The current local reference implementation and docs do not satisfy this bundle r
 validator requires signed node-heartbeat summaries, signed operator identity attestations, signed
 service-health summaries, signed public service-content summaries, special-use DNS placeholder rejection,
 signed independent auditor records
-whose auditor IDs differ from the manifest signer, and an external publication URI. It verifies
+whose auditor IDs differ from the manifest signer and whose observation timestamps are at or after the
+signed run end, and an external publication URI. It verifies
 a manifest publication signature over the bundle ID, public URI, manifest signature count, and independent
 auditor count. It also verifies signed auditor records over the bundle ID, public URI, external audit URI,
 auditor ID, and observation time, plus a signed run-window record over the manifest bundle ID, start time,
@@ -86,6 +87,8 @@ External evidence can be represented as a line-oriented manifest parsed by
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. The manifest
 signature covers the bundle ID, public URI, manifest signature count, and independent auditor count.
 Auditor signatures cover the bundle ID, public URI, auditor ID, external audit URI, and observation time.
+Counted auditor records must be observed at or after the signed run-window end so an audit cannot count
+before the public run has completed.
 Block, finality, network-runtime, data-availability, invalid-work, and reward-settlement signatures cover
 the bundle ID, record-set kind, record-set root, and record count. The run-window signature covers the
 bundle ID, Unix start time, Unix end time, and observed block count. Heartbeat signatures cover the node
@@ -136,7 +139,7 @@ manifest_signer=<address-hex>
 manifest_signature=<signature-hex>
 manifest_signature_count=1
 independent_auditor_count=1
-auditor=<auditor-address-hex>,https://auditor.tensorvm.net/tensorvm/audit.json,<unix-seconds>,<auditor-signature-hex>
+auditor=<auditor-address-hex>,https://auditor.tensorvm.net/tensorvm/audit.json,<unix-seconds-at-or-after-run-end>,<auditor-signature-hex>
 record_artifact=block-history,https://evidence.tensorvm.net/tensorvm/block-history.json,<history-root-hex>,100800,<artifact-signature-hex>
 record_artifact=finality-history,https://evidence.tensorvm.net/tensorvm/finality-history.json,<finality-root-hex>,100800,<artifact-signature-hex>
 record_artifact=network-runtime,https://evidence.tensorvm.net/tensorvm/network-runtime.json,<network-runtime-root-hex>,4,<artifact-signature-hex>
@@ -242,8 +245,9 @@ The publication command rejects non-public or malformed evidence URIs, HTTPS evi
 query-free path, zero bundle IDs, zero manifest signers, and zero signature or auditor counts. The
 auditor-record command rejects zero bundle IDs, non-public or malformed public or audit URIs, zero auditor
 IDs, and empty observation times; bundle validation only counts auditor records whose auditor ID differs
-from the manifest signer. Its output can be inserted directly as an `auditor=...` line in the evidence
-manifest. The run-window command rejects zero
+from the manifest signer and whose observation timestamp is at or after the signed run-window end. Its
+output can be inserted directly as an `auditor=...` line in the evidence manifest. The run-window command
+rejects zero
 IDs/signers, inverted time windows, and empty block counts. The node-heartbeat command rejects zero node
 addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
 only counts a node toward the public run when its signed heartbeat count covers the manifest's observed

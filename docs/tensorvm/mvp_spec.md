@@ -1782,7 +1782,7 @@ heartbeats must cover the manifest's full observed block count, and counted mine
 sets must be disjoint.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
 bound to the evidence bundle ID, public evidence URI, auditor ID, and observation time; counted auditor
-IDs must differ from the manifest signer.
+IDs must differ from the manifest signer and must be observed at or after the signed run-window end.
 Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator-identity URIs must start
 with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`, with no raw whitespace
 or control characters.
@@ -2075,7 +2075,8 @@ service-content roots for those services
 a public testnet runs for 7 consecutive days with independent external miner and validator operators
 the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
 block-count evidence
-the evidence bundle includes signed node heartbeats, block/finality history, operator identities or
+the evidence bundle includes post-run signed independent auditor records, signed node heartbeats,
+block/finality history, operator identities or
 attestations, data-availability measurements, invalid-work rejection evidence, and reward-settlement records
 the evidence bundle includes signed external artifact locators for every raw supporting-record summary root
 the evidence bundle is stored or linked from docs/tensorvm/implementation_status.md

@@ -2058,7 +2058,7 @@ impl PublicTestnetEvidenceBundle {
                         hex(&bundle_id),
                         index
                     ),
-                    run.run_started_at_unix_seconds,
+                    run.run_ended_at_unix_seconds,
                 )
             })
             .collect();
@@ -2384,6 +2384,9 @@ impl PublicTestnetEvidenceBundle {
         let mut valid_auditors = BTreeSet::new();
         for auditor in &self.auditor_records {
             if auditor.auditor_id == self.publication.manifest_signer {
+                continue;
+            }
+            if auditor.observed_at_unix_seconds < self.run.run_ended_at_unix_seconds {
                 continue;
             }
             if auditor.has_external_auditor_proof(
@@ -3197,7 +3200,7 @@ mod tests {
             "https://tensorvm.net/tensorvm/public-evidence.json",
             address(b"public-evidence-auditor-0"),
             manifest_auditor_uri(),
-            1_700_000_000,
+            1_700_000_060,
         );
         hex(&record.auditor_signature)
     }
@@ -3345,7 +3348,7 @@ manifest_signer={}
 manifest_signature={}
 manifest_signature_count=1
 independent_auditor_count=1
-auditor={},{},1700000000,{}
+auditor={},{},1700000060,{}
 {}
 {}
 {}
@@ -4372,6 +4375,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         bundle.auditor_records[0] = PublicEvidenceAuditorRecord::new(
             &bundle.publication.bundle_id,
             &bundle.publication.public_uri,
+            address(b"public-evidence-auditor-0"),
+            manifest_auditor_uri(),
+            bundle.run.run_started_at_unix_seconds,
+        );
+        let pre_run_end_auditor_record = bundle.evaluate(&criteria, 6);
+        assert!(!pre_run_end_auditor_record.has_independent_auditor_records);
+        assert!(!pre_run_end_auditor_record.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.auditor_records[0] = PublicEvidenceAuditorRecord::new(
+            &bundle.publication.bundle_id,
+            &bundle.publication.public_uri,
             bundle.publication.manifest_signer,
             "https://auditors.tensorvm.net/signer-audit.json",
             1_700_000_000,
@@ -4716,8 +4731,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
 
         let auditor_uri = manifest_auditor_uri();
         let auditor_uri_with_space = manifest.replace(
-            &format!("{auditor_uri},1700000000"),
-            &format!("{auditor_uri} ,1700000000"),
+            &format!("{auditor_uri},1700000060"),
+            &format!("{auditor_uri} ,1700000060"),
         );
         let auditor_uri_with_space_report =
             parse_public_testnet_evidence_manifest(&auditor_uri_with_space)
