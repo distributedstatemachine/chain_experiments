@@ -1759,7 +1759,7 @@ tvmd public-evidence record-summary \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
-  --record-count 4
+  --record-count <operator-count>
 
 tvmd public-evidence record-artifact \
   --kind network-runtime \
@@ -1767,7 +1767,7 @@ tvmd public-evidence record-artifact \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-root <network-runtime-root-hex> \
-  --record-count 4
+  --record-count <operator-count>
 
 tvmd public-evidence record-summary-from-roots \
   --kind network-runtime \
