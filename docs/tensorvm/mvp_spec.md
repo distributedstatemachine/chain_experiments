@@ -1722,6 +1722,11 @@ tvmd public-evidence run-window \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
+tvmd public-evidence run-window-from-file \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --block-observation-file artifacts/block-observations.records
+
 tvmd public-evidence node-heartbeat \
   --role miner \
   --address <node-address-hex> \
@@ -1861,6 +1866,11 @@ IDs must differ from the manifest signer and must be observed at or after the si
 Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator-identity URIs must start
 with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`, with no raw whitespace
 or control characters.
+The `run-window-from-file` command derives the signed run-window record from saved
+`run_window_observation=<block>,<unix-seconds>` lines. Blank lines and `#` comments are ignored;
+duplicate blocks, non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported
+lines, and whitespace-padded records are rejected so the signed start time, end time, and observed block
+count come from raw block observations instead of hand-copied counters.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
 identity URI bound to a node address, role, operator ID, and observation time. Counted operator
 attestations must be observed inside the signed run window, and the

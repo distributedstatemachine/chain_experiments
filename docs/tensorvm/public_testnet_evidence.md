@@ -251,6 +251,11 @@ tvmd public-evidence run-window \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
+tvmd public-evidence run-window-from-file \
+  --bundle-id <bundle-id-hex> \
+  --manifest-signer <manifest-signer-address-hex> \
+  --block-observation-file artifacts/block-observations.records
+
 tvmd public-evidence node-heartbeat \
   --role miner \
   --address <node-address-hex> \
@@ -285,6 +290,10 @@ IDs/signers, inverted time windows, and empty block counts. The node-heartbeat c
 addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
 only counts a node toward the public run when its signed heartbeat count covers the manifest's observed
 block count, and miner/validator operator IDs must be disjoint for the role minima to count independently.
+The `run-window-from-file` form derives the same run-window manifest fields from raw
+`run_window_observation=<block>,<unix-seconds>` records. It ignores blank lines and `#` comments, rejects
+duplicate or non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported lines,
+and whitespace-padded records, then derives the signed start time, end time, and observed block count.
 The `node-heartbeat-from-file` form derives the same signed `node=...` line from raw
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. It ignores blank
 lines and `#` comments, rejects duplicate or non-contiguous block observations, identity mismatches,

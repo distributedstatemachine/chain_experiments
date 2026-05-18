@@ -13,7 +13,7 @@ use crate::testnet::{
 use crate::types::{Address, Hash, address, hash_bytes};
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -175,6 +175,11 @@ pub enum CliCommand {
         run_started_at_unix_seconds: u64,
         run_ended_at_unix_seconds: u64,
         observed_blocks: u64,
+    },
+    PublicEvidenceRunWindowFromFile {
+        bundle_id: Hash,
+        manifest_signer: Address,
+        block_observation_file: String,
     },
     PublicEvidenceNodeHeartbeat {
         role: PublicNodeRole,
@@ -635,6 +640,20 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         [
             "public-evidence",
+            "run-window-from-file",
+            "--bundle-id",
+            bundle_id,
+            "--manifest-signer",
+            manifest_signer,
+            "--block-observation-file",
+            block_observation_file,
+        ] => Ok(CliCommand::PublicEvidenceRunWindowFromFile {
+            bundle_id: parse_hash_argument(bundle_id)?,
+            manifest_signer: parse_hash_argument(manifest_signer)?,
+            block_observation_file: (*block_observation_file).to_owned(),
+        }),
+        [
+            "public-evidence",
             "node-heartbeat",
             "--role",
             role,
@@ -899,6 +918,14 @@ pub fn describe_command(command: &CliCommand) -> String {
         } => {
             format!(
                 "generate public evidence run window started={run_started_at_unix_seconds} ended={run_ended_at_unix_seconds} observed_blocks={observed_blocks}"
+            )
+        }
+        CliCommand::PublicEvidenceRunWindowFromFile {
+            block_observation_file,
+            ..
+        } => {
+            format!(
+                "generate public evidence run window from captured block observations block_observation_file={block_observation_file}"
             )
         }
         CliCommand::PublicEvidenceNodeHeartbeat { role, address, .. } => {
@@ -1279,6 +1306,13 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             *run_ended_at_unix_seconds,
             *observed_blocks,
         ),
+        CliCommand::PublicEvidenceRunWindowFromFile {
+            bundle_id,
+            manifest_signer,
+            block_observation_file,
+        } => {
+            run_window_evidence_line_from_file(*bundle_id, *manifest_signer, block_observation_file)
+        }
         CliCommand::PublicEvidenceNodeHeartbeat {
             role,
             address,
@@ -1616,7 +1650,106 @@ fn run_window_evidence_line(
         run_ended_at_unix_seconds,
         observed_blocks,
     );
-    Ok(format!("run_window_signature={}", hex(&signature)))
+    Ok(format!(
+        "run_started_at_unix_seconds={run_started_at_unix_seconds}\nrun_ended_at_unix_seconds={run_ended_at_unix_seconds}\nrun_window_signature={}\nobserved_blocks={observed_blocks}",
+        hex(&signature)
+    ))
+}
+
+struct RunWindowObservationSummary {
+    run_started_at_unix_seconds: u64,
+    run_ended_at_unix_seconds: u64,
+    observed_blocks: u64,
+}
+
+fn run_window_evidence_line_from_file(
+    bundle_id: Hash,
+    manifest_signer: Address,
+    block_observation_file: &str,
+) -> Result<String> {
+    let contents = std::fs::read_to_string(block_observation_file)
+        .map_err(|_| TvmError::Storage("failed to read run-window block observation file"))?;
+    let summary = run_window_observation_summary_from_file(&contents)?;
+    run_window_evidence_line(
+        bundle_id,
+        manifest_signer,
+        summary.run_started_at_unix_seconds,
+        summary.run_ended_at_unix_seconds,
+        summary.observed_blocks,
+    )
+}
+
+fn run_window_observation_summary_from_file(contents: &str) -> Result<RunWindowObservationSummary> {
+    let mut observations = BTreeMap::new();
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line != raw_line {
+            return Err(TvmError::InvalidReceipt(
+                "run-window observation line has leading or trailing whitespace",
+            ));
+        }
+        let (block, timestamp) = parse_run_window_observation_line(line)?;
+        if timestamp == 0 {
+            return Err(TvmError::InvalidReceipt(
+                "run-window observation timestamp is empty",
+            ));
+        }
+        if observations.insert(block, timestamp).is_some() {
+            return Err(TvmError::InvalidReceipt(
+                "duplicate run-window observation block",
+            ));
+        }
+    }
+    let Some((&first_block, &run_started_at_unix_seconds)) = observations.iter().next() else {
+        return Err(TvmError::InvalidReceipt(
+            "run-window observation file has no observations",
+        ));
+    };
+    let (&last_block, &run_ended_at_unix_seconds) = observations.iter().next_back().unwrap();
+    let observed_blocks = observations.len() as u64;
+    let expected_block_count = last_block
+        .checked_sub(first_block)
+        .and_then(|span| span.checked_add(1))
+        .ok_or(TvmError::InvalidReceipt(
+            "run-window observation block range is invalid",
+        ))?;
+    if observed_blocks != expected_block_count {
+        return Err(TvmError::InvalidReceipt(
+            "run-window observation blocks must be contiguous",
+        ));
+    }
+    let mut previous_timestamp = None;
+    for timestamp in observations.values().copied() {
+        if let Some(previous) = previous_timestamp
+            && timestamp < previous
+        {
+            return Err(TvmError::InvalidReceipt(
+                "run-window observation timestamps must be monotonic",
+            ));
+        }
+        previous_timestamp = Some(timestamp);
+    }
+    Ok(RunWindowObservationSummary {
+        run_started_at_unix_seconds,
+        run_ended_at_unix_seconds,
+        observed_blocks,
+    })
+}
+
+fn parse_run_window_observation_line(line: &str) -> Result<(u64, u64)> {
+    let record = line
+        .strip_prefix("run_window_observation=")
+        .ok_or(TvmError::InvalidReceipt(
+            "unsupported run-window observation line",
+        ))?;
+    let fields: Vec<&str> = record.split(',').collect();
+    if fields.len() != 2 {
+        return Err(TvmError::InvalidReceipt("malformed run-window observation"));
+    }
+    Ok((parse_u64(fields[0])?, parse_u64(fields[1])?))
 }
 
 fn node_heartbeat_evidence_line(
@@ -3246,6 +3379,24 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             parse_cli_parts(&[
                 "public-evidence",
+                "run-window-from-file",
+                "--bundle-id",
+                &bundle_id,
+                "--manifest-signer",
+                &manifest_signer,
+                "--block-observation-file",
+                "artifacts/block-observations.records",
+            ])
+            .unwrap(),
+            CliCommand::PublicEvidenceRunWindowFromFile {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                block_observation_file: "artifacts/block-observations.records".to_owned(),
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "public-evidence",
                 "node-heartbeat",
                 "--role",
                 "miner",
@@ -3897,6 +4048,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
         );
         assert_eq!(
+            describe_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                block_observation_file: "artifacts/block-observations.records".to_owned(),
+            }),
+            "generate public evidence run window from captured block observations block_observation_file=artifacts/block-observations.records"
+        );
+        assert_eq!(
             describe_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
@@ -4250,10 +4409,35 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             run_window,
             format!(
-                "run_window_signature={}",
+                "run_started_at_unix_seconds=1700000000\nrun_ended_at_unix_seconds=1700000060\nrun_window_signature={}\nobserved_blocks=10",
                 hex(&manifest_bundle().run_window_signature)
             )
         );
+        let run_window_observation_file = std::env::temp_dir().join(format!(
+            "tensor-vm-run-window-{}.records",
+            std::process::id()
+        ));
+        let run_window_observations = (0..10)
+            .map(|block| {
+                let timestamp = if block == 9 {
+                    1_700_000_060
+                } else {
+                    1_700_000_000 + block * 6
+                };
+                format!("run_window_observation={block},{timestamp}")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(&run_window_observation_file, run_window_observations).unwrap();
+        let run_window_from_file =
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
+            })
+            .unwrap();
+        std::fs::remove_file(&run_window_observation_file).unwrap();
+        assert_eq!(run_window_from_file, run_window);
 
         let node_cases = [
             (
@@ -5679,6 +5863,44 @@ p2p_idle_timeout_seconds=60
                 run_started_at_unix_seconds: 1_700_000_000,
                 run_ended_at_unix_seconds: 1_700_000_060,
                 observed_blocks: 0,
+            })
+            .is_err()
+        );
+        let run_window_summary = run_window_observation_summary_from_file(
+            "run_window_observation=7,1700000000\nrun_window_observation=8,1700000006\n",
+        )
+        .unwrap();
+        assert_eq!(
+            run_window_summary.run_started_at_unix_seconds,
+            1_700_000_000
+        );
+        assert_eq!(run_window_summary.run_ended_at_unix_seconds, 1_700_000_006);
+        assert_eq!(run_window_summary.observed_blocks, 2);
+        for invalid_run_window_observations in [
+            "# no observations\n\n",
+            " run_window_observation=0,1700000000\n",
+            "run_window_observation=0,1700000000\nrun_window_observation=0,1700000001\n",
+            "run_window_observation=0,1700000000\nrun_window_observation=2,1700000012\n",
+            "run_window_observation=0,1700000006\nrun_window_observation=1,1700000000\n",
+            "run_window_observation=0,0\n",
+            "run_window_observation=0\n",
+            "service_health_observation=0,reachable\n",
+        ] {
+            assert!(
+                run_window_observation_summary_from_file(invalid_run_window_observations).is_err()
+            );
+        }
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                block_observation_file: std::env::temp_dir()
+                    .join(format!(
+                        "missing-tensor-vm-run-window-{}.records",
+                        std::process::id()
+                    ))
+                    .to_string_lossy()
+                    .into_owned(),
             })
             .is_err()
         );

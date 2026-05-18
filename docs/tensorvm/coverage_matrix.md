@@ -78,9 +78,12 @@ deployment gate.
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
   from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level
   network-runtime observation roots can be summarized and artifact-bound from external-addressed records or
-  saved raw-record files, `node-heartbeat-from-file` derives signed node-heartbeat manifest lines from
-  saved contiguous per-block observation files while rejecting duplicate blocks, gaps, identity mismatches,
-  unsupported lines, and whitespace-padded records, `service-health-from-file` derives signed
+  saved raw-record files, `run-window-from-file` derives signed run-window manifest lines from saved
+  contiguous per-block observation files while rejecting duplicate blocks, gaps, zero timestamps,
+  decreasing timestamps, unsupported lines, and whitespace-padded records, `node-heartbeat-from-file`
+  derives signed node-heartbeat manifest lines from saved contiguous per-block observation files while
+  rejecting duplicate blocks, gaps, identity mismatches, unsupported lines, and whitespace-padded records,
+  `service-health-from-file` derives signed
   service-health manifest lines from saved contiguous per-block observation files while rejecting duplicate
   blocks, gaps, unsupported lines, and whitespace-padded records, service health/content evidence must use
   matching HTTPS authorities for each endpoint ID, and the required post-run evidence-bundle shape is

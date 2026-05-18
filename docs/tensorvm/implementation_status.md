@@ -134,6 +134,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence run-window ...`, and
   `tvmd public-evidence node-heartbeat ...` generation for signed publication, independent-auditor,
   wall-clock run-window, and external-operator heartbeat fields, plus
+  `tvmd public-evidence run-window-from-file ...` generation that derives the signed run-window manifest
+  fields from saved contiguous per-block `run_window_observation=...` files with
+  duplicate-block, gap, zero-timestamp, decreasing-timestamp, unsupported-line, and
+  whitespace-padded-record rejection,
   `tvmd public-evidence node-heartbeat-from-file ...` generation that derives signed `node=...` lines
   from saved contiguous per-block `node_heartbeat_observation=...` files with duplicate-block, gap,
   identity-mismatch, unsupported-line, and whitespace-padded-record rejection,
@@ -224,10 +228,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.01% workspace line coverage
-- 8236/8318 workspace lines covered
+- 99.02% workspace line coverage
+- 8312/8394 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7668/7668 `tensor_vm` lines covered
+- 7744/7744 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

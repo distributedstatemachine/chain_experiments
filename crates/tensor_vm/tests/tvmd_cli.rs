@@ -603,6 +603,32 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         "--observed-blocks",
         "10",
     ]);
+    let run_window_record_file = data_dir.join("run-window.records");
+    let run_window_records = (0..10)
+        .map(|block| {
+            let timestamp = if block == 9 {
+                1_700_000_060
+            } else {
+                1_700_000_000 + block * 6
+            };
+            format!("run_window_observation={block},{timestamp}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&run_window_record_file, run_window_records)
+        .expect("run window record file must be written");
+    let run_window_record_file_text = run_window_record_file.to_string_lossy().into_owned();
+    let run_window_from_file = trimmed_tvmd(&[
+        "public-evidence",
+        "run-window-from-file",
+        "--bundle-id",
+        &bundle_id,
+        "--manifest-signer",
+        &manifest_signer,
+        "--block-observation-file",
+        &run_window_record_file_text,
+    ]);
+    assert_eq!(run_window_from_file, run_window);
 
     let mut service_lines = Vec::new();
     let mut service_content_lines = Vec::new();
@@ -720,10 +746,7 @@ peer_discovery_observed=true
 gossip_propagation_observed=true
 request_response_observed=true
 dos_controls_enabled=true
-run_started_at_unix_seconds=1700000000
-run_ended_at_unix_seconds=1700000060
 {run_window}
-observed_blocks=10
 finalized_blocks=10
 checked_receipts=20
 available_receipts=19
