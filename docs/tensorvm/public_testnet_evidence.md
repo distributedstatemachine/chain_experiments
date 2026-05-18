@@ -30,13 +30,15 @@ A complete evidence bundle must include:
 - independent operator identity or attestation records
 - signed block-history summary root for the full 7-day run
 - signed finality-history summary root for the full 7-day run
-- signed production libp2p network-observation summary root
+- signed production libp2p network-observation records for every counted public operator and their
+  aggregate summary root
 - signed data-availability measurement summary root for checked tensor receipts
 - signed invalid-work submission and rejection evidence
 - signed reward-settlement records for verified TensorWork
 - signed external artifact locators for the raw supporting records behind each block/finality/libp2p/data
   availability/invalid-work/reward-settlement summary root
-- proof that production libp2p was used for peer discovery, gossip, and request/response propagation
+- proof that production libp2p was used for peer discovery, gossip, and request/response propagation,
+  with one signed observation record per counted public miner or validator operator
 - external HTTPS URLs, health paths, reachability records, content paths, and signed content-root
   observations for deployed RPC, explorer, faucet, and telemetry services
 - distinct deployed endpoint IDs and distinct signed service-content roots for the RPC, explorer, faucet,

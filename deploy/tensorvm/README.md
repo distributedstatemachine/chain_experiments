@@ -37,8 +37,9 @@ The nginx template publishes separate external HTTPS hostnames for the four surf
 hostname to the local service. Public evidence still has to include signed service-health records for each
 external URL, signed service-content records for the deployed content paths using the same HTTPS authority
 as each corresponding health URL, exact health/content paths without query strings or fragments, and
-signed network-observation records proving libp2p discovery, gossip, request/response, and configured DoS
-controls during the external run. Each signed block, finality, libp2p,
+one signed `network_runtime_observation=...` record per counted public operator proving libp2p discovery,
+gossip, request/response, and configured DoS controls during the external run. Those observation roots
+must be aggregated into the signed network-runtime summary. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
 the raw records behind that root.
 

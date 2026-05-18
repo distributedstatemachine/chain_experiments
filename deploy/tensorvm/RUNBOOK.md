@@ -94,7 +94,7 @@ final summaries must cover the full observed block range and the full wall-clock
 - node heartbeats for every active miner and validator
 - service-health records for every public service
 - service-content records for every public service
-- libp2p network-observation records from independent observers
+- libp2p network-observation records from independent observers, one per counted public operator
 - finalized block count and finality rate
 - tensor receipt availability sample count and available count
 - invalid work submitted and rejected
