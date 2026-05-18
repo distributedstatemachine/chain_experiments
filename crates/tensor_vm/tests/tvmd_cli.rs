@@ -155,7 +155,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "9",
+            "12",
         ])
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
@@ -185,6 +185,18 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(chain_head.contains("\"height\""));
     assert!(chain_head.contains("\"block_count\""));
 
+    let current_epoch = authenticated_get_request(rpc_port, "/epoch/current");
+    assert!(current_epoch.contains("HTTP/1.1 200 OK"));
+    assert!(current_epoch.contains("\"epoch\""));
+
+    let current_jobs = authenticated_get_request(rpc_port, "/jobs/current");
+    assert!(current_jobs.contains("HTTP/1.1 200 OK"));
+    assert!(current_jobs.contains("\"jobs\""));
+
+    let genesis_block = authenticated_get_request(rpc_port, "/chain/block/0");
+    assert!(genesis_block.contains("HTTP/1.1 404 Not Found"));
+    assert!(genesis_block.contains("block not found"));
+
     let explorer = authenticated_get_request(rpc_port, "/explorer");
     assert!(explorer.contains("HTTP/1.1 200 OK"));
     assert!(explorer.contains("TensorVM Explorer"));
@@ -212,7 +224,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(stdout.contains("p2p_gossipsub_topics="));
     assert!(stdout.contains("p2p_request_response_protocols="));
     assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("served_requests=9"));
+    assert!(stdout.contains("served_requests=12"));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }

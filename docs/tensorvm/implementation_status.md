@@ -187,8 +187,9 @@ The workspace currently has 185 passing library tests under Tarpaulin:
 tests for the documented spec-path pending manifest commands plus a supervised
 `tvmd service init` / `tvmd service peer add` / bounded `tvmd service serve` lifecycle smoke
 test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
-`/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/explorer`, `/faucet/page`,
-and `/telemetry/dashboard` from the process-level service.
+`/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
+`/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
+`/telemetry/dashboard` from the process-level service.
 
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
