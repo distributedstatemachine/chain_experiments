@@ -124,7 +124,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
-  and content roots,
+  content roots, and at least 64 observed bytes,
   `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
   single-label DNS rejection,

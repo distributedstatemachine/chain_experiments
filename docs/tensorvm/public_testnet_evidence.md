@@ -104,7 +104,8 @@ Service-health signatures cover the service kind, endpoint ID, public URL, healt
 block, reachable observation count, and signed health-check count. Supporting-artifact signatures cover the
 bundle ID, record-set kind, external artifact URI, record root, and record count. Service-content
 signatures cover the service kind, endpoint ID, public URL, content path, content root, observation time,
-and minimum observed content bytes. Service URLs, service-content URLs, supporting artifact HTTPS URIs,
+and minimum observed content bytes; counted public service content must prove at least 64 observed bytes.
+Service URLs, service-content URLs, supporting artifact HTTPS URIs,
 auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed external host authorities;
 userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed
 IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
@@ -297,7 +298,8 @@ Bundle validation only counts a service as deployed when both reachable observat
 checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
 line in the evidence manifest. The service-content command rejects non-public content URLs, malformed
 endpoint IDs, content URLs whose path does not exactly match the required service surface, content URLs
-with query strings or fragments, zero content roots, empty observation times, and empty content sizes.
+with query strings or fragments, zero content roots, empty observation times, and content proofs smaller
+than 64 observed bytes.
 Bundle validation only counts service-content records observed inside the signed run window and whose HTTPS
 authority matches the corresponding service-health URL for the same endpoint ID. Its output can be inserted
 directly as a `service_content=...` line in the evidence manifest. The public service gate requires both

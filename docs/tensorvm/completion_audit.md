@@ -102,7 +102,7 @@ coverage, signed
 independent-auditor records bound to
 external audit URIs with observations at or after the signed run end, signed service-content roots bound to
 external HTTPS URLs, matching service endpoint IDs, matching service-health HTTPS authorities, required
-content paths, exact run-derived supporting-record counts, and external-operator evidence derived from signed manifest
+content paths, 64-byte minimum content proofs, exact run-derived supporting-record counts, and external-operator evidence derived from signed manifest
 operator-attestation records plus distinct node-heartbeat addresses and counts that cover the observed block
 count while rejecting overreported operator-attestation counts.
 These blockers therefore require real external infrastructure rather than loopback, private-network,

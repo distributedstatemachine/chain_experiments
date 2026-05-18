@@ -18,6 +18,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
 pub const PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-preflight-v1";
+pub const PUBLIC_SERVICE_MIN_CONTENT_BYTES: u64 = 64;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestnetConfig {
@@ -475,7 +476,7 @@ impl PublicServiceContentEvidence {
         self.endpoint_id != [0; 32]
             && self.content_root != [0; 32]
             && self.observed_at_unix_seconds > 0
-            && self.min_content_bytes > 0
+            && self.min_content_bytes >= PUBLIC_SERVICE_MIN_CONTENT_BYTES
             && public_https_host(&self.public_url).is_some_and(public_host_is_external)
             && self.content_path == self.kind.content_path()
             && public_https_path(&self.public_url) == Some(self.kind.content_path())
@@ -4060,6 +4061,22 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!content_after_run.has_deployed_public_service_content);
         assert!(!content_after_run.has_deployed_public_services);
         assert!(!content_after_run.public_criterion_met);
+        run.service_content = deployed_public_service_content();
+
+        run.service_content[0] = PublicServiceContentEvidence::new(
+            PublicServiceKind::Rpc,
+            hash_bytes(b"test", &[b"rpc-service"]),
+            public_service_content_url(PublicServiceKind::Rpc),
+            public_service_content_path(PublicServiceKind::Rpc),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            1_700_000_000,
+            PUBLIC_SERVICE_MIN_CONTENT_BYTES - 1,
+        );
+        let undersized_rpc_content = run.evaluate(&criteria, 6, true);
+        assert!(!undersized_rpc_content.has_deployed_rpc_service);
+        assert!(!undersized_rpc_content.has_deployed_public_service_content);
+        assert!(!undersized_rpc_content.has_deployed_public_services);
+        assert!(!undersized_rpc_content.public_criterion_met);
         run.service_content = deployed_public_service_content();
 
         run.service_content

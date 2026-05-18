@@ -1803,9 +1803,10 @@ block count with both reachable observations and signed health checks.
 The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Counted
-service-content records must be observed inside the signed run window. Deployed public service evidence
-must include both signed health and signed content records with matching endpoint IDs and matching HTTPS
-authorities for `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard`.
+service-content records must be observed inside the signed run window and prove at least 64 observed bytes.
+Deployed public service evidence must include both signed health and signed content records with matching
+endpoint IDs and matching HTTPS authorities for `/chain/head`, `/explorer`, `/faucet/page`, and
+`/telemetry/dashboard`.
 Public service health and content URLs must use the exact signed path with no query string or fragment.
 External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
 DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed IPv6 authorities, localhost,

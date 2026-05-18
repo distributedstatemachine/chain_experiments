@@ -3814,6 +3814,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             .is_err()
         );
         assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 63,
+            })
+            .is_err()
+        );
+        assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 public_uri: "https://evidence.tensorvm.example/public-evidence.json".to_owned(),

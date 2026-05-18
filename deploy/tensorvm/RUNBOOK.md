@@ -82,7 +82,7 @@ records for:
 - reward-settlement records
 - public service health observations for RPC, explorer, faucet, and telemetry
 - public service content observations for `/chain/head`, `/explorer`, `/faucet/page`, and
-  `/telemetry/dashboard`
+  `/telemetry/dashboard`, each proving at least 64 observed bytes
 
 ## Daily Checks
 
