@@ -201,9 +201,17 @@ instantiated miners and validators. This gate must use canonical CPU semantics a
 node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking shims, in-memory
 propagation substitutes, or single-participant shortcuts.
 
+For this gate, CPU means the default reference backend without `cuda-kernels` or GPU acceleration.
+Multi-participant means more than one independently instantiated local participant with separate node
+state, libp2p identity, endpoint, and role; single-process helper assertions do not count unless they
+stand up the same participant shape. Local testnet means a local-only harness is allowed, but protocol
+messages must flow through the mandatory libp2p node paths rather than mocks or direct in-memory
+propagation.
+
 Gate 0 is also the first executable gate for every new or resumed MVP implementation iteration. Context
-gathering may happen before it, but no later gate, implementation slice, or completion claim counts until
-the CPU local multi-participant testnet command below passes against the current codebase.
+gathering may happen before it, but the first command that produces acceptance evidence for the iteration
+must be the CPU local multi-participant testnet command below. No later gate, implementation slice, or
+completion claim counts until this command passes against the current codebase.
 
 Required Gate 0 command from the repository root:
 
@@ -2128,8 +2136,8 @@ The agent should execute this loop until the contract is satisfied:
 
 ```text
 1. read this spec and the linked status/coverage docs
-2. run the Gate 0 CPU local-testnet command as the first executable acceptance gate before any other
-   local, CUDA, public preflight, public evidence, or deployment-gated work can count
+2. run and record the Gate 0 CPU local-testnet command as the first executable acceptance gate before any
+   other local, CUDA, public preflight, public evidence, or deployment-gated work can count
 3. compare code and docs against Sections 32, 33, and 35
 4. list missing local-reference items and missing deployment-gated items
 5. implement one coherent missing local-reference slice
