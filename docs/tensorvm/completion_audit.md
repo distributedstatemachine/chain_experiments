@@ -49,13 +49,16 @@ The objective decomposes into these deliverables:
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain`, 173 `tensor_vm` library tests, 2 `tvmd` binary tests, and 5 `tvmd` CLI integration tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 187 instrumented tests | Passed |
-| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7830/7830 lines covered | Passed |
+| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7871/7871 lines covered | Passed |
 | CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 177 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 Current AC13 evidence tooling also includes `tvmd public-evidence run-window-from-file ...`, which derives
 signed run-window evidence from saved contiguous `run_window_observation=<block>,<unix-seconds>` records
 while rejecting duplicate blocks, gaps, zero timestamps, decreasing timestamps, unsupported lines, and
 whitespace-padded records.
+File-derived `network-runtime` summaries now validate each signed
+`network_runtime_observation=...` raw record before aggregation, including the libp2p peer ID, public
+multiaddr, nonzero counters, observation root, and observation signature.
 
 ## Acceptance Criteria Audit
 

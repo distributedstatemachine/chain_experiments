@@ -2142,7 +2142,67 @@ fn network_observation_root_from_record_line(record: &str) -> Result<Hash> {
             "invalid network observation record line",
         ));
     }
-    parse_record_file_root(fields[11])
+    if fields.iter().any(|field| field.trim() != *field) {
+        return Err(TvmError::InvalidReceipt(
+            "invalid network observation record line",
+        ));
+    }
+    let operator_id = parse_hash_argument(fields[0])?;
+    if operator_id == [0; 32] {
+        return Err(TvmError::InvalidReceipt("operator id argument is empty"));
+    }
+    let peer_id = fields[1]
+        .parse::<PeerId>()
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p peer id"))?
+        .to_string();
+    let listen_address = fields[2]
+        .parse::<Multiaddr>()
+        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
+    if !network_observation_multiaddr_is_public(&listen_address) {
+        return Err(TvmError::InvalidReceipt(
+            "network observation address is not public",
+        ));
+    }
+    let listen_address = listen_address.to_string();
+    let input = NetworkObservationEvidenceLine {
+        operator_id,
+        peer_id: &peer_id,
+        listen_address: &listen_address,
+        observed_at_unix_seconds: parse_u64(fields[3])?,
+        gossip_topic_count: parse_u64(fields[4])?,
+        request_response_protocol_count: parse_u64(fields[5])?,
+        bootstrap_peer_count: parse_u64(fields[6])?,
+        max_transmit_bytes: parse_u64(fields[7])?,
+        request_timeout_seconds: parse_u64(fields[8])?,
+        max_concurrent_streams: parse_u64(fields[9])?,
+        idle_connection_timeout_seconds: parse_u64(fields[10])?,
+    };
+    if input.observed_at_unix_seconds == 0
+        || input.gossip_topic_count == 0
+        || input.request_response_protocol_count == 0
+        || input.bootstrap_peer_count == 0
+        || input.max_transmit_bytes == 0
+        || input.request_timeout_seconds == 0
+        || input.max_concurrent_streams == 0
+        || input.idle_connection_timeout_seconds == 0
+    {
+        return Err(TvmError::InvalidReceipt(
+            "invalid network observation record line",
+        ));
+    }
+    let record_root = parse_record_file_root(fields[11])?;
+    let record_signature = parse_record_file_root(fields[12])?;
+    let expected_root = network_observation_root(&input, &peer_id, &listen_address);
+    let expected_signature = hash_bytes(
+        b"tensor-vm-network-runtime-observation-signature-v1",
+        &[&operator_id, &expected_root],
+    );
+    if record_root != expected_root || record_signature != expected_signature {
+        return Err(TvmError::InvalidReceipt(
+            "invalid network observation record line",
+        ));
+    }
+    Ok(record_root)
 }
 
 struct NetworkObservationEvidenceLine<'a> {
@@ -4804,6 +4864,108 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 hex(&observation_root),
                 hex(&observation_signature)
             )
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation,
+            )
+            .unwrap(),
+            observation_root
+        );
+        let network_observation_bad_peer =
+            network_observation.replace(&format!(",{peer_id},"), ",not-a-peer,");
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_bad_peer,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid libp2p peer id"
+        );
+        let network_observation_bad_multiaddr =
+            network_observation.replace(",/dns/node-a.tensorvm.net/tcp/4001,", ",not-a-multiaddr,");
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_bad_multiaddr,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid libp2p multiaddr"
+        );
+        let network_observation_local_multiaddr = network_observation.replace(
+            ",/dns/node-a.tensorvm.net/tcp/4001,",
+            ",/ip4/127.0.0.1/tcp/4001,",
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_local_multiaddr,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: network observation address is not public"
+        );
+        let network_observation_whitespace_field =
+            network_observation.replace(&format!(",{peer_id},"), &format!(", {peer_id},"));
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_whitespace_field,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid network observation record line"
+        );
+        let network_observation_zero_operator =
+            network_observation.replace(&hex(&observation_input.operator_id), &"00".repeat(32));
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_zero_operator,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: operator id argument is empty"
+        );
+        let network_observation_zero_count =
+            network_observation.replace(",1700000000,5,3,2,", ",1700000000,0,3,2,");
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_zero_count,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid network observation record line"
+        );
+        let network_observation_tampered_root = network_observation.replace(
+            &hex(&observation_root),
+            &hex(&hash_bytes(b"test", &[b"tampered-network-root"])),
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_tampered_root,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid network observation record line"
+        );
+        let network_observation_tampered_signature = network_observation.replace(
+            &hex(&observation_signature),
+            &hex(&hash_bytes(b"test", &[b"tampered-network-signature"])),
+        );
+        assert_eq!(
+            public_evidence_record_root_from_line(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                &network_observation_tampered_signature,
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid receipt: invalid network observation record line"
         );
         let service_log = format!(
             "\
