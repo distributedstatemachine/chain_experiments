@@ -147,17 +147,19 @@ Required fix:
   - finalized head is compatible with the previous head
   - blocks continue advancing after restart
 
-### 6. Ongoing Production Only Exercises Matmul
+### 6. Live Primitive Coverage Needs Stronger Evidence
 
-The seed covers both TensorOp and LinearTrainingStep. Live post-startup production currently generates only
-synthetic matmul jobs through `SyntheticLocalJobSource`.
+The seed covers both TensorOp and LinearTrainingStep. Live post-startup production now uses
+`SyntheticLocalJobSource` for both matmul and LinearTrainingStep jobs, and the checker can require
+`model_count` to advance past the seeded baseline as proof that a live training step settled.
 
 Required fix:
 
-- Add a deterministic local `JobSource` that can emit both:
+- Keep the deterministic local `JobSource` emitting both:
   - TensorOp matmul jobs
   - LinearTrainingStep jobs
-- Gate on both primitives appearing in live post-startup blocks.
+- Add per-block or per-receipt checker evidence that names both live post-startup primitive types, not
+  just aggregate model-count advancement.
 
 ### 7. The Checker Does Not Prove All Local-Spec Acceptance Items
 
@@ -411,8 +413,8 @@ jobs, receipts, attestations, and votes.
 - Add checker assertions for live rewards, live attestations, and live tensor data fetch.
 
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
-jobs, receipts, and settled receipts. Live rewards, live attestation details, tensor-server fetch evidence,
-and all-node head convergence still need hard checker assertions.
+jobs, model-count advancement, receipts, and settled receipts. Live rewards, live attestation details,
+tensor-server fetch evidence, and all-node head convergence still need hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -503,8 +505,8 @@ Keep this incremental:
 4. Wire miner receipt production through role processes.
 5. Wire validator attestation production through role processes.
 6. Wire proposer/block production through network-visible state.
-7. Make `SyntheticLocalJobSource` profile-configured and emit both matmul and LinearTrainingStep jobs after
-   startup.
+7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
+   types after startup.
 8. Add restart continuity checks for `miner-00` and require every operator to report the same finalized head.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that

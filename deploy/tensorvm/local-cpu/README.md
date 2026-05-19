@@ -35,7 +35,8 @@ If `8080` is already in use, set `TENSORVM_LOCAL_CPU_EXPLORER_PORT` before runni
 script.
 
 The check script waits for `/chain/head` and `/explorer/overview` to move past the seeded two-block
-snapshot, including new jobs, receipts, and settled receipts from live synthetic work.
+snapshot, including new jobs, receipts, settled receipts, and model-count advancement from live synthetic
+work.
 
 ## Commands
 

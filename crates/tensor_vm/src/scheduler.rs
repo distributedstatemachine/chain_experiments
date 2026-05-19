@@ -1,5 +1,6 @@
 use crate::chain::{JobState, LocalChain};
-use crate::jobs::MatmulJob;
+use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob};
+use crate::tensor::{DType, Tensor};
 use crate::types::{Address, Hash, hash_bytes, hash_to_u128};
 use std::collections::BTreeSet;
 
@@ -46,6 +47,44 @@ impl SyntheticLocalJobSource {
                 .saturating_add(chain.params.receipt_submission_window),
         )
     }
+
+    pub fn next_linear_training_job(&mut self, chain: &LocalChain) -> LinearTrainingStepJob {
+        let weights = Self::linear_training_weights();
+        let height = chain.state.height.to_le_bytes();
+        LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(
+                b"tensor-vm-local-linear-model-v1",
+                &[&chain.state.finalized_randomness, &height],
+            ),
+            step: 0,
+            batch_seed: hash_bytes(
+                b"tensor-vm-local-linear-batch-v1",
+                &[&chain.state.finalized_randomness, &height],
+            ),
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![4, 3],
+            weight_shape: vec![3, 2],
+            target_shape: vec![4, 2],
+            lr: 2,
+            deadline_block: chain
+                .state
+                .height
+                .saturating_add(chain.params.receipt_submission_window),
+        })
+    }
+
+    pub fn linear_training_weights() -> Tensor {
+        Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6])
+            .expect("static synthetic linear weights must be valid")
+    }
+
+    pub fn linear_training_architecture_hash() -> Hash {
+        hash_bytes(b"tensor-vm-local-linear-architecture-v1", &[])
+    }
+
+    pub fn linear_training_config_hash() -> Hash {
+        hash_bytes(b"tensor-vm-local-linear-config-v1", &[])
+    }
 }
 
 impl Default for SyntheticLocalJobSource {
@@ -56,7 +95,13 @@ impl Default for SyntheticLocalJobSource {
 
 impl JobSource for SyntheticLocalJobSource {
     fn next_job(&mut self, chain: &LocalChain) -> Option<JobState> {
-        Some(JobState::TensorOp(self.next_matmul_job(chain)))
+        if chain.state.height.is_multiple_of(2) {
+            Some(JobState::TensorOp(self.next_matmul_job(chain)))
+        } else {
+            Some(JobState::LinearTrainingStep(
+                self.next_linear_training_job(chain),
+            ))
+        }
     }
 }
 
@@ -170,7 +215,7 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"synthetic-source"]);
         let mut chain = LocalChain::new(beacon);
         chain.state.epoch = 7;
-        chain.state.height = 11;
+        chain.state.height = 10;
         chain.params.receipt_submission_window = 13;
         let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
 
@@ -180,12 +225,41 @@ mod tests {
 
         assert_eq!(job.epoch, 7);
         assert_eq!((job.m, job.k, job.n), (2, 3, 4));
-        assert_eq!(job.deadline_block, 24);
+        assert_eq!(job.deadline_block, 23);
         assert_eq!(
             job.job_id,
             JobScheduler::with_small_shape((2, 3, 4))
-                .generate_small_matmul(7, 11, &beacon, 24)
+                .generate_small_matmul(7, 10, &beacon, 23)
                 .job_id
+        );
+    }
+
+    #[test]
+    fn synthetic_job_source_emits_linear_training_steps_on_odd_heights() {
+        let beacon = hash_bytes(b"test", &[b"synthetic-linear-source"]);
+        let mut chain = LocalChain::new(beacon);
+        chain.state.epoch = 3;
+        chain.state.height = 11;
+        chain.params.receipt_submission_window = 13;
+        let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
+        let weights = SyntheticLocalJobSource::linear_training_weights();
+
+        let Some(JobState::LinearTrainingStep(job)) = source.next_job(&chain) else {
+            panic!("synthetic local job source must emit LinearTrainingStep jobs on odd heights");
+        };
+
+        assert_eq!(job.step, 0);
+        assert_eq!(job.weight_root_before, weights.commitment_root());
+        assert_eq!(job.input_shape, vec![4, 3]);
+        assert_eq!(job.weight_shape, vec![3, 2]);
+        assert_eq!(job.target_shape, vec![4, 2]);
+        assert_eq!(job.deadline_block, 24);
+        assert_eq!(
+            job.model_id,
+            hash_bytes(
+                b"tensor-vm-local-linear-model-v1",
+                &[&beacon, &11u64.to_le_bytes()]
+            )
         );
     }
 

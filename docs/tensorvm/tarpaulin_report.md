@@ -3,7 +3,7 @@
 Generated on May 19, 2026 from the workspace root with:
 
 ```bash
-cargo tarpaulin
+cargo tarpaulin --workspace --offline
 ```
 
 The root [`tarpaulin.toml`](../../tarpaulin.toml) expands that to workspace library coverage,
@@ -18,18 +18,18 @@ Host notes:
 Result:
 
 ```text
-207 tests passed under instrumentation:
+211 tests passed under instrumentation:
 - 14 experiments library tests
-- 192 tensor_vm library tests
+- 196 tensor_vm library tests
 - 1 tensor_vm_explorer library test
 
 99.15% workspace line coverage
-9517/9599 workspace lines covered
+9618/9700 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-8678/8678 tensor_vm lines covered
+8778/8778 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
-271/271 tensor_vm_explorer lines covered
+272/272 tensor_vm_explorer lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps

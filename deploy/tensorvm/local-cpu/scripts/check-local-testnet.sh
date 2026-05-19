@@ -143,6 +143,7 @@ LIVE_HEIGHT=0
 LIVE_BLOCK_COUNT=0
 LIVE_OVERVIEW=""
 LIVE_JOB_COUNT=0
+LIVE_MODEL_COUNT=0
 LIVE_RECEIPT_COUNT=0
 LIVE_SETTLED_RECEIPT_COUNT=0
 attempt=0
@@ -152,11 +153,13 @@ while [ "$attempt" -lt 30 ]; do
   LIVE_BLOCK_COUNT=$(json_number block_count "$LIVE_CHAIN_HEAD")
   LIVE_OVERVIEW=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
   LIVE_JOB_COUNT=$(json_number job_count "$LIVE_OVERVIEW")
+  LIVE_MODEL_COUNT=$(json_number model_count "$LIVE_OVERVIEW")
   LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
   LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
   if [ "${LIVE_HEIGHT:-0}" -gt 2 ] \
     && [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] \
     && [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] \
+    && [ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] \
     && [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] \
     && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ]; then
     break
@@ -168,6 +171,7 @@ done
 [ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2"
 [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks"
 [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] || fail "protocol did not generate synthetic jobs after seed"
+[ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] || fail "protocol did not settle a live LinearTrainingStep after seed"
 [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts"
 [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts"
 
@@ -193,6 +197,7 @@ standalone_explorer_ready=true
 standalone_explorer_websocket_polling=true
 live_block_production=true
 live_synthetic_jobs=true
+live_linear_training_jobs=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

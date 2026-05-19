@@ -881,6 +881,7 @@ fn explorer_summary(chain: &LocalChain) -> ExplorerSummary {
         miner_count: chain.state.miners.len(),
         validator_count: chain.state.validators.len(),
         job_count: chain.state.jobs.len(),
+        model_count: chain.state.model_states.len(),
         receipt_count: chain.state.receipts.len(),
         settled_receipt_count: chain.state.settled_receipts.len(),
         finalized_block_count: chain.state.finalized_blocks.len(),

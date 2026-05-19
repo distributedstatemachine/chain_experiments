@@ -45,8 +45,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   faucet, miner, scheduler, storage, watcher, and local testnet/public-evidence modules
 - Deterministic job scheduler, operator-separated miner replication assignment with fallback when
   diversity is insufficient, and validator assignment
-- `JobSource` and `SyntheticLocalJobSource` boundaries for local CPU job generation without embedding
-  scheduler policy directly in the block-production adapter
+- `JobSource` and `SyntheticLocalJobSource` boundaries for local CPU job generation, with deterministic
+  post-startup matmul and LinearTrainingStep jobs emitted without embedding scheduler policy directly in
+  the block-production adapter
 - Redundant miner-output agreement quorum before settlement, with disagreement/fewer-than-quorum receipts
   delayed rather than rewarded
 - Miner node executor with receipt submission and tensor serving
@@ -55,8 +56,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Tensor server for descriptors, rows, chunks, Merkle openings, and retention-window pruning
 - End-to-end local matmul round: schedule, mine, serve tensors, verify via tensor server, attest, settle, and produce block
 - End-to-end local LinearTrainingStep round: register model, mine, verify, attest, settle, update model state, and produce block
-- Library-owned local CPU synthetic round producer that schedules jobs, executes CPU miner work, verifies,
-  settles, finalizes, and advances blocks; `tvmd service serve` now calls this shared protocol path
+- Library-owned local CPU synthetic round producer that schedules matmul and LinearTrainingStep jobs,
+  executes CPU miner work, verifies, settles, finalizes, advances model state for training jobs, and
+  advances blocks; `tvmd service serve` now calls this shared protocol path
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
@@ -263,7 +265,7 @@ The May 19, 2026 Compose verification on this host used
 Gate 0 is the first non-skippable CPU local multi-participant testnet required before CUDA, public
 preflight, public evidence, or deployment-gated work can count:
 
-- `cargo test -p tensor_vm local_testnet --release`: 4 TensorVM tests passed, covering the local
+- `cargo test -p tensor_vm local_testnet --release`: 5 TensorVM tests passed, covering the local
   10-miner/5-validator bootstrap shape, separate participant identities and libp2p endpoints, live
   mandatory libp2p control-plane startup under default features, real loopback libp2p delivery across every
   TensorVM gossip topic and request-response message family, matmul settlement/rewards, LinearTrainingStep
@@ -279,14 +281,15 @@ preflight, public evidence, or deployment-gated work can count:
   `finality_rate_bps=10000`, `data_availability_bps=10000`, `public_evidence_full_spec=false`, and
   `independently_checkable=false`, with `standalone_explorer_ready=true` and
   `standalone_explorer_websocket_polling=true`; the gate now also requires
-  `live_block_production=true` and `live_synthetic_jobs=true`, proving `/chain/head` and explorer
-  counters advance past the seeded two-block baseline; the same check passed again after
+  `live_block_production=true`, `live_synthetic_jobs=true`, and `live_linear_training_jobs=true`, proving
+  `/chain/head` and explorer counters advance past the seeded two-block baseline and at least one live
+  LinearTrainingStep advances model state after startup; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 207 passing library tests under Tarpaulin:
+The workspace currently has 211 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 192 in `tensor_vm`
+- 196 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -314,11 +317,11 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.15% workspace line coverage
-- 9517/9599 workspace lines covered
+- 9618/9700 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8678/8678 `tensor_vm` lines covered
+- 8778/8778 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
-- 271/271 `tensor_vm_explorer` lines covered
+- 272/272 `tensor_vm_explorer` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
