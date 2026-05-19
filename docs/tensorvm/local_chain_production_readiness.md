@@ -47,13 +47,28 @@ The local bundle is useful and should remain the first operational target:
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
+## Refactor Progress
+
+The first chain-core cleanup slices are already in the tree:
+
+- `LocalChain` is exposed through a profile-neutral `Chain` alias and `ChainEngine` command/event facade.
+- `NodeStore` implements a `ChainStore` boundary for loading and persisting chain state.
+- `ChainProfile` and `NodeConfig` let local CPU, public testnet, and future mainnet construct the same
+  deterministic chain engine from profile values.
+- Local CPU synthetic production moved into the `tensor_vm` library instead of remaining private binary code.
+- `JobSource` and `SyntheticLocalJobSource` separate deterministic local job generation from scheduler and
+  block-production code.
+
+These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
+state transitions before it satisfies the local CPU spec as a production-grade local chain.
+
 ## Highest-Priority Gaps
 
 ### 1. Local Production Is Still Single-Process
 
-Current live production runs inside `miner-00`'s service loop. It directly creates CPU miner objects,
-validator objects, receipts, attestations, settlement, block production, and finality votes against one
-in-memory `LocalChain`.
+Current live production still runs inside `miner-00`'s service loop. It now calls a shared library adapter,
+but that adapter still directly creates CPU miner objects, validator objects, receipts, attestations,
+settlement, block production, and finality votes against one `Chain`.
 
 This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
 propagation, local-only networking shims, and single-participant shortcuts.
@@ -135,7 +150,7 @@ Required fix:
 ### 6. Ongoing Production Only Exercises Matmul
 
 The seed covers both TensorOp and LinearTrainingStep. Live post-startup production currently generates only
-synthetic matmul jobs.
+synthetic matmul jobs through `SyntheticLocalJobSource`.
 
 Required fix:
 
@@ -395,6 +410,10 @@ jobs, receipts, attestations, and votes.
 - Update `coverage_matrix.md` so it describes live post-startup jobs, not only seeded state.
 - Add checker assertions for live rewards, live attestations, and live tensor data fetch.
 
+Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
+jobs, receipts, and settled receipts. Live rewards, live attestation details, tensor-server fetch evidence,
+and all-node head convergence still need hard checker assertions.
+
 ### Phase 2: Extract Chain Engine Boundaries
 
 - Rename `LocalChain` to a profile-neutral `Chain` or wrap it behind `ChainEngine`.
@@ -402,11 +421,17 @@ jobs, receipts, attestations, and votes.
 - Preserve all existing behavior and tests.
 - Keep `LocalChain` as a compatibility type alias temporarily if needed.
 
+Status: started. `Chain`, `ChainEngine`, `ChainCommand`, and `ChainEvent` exist. Validation, settlement,
+proposer selection, and state views still live mostly in one large `chain.rs` implementation.
+
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 
 - Add long-running miner, validator, and proposer/node commands.
 - Initially run them against the existing RPC endpoints.
 - Then move gossip/request-response ingestion into the node runtime.
+
+Status: not complete. Miner and validator commands are readiness paths today, not independent long-running
+role runtimes.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
@@ -421,6 +446,9 @@ jobs, receipts, attestations, and votes.
 - Express local, testnet, and future mainnet as config profiles.
 - Remove profile-specific chain transition branches.
 - Ensure all profile tests instantiate the same engine.
+
+Status: started. `ChainProfile` and `NodeConfig` exist and tests prove all profiles build the same engine.
+The runtime still needs to consume those profiles end to end.
 
 ### Phase 6: Restart And Recovery
 
@@ -469,13 +497,15 @@ local evidence remains explicitly non-public
 Keep this incremental:
 
 1. Strengthen the checker for live attestations, live rewards, tensor fetch, and all-node head convergence.
-2. Extract a profile-neutral `ChainEngine` facade over the current `LocalChain`.
+2. Split `chain.rs` into state, engine, validation, settlement, and proposer modules while preserving the
+   `ChainEngine` facade.
 3. Add role-loop commands while keeping current tests green.
 4. Wire miner receipt production through role processes.
 5. Wire validator attestation production through role processes.
 6. Wire proposer/block production through network-visible state.
-7. Replace the gateway-local synthetic round with a profile-configured `SyntheticLocalJobSource`.
-8. Add restart continuity checks for `miner-00`.
+7. Make `SyntheticLocalJobSource` profile-configured and emit both matmul and LinearTrainingStep jobs after
+   startup.
+8. Add restart continuity checks for `miner-00` and require every operator to report the same finalized head.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.
