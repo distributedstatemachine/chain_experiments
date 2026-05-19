@@ -5795,6 +5795,45 @@ p2p_idle_timeout_seconds=60
             execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
                 kind: PublicServiceKind::Rpc,
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health?probe=1".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/health#probe".to_owned(),
+                health_path: "/health".to_owned(),
+                first_seen_block: 0,
+                last_seen_block: 9,
+                reachable_observation_count: 10,
+                signed_health_check_count: 10,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
                 public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
                 health_path: "/health".to_owned(),
                 first_seen_block: 0,
@@ -5898,6 +5937,42 @@ p2p_idle_timeout_seconds=60
                 endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
                 public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
                 content_path: "chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head?height=1".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                observed_at_unix_seconds: 1_700_000_000,
+                min_content_bytes: 64,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+                kind: PublicServiceKind::Rpc,
+                endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+                public_url: "https://rpc.tensorvm.net/chain/head#latest".to_owned(),
+                content_path: "/chain/head".to_owned(),
                 content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
                 observed_at_unix_seconds: 1_700_000_000,
                 min_content_bytes: 64,
