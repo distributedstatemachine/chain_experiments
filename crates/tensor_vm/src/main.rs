@@ -110,15 +110,29 @@ fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
             .next()
             .is_some()
     {
-        let status = store
-            .status()
-            .map_err(|error| format!("existing node store is invalid: {error}"))?;
-        return Ok(format!(
-            "command=service_init\ndata_dir={}\nexisting_store=true\nblock_count={}\nlatest_block_hash={}",
-            status.data_dir.display(),
-            status.block_count,
-            hex(&status.latest_block_hash)
-        ));
+        match store.load_chain().and_then(|_| store.status()) {
+            Ok(status) => {
+                return Ok(format!(
+                    "command=service_init\ndata_dir={}\nexisting_store=true\nrecovered_store=false\nblock_count={}\nlatest_block_hash={}",
+                    status.data_dir.display(),
+                    status.block_count,
+                    hex(&status.latest_block_hash)
+                ));
+            }
+            Err(error) => {
+                let status = store.recover_from_chain_state().map_err(|recovery_error| {
+                    format!(
+                        "existing node store is invalid: {error}; chain-state recovery failed: {recovery_error}"
+                    )
+                })?;
+                return Ok(format!(
+                    "command=service_init\ndata_dir={}\nexisting_store=true\nrecovered_store=true\nrecovery_source=chain_state\nblock_count={}\nlatest_block_hash={}",
+                    status.data_dir.display(),
+                    status.block_count,
+                    hex(&status.latest_block_hash)
+                ));
+            }
+        }
     }
 
     let chain = LocalChain::new(hash_bytes(
@@ -129,7 +143,7 @@ fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
         .persist_chain(&chain)
         .map_err(|error| format!("failed to initialize node store {data_dir}: {error}"))?;
     Ok(format!(
-        "command=service_init\ndata_dir={}\nexisting_store=false\nblock_count={}\nlatest_block_hash={}",
+        "command=service_init\ndata_dir={}\nexisting_store=false\nrecovered_store=false\nblock_count={}\nlatest_block_hash={}",
         status.data_dir.display(),
         status.block_count,
         hex(&status.latest_block_hash)
@@ -473,6 +487,7 @@ fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tensor_vm::{ChainSnapshot, types::address};
 
     fn workspace_manifest_path(relative_path: &str) -> String {
         Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -514,5 +529,37 @@ mod tests {
         assert!(report.contains("deployed_public_service_content=false"));
         assert!(report.contains("required_run_duration=false"));
         assert!(report.contains("required_block_count=false"));
+    }
+
+    #[test]
+    fn service_init_recovers_torn_snapshot_and_block_log_from_chain_state() {
+        let data_dir = std::env::temp_dir().join(format!(
+            "tensor-vm-service-init-recovery-{}",
+            std::process::id()
+        ));
+        let data_dir_text = data_dir.to_string_lossy().into_owned();
+        let store = NodeStore::open(data_dir.clone());
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"service-init-recovery"]));
+        let miner = address(b"service-init-recovery-miner");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000);
+        chain.produce_block(miner, 1_006);
+        store.persist_chain(&chain).unwrap();
+
+        let mut stale_snapshot = ChainSnapshot::from_chain(&chain);
+        stale_snapshot.block_count = stale_snapshot.block_count.saturating_sub(1);
+        store.snapshot_store().save(&stale_snapshot).unwrap();
+
+        let report = init_service_store(&data_dir_text).unwrap();
+        assert!(report.contains("command=service_init"));
+        assert!(report.contains("existing_store=true"));
+        assert!(report.contains("recovered_store=true"));
+        assert!(report.contains("recovery_source=chain_state"));
+        assert!(report.contains("block_count=2"));
+        assert_eq!(store.load_chain().unwrap(), chain);
+
+        std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
     }
 }

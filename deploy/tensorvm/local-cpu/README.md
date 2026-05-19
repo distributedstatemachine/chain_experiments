@@ -55,8 +55,7 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -73,8 +72,13 @@ public_evidence_full_spec=false
 independently_checkable=false
 ```
 
-The restart-continuity script captures all operator peer IDs, heights, block counts, state roots,
-block-log roots, and a finalized common head before restarting the requested services. After the restart
-and local-testnet check, it fails unless the restarted services keep their libp2p peer IDs, heights, block
-counts, state roots, and block-log roots advance, the pre-restart finalized common head and state root are
-still present on every operator, and new finalized blocks are observed.
+The rolling restart script invokes the restart-continuity gate once per counted operator by default. Each
+pass captures all operator peer IDs, heights, block counts, state roots, block-log roots, and a finalized
+common head before restarting one requested service. After the restart and local-testnet check, it fails
+unless the restarted service keeps its libp2p peer ID, height, block count, state root, and block-log root
+advance, the pre-restart finalized common head and state root are still present on every operator, and new
+finalized blocks are observed. Pass explicit service names to run a smaller smoke subset.
+
+On restart, `tvmd service init` validates the complete node store. If a previous write left the snapshot and
+block log out of sync, the service rewrites them from the persisted `chain.state` file before reporting
+local readiness.

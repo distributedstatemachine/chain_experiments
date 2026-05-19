@@ -63,6 +63,7 @@ env/local-cpu.env.example
 scripts/entrypoint.sh
 scripts/check-local-testnet.sh
 scripts/check-restart-continuity.sh
+scripts/check-rolling-restart-continuity.sh
 ```
 
 `docker-compose.yml` may be generated from a template, but the rendered file that users run must be
@@ -228,8 +229,7 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -263,6 +263,7 @@ bounded convergence height
 all 15 operator node stores returned the miner-00 latest produced block-height target hash and state root
 after catch-up
 all 15 operator node stores reported nonempty block-log roots
+restarted operators repair torn snapshot/block-log state from persisted chain state before readiness
 ```
 
 The check must also verify that the run reports itself as local-only:
@@ -277,15 +278,21 @@ independently_checkable=false
 The Compose deployment must survive a local restart test before this spec is complete:
 
 ```bash
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 ```
 
-The continuity script must capture pre-restart and post-restart peer IDs, heights, block counts, state
-roots, block-log roots, and a finalized common-head block. It must prove that restarted operators reused
-their original durable state and libp2p identities, rejoined the local network, advanced height, block
-count, state root, and block-log root, preserved the pre-restart finalized common head and state root on
-every operator, and continued producing finalized blocks.
+The rolling continuity script must invoke the single-service continuity gate for every counted operator by
+default. Each pass must capture pre-restart and post-restart peer IDs, heights, block counts, state roots,
+block-log roots, and a finalized common-head block. It must prove that the restarted operator reused its
+original durable state and libp2p identity, rejoined the local network, advanced height, block count, state
+root, and block-log root, preserved the pre-restart finalized common head and state root on every operator,
+and continued producing finalized blocks. A smaller explicit service list may be used for smoke checks, but
+it does not satisfy this spec.
+
+The restart path must also tolerate an interrupted local write where the snapshot and block log disagree.
+`tvmd service init` must validate the complete node store, recover snapshot and block-log files from the
+persisted `chain.state` file when that state is valid, and fail readiness if neither the complete store nor
+chain-state recovery is valid.
 
 ## Completion Criteria
 
@@ -296,7 +303,7 @@ Gate L0 passes
 the checked Compose config is valid
 the default Compose deployment starts all 15 operators
 the default Compose deployment passes the functional check script
-the restart gate passes
+the rolling all-operator restart gate passes
 the local run uses CPU only
 every counted operator uses mandatory libp2p
 the run produces block, receipt, attestation, settlement, reward, data-availability, and telemetry evidence

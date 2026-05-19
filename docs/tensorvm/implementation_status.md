@@ -87,7 +87,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   loss substeps through native CUDA kernels, and checks CUDA outputs against canonical CPU outputs
 - Restartable `NodeStore` data directory that persists chain snapshots, append-only block logs, and the
   durable peer book with fixed-format encoding, checksum validation, parent-link checks, append-only sync,
-  full-chain state snapshots for restart, and snapshot/block-log/state mismatch detection
+  full-chain state snapshots for restart, snapshot/block-log/state mismatch detection, and service-init
+  recovery that rewrites torn snapshot/block-log state from valid `chain.state`
 - Watcher tooling that scans chain evidence for invalid receipts, data withholding, validator misconduct,
   missing quorum, missing redundant agreement, and conflicting learning-state transitions
 - Faucet, explorer WebSocket summaries, full local telemetry success metrics, local testnet bootstrap, and
@@ -224,9 +225,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job production on the
   bootstrap gateway so post-startup blocks advance through receipts, attestations, settlement, proposer
   selection, and finality instead of a static snapshot, miner rewards, finality, data availability, a
-  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, restart gates
-  for `miner-03`, `validator-02`, and `miner-00`, all-operator durable status checks, an all-operator
-  finalized common-head checkpoint queried through `tvmd service block`, a local-only evidence boundary, and
+  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a rolling
+  all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
+  durable status checks, an all-operator finalized common-head checkpoint queried through
+  `tvmd service block`, a local-only evidence boundary, and
   `local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape` guarding the artifact shape
 
 ## Implemented In `crates/tensor_vm_explorer`
@@ -248,8 +250,7 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 cargo fmt --check --all
 cargo test --workspace --release
@@ -260,7 +261,7 @@ cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
 The May 19, 2026 Compose verification on this host used
-`TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080` for `up --wait` and both check-script runs because host port
+`TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080` for `up --wait` and local check-script runs because host port
 `8080` was already allocated; the Compose default remains `8080`.
 
 Gate 0 is the first non-skippable CPU local multi-participant testnet required before CUDA, public
@@ -301,18 +302,20 @@ preflight, public evidence, or deployment-gated work can count:
   state root via `all_operator_target_head_convergence=true`, plus
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, live chain
-  counters, and durable block-log root; `check-restart-continuity.sh miner-03 validator-02` and
-  `check-restart-continuity.sh miner-00` additionally passed, proving restarted services kept stable
-  libp2p peer IDs, preserved the pre-restart finalized common head and state root on every operator,
-  advanced height, block count, state-root, and block-log-root evidence, and continued finalizing blocks
+  counters, and durable block-log root; `check-rolling-restart-continuity.sh` is now the full local restart
+  gate and runs the same continuity check one service at a time across every counted operator, proving each
+  restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
+  root on every operator, advances height, block count, state-root, and block-log-root evidence, and
+  continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
+  `chain.state` before a restarted service reports readiness
 
-The workspace currently has 212 passing library tests under Tarpaulin:
+The workspace currently has 214 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 197 in `tensor_vm`
+- 199 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
-`cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
+`cargo test --workspace --release` also runs 3 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 6 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
@@ -337,9 +340,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.16% workspace line coverage
-- 9686/9768 workspace lines covered
+- 9718/9800 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8841/8841 `tensor_vm` lines covered
+- 8873/8873 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

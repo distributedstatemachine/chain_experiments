@@ -91,6 +91,11 @@ The local bundle is useful and should remain the first operational target:
   roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
   keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
   continue finalizing blocks.
+- `check-rolling-restart-continuity.sh` runs that continuity gate one service at a time across every
+  counted miner and validator by default, turning the selected restart checks into a rolling all-operator
+  matrix.
+- `tvmd service init` validates the complete node store on restart and repairs torn snapshot/block-log
+  state from `chain.state` before readiness is allowed.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -179,19 +184,22 @@ Required fix:
 - The checker must eventually fail unless all 15 operators converge on the same network-derived latest
   finalized head within a bounded time.
 
-### 5. Restart Gate Needs Broader Continuity Assertions
+### 5. Restart Gate Now Has A Rolling Matrix
 
 The local spec requires restarted operators to reuse durable state and libp2p identity, rejoin the network,
-and avoid chain rollback. The current restart-continuity script now records pre-restart and post-restart
-continuity for selected restarts, including `miner-03`, `validator-02`, and `miner-00`.
+and avoid chain rollback. The current restart-continuity script records pre-restart and post-restart
+continuity for selected restarts, and `check-rolling-restart-continuity.sh` now runs that gate across every
+counted operator by default.
 
-Required fix:
+Current assertion:
 
-- Extend continuity evidence from the selected restart targets to every counted operator over a rolling
-  restart matrix.
-- Extend the current per-store block-log root into a rolling all-operator restart matrix.
-- Keep checking that peer IDs are unchanged, height, block count, and state root advance, the pre-restart
-  finalized common head and state root are preserved, and blocks continue advancing after restart.
+- The rolling gate fails unless every requested miner or validator keeps its peer ID, advances height,
+  block count, state root, and block-log root, preserves the pre-restart finalized common head and state
+  root on every operator, and observes continued finalized block production.
+- Focused Rust tests cover block-log replacement, node-store recovery from `chain.state`, and service-init
+  recovery for torn snapshot/block-log state.
+- The full local spec uses the default all-operator rolling matrix. Passing a smaller service list is only a
+  smoke check.
 
 ### 6. Live Primitive Coverage Needs Stronger Evidence
 
@@ -468,8 +476,8 @@ hash, the same finalized common-head block hash, and a pinned miner-00 latest pr
 target/state root through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
 receipt evidence, and nonempty block-log roots from every node store. The restart-continuity script also
 captures pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads
-for the selected restart gates. Latest-head convergence via the shared network event path still needs hard
-checker assertions.
+for selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
+Latest-head convergence via the shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -514,10 +522,12 @@ The runtime still needs to consume those profiles end to end.
 - Verify catch-up from persisted block log and peer state.
 - Verify block production continues after restart.
 
-Status: partially complete. `check-restart-continuity.sh` covers selected miner, validator, and gateway
-restarts and proves stable libp2p peer IDs, advancing height/block count/state-root evidence, preservation
-of the pre-restart finalized common head and state root on every operator, advancing block-log roots, and
-continued finalization. It still needs a rolling all-operator restart matrix.
+Status: complete for the current local-store model. `check-restart-continuity.sh` proves stable libp2p peer
+IDs, advancing height/block count/state-root evidence, preservation of the pre-restart finalized common head
+and state root on every operator, advancing block-log roots, and continued finalization for each requested
+service. `check-rolling-restart-continuity.sh` now applies that gate one operator at a time across the full
+15-service matrix by default, and service init repairs torn snapshot/block-log state from `chain.state`
+before a restarted operator can report readiness.
 
 ## Local Production-Ready Acceptance Gate
 
@@ -529,8 +539,7 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -566,8 +575,6 @@ Keep this incremental:
 6. Wire proposer/block production through network-visible state.
 7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
-8. Expand restart continuity checks from `miner-00`, `miner-03`, and `validator-02` to a rolling
-   all-operator restart matrix.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

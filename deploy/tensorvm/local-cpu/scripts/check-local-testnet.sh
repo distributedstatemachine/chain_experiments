@@ -19,7 +19,7 @@ fail() {
 }
 
 compose() {
-  docker compose -f "$COMPOSE_FILE" "$@"
+  docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
 }
 
 require_command() {
@@ -83,7 +83,7 @@ read_service_status() {
   service="$1"
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi
@@ -98,7 +98,7 @@ read_service_block() {
   height="$2"
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null); then
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi

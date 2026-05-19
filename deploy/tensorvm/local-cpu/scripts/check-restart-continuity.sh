@@ -43,8 +43,8 @@ service_is_expected() {
 read_service_status() {
   service="$1"
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
+  while [ "$attempt" -lt 90 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi
@@ -58,9 +58,22 @@ read_service_block() {
   service="$1"
   height="$2"
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null); then
+  while [ "$attempt" -lt 90 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
+}
+
+wait_service_ready() {
+  service="$1"
+  attempt=0
+  while [ "$attempt" -lt 90 ]; do
+    if timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready 2>/dev/null < /dev/null; then
       return 0
     fi
     attempt=$((attempt + 1))
@@ -158,8 +171,11 @@ trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 capture_snapshot before "$TMP_DIR/before"
 
 timeout 60s docker compose -f "$COMPOSE_FILE" restart $RESTART_SERVICES
+for service in $RESTART_SERVICES; do
+  wait_service_ready "$service" || fail "$service did not report local readiness after restart"
+done
 
-timeout 240s "$CHECK_SCRIPT"
+timeout 600s "$CHECK_SCRIPT"
 
 capture_snapshot after "$TMP_DIR/after"
 

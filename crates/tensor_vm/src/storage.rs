@@ -228,6 +228,35 @@ impl BlockLogStore {
         self.load_blocks_or_empty()
     }
 
+    pub fn replace_chain(&self, chain: &LocalChain) -> Result<Vec<TensorBlock>> {
+        if let Some(parent) = self.path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            fs::create_dir_all(parent)
+                .map_err(|_| TvmError::Storage("failed to create block log directory"))?;
+        }
+
+        let temp_path = self.path.with_extension("tmp");
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&temp_path)
+            .map_err(|_| TvmError::Storage("failed to open replacement block log"))?;
+        file.write_all(BLOCK_LOG_MAGIC)
+            .map_err(|_| TvmError::Storage("failed to write block log magic"))?;
+        for block in &chain.blocks {
+            file.write_all(&encode_block_record(block))
+                .map_err(|_| TvmError::Storage("failed to write replacement block log record"))?;
+        }
+        file.sync_all()
+            .map_err(|_| TvmError::Storage("failed to sync replacement block log"))?;
+        drop(file);
+        fs::rename(&temp_path, &self.path)
+            .map_err(|_| TvmError::Storage("failed to commit replacement block log"))?;
+        self.load_blocks()
+    }
+
     pub fn load_blocks(&self) -> Result<Vec<TensorBlock>> {
         let mut bytes = Vec::new();
         OpenOptions::new()
@@ -369,6 +398,13 @@ impl NodeStore {
     pub fn status(&self) -> Result<NodeStoreStatus> {
         let state = self.load()?;
         self.status_from_parts(state.snapshot, &state.blocks)
+    }
+
+    pub fn recover_from_chain_state(&self) -> Result<NodeStoreStatus> {
+        let chain = self.chain_state_store.load_chain()?;
+        let blocks = self.block_log_store.replace_chain(&chain)?;
+        let snapshot = self.snapshot_store.save_chain(&chain)?;
+        self.validate_parts(snapshot, blocks)
     }
 
     pub fn load_chain(&self) -> Result<LocalChain> {
@@ -1581,6 +1617,42 @@ mod tests {
     }
 
     #[test]
+    fn block_log_replace_chain_overwrites_ahead_log() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"block-log-replace"]));
+        let miner = address(b"block-log-replace-miner");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000);
+        chain.produce_block(miner, 1_006);
+
+        let path = std::env::temp_dir().join(format!(
+            "tensor-vm-block-log-replace-{}-{}.bin",
+            std::process::id(),
+            chain.state.height
+        ));
+        let store = BlockLogStore::new(path.clone());
+        store.append_chain(&chain).unwrap();
+
+        let mut shorter = chain.clone();
+        shorter.blocks.pop();
+        assert_eq!(
+            store.sync_chain(&shorter),
+            Err(TvmError::Storage("block log ahead of chain"))
+        );
+
+        let replaced = store.replace_chain(&shorter).unwrap();
+        assert_eq!(replaced, shorter.blocks);
+        assert_eq!(store.load_blocks().unwrap(), shorter.blocks);
+
+        let empty = LocalChain::new(hash_bytes(b"test", &[b"block-log-replace-empty"]));
+        assert!(store.replace_chain(&empty).unwrap().is_empty());
+        assert!(store.load_blocks().unwrap().is_empty());
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
     fn node_store_persists_snapshot_block_log_and_peer_book_paths() {
         let mut chain = LocalChain::new(hash_bytes(b"test", &[b"node-store"]));
         let miner = address(b"node-store-miner");
@@ -1641,6 +1713,49 @@ mod tests {
         let _ = std::fs::remove_file(store.block_log_store().path());
         let _ = std::fs::remove_file(store.chain_state_store().path());
         let _ = std::fs::remove_dir(store.data_dir());
+    }
+
+    #[test]
+    fn node_store_recovers_snapshot_and_block_log_from_chain_state() {
+        let chain = durable_chain_fixture(b"node-store-recovery");
+        let data_dir =
+            std::env::temp_dir().join(format!("tensor-vm-node-recovery-{}", std::process::id()));
+        let store = NodeStore::open(data_dir.clone());
+        let original = store.persist_chain(&chain).unwrap();
+
+        let mut stale_snapshot = ChainSnapshot::from_chain(&chain);
+        stale_snapshot.block_count = stale_snapshot.block_count.saturating_sub(1);
+        store.snapshot_store().save(&stale_snapshot).unwrap();
+        assert_eq!(
+            store.status(),
+            Err(TvmError::Storage("snapshot block count mismatch"))
+        );
+
+        let recovered = store.recover_from_chain_state().unwrap();
+        assert_eq!(recovered.snapshot, ChainSnapshot::from_chain(&chain));
+        assert_eq!(recovered.block_count, original.block_count);
+        assert_eq!(store.load_chain().unwrap(), chain);
+
+        let mut ahead = chain.clone();
+        ahead.produce_block(address(b"durable-miner"), 1_012);
+        store
+            .block_log_store()
+            .append_block(ahead.blocks.last().unwrap())
+            .unwrap();
+        assert_eq!(
+            store.status(),
+            Err(TvmError::Storage("snapshot block count mismatch"))
+        );
+
+        let recovered_again = store.recover_from_chain_state().unwrap();
+        assert_eq!(recovered_again.block_count, chain.blocks.len());
+        assert_eq!(store.block_log_store().load_blocks().unwrap(), chain.blocks);
+        assert_eq!(store.load_chain().unwrap(), chain);
+
+        let _ = std::fs::remove_file(store.snapshot_store().path());
+        let _ = std::fs::remove_file(store.block_log_store().path());
+        let _ = std::fs::remove_file(store.chain_state_store().path());
+        let _ = std::fs::remove_dir(data_dir);
     }
 
     #[test]

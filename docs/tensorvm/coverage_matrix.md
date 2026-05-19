@@ -39,8 +39,7 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
+deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -60,9 +59,10 @@ verifies the local-only evidence boundary, requires all 15 operator stores to re
 common-head block hash through `tvmd service block`, pins a miner-00 latest produced block-height target
 and requires every operator to return the matching finalized block hash and state root while reporting a
 nonempty block-log root, and uses
-`check-restart-continuity.sh` to prove `miner-03`, `validator-02`, and `miner-00` keep their libp2p peer
-IDs, preserve the pre-restart finalized common head and state root, advance
-height/block-count/state-root/block-log-root evidence, and continue finalizing blocks after restart.
+`check-rolling-restart-continuity.sh` to run the restart-continuity gate one service at a time across every
+counted operator, proving each restarted service keeps its libp2p peer ID, preserves the pre-restart
+finalized common head and state root, advances height/block-count/state-root/block-log-root evidence, and
+continues finalizing blocks after restart.
 
 ## Acceptance Criteria
 
@@ -171,6 +171,8 @@ height/block-count/state-root/block-log-root evidence, and continue finalizing b
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
   live chain counters, advancement past the shared seed, the same first live finalized block hash, and the
   same finalized common-head block hash through `tvmd service block`. The restart-continuity gate captures
-  pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts.
+  pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while
+  service init validates full node-store consistency and repairs torn snapshot/block-log state from
+  `chain.state`.
 - Instrumented line coverage has been generated with Tarpaulin; see `tarpaulin_report.md`.
   Branch coverage is not reported because the installed Tarpaulin version lists branch coverage as not implemented.
