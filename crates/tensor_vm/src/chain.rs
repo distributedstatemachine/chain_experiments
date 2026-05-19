@@ -5,7 +5,7 @@ use crate::error::TvmError;
 #[cfg(test)]
 use crate::jobs::PrimitiveType;
 use crate::jobs::{LinearTrainingStepReceipt, TensorOpReceipt};
-use crate::types::{Address, Hash, hash_bytes};
+use crate::types::{Address, Hash};
 use crate::verify::ValidatorAttestation;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -25,10 +25,6 @@ mod transactions;
 mod validation;
 
 pub use engine::{ChainCommand, ChainEngine, ChainEvent};
-use roots::{
-    account_root, attestation_root, block_finality_root, hash_set_root, job_root, miner_root,
-    model_state_root, receipt_root, reward_root, settled_receipt_root, validator_root,
-};
 #[cfg(test)]
 use settlement::{has_conflicting_linear_receipt, receipts_agree};
 pub use state::{
@@ -243,33 +239,13 @@ impl LocalChain {
     }
 
     pub fn state_root(&self) -> Hash {
-        let mut parts = Vec::new();
-        parts.extend_from_slice(&self.state.height.to_le_bytes());
-        parts.extend_from_slice(&self.state.epoch.to_le_bytes());
-        parts.extend_from_slice(&self.state.finalized_randomness);
-        parts.extend_from_slice(&account_root(&self.state.accounts));
-        parts.extend_from_slice(&miner_root(&self.state.miners));
-        parts.extend_from_slice(&validator_root(&self.state.validators));
-        parts.extend_from_slice(&job_root(&self.state.jobs));
-        parts.extend_from_slice(&receipt_root(&self.state.receipts));
-        parts.extend_from_slice(&attestation_root(&self.state.attestations));
-        parts.extend_from_slice(&block_finality_root(
-            &self.state.block_votes,
-            &self.state.finalized_blocks,
-        ));
-        parts.extend_from_slice(&hash_set_root(
-            b"tensor-vm-data-unavailable-root-v1",
-            &self.state.data_unavailable_receipts,
-        ));
-        parts.extend_from_slice(&settled_receipt_root(&self.state.settled_receipts));
-        parts.extend_from_slice(&model_state_root(&self.state.model_states));
-        parts.extend_from_slice(&reward_root(&self.state.rewards));
-        hash_bytes(b"tensor-vm-state-root-v1", &[&parts])
+        roots::state_root(&self.state)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::roots::{attestation_root, job_root, miner_root, receipt_root, reward_root};
     use super::*;
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,

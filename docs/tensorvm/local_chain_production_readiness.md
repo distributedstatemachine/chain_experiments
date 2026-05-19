@@ -520,7 +520,7 @@ transition checks now live behind `chain::models`. Challenge outcome and slashin
 `chain::challenges`, profile-neutral command/event facade types now live behind `chain::engine`,
 `ChainEngine` command routing now lives behind `chain::commands`, and transaction application now lives
 behind `chain::transactions`. `chain.rs` is now mostly a profile-neutral facade over the smaller chain
-modules plus constructor and root-assembly glue.
+modules plus constructor glue.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

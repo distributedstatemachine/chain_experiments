@@ -1,6 +1,6 @@
 use super::{
-    AccountState, BlockVote, JobState, MinerState, ModelState, ReceiptState, RewardState,
-    ValidatorState,
+    AccountState, BlockVote, ChainState, JobState, MinerState, ModelState, ReceiptState,
+    RewardState, ValidatorState,
 };
 use crate::jobs::PrimitiveType;
 use crate::types::{Address, Hash, hash_bytes};
@@ -15,6 +15,31 @@ pub(super) fn reward_root(rewards: &RewardState) -> Hash {
     }
     encoded.extend_from_slice(&rewards.treasury.to_le_bytes());
     hash_bytes(b"tensor-vm-reward-root-v1", &[&encoded])
+}
+
+pub(super) fn state_root(state: &ChainState) -> Hash {
+    let mut parts = Vec::new();
+    parts.extend_from_slice(&state.height.to_le_bytes());
+    parts.extend_from_slice(&state.epoch.to_le_bytes());
+    parts.extend_from_slice(&state.finalized_randomness);
+    parts.extend_from_slice(&account_root(&state.accounts));
+    parts.extend_from_slice(&miner_root(&state.miners));
+    parts.extend_from_slice(&validator_root(&state.validators));
+    parts.extend_from_slice(&job_root(&state.jobs));
+    parts.extend_from_slice(&receipt_root(&state.receipts));
+    parts.extend_from_slice(&attestation_root(&state.attestations));
+    parts.extend_from_slice(&block_finality_root(
+        &state.block_votes,
+        &state.finalized_blocks,
+    ));
+    parts.extend_from_slice(&hash_set_root(
+        b"tensor-vm-data-unavailable-root-v1",
+        &state.data_unavailable_receipts,
+    ));
+    parts.extend_from_slice(&settled_receipt_root(&state.settled_receipts));
+    parts.extend_from_slice(&model_state_root(&state.model_states));
+    parts.extend_from_slice(&reward_root(&state.rewards));
+    hash_bytes(b"tensor-vm-state-root-v1", &[&parts])
 }
 
 pub(super) fn block_finality_root(

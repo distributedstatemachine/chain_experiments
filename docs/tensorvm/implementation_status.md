@@ -373,9 +373,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.19% workspace line coverage
-- 10040/10122 workspace lines covered
+- 10042/10124 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9195/9195 `tensor_vm` lines covered
+- 9197/9197 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
