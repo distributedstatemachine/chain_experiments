@@ -249,6 +249,7 @@ deployment:
 0 CUDA-required miners
 all miner operators report `runtime_command=miner_run`
 all validator operators report `runtime_command=validator_run`
+all operators report live role-loop readiness, role command, produced-block counters, and latest role height
 at least one finalized block after startup
 chain height and block count advance past the seeded two-block baseline
 synthetic post-startup jobs, receipts, and settled receipts are visible through explorer data

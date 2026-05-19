@@ -353,12 +353,18 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
         ready_file_field(data_dir, "role"),
         ready_file_field(data_dir, "runtime_command"),
+        role_runtime_status_field(data_dir, "role_runtime_command"),
+        role_runtime_status_field(data_dir, "role_loop_ready"),
+        role_runtime_status_field(data_dir, "role_loop_role"),
+        role_runtime_status_field(data_dir, "role_served_requests"),
+        role_runtime_status_field(data_dir, "role_produced_blocks"),
+        role_runtime_status_field(data_dir, "role_latest_height"),
         ready_file_field(data_dir, "node_multiaddr"),
         ready_file_field(data_dir, "p2p_peer_id"),
         chain.state.height,
@@ -411,14 +417,16 @@ struct RoleServiceConfig<'a> {
 }
 
 fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    let service_report = serve_service(
-        config.listen,
-        config.p2p_listen,
-        config.data_dir,
-        config.identity_seed,
-        config.auth_token,
-        config.max_requests,
-    )?;
+    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
+        listen: config.listen,
+        p2p_listen: config.p2p_listen,
+        data_dir: config.data_dir,
+        identity_seed: config.identity_seed,
+        auth_token: config.auth_token,
+        max_requests: config.max_requests,
+        runtime_command: "miner_run",
+        role: "miner",
+    })?;
     let device = config.device.unwrap_or("unknown");
     Ok(format!(
         "command=miner_run\nrole=miner\nwallet={}\ndevice={device}\nnode={}\nrole_runtime_ready=true\n{service_report}",
@@ -427,14 +435,16 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
 }
 
 fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    let service_report = serve_service(
-        config.listen,
-        config.p2p_listen,
-        config.data_dir,
-        config.identity_seed,
-        config.auth_token,
-        config.max_requests,
-    )?;
+    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
+        listen: config.listen,
+        p2p_listen: config.p2p_listen,
+        data_dir: config.data_dir,
+        identity_seed: config.identity_seed,
+        auth_token: config.auth_token,
+        max_requests: config.max_requests,
+        runtime_command: "validator_run",
+        role: "validator",
+    })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
         config.wallet, config.node
@@ -449,23 +459,54 @@ fn serve_service(
     auth_token: &str,
     max_requests: usize,
 ) -> std::result::Result<String, String> {
-    let store = NodeStore::open(data_dir);
+    serve_service_with_runtime(ServiceRuntimeConfig {
+        listen,
+        p2p_listen,
+        data_dir,
+        identity_seed,
+        auth_token,
+        max_requests,
+        runtime_command: "service_serve",
+        role: "service",
+    })
+}
+
+struct ServiceRuntimeConfig<'a> {
+    listen: &'a str,
+    p2p_listen: &'a str,
+    data_dir: &'a str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &'a str,
+    max_requests: usize,
+    runtime_command: &'a str,
+    role: &'a str,
+}
+
+fn serve_service_with_runtime(
+    config: ServiceRuntimeConfig<'_>,
+) -> std::result::Result<String, String> {
+    let store = NodeStore::open(config.data_dir);
     let chain = store
         .load_chain()
-        .map_err(|error| format!("failed to load node store {data_dir}: {error}"))?;
+        .map_err(|error| format!("failed to load node store {}: {error}", config.data_dir))?;
     let bootstrap_addresses = if store.peer_book_store().path().exists() {
         store
             .peer_book_store()
             .load_bootstrap_addresses()
-            .map_err(|error| format!("failed to load libp2p peer book {data_dir}: {error}"))?
+            .map_err(|error| {
+                format!(
+                    "failed to load libp2p peer book {}: {error}",
+                    config.data_dir
+                )
+            })?
     } else {
         Vec::new()
     };
     let bootstrap_peer_count = bootstrap_addresses.len();
     let p2p_config = Libp2pControlPlaneConfig {
-        listen_addresses: vec![p2p_listen.to_owned()],
+        listen_addresses: vec![config.p2p_listen.to_owned()],
         bootstrap_addresses,
-        identity_seed,
+        identity_seed: config.identity_seed,
         ..Libp2pControlPlaneConfig::default()
     };
     let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
@@ -477,28 +518,34 @@ fn serve_service(
     let p2p_peer_id = p2p_service.peer_id().to_string();
     let p2p_topics = p2p_service.info().subscribed_topics.len();
     let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
-    let identity = p2p_identity_report(identity_seed);
+    let identity = p2p_identity_report(config.identity_seed);
     let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
     let gateway = RpcGateway::new(
         node,
         RpcPolicy {
-            auth_token: Some(auth_token.to_owned()),
+            auth_token: Some(config.auth_token.to_owned()),
             ..RpcPolicy::default()
         },
     );
-    let mut server = RpcHttpServer::bind(listen, gateway)
-        .map_err(|error| format!("failed to bind service listener {listen}: {error}"))?;
+    let mut server = RpcHttpServer::bind(config.listen, gateway)
+        .map_err(|error| format!("failed to bind service listener {}: {error}", config.listen))?;
     let mut served_requests = 0usize;
     let block_interval = local_cpu_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
     let mut produced_blocks = 0usize;
+    write_role_runtime_status(
+        &config,
+        served_requests,
+        produced_blocks,
+        server.gateway().node.chain.state.height,
+    )?;
     if block_interval.is_some() {
         server.set_nonblocking(true).map_err(|error| {
             format!("failed to configure nonblocking service listener: {error}")
         })?;
     }
     loop {
-        if max_requests != 0 && served_requests >= max_requests {
+        if config.max_requests != 0 && served_requests >= config.max_requests {
             break;
         }
         if let Some(interval) = block_interval {
@@ -508,6 +555,12 @@ fn serve_service(
                         .persist_chain(&server.gateway().node.chain)
                         .map_err(|error| format!("failed to persist service state: {error}"))?;
                     served_requests = served_requests.saturating_add(1);
+                    write_role_runtime_status(
+                        &config,
+                        served_requests,
+                        produced_blocks,
+                        server.gateway().node.chain.state.height,
+                    )?;
                 }
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {}
                 Err(error) => return Err(format!("service request failed: {error}")),
@@ -524,6 +577,12 @@ fn serve_service(
                         .persist_chain(&server.gateway().node.chain)
                         .map_err(|error| format!("failed to persist produced block: {error}"))?;
                     produced_blocks = produced_blocks.saturating_add(1);
+                    write_role_runtime_status(
+                        &config,
+                        served_requests,
+                        produced_blocks,
+                        server.gateway().node.chain.state.height,
+                    )?;
                 }
                 next_block_at = Some(Instant::now() + interval);
             }
@@ -536,11 +595,37 @@ fn serve_service(
                 .persist_chain(&server.gateway().node.chain)
                 .map_err(|error| format!("failed to persist service state: {error}"))?;
             served_requests = served_requests.saturating_add(1);
+            write_role_runtime_status(
+                &config,
+                served_requests,
+                produced_blocks,
+                server.gateway().node.chain.state.height,
+            )?;
         }
     }
     Ok(format!(
-        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={data_dir}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}"
+        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}",
+        config.runtime_command, config.role, config.listen, config.p2p_listen, config.data_dir
     ))
+}
+
+fn write_role_runtime_status(
+    config: &ServiceRuntimeConfig<'_>,
+    served_requests: usize,
+    produced_blocks: usize,
+    latest_height: u64,
+) -> std::result::Result<(), String> {
+    let path = Path::new(config.data_dir).join("role-runtime.status");
+    let contents = format!(
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_served_requests={served_requests}\nrole_produced_blocks={produced_blocks}\nrole_latest_height={latest_height}\n",
+        config.runtime_command, config.role
+    );
+    std::fs::write(&path, contents).map_err(|error| {
+        format!(
+            "failed to write role runtime status {}: {error}",
+            path.display()
+        )
+    })
 }
 
 fn local_cpu_block_interval() -> Option<Duration> {
@@ -557,6 +642,15 @@ fn local_cpu_seed_beacon() -> [u8; 32] {
 
 fn ready_file_field(data_dir: &str, key: &str) -> String {
     let path = Path::new(data_dir).join("local-cpu-ready");
+    status_file_field(&path, key)
+}
+
+fn role_runtime_status_field(data_dir: &str, key: &str) -> String {
+    let path = Path::new(data_dir).join("role-runtime.status");
+    status_file_field(&path, key)
+}
+
+fn status_file_field(path: &Path, key: &str) -> String {
     std::fs::read_to_string(path)
         .ok()
         .and_then(|contents| {

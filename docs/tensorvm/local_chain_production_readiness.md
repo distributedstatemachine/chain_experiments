@@ -99,6 +99,10 @@ The local bundle is useful and should remain the first operational target:
 - Compose now execs role-specific runtime commands for counted operators: miners run `tvmd miner run`,
   validators run `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker
   fails unless all 15 operators report the role command expected for their Compose service.
+- Each long-running role command now writes live role-loop counters to the node data directory, and
+  `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
+  `role_produced_blocks`, and `role_latest_height`; the checker fails unless every counted operator reports
+  a live role loop with produced-block progress.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -187,6 +191,10 @@ Required fix:
   equality to the shared network event path.
 - The checker must eventually fail unless all 15 operators converge on the same network-derived latest
   finalized head within a bounded time.
+
+Status: started for role-loop counters. `tvmd service status` now exposes role-runtime command, role-loop
+readiness, role, produced-block, and latest-height counters from the long-running command. Real connected
+peer counts and network-derived latest-head convergence still need to be wired from the libp2p event path.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -501,8 +509,9 @@ proposer selection, and state views still live mostly in one large `chain.rs` im
 
 Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
 Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
-`runtime_command=validator_run` through ready files and `tvmd service status`. The commands still delegate
-to the service runtime internally, and proposer/node run ownership still needs to be split out.
+`runtime_command=validator_run` through ready files and `tvmd service status`. The status path also exposes
+live role-loop counters for every counted operator. The commands still delegate to the service runtime
+internally, and proposer/node run ownership still needs to be split out.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

@@ -78,7 +78,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - Role-specific long-running `tvmd miner run` and `tvmd validator run` command surfaces that validate the
-  role config, start the mandatory libp2p-backed service runtime, and report role runtime readiness
+  role config, start the mandatory libp2p-backed service runtime, write live role-loop counters, and
+  report role runtime readiness through `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -304,8 +305,9 @@ preflight, public evidence, or deployment-gated work can count:
   catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
   state root via `all_operator_target_head_convergence=true`, plus
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
-  `all_operator_role_runtime_commands=true`, and `all_operator_chain_counters=true`, proving each operator
-  status surface reports its role, runtime command, live chain counters, and durable block-log root;
+  `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`, and
+  `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
+  command, live role-loop counters, live chain counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state

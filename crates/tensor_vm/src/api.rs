@@ -79,12 +79,14 @@ pub const TENSOR_DATA_RPC_ROUTES: &[&str] = &[
 pub const MINER_CLI_COMMANDS: &[&str] = &[
     "tvmd miner register --stake <tokens>",
     "tvmd miner start --wallet <key> --device <device> --node <libp2p-multiaddr>",
+    "tvmd miner run --wallet <key> --device <device> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
     "tvmd miner status",
 ];
 
 pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator register --stake <tokens>",
     "tvmd validator start --wallet <key> --node <libp2p-multiaddr>",
+    "tvmd validator run --wallet <key> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
     "tvmd validator status",
 ];
 
@@ -153,9 +155,19 @@ mod tests {
                 .any(|command| command.contains("miner start"))
         );
         assert!(
+            MINER_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("miner run"))
+        );
+        assert!(
             VALIDATOR_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("validator start"))
+        );
+        assert!(
+            VALIDATOR_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("validator run"))
         );
         assert!(
             SERVICE_CLI_COMMANDS

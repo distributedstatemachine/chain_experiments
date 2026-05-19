@@ -1084,8 +1084,16 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains(&format!("role={role}")));
         assert!(stdout.contains("role_runtime_ready=true"));
         assert!(stdout.contains("command=service_serve"));
+        assert!(stdout.contains("role_loop_ready=true"));
+        assert!(stdout.contains(&format!("runtime_command={role}_run")));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("served_requests=1"));
+
+        let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+        assert!(status.contains(&format!("role_runtime_command={role}_run")));
+        assert!(status.contains(&format!("role_loop_role={role}")));
+        assert!(status.contains("role_loop_ready=true"));
+        assert!(status.contains("role_served_requests=1"));
 
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
     }

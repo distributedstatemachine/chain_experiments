@@ -46,10 +46,11 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
 requires 10 CPU-ready miners and zero CUDA-required miners, requires miners to run `tvmd miner run` and
-validators to run `tvmd validator run` as reported by `runtime_command`, verifies the seeded local CPU
-chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
-miners, full finality and data availability, checks that the host gateway exposes the seeded chain head, checks the
-host gateway routes with the local auth token, checks the standalone explorer service on port 8080, verifies the
+validators to run `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters
+for every counted operator, verifies the seeded local CPU chain has 10 settled receipts, settled matmul
+work, settled LinearTrainingStep work, positive rewarded miners, full finality and data availability,
+checks that the host gateway exposes the seeded chain head, checks the host gateway routes with the local
+auth token, checks the standalone explorer service on port 8080, verifies the
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup
 height, block, job, receipt, settled-receipt, model-count, attestation-count, and reward-balance
 advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
@@ -171,8 +172,8 @@ continues finalizing blocks after restart.
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
-  runtime command, live chain counters, advancement past the shared seed, the same first live finalized
-  block hash, and the same finalized common-head block hash through `tvmd service block`. The restart-continuity gate captures
+  runtime command, live role-loop counters, live chain counters, advancement past the shared seed, the same
+  first live finalized block hash, and the same finalized common-head block hash through `tvmd service block`. The restart-continuity gate captures
   pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while
   service init validates full node-store consistency and repairs torn snapshot/block-log state from
   `chain.state`.
