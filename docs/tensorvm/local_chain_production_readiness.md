@@ -513,9 +513,9 @@ lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now l
 `chain::settlement`, deterministic content/state roots now live behind `chain::roots`, block assembly now
 lives behind `chain::blocks`, and chain parameters/state/domain view types now live behind `chain::state`
 while preserving the profile-neutral chain API. Attestation, validation-seed, quorum, and block-finality
-checks now live behind `chain::validation`; registration, receipt admission, account transfer, model
-transition, challenge outcome, and command routing logic still need to move out of the remaining large
-`chain.rs` implementation.
+checks now live behind `chain::validation`, and account creation/transfer/reward-claim logic now lives
+behind `chain::accounts`; registration, receipt admission, model transition, challenge outcome, and command
+routing logic still need to move out of the remaining large `chain.rs` implementation.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

@@ -7,6 +7,7 @@ use crate::types::{Address, Hash, hash_bytes};
 use crate::verify::ValidatorAttestation;
 use std::collections::{BTreeMap, BTreeSet};
 
+mod accounts;
 mod blocks;
 mod proposer;
 mod roots;
@@ -177,7 +178,7 @@ impl LocalChain {
         if self.state.miners.contains_key(&address) {
             return Err(TvmError::InvalidReceipt("miner already registered"));
         }
-        self.ensure_account(address);
+        accounts::ensure(self, address);
         self.state.miners.insert(
             address,
             MinerState {
@@ -201,7 +202,7 @@ impl LocalChain {
         if self.state.validators.contains_key(&address) {
             return Err(TvmError::InvalidReceipt("validator already registered"));
         }
-        self.ensure_account(address);
+        accounts::ensure(self, address);
         self.state.validators.insert(
             address,
             ValidatorState {
@@ -216,20 +217,11 @@ impl LocalChain {
     }
 
     pub fn credit_account(&mut self, address: Address, amount: u64) {
-        let account = self.ensure_account(address);
-        account.balance = account.balance.saturating_add(amount);
+        accounts::credit(self, address, amount);
     }
 
     pub fn transfer(&mut self, from: Address, to: Address, amount: u64) -> Result<()> {
-        let from_account = self.ensure_account(from);
-        if from_account.balance < amount {
-            return Err(TvmError::InvalidReceipt("insufficient account balance"));
-        }
-        from_account.balance -= amount;
-        from_account.nonce += 1;
-        let to_account = self.ensure_account(to);
-        to_account.balance = to_account.balance.saturating_add(amount);
-        Ok(())
+        accounts::transfer(self, from, to, amount)
     }
 
     pub fn submit_job(&mut self, job: JobState) {
@@ -285,15 +277,7 @@ impl LocalChain {
                 let from = from.ok_or(TvmError::InvalidReceipt("missing sender"))?;
                 self.transfer(from, to, amount)
             }
-            Transaction::ClaimReward(address) => {
-                let reward = self.state.rewards.balance(&address);
-                if reward == 0 {
-                    return Err(TvmError::InvalidReceipt("no reward to claim"));
-                }
-                self.credit_account(address, reward);
-                self.state.rewards.balances.insert(address, 0);
-                Ok(())
-            }
+            Transaction::ClaimReward(address) => accounts::claim_reward(self, address),
             Transaction::SubmitTensorOpReceipt(_)
             | Transaction::SubmitLinearTrainingStepReceipt(_)
             | Transaction::SubmitAttestation(_) => Ok(()),
@@ -464,14 +448,6 @@ impl LocalChain {
         parts.extend_from_slice(&model_state_root(&self.state.model_states));
         parts.extend_from_slice(&reward_root(&self.state.rewards));
         hash_bytes(b"tensor-vm-state-root-v1", &[&parts])
-    }
-
-    fn ensure_account(&mut self, address: Address) -> &mut AccountState {
-        self.state.accounts.entry(address).or_insert(AccountState {
-            address,
-            balance: 0,
-            nonce: 0,
-        })
     }
 }
 
