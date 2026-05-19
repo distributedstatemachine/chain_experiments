@@ -508,19 +508,20 @@ Fully applying blocks from the shared network event path still needs hard checke
 - Preserve all existing behavior and tests.
 - Keep `LocalChain` as a compatibility type alias temporarily if needed.
 
-Status: started. `Chain`, `ChainEngine`, `ChainCommand`, and `ChainEvent` exist. Proposer selection now
-lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now lives behind
-`chain::settlement`, deterministic content/state roots now live behind `chain::roots`, block assembly now
-lives behind `chain::blocks`, and chain parameters/state/domain view types now live behind `chain::state`
-while preserving the profile-neutral chain API. Attestation, validation-seed, quorum, and block-finality
-checks now live behind `chain::validation`, and account creation/transfer/reward-claim logic now lives
-behind `chain::accounts`. Genesis construction now lives behind `chain::genesis`. Miner/validator
-registration and hardware-profile checks now live behind `chain::operators`, job/receipt admission now
-lives behind `chain::receipts`, and model registration plus transition checks now live behind
-`chain::models`. Challenge outcome and slashing mutation now lives behind `chain::challenges`,
-profile-neutral command/event facade types now live behind `chain::engine`, `ChainEngine` command routing
-now lives behind `chain::commands`, and transaction application now lives behind `chain::transactions`.
-`chain.rs` is now mostly a profile-neutral facade over the smaller chain modules.
+Status: complete for the current production chain-core split. `Chain`, `ChainEngine`, `ChainCommand`, and
+`ChainEvent` exist. Proposer selection now lives behind `chain::proposer`,
+epoch settlement/redundant-agreement logic now lives behind `chain::settlement`, deterministic
+content/state roots now live behind `chain::roots`, block assembly now lives behind `chain::blocks`, and
+chain parameters/state/domain view types now live behind `chain::state` while preserving the
+profile-neutral chain API. Attestation, validation-seed, quorum, and block-finality checks now live behind
+`chain::validation`, and account creation/transfer/reward-claim logic now lives behind `chain::accounts`.
+Genesis construction now lives behind `chain::genesis`. Miner/validator registration and hardware-profile
+checks now live behind `chain::operators`, job/receipt admission now lives behind `chain::receipts`, and
+model registration plus transition checks now live behind `chain::models`. Challenge outcome and slashing
+mutation now lives behind `chain::challenges`, profile-neutral command/event facade types now live behind
+`chain::engine`, `ChainEngine` command routing now lives behind `chain::commands`, and transaction
+application now lives behind `chain::transactions`. `chain.rs` is now a profile-neutral facade over the
+smaller chain modules and the existing test module.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 
@@ -604,14 +605,12 @@ Keep this incremental:
 
 1. Replace pinned latest produced block-height convergence with latest-head convergence through the shared
    network event path.
-2. Split `chain.rs` into state, engine, validation, settlement, and proposer modules while preserving the
-   `ChainEngine` facade.
-3. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
+2. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
    proposer/node run surface while keeping current tests green.
-4. Wire miner receipt production through role processes.
-5. Wire validator attestation production through role processes.
-6. Wire proposer/block production through network-visible state.
-7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
+3. Wire miner receipt production through role processes.
+4. Wire validator attestation production through role processes.
+5. Wire proposer/block production through network-visible state.
+6. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
