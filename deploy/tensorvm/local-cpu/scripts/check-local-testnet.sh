@@ -152,6 +152,8 @@ done
 for service in $MINERS; do
   compose exec -T "$service" grep -q "role=miner" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not marked as a miner"
+  compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
+    || fail "$service is not running the miner role command"
   compose exec -T "$service" grep -q "device=cpu" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not using the CPU backend"
 done
@@ -159,6 +161,8 @@ done
 for service in $VALIDATORS; do
   compose exec -T "$service" grep -q "role=validator" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not marked as a validator"
+  compose exec -T "$service" grep -q "runtime_command=validator_run" /var/lib/tensorvm/local-cpu-ready \
+    || fail "$service is not running the validator role command"
   compose exec -T "$service" grep -q "reference_verifier_ready=true" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service validator readiness is missing"
 done
@@ -336,6 +340,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_JOB_COUNT=$(status_value job_count "$STATUS")
     SERVICE_RECEIPT_COUNT=$(status_value receipt_count "$STATUS")
     SERVICE_ATTESTATION_COUNT=$(status_value attestation_count "$STATUS")
+    SERVICE_RUNTIME_COMMAND=$(status_value runtime_command "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -351,9 +356,14 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_JOB_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_RECEIPT_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ATTESTATION_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-*) [ "$SERVICE_ROLE" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
+    esac
+    case "$service" in
+      miner-*) [ "$SERVICE_RUNTIME_COMMAND" = "miner_run" ] || { STATUS_MISMATCH=true; continue; } ;;
+      validator-*) [ "$SERVICE_RUNTIME_COMMAND" = "validator_run" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     if [ "$SERVICE_HEIGHT" -le 2 ] \
       || [ "$SERVICE_BLOCK_COUNT" -le 2 ] \
@@ -481,6 +491,7 @@ all_operator_target_head_hash=${ALL_OPERATOR_TARGET_HEAD_HASH}
 all_operator_target_state_root=${ALL_OPERATOR_TARGET_STATE_ROOT}
 all_operator_target_head_convergence=true
 all_operator_role_status=true
+all_operator_role_runtime_commands=true
 all_operator_chain_counters=true
 all_operator_block_log_roots_observed=true
 public_evidence_full_spec=false

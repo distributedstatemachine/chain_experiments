@@ -47,6 +47,53 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
+        CliCommand::MinerRun {
+            wallet,
+            device,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            run_miner_service(RoleServiceConfig {
+                wallet,
+                device: Some(device),
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed: *identity_seed,
+                auth_token,
+                max_requests: *max_requests,
+            })
+        }
+        CliCommand::ValidatorRun {
+            wallet,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            run_validator_service(RoleServiceConfig {
+                wallet,
+                device: None,
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed: *identity_seed,
+                auth_token,
+                max_requests: *max_requests,
+            })
+        }
         CliCommand::ServiceInit { data_dir } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             init_service_store(data_dir)
@@ -306,11 +353,12 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
         ready_file_field(data_dir, "role"),
+        ready_file_field(data_dir, "runtime_command"),
         ready_file_field(data_dir, "node_multiaddr"),
         ready_file_field(data_dir, "p2p_peer_id"),
         chain.state.height,
@@ -347,6 +395,49 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         block.epoch,
         chain.state.height,
         chain.is_block_finalized(&block_hash),
+    ))
+}
+
+struct RoleServiceConfig<'a> {
+    wallet: &'a str,
+    device: Option<&'a str>,
+    node: &'a str,
+    listen: &'a str,
+    p2p_listen: &'a str,
+    data_dir: &'a str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &'a str,
+    max_requests: usize,
+}
+
+fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
+    let service_report = serve_service(
+        config.listen,
+        config.p2p_listen,
+        config.data_dir,
+        config.identity_seed,
+        config.auth_token,
+        config.max_requests,
+    )?;
+    let device = config.device.unwrap_or("unknown");
+    Ok(format!(
+        "command=miner_run\nrole=miner\nwallet={}\ndevice={device}\nnode={}\nrole_runtime_ready=true\n{service_report}",
+        config.wallet, config.node
+    ))
+}
+
+fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
+    let service_report = serve_service(
+        config.listen,
+        config.p2p_listen,
+        config.data_dir,
+        config.identity_seed,
+        config.auth_token,
+        config.max_requests,
+    )?;
+    Ok(format!(
+        "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
+        config.wallet, config.node
     ))
 }
 

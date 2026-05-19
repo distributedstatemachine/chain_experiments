@@ -77,6 +77,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   and gateway auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
+- Role-specific long-running `tvmd miner run` and `tvmd validator run` command surfaces that validate the
+  role config, start the mandatory libp2p-backed service runtime, and report role runtime readiness
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -221,11 +223,12 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Local CPU Docker Compose deployment bundle under `deploy/tensorvm/local-cpu/`, with a CPU-only
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
-  readiness, authenticated host gateway route checks, a seeded local CPU chain exposed through the gateway
-  with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job production on the
-  bootstrap gateway so post-startup blocks advance through receipts, attestations, settlement, proposer
-  selection, and finality instead of a static snapshot, miner rewards, finality, data availability, a
-  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a rolling
+  readiness, role-specific `tvmd miner run` and `tvmd validator run` entrypoints checked through
+  `runtime_command` status, authenticated host gateway route checks, a seeded local CPU chain exposed
+  through the gateway with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job
+  production on the bootstrap gateway so post-startup blocks advance through receipts, attestations,
+  settlement, proposer selection, and finality instead of a static snapshot, miner rewards, finality, data
+  availability, a standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
   durable status checks, an all-operator finalized common-head checkpoint queried through
   `tvmd service block`, a local-only evidence boundary, and
@@ -300,10 +303,11 @@ preflight, public evidence, or deployment-gated work can count:
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
   catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
   state root via `all_operator_target_head_convergence=true`, plus
-  `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`, and
-  `all_operator_chain_counters=true`, proving each operator status surface reports its role, live chain
-  counters, and durable block-log root; `check-rolling-restart-continuity.sh` is now the full local restart
-  gate and runs the same continuity check one service at a time across every counted operator, proving each
+  `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
+  `all_operator_role_runtime_commands=true`, and `all_operator_chain_counters=true`, proving each operator
+  status surface reports its role, runtime command, live chain counters, and durable block-log root;
+  `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
+  check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
   root on every operator, advances height, block count, state-root, and block-log-root evidence, and
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
@@ -316,11 +320,12 @@ The workspace currently has 214 passing library tests under Tarpaulin:
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 3 `tvmd` binary unit tests, 1 local CPU Compose integration
-test, and 6 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
+test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
-that persists a settled two-block local chain, then proves bounded service startup can generate live
-synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
+that persists a settled two-block local chain, a role-run command test that proves `tvmd miner run` and
+`tvmd validator run` serve through role-specific surfaces with mandatory libp2p startup, then proves
+bounded service startup can generate live synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
 `tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
 lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
@@ -339,10 +344,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.16% workspace line coverage
-- 9718/9800 workspace lines covered
+- 99.18% workspace line coverage
+- 9892/9974 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8873/8873 `tensor_vm` lines covered
+- 9047/9047 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

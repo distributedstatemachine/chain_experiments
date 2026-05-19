@@ -24,10 +24,11 @@ explorer
 
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
 distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
-libp2p readiness path, and starts `tvmd service serve`. Miner containers also run the CPU miner readiness
-command with `--device cpu`; validators run the validator readiness command. Every operator seeds the same
-deterministic local CPU chain and keeps producing live synthetic CPU jobs from that shared base, while
-`miner-00` exposes the host-facing gateway routes.
+libp2p readiness path, and then execs its role command: miners run `tvmd miner run`, validators run
+`tvmd validator run`. Miner containers also run the CPU miner readiness command with `--device cpu`;
+validators run the validator readiness command. Every operator seeds the same deterministic local CPU chain
+and keeps producing live synthetic CPU jobs from that shared base, while `miner-00` exposes the host-facing
+gateway routes.
 
 The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
 `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.
@@ -39,11 +40,11 @@ snapshot, including new jobs, receipts, settled receipts, model-count advancemen
 growth, per-receipt validator-attestation details, named post-seed TensorOp and LinearTrainingStep
 receipts, live tensor descriptor/row/chunk/opening fetches, and reward growth from live synthetic work. It
 also runs `tvmd service status` in every operator container and
-fails unless all 15 node stores advance past the seed, report role-specific status, expose live chain
-counters, report the same first live finalized block hash, and return the same finalized common-head block
-hash through `tvmd service block`. It also pins miner-00's latest produced block height and fails unless
-every operator can return that exact finalized block hash and state root, with a nonempty block-log root
-reported by each node store.
+fails unless all 15 node stores advance past the seed, report role-specific status and the expected
+role-runtime command, expose live chain counters, report the same first live finalized block hash, and
+return the same finalized common-head block hash through `tvmd service block`. It also pins miner-00's
+latest produced block height and fails unless every operator can return that exact finalized block hash and
+state root, with a nonempty block-log root reported by each node store.
 
 ## Commands
 

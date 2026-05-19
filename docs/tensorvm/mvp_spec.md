@@ -1643,12 +1643,24 @@ tvmd miner start \
   --device cuda:0 \
   --node /ip4/127.0.0.1/tcp/4001
 
+tvmd miner run \
+  --wallet miner.key \
+  --device cpu \
+  --node /ip4/127.0.0.1/tcp/4001 \
+  --listen 0.0.0.0:8545 \
+  --p2p-listen /ip4/0.0.0.0/tcp/4001 \
+  --data-dir /var/lib/tensorvm \
+  --identity-seed <32-byte-hex-seed> \
+  --auth-token service-token \
+  --max-requests 0
+
 tvmd miner status
 ```
 
 `--device cpu` selects the deterministic CPU reference backend used by Gate 0. `--device cuda:N` is a
 GPU-miner claim and must fail unless the binary was built with `--features cuda-kernels` and device `N`
-is present; CUDA readiness cannot be satisfied by a default CPU build.
+is present; CUDA readiness cannot be satisfied by a default CPU build. `miner start` is the preflight
+readiness surface; `miner run` is the long-running role entrypoint used by the local CPU Compose gate.
 
 ### 31.2 Validator CLI
 
@@ -1659,8 +1671,21 @@ tvmd validator start \
   --wallet validator.key \
   --node /ip4/127.0.0.1/tcp/4001
 
+tvmd validator run \
+  --wallet validator.key \
+  --node /ip4/127.0.0.1/tcp/4001 \
+  --listen 0.0.0.0:8545 \
+  --p2p-listen /ip4/0.0.0.0/tcp/4001 \
+  --data-dir /var/lib/tensorvm \
+  --identity-seed <32-byte-hex-seed> \
+  --auth-token service-token \
+  --max-requests 0
+
 tvmd validator status
 ```
+
+`validator start` is the preflight readiness surface; `validator run` is the long-running role entrypoint
+used by the local CPU Compose gate.
 
 ### 31.3 Service CLI
 

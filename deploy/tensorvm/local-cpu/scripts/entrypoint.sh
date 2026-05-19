@@ -66,6 +66,7 @@ tvmd service readiness \
   echo "operator_name=$OPERATOR_NAME"
   echo "operator_id=$OPERATOR_ID"
   echo "role=$ROLE"
+  echo "runtime_command=${ROLE}_run"
   echo "node_multiaddr=$NODE_MULTIADDR"
   cat "$DATA_DIR/role-start.out"
   if [ -f "$DATA_DIR/local-testnet-seed.out" ]; then
@@ -76,10 +77,28 @@ tvmd service readiness \
   echo "independently_checkable=false"
 } > "$READY_FILE"
 
-exec tvmd service serve \
-  --listen "$RPC_LISTEN" \
-  --p2p-listen "$P2P_LISTEN" \
-  --data-dir "$DATA_DIR" \
-  --identity-seed "$IDENTITY_SEED" \
-  --auth-token "$AUTH_TOKEN" \
-  --max-requests 0
+case "$ROLE" in
+  miner)
+    exec tvmd miner run \
+      --wallet "$WALLET" \
+      --device cpu \
+      --node "$NODE_MULTIADDR" \
+      --listen "$RPC_LISTEN" \
+      --p2p-listen "$P2P_LISTEN" \
+      --data-dir "$DATA_DIR" \
+      --identity-seed "$IDENTITY_SEED" \
+      --auth-token "$AUTH_TOKEN" \
+      --max-requests 0
+    ;;
+  validator)
+    exec tvmd validator run \
+      --wallet "$WALLET" \
+      --node "$NODE_MULTIADDR" \
+      --listen "$RPC_LISTEN" \
+      --p2p-listen "$P2P_LISTEN" \
+      --data-dir "$DATA_DIR" \
+      --identity-seed "$IDENTITY_SEED" \
+      --auth-token "$AUTH_TOKEN" \
+      --max-requests 0
+    ;;
+esac

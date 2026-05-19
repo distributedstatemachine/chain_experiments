@@ -167,7 +167,7 @@ initialize or load its durable node store
 load its stable wallet and libp2p identity
 seed the bootstrap peer book, except for miner-00
 start the mandatory libp2p control plane
-start its role process as miner or validator
+start its role command as `tvmd miner run` or `tvmd validator run`
 report readiness only after the role process and libp2p runtime are live
 ```
 
@@ -179,7 +179,9 @@ device=cpu
 
 Validator containers must connect through libp2p and validate receipts using the canonical verifier
 paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
-protocol paths and persisted state.
+protocol paths and persisted state. The readiness file and `tvmd service status` output must expose the
+actual long-running role command so the checker can reject operators that fall back to a generic service
+entrypoint.
 
 After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work. Each
 live block must come from the normal protocol path: a generated TensorWork job, miner receipts, validator
@@ -245,6 +247,8 @@ deployment:
 15 libp2p-ready nodes
 10 CPU-ready miners
 0 CUDA-required miners
+all miner operators report `runtime_command=miner_run`
+all validator operators report `runtime_command=validator_run`
 at least one finalized block after startup
 chain height and block count advance past the seeded two-block baseline
 synthetic post-startup jobs, receipts, and settled receipts are visible through explorer data

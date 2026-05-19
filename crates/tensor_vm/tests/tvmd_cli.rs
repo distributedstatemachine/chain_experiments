@@ -1022,6 +1022,76 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
 }
 
 #[test]
+fn role_run_commands_serve_through_role_specific_surfaces() {
+    for role in ["miner", "validator"] {
+        let data_dir = unique_test_dir(&format!("{role}-run"));
+        let data_dir_text = data_dir.to_string_lossy().into_owned();
+        let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+        assert!(seed.contains("command=local_testnet_seed"));
+
+        let rpc_port = free_local_port();
+        let listen = format!("127.0.0.1:{rpc_port}");
+        let mut args = vec![role.to_owned(), "run".to_owned(), "--wallet".to_owned()];
+        if role == "miner" {
+            args.extend([
+                "miner.key".to_owned(),
+                "--device".to_owned(),
+                "cpu".to_owned(),
+                "--node".to_owned(),
+                "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            ]);
+        } else {
+            args.extend([
+                "validator.key".to_owned(),
+                "--node".to_owned(),
+                "/ip4/127.0.0.1/tcp/4002".to_owned(),
+            ]);
+        }
+        args.extend([
+            "--listen".to_owned(),
+            listen,
+            "--p2p-listen".to_owned(),
+            "/ip4/127.0.0.1/tcp/0".to_owned(),
+            "--data-dir".to_owned(),
+            data_dir_text.clone(),
+            "--auth-token".to_owned(),
+            "service-token".to_owned(),
+            "--max-requests".to_owned(),
+            "1".to_owned(),
+        ]);
+
+        let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
+            .args(&args)
+            .current_dir(workspace_root())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("tvmd role run must spawn");
+
+        let health = authenticated_get_request(rpc_port, "/health");
+        assert!(health.contains("HTTP/1.1 200 OK"));
+
+        let output = child.wait_with_output().expect("role process must exit");
+        assert!(
+            output.status.success(),
+            "{role} run failed with status {:?}\nstdout:\n{}\nstderr:\n{}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8(output.stdout).expect("role stdout must be utf8");
+        assert!(stdout.contains(&format!("command={role}_run")));
+        assert!(stdout.contains(&format!("role={role}")));
+        assert!(stdout.contains("role_runtime_ready=true"));
+        assert!(stdout.contains("command=service_serve"));
+        assert!(stdout.contains("p2p_runtime=libp2p"));
+        assert!(stdout.contains("served_requests=1"));
+
+        std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+    }
+}
+
+#[test]
 fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let data_dir = unique_test_dir("service-cli-lifecycle");
     let data_dir_text = data_dir.to_string_lossy().into_owned();

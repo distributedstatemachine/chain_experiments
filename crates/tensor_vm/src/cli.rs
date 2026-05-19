@@ -29,6 +29,17 @@ pub enum CliCommand {
         device: String,
         node: String,
     },
+    MinerRun {
+        wallet: String,
+        device: String,
+        node: String,
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
+    },
     MinerStatus,
     ValidatorRegister {
         stake: u64,
@@ -36,6 +47,16 @@ pub enum CliCommand {
     ValidatorStart {
         wallet: String,
         node: String,
+    },
+    ValidatorRun {
+        wallet: String,
+        node: String,
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
     },
     ValidatorStatus,
     ServiceInit {
@@ -250,6 +271,68 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             device: (*device).to_owned(),
             node: (*node).to_owned(),
         }),
+        [
+            "miner",
+            "run",
+            "--wallet",
+            wallet,
+            "--device",
+            device,
+            "--node",
+            node,
+            "--listen",
+            listen,
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::MinerRun {
+            wallet: (*wallet).to_owned(),
+            device: (*device).to_owned(),
+            node: (*node).to_owned(),
+            listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: None,
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
+        [
+            "miner",
+            "run",
+            "--wallet",
+            wallet,
+            "--device",
+            device,
+            "--node",
+            node,
+            "--listen",
+            listen,
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--identity-seed",
+            identity_seed,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::MinerRun {
+            wallet: (*wallet).to_owned(),
+            device: (*device).to_owned(),
+            node: (*node).to_owned(),
+            listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: Some(parse_hash_argument(identity_seed)?),
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
         ["miner", "status"] => Ok(CliCommand::MinerStatus),
         ["validator", "register", "--stake", stake] => Ok(CliCommand::ValidatorRegister {
             stake: parse_u64(stake)?,
@@ -260,6 +343,62 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
                 node: (*node).to_owned(),
             })
         }
+        [
+            "validator",
+            "run",
+            "--wallet",
+            wallet,
+            "--node",
+            node,
+            "--listen",
+            listen,
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::ValidatorRun {
+            wallet: (*wallet).to_owned(),
+            node: (*node).to_owned(),
+            listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: None,
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
+        [
+            "validator",
+            "run",
+            "--wallet",
+            wallet,
+            "--node",
+            node,
+            "--listen",
+            listen,
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--identity-seed",
+            identity_seed,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::ValidatorRun {
+            wallet: (*wallet).to_owned(),
+            node: (*node).to_owned(),
+            listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: Some(parse_hash_argument(identity_seed)?),
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
         ["validator", "status"] => Ok(CliCommand::ValidatorStatus),
         ["service", "init", "--data-dir", data_dir] => Ok(CliCommand::ServiceInit {
             data_dir: (*data_dir).to_owned(),
@@ -815,10 +954,51 @@ pub fn describe_command(command: &CliCommand) -> String {
             device,
             node,
         } => format!("start miner wallet={wallet} device={device} node={node}"),
+        CliCommand::MinerRun {
+            wallet,
+            device,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token: _,
+            max_requests,
+        } => {
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_description(*identity_seed);
+            format!(
+                "run miner role wallet={wallet} device={device} node={node} listen={listen} p2p_listen={p2p_listen} data_dir={data_dir}{identity} max_requests={max_requests} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
+            )
+        }
         CliCommand::MinerStatus => "show miner status".to_owned(),
         CliCommand::ValidatorRegister { stake } => format!("register validator with stake {stake}"),
         CliCommand::ValidatorStart { wallet, node } => {
             format!("start validator wallet={wallet} node={node}")
+        }
+        CliCommand::ValidatorRun {
+            wallet,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token: _,
+            max_requests,
+        } => {
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_description(*identity_seed);
+            format!(
+                "run validator role wallet={wallet} node={node} listen={listen} p2p_listen={p2p_listen} data_dir={data_dir}{identity} max_requests={max_requests} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
+            )
         }
         CliCommand::ValidatorStatus => "show validator status".to_owned(),
         CliCommand::ServiceInit { data_dir } => {
@@ -1113,6 +1293,35 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
                 device_readiness.report()
             ))
         }
+        CliCommand::MinerRun {
+            wallet,
+            device,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        } => {
+            let address = wallet_address_hex(wallet)?;
+            let device_readiness = miner_device_readiness(device)?;
+            ensure_node_endpoint(node)?;
+            ensure_listen_addr(listen)?;
+            ensure_libp2p_multiaddr(p2p_listen)?;
+            ensure_data_dir(data_dir)?;
+            ensure_auth_token(auth_token)?;
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_report(*identity_seed);
+            Ok(format!(
+                "command=miner_run\nrole=miner\nwallet={wallet}\naddress={address}\ndevice={device}\nnode={node}\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{}\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrole_runtime_ready=true",
+                device_readiness.report(),
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
+            ))
+        }
         CliCommand::MinerStatus => Ok(format!(
             "command=miner_status\nmin_stake={}\nreference_backend_ready=true\nstatus_source=rpc_or_node_store_required",
             params.miner_min_stake
@@ -1129,6 +1338,32 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             ensure_node_endpoint(node)?;
             Ok(format!(
                 "command=validator_start\nwallet={wallet}\naddress={address}\nnode={node}\nreference_verifier_ready=true"
+            ))
+        }
+        CliCommand::ValidatorRun {
+            wallet,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        } => {
+            let address = wallet_address_hex(wallet)?;
+            ensure_node_endpoint(node)?;
+            ensure_listen_addr(listen)?;
+            ensure_libp2p_multiaddr(p2p_listen)?;
+            ensure_data_dir(data_dir)?;
+            ensure_auth_token(auth_token)?;
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_report(*identity_seed);
+            Ok(format!(
+                "command=validator_run\nrole=validator\nwallet={wallet}\naddress={address}\nnode={node}\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nreference_verifier_ready=true\nrole_runtime_ready=true",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
             ))
         }
         CliCommand::ValidatorStatus => Ok(format!(
@@ -3655,6 +3890,77 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             parse_cli_parts(&["miner", "status"]).unwrap(),
             CliCommand::MinerStatus
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "miner",
+                "run",
+                "--wallet",
+                "miner.key",
+                "--device",
+                "cpu",
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+                "--listen",
+                "127.0.0.1:8545",
+                "--p2p-listen",
+                "/ip4/127.0.0.1/tcp/0",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "7",
+            ])
+            .unwrap(),
+            CliCommand::MinerRun {
+                wallet: "miner.key".to_owned(),
+                device: "cpu".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
+                auth_token: "secret".to_owned(),
+                max_requests: 7,
+            }
+        );
+        let identity_seed = "11".repeat(32);
+        assert_eq!(
+            parse_cli_parts(&[
+                "miner",
+                "run",
+                "--wallet",
+                "miner.key",
+                "--device",
+                "cpu",
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+                "--listen",
+                "127.0.0.1:8545",
+                "--p2p-listen",
+                "/ip4/127.0.0.1/tcp/0",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--identity-seed",
+                &identity_seed,
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "7",
+            ])
+            .unwrap(),
+            CliCommand::MinerRun {
+                wallet: "miner.key".to_owned(),
+                device: "cpu".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: Some([0x11; 32]),
+                auth_token: "secret".to_owned(),
+                max_requests: 7,
+            }
+        );
     }
 
     #[test]
@@ -3681,6 +3987,71 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             parse_cli_parts(&["validator", "status"]).unwrap(),
             CliCommand::ValidatorStatus
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "validator",
+                "run",
+                "--wallet",
+                "validator.key",
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+                "--listen",
+                "127.0.0.1:8545",
+                "--p2p-listen",
+                "/ip4/127.0.0.1/tcp/0",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "7",
+            ])
+            .unwrap(),
+            CliCommand::ValidatorRun {
+                wallet: "validator.key".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
+                auth_token: "secret".to_owned(),
+                max_requests: 7,
+            }
+        );
+        let identity_seed = "22".repeat(32);
+        assert_eq!(
+            parse_cli_parts(&[
+                "validator",
+                "run",
+                "--wallet",
+                "validator.key",
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+                "--listen",
+                "127.0.0.1:8545",
+                "--p2p-listen",
+                "/ip4/127.0.0.1/tcp/0",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--identity-seed",
+                &identity_seed,
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "7",
+            ])
+            .unwrap(),
+            CliCommand::ValidatorRun {
+                wallet: "validator.key".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                listen: "127.0.0.1:8545".to_owned(),
+                p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: Some([0x22; 32]),
+                auth_token: "secret".to_owned(),
+                max_requests: 7,
+            }
         );
         assert_eq!(
             parse_cli_parts(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
@@ -4404,6 +4775,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 },
                 "start miner wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001",
             ),
+            (
+                CliCommand::MinerRun {
+                    wallet: "miner.key".to_owned(),
+                    device: "cpu".to_owned(),
+                    node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                    listen: "127.0.0.1:8545".to_owned(),
+                    p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                    identity_seed: None,
+                    auth_token: "secret".to_owned(),
+                    max_requests: 7,
+                },
+                "run miner role wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
+            ),
             (CliCommand::MinerStatus, "show miner status"),
             (
                 CliCommand::ValidatorRegister { stake: 10 },
@@ -4415,6 +4800,19 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 },
                 "start validator wallet=validator.key node=/ip4/127.0.0.1/tcp/4001",
+            ),
+            (
+                CliCommand::ValidatorRun {
+                    wallet: "validator.key".to_owned(),
+                    node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                    listen: "127.0.0.1:8545".to_owned(),
+                    p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                    identity_seed: None,
+                    auth_token: "secret".to_owned(),
+                    max_requests: 7,
+                },
+                "run validator role wallet=validator.key node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
             ),
             (CliCommand::ValidatorStatus, "show validator status"),
             (
@@ -4807,6 +5205,25 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
         assert!(miner_start.contains("reference_backend_ready=true"));
 
+        let miner_run = execute_reference_cli_command(&CliCommand::MinerRun {
+            wallet: "miner.key".to_owned(),
+            device: "cpu".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            listen: "127.0.0.1:8545".to_owned(),
+            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            identity_seed: Some([0x11; 32]),
+            auth_token: "secret".to_owned(),
+            max_requests: 7,
+        })
+        .unwrap();
+        assert!(miner_run.contains("command=miner_run"));
+        assert!(miner_run.contains("role=miner"));
+        assert!(miner_run.contains("device_backend=cpu-reference"));
+        assert!(miner_run.contains("p2p_runtime=libp2p"));
+        assert!(miner_run.contains("p2p_identity_seeded=true"));
+        assert!(miner_run.contains("role_runtime_ready=true"));
+
         let validator_register =
             execute_reference_cli_command(&CliCommand::ValidatorRegister { stake: 10_000 })
                 .unwrap();
@@ -4820,6 +5237,24 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         .unwrap();
         assert!(validator_start.contains("command=validator_start"));
         assert!(validator_start.contains("reference_verifier_ready=true"));
+
+        let validator_run = execute_reference_cli_command(&CliCommand::ValidatorRun {
+            wallet: "validator.key".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            listen: "127.0.0.1:8545".to_owned(),
+            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            identity_seed: None,
+            auth_token: "secret".to_owned(),
+            max_requests: 7,
+        })
+        .unwrap();
+        assert!(validator_run.contains("command=validator_run"));
+        assert!(validator_run.contains("role=validator"));
+        assert!(validator_run.contains("reference_verifier_ready=true"));
+        assert!(validator_run.contains("p2p_runtime=libp2p"));
+        assert!(validator_run.contains("p2p_identity_seeded=false"));
+        assert!(validator_run.contains("role_runtime_ready=true"));
 
         let miner_status = execute_reference_cli_command(&CliCommand::MinerStatus).unwrap();
         assert!(miner_status.contains("command=miner_status"));

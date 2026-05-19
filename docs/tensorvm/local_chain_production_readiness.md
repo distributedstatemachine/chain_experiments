@@ -96,6 +96,9 @@ The local bundle is useful and should remain the first operational target:
   matrix.
 - `tvmd service init` validates the complete node store on restart and repairs torn snapshot/block-log
   state from `chain.state` before readiness is allowed.
+- Compose now execs role-specific runtime commands for counted operators: miners run `tvmd miner run`,
+  validators run `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker
+  fails unless all 15 operators report the role command expected for their Compose service.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -136,18 +139,19 @@ Required fix:
 - Have validator containers receive assignments, fetch tensor data, validate, and submit attestations.
 - Have proposers collect network-visible state before producing blocks.
 
-### 2. Miner And Validator Containers Are Readiness Shells
+### 2. Miner And Validator Containers Still Delegate Internals To The Service Runtime
 
-`tvmd miner start` and `tvmd validator start` currently prove local readiness, then each container execs
-`tvmd service serve`. They do not run independent role loops.
+`tvmd miner start` and `tvmd validator start` prove local readiness, and each container now execs the
+matching long-running `tvmd miner run` or `tvmd validator run` surface. Those role commands still delegate
+their inner serving path to the shared service runtime, so they prove the command surface and Compose
+contract but not independent role ownership yet.
 
 Required fix:
 
-- Add long-running commands:
-  - `tvmd miner run`
-  - `tvmd validator run`
-  - `tvmd proposer run` or `tvmd node run --role <role>`
-- Make each role loop own only its role responsibilities.
+- Keep `tvmd miner run` and `tvmd validator run` as the counted operator entrypoints.
+- Add `tvmd proposer run` or `tvmd node run --role <role>` for proposer/gateway duties.
+- Move miner, validator, and proposer internals out of the generic service loop so each role loop owns
+  only its role responsibilities.
 - Keep readiness commands as preflight checks, not the runtime.
 
 ### 3. Libp2p Runs But Does Not Drive Chain State
@@ -495,8 +499,10 @@ proposer selection, and state views still live mostly in one large `chain.rs` im
 - Initially run them against the existing RPC endpoints.
 - Then move gossip/request-response ingestion into the node runtime.
 
-Status: not complete. Miner and validator commands are readiness paths today, not independent long-running
-role runtimes.
+Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
+Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
+`runtime_command=validator_run` through ready files and `tvmd service status`. The commands still delegate
+to the service runtime internally, and proposer/node run ownership still needs to be split out.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
@@ -569,7 +575,8 @@ Keep this incremental:
    network event path.
 2. Split `chain.rs` into state, engine, validation, settlement, and proposer modules while preserving the
    `ChainEngine` facade.
-3. Add role-loop commands while keeping current tests green.
+3. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
+   proposer/node run surface while keeping current tests green.
 4. Wire miner receipt production through role processes.
 5. Wire validator attestation production through role processes.
 6. Wire proposer/block production through network-visible state.

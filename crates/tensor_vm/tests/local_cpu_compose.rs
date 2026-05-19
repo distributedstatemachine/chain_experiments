@@ -125,7 +125,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "--identity-seed",
         "tvmd local-testnet seed",
         "local-testnet-seed.out",
-        "tvmd service serve",
+        "runtime_command=${ROLE}_run",
+        "tvmd miner run",
+        "tvmd validator run",
         "public_evidence_full_spec=false",
         "independently_checkable=false",
     ] {
@@ -186,6 +188,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_target_state_root=",
         "all_operator_target_head_convergence=true",
         "all_operator_role_status=true",
+        "all_operator_role_runtime_commands=true",
         "all_operator_chain_counters=true",
         "all_operator_block_log_roots_observed=true",
         "data-ui=\"ratzilla-tui\"",
