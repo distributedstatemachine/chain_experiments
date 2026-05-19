@@ -987,6 +987,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             .expect("service status latest block height must parse")
             > 2
     );
+    assert_ne!(stdout_value(&status, "block_log_root"), "0".repeat(64));
     assert!(
         stdout_value(&status, "finalized_block_count")
             .parse::<u64>()

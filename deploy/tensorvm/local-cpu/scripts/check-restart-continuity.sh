@@ -83,15 +83,18 @@ capture_snapshot() {
     latest_block_height=$(status_value latest_block_height "$STATUS")
     latest_block_hash=$(status_value latest_block_hash "$STATUS")
     state_root=$(status_value state_root "$STATUS")
+    block_log_root=$(status_value block_log_root "$STATUS")
     [ -n "$peer_id" ] || fail "$phase status for $service is missing p2p_peer_id"
     [ -n "$height" ] || fail "$phase status for $service is missing height"
     [ -n "$block_count" ] || fail "$phase status for $service is missing block_count"
     [ -n "$latest_block_height" ] || fail "$phase status for $service is missing latest_block_height"
     [ -n "$latest_block_hash" ] || fail "$phase status for $service is missing latest_block_hash"
     [ -n "$state_root" ] || fail "$phase status for $service is missing state_root"
+    [ -n "$block_log_root" ] || fail "$phase status for $service is missing block_log_root"
     [ "$latest_block_height" -gt 2 ] || fail "$phase status for $service latest block did not advance past seed"
     [ "$latest_block_hash" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty latest block hash"
     [ "$state_root" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty state root"
+    [ "$block_log_root" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty block-log root"
     if [ -z "$min_height" ] || [ "$latest_block_height" -lt "$min_height" ]; then
       min_height="$latest_block_height"
     fi
@@ -102,6 +105,7 @@ capture_snapshot() {
       printf 'latest_block_height=%s\n' "$latest_block_height"
       printf 'latest_block_hash=%s\n' "$latest_block_hash"
       printf 'state_root=%s\n' "$state_root"
+      printf 'block_log_root=%s\n' "$block_log_root"
     } > "$dir/${service}.status"
   done
 
@@ -198,6 +202,8 @@ for service in $RESTART_SERVICES; do
   after_block_count=$(file_value block_count "$TMP_DIR/after/${service}.status")
   before_state_root=$(file_value state_root "$TMP_DIR/before/${service}.status")
   after_state_root=$(file_value state_root "$TMP_DIR/after/${service}.status")
+  before_block_log_root=$(file_value block_log_root "$TMP_DIR/before/${service}.status")
+  after_block_log_root=$(file_value block_log_root "$TMP_DIR/after/${service}.status")
   [ "$before_peer_id" = "$after_peer_id" ] \
     || fail "$service libp2p peer ID changed across restart"
   [ "$after_height" -gt "$before_height" ] \
@@ -208,6 +214,10 @@ for service in $RESTART_SERVICES; do
     || fail "$service after-restart state root is empty"
   [ "$after_state_root" != "$before_state_root" ] \
     || fail "$service state root did not advance across restart"
+  [ "$after_block_log_root" != "$ZERO_HASH" ] \
+    || fail "$service after-restart block-log root is empty"
+  [ "$after_block_log_root" != "$before_block_log_root" ] \
+    || fail "$service block-log root did not advance across restart"
 done
 
 RESTART_SERVICE_LIST=$(printf '%s\n' "$RESTART_SERVICES" | tr ' ' ',')
@@ -228,6 +238,8 @@ restart_block_counts_non_decreasing=true
 restart_block_counts_advance=true
 restart_state_roots_observed=true
 restart_state_roots_advance=true
+restart_block_log_roots_observed=true
+restart_block_log_roots_advance=true
 restart_previous_common_head_preserved=true
 restart_previous_common_state_root_preserved=true
 restart_blocks_continue=true

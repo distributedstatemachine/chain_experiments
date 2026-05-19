@@ -86,11 +86,11 @@ The local bundle is useful and should remain the first operational target:
   and live chain counters, report the same first live finalized block hash, and return the same finalized
   common-head block hash through `tvmd service block` before and after restart checks. It also pins
   miner-00's latest produced block height and fails unless every operator catches up to the same finalized
-  block hash and state root.
-- `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, and
-  finalized common heads around actual Compose restarts, and fails unless restarted services keep identity,
-  advance durable state, preserve the pre-restart finalized common head and state root, and continue
-  finalizing blocks.
+  block hash and state root, with a nonempty block-log root reported from every node store.
+- `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, block-log
+  roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
+  keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
+  continue finalizing blocks.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -189,7 +189,7 @@ Required fix:
 
 - Extend continuity evidence from the selected restart targets to every counted operator over a rolling
   restart matrix.
-- Extend state-root continuity into a true store checksum or block-log root before and after restart.
+- Extend the current per-store block-log root into a rolling all-operator restart matrix.
 - Keep checking that peer IDs are unchanged, height, block count, and state root advance, the pre-restart
   finalized common head and state root are preserved, and blocks continue advancing after restart.
 
@@ -466,9 +466,10 @@ receipts, per-receipt validator-attestation details, live tensor descriptor/row/
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
 hash, the same finalized common-head block hash, and a pinned miner-00 latest produced block-height
 target/state root through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
-receipt evidence. The restart-continuity script also captures pre/post peer IDs, heights, block counts,
-state roots, and finalized common heads for the selected restart gates. Latest-head convergence via the
-shared network event path still needs hard checker assertions.
+receipt evidence, and nonempty block-log roots from every node store. The restart-continuity script also
+captures pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads
+for the selected restart gates. Latest-head convergence via the shared network event path still needs hard
+checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -515,8 +516,8 @@ The runtime still needs to consume those profiles end to end.
 
 Status: partially complete. `check-restart-continuity.sh` covers selected miner, validator, and gateway
 restarts and proves stable libp2p peer IDs, advancing height/block count/state-root evidence, preservation
-of the pre-restart finalized common head and state root on every operator, and continued finalization. It
-still needs a rolling all-operator restart matrix and true store-checksum or block-log-root evidence.
+of the pre-restart finalized common head and state root on every operator, advancing block-log roots, and
+continued finalization. It still needs a rolling all-operator restart matrix.
 
 ## Local Production-Ready Acceptance Gate
 
@@ -566,7 +567,7 @@ Keep this incremental:
 7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
 8. Expand restart continuity checks from `miner-00`, `miner-03`, and `validator-02` to a rolling
-   all-operator restart matrix with true store-root or block-log-root evidence.
+   all-operator restart matrix.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

@@ -238,6 +238,18 @@ impl BlockLogStore {
             .map_err(|_| TvmError::Storage("failed to read block log"))?;
         decode_block_log(&bytes)
     }
+
+    pub fn file_root(&self) -> Result<Hash> {
+        let bytes = if self.path.exists() {
+            fs::read(&self.path).map_err(|_| TvmError::Storage("failed to read block log"))?
+        } else {
+            Vec::new()
+        };
+        if !bytes.is_empty() {
+            decode_block_log(&bytes)?;
+        }
+        Ok(hash_bytes(b"tensor-vm-block-log-file-root-v1", &[&bytes]))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -289,6 +301,7 @@ pub struct NodeStoreStatus {
     pub snapshot: ChainSnapshot,
     pub block_count: usize,
     pub latest_block_hash: Hash,
+    pub block_log_root: Hash,
 }
 
 pub trait ChainStore {
@@ -397,6 +410,7 @@ impl NodeStore {
             snapshot,
             block_count: blocks.len(),
             latest_block_hash,
+            block_log_root: self.block_log_store.file_root()?,
         })
     }
 }
@@ -1532,6 +1546,10 @@ mod tests {
         ));
         let store = BlockLogStore::new(path.clone());
         assert!(store.load_blocks_or_empty().unwrap().is_empty());
+        assert_eq!(
+            store.file_root().unwrap(),
+            hash_bytes(b"tensor-vm-block-log-file-root-v1", &[&[]])
+        );
 
         let first = LocalChain {
             blocks: vec![chain.blocks[0].clone()],
@@ -1597,6 +1615,10 @@ mod tests {
         assert_eq!(status.data_dir, data_dir);
         assert_eq!(status.block_count, 2);
         assert_eq!(status.latest_block_hash, chain.blocks[1].hash());
+        assert_eq!(
+            status.block_log_root,
+            store.block_log_store().file_root().unwrap()
+        );
         assert_eq!(status.snapshot, ChainSnapshot::from_chain(&chain));
         assert_eq!(store.status().unwrap(), status);
         let loaded = store.load().unwrap();
@@ -1607,6 +1629,11 @@ mod tests {
         chain.produce_block(miner, 1_012);
         let updated = store.persist_chain(&chain).unwrap();
         assert_eq!(updated.block_count, 3);
+        assert_ne!(updated.block_log_root, status.block_log_root);
+        assert_eq!(
+            updated.block_log_root,
+            store.block_log_store().file_root().unwrap()
+        );
         assert_eq!(store.load().unwrap().blocks, chain.blocks);
         assert_eq!(store.load_chain().unwrap(), chain);
 
@@ -1643,6 +1670,10 @@ mod tests {
 
         assert_eq!(status.block_count, 1);
         assert_eq!(status.latest_block_hash, chain.blocks[0].hash());
+        assert_eq!(
+            status.block_log_root,
+            store.block_log_store().file_root().unwrap()
+        );
         assert_eq!(loaded, chain);
 
         let _ = std::fs::remove_file(store.snapshot_store().path());

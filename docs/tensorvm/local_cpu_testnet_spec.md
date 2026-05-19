@@ -262,6 +262,7 @@ reported the same first live finalized block hash plus the same finalized common
 bounded convergence height
 all 15 operator node stores returned the miner-00 latest produced block-height target hash and state root
 after catch-up
+all 15 operator node stores reported nonempty block-log roots
 ```
 
 The check must also verify that the run reports itself as local-only:
@@ -281,10 +282,10 @@ deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 ```
 
 The continuity script must capture pre-restart and post-restart peer IDs, heights, block counts, state
-roots, and a finalized common-head block. It must prove that restarted operators reused their original
-durable state and libp2p identities, rejoined the local network, advanced height, block count, and state
-root, preserved the pre-restart finalized common head and state root on every operator, and continued
-producing finalized blocks.
+roots, block-log roots, and a finalized common-head block. It must prove that restarted operators reused
+their original durable state and libp2p identities, rejoined the local network, advanced height, block
+count, state root, and block-log root, preserved the pre-restart finalized common head and state root on
+every operator, and continued producing finalized blocks.
 
 ## Completion Criteria
 

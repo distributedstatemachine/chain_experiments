@@ -326,6 +326,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_LATEST_BLOCK_HEIGHT=$(status_value latest_block_height "$STATUS")
     SERVICE_LATEST_BLOCK_HASH=$(status_value latest_block_hash "$STATUS")
     SERVICE_STATE_ROOT=$(status_value state_root "$STATUS")
+    SERVICE_BLOCK_LOG_ROOT=$(status_value block_log_root "$STATUS")
     SERVICE_FINALIZED_BLOCK_COUNT=$(status_value finalized_block_count "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HEIGHT=$(status_value first_live_block_height "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HASH=$(status_value first_live_block_hash "$STATUS")
@@ -340,6 +341,7 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_LATEST_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_STATE_ROOT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_BLOCK_LOG_ROOT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FINALIZED_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
@@ -358,6 +360,7 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -le 2 ] \
       || [ "$SERVICE_LATEST_BLOCK_HASH" = "$ZERO_HASH" ] \
       || [ "$SERVICE_STATE_ROOT" = "$ZERO_HASH" ] \
+      || [ "$SERVICE_BLOCK_LOG_ROOT" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FINALIZED_BLOCK_COUNT" -le 2 ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" -le 2 ] \
       || [ "$SERVICE_REGISTERED_MINER_COUNT" -ne 10 ] \
@@ -479,6 +482,7 @@ all_operator_target_state_root=${ALL_OPERATOR_TARGET_STATE_ROOT}
 all_operator_target_head_convergence=true
 all_operator_role_status=true
 all_operator_chain_counters=true
+all_operator_block_log_roots_observed=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

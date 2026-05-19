@@ -58,10 +58,11 @@ the seeded count of both `tensor_op` and `linear_training_step` primitive receip
 descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
 common-head block hash through `tvmd service block`, pins a miner-00 latest produced block-height target
-and requires every operator to return the matching finalized block hash and state root, and uses
+and requires every operator to return the matching finalized block hash and state root while reporting a
+nonempty block-log root, and uses
 `check-restart-continuity.sh` to prove `miner-03`, `validator-02`, and `miner-00` keep their libp2p peer
-IDs, preserve the pre-restart finalized common head and state root, advance height/block-count/state-root
-evidence, and continue finalizing blocks after restart.
+IDs, preserve the pre-restart finalized common head and state root, advance
+height/block-count/state-root/block-log-root evidence, and continue finalizing blocks after restart.
 
 ## Acceptance Criteria
 
