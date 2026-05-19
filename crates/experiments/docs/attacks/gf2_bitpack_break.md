@@ -20,7 +20,7 @@ fields.
 Run:
 
 ```bash
-cargo run -p pearl_chain --release --example gf2_bitpack_break
+cargo run -p experiments --release --example gf2_bitpack_break
 ```
 
 The example samples full-rank low-rank factors:

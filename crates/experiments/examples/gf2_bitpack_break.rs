@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use pearl_chain::hash::{Sha256, hex};
+use experiments::hash::{Sha256, hex};
 
 const N: usize = 256;
 const R: usize = 64;

@@ -7,7 +7,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 
 - Deterministic finite-field tensors and TensorVM operations
 - TensorVM field arithmetic, SHA-256 hashing, oracle RNG primitives, and standalone consensus logic;
-  `tensor_vm` does not depend on `pearl_chain`
+  `tensor_vm` does not depend on `experiments`
 - Bounds-checked tensor row/cell access and invalid-index rejection
 - Full direct TensorVM wrapper and program-hash variant coverage
 - Tensor descriptors, Merkle commitments, chunk openings, and row access
@@ -259,7 +259,7 @@ preflight, public evidence, or deployment-gated work can count:
 
 The workspace currently has 192 passing library tests under Tarpaulin:
 
-- 14 in `pearl_chain`
+- 14 in `experiments`
 - 178 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration

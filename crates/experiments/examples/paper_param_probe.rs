@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use pearl_chain::attack::{solve_zero_job_shortcut, zero_job_shortcut_work};
-use pearl_chain::{CuPowParams, Matrix, Result, solve, verify};
+use experiments::attack::{solve_zero_job_shortcut, zero_job_shortcut_work};
+use experiments::{CuPowParams, Matrix, Result, solve, verify};
 
 fn main() -> Result<()> {
     for (n, r, rounds) in [

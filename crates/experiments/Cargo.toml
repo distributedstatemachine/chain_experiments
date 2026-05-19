@@ -1,5 +1,5 @@
 [package]
-name = "pearl_chain"
+name = "experiments"
 version = "0.1.0"
 edition.workspace = true
 

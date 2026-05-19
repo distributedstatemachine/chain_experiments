@@ -19,7 +19,7 @@ Result:
 
 ```text
 192 tests passed under instrumentation:
-- 14 pearl_chain library tests
+- 14 experiments library tests
 - 178 tensor_vm library tests
 
 99.07% workspace line coverage

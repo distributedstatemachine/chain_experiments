@@ -319,7 +319,7 @@ Add a separate formal-spec package rather than embedding Lean into the Rust node
 ```text
 tensorchain/
   crates/
-    pearl_chain/ or tensor_vm/
+    experiments/ or tensor_vm/
       src/
         tensor/
         verifier/

@@ -2041,9 +2041,21 @@ chain/
   README.md
   tarpaulin.toml
   crates/
-    pearl_chain/
+    experiments/
       Cargo.toml
       README.md
+      docs/
+        README.md
+        pearl/
+          README.md
+          pearl.pdf
+        ambient/
+          README.md
+          Ambient_Litepaper_V1.pdf
+        reviews/
+          README.md
+        attacks/
+          README.md
       src/
     tensor_vm/
       Cargo.toml
@@ -2066,29 +2078,20 @@ chain/
       networking_choice.md
       tarpaulin_report.md
       torchlean_verification_analysis.md
-    pearl/
-      README.md
-      pearl.pdf
-    ambient/
-      README.md
-      Ambient_Litepaper_V1.pdf
-    reviews/
-      README.md
-    attacks/
-      README.md
 ```
 
 Workspace requirements:
 
 ```text
 the repository root must be a Cargo workspace
-each chain design must be a separate crate under crates/<name>/
+TensorVM implementation code must live under crates/tensor_vm/
+non-TensorVM protocol experiments must live under crates/experiments/
 each crate must have its own README
 the root README must describe the workspace and link to crate-level READMEs
-protocol specs, papers, reviews, and reports must live under topic-specific docs/ subdirectories
+TensorVM specs, reports, and evidence docs must live under docs/tensorvm/
+experiment papers, reviews, and attack probes must live under crates/experiments/docs/
 deployment templates and launch manifests must live under deploy/<name>/
-TensorVM implementation code must live under crates/tensor_vm/
-crates/tensor_vm/ must be self-contained and must not depend on the Pearl reference crate
+crates/tensor_vm/ must be self-contained and must not depend on the experiments crate
 ```
 
 Recommended internal module structure for TensorVM:
@@ -2171,7 +2174,7 @@ Codex goal command from the repository root:
 
 ```bash
 codex exec -C . --sandbox workspace-write --ask-for-approval on-request \
-  "Goal: fully complete docs/tensorvm/mvp_spec.md for TensorVM (TVM). Implement every incomplete local reference item in crates/tensor_vm, keep tensor_vm self-contained and independent of pearl_chain, update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and docs/tensorvm/tarpaulin_report.md, run every relevant test and experiment before claiming each iteration complete, run cargo fmt --check --all, cargo test --workspace --release, cargo clippy --workspace --all-targets -- -D warnings, and cargo tarpaulin from the workspace root, and do not declare full-spec completion unless real CUDA/C++ kernels, production libp2p runtime, deployed RPC/explorer/faucet/telemetry services, and independently checkable 7-day public-testnet evidence are present and documented."
+  "Goal: fully complete docs/tensorvm/mvp_spec.md for TensorVM (TVM). Implement every incomplete local reference item in crates/tensor_vm, keep tensor_vm self-contained and independent of experiments, update docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and docs/tensorvm/tarpaulin_report.md, run every relevant test and experiment before claiming each iteration complete, run cargo fmt --check --all, cargo test --workspace --release, cargo clippy --workspace --all-targets -- -D warnings, and cargo tarpaulin from the workspace root, and do not declare full-spec completion unless real CUDA/C++ kernels, production libp2p runtime, deployed RPC/explorer/faucet/telemetry services, and independently checkable 7-day public-testnet evidence are present and documented."
 ```
 
 If the local wrapper is named `docex` instead of `codex`, use the same command with only the binary name
@@ -2183,7 +2186,7 @@ Autonomous agent operating rules:
 read this spec, docs/tensorvm/coverage_matrix.md, docs/tensorvm/implementation_status.md, and
 docs/tensorvm/tarpaulin_report.md before editing code
 preserve the Cargo workspace structure and keep each chain design in its own crate
-do not make crates/tensor_vm depend on crates/pearl_chain
+do not make crates/tensor_vm depend on crates/experiments
 prefer deterministic Rust reference implementations before optimized kernels
 add tests for every new consensus-critical branch
 run all relevant tests, study harnesses, and experiments before claiming any iteration is
@@ -2192,7 +2195,7 @@ run Gate 0 as the first executable acceptance gate in every new or resumed MVP i
 update the coverage matrix when acceptance criteria move from incomplete to complete
 update the implementation status whenever the local/full-spec boundary changes
 update the Tarpaulin report after every coverage-changing implementation pass
-leave unrelated docs, papers, and Pearl experiments intact
+leave unrelated experiment docs, papers, and probes intact
 ```
 
 The agent should execute this loop until the contract is satisfied:
@@ -2249,8 +2252,8 @@ paths, separate participant identities/endpoints, and no simulations or local-on
 all local behavior needed by Acceptance Criteria 1-12, 14, and 15 has passing tests
 Acceptance Criterion 13 has an evidence validator and local preflight harness, even if the public run is
 not yet complete
-crates/tensor_vm has no dependency on crates/pearl_chain
-cargo tree -p tensor_vm shows tensor_vm without pearl_chain beneath it; external runtime dependencies such
+crates/tensor_vm has no dependency on crates/experiments
+cargo tree -p tensor_vm shows tensor_vm without experiments beneath it; external runtime dependencies such
 as rust-libp2p are allowed when they are part of the TensorVM implementation
 cargo fmt --check --all passes
 cargo test --workspace --release passes

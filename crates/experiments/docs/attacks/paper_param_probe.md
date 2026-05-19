@@ -28,7 +28,7 @@ the measured wall-clock advantage seen at small sizes fades at larger sizes.
 Run:
 
 ```bash
-cargo run -p pearl_chain --release --example paper_param_probe
+cargo run -p experiments --release --example paper_param_probe
 ```
 
 Representative output:

@@ -1,7 +1,9 @@
-# pearl_chain
+# experiments
 
-Rust prototype for the matrix-multiplication proof-of-useful-work chain described in
-[`pearl.pdf`](../../docs/pearl/pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
+Research crate for non-TensorVM proof-of-useful-work prototypes.
+
+The current implementation is a Rust prototype for the matrix-multiplication proof-of-useful-work chain
+described in [`pearl.pdf`](docs/pearl/pearl.pdf) (`Proofs of Useful Work from Arbitrary Matrix Multiplication`).
 
 The implementation is self-contained and dependency-free:
 
@@ -16,8 +18,8 @@ The implementation is self-contained and dependency-free:
 From the workspace root:
 
 ```bash
-cargo test -p pearl_chain --release
-cargo run -p pearl_chain --release --example mine
+cargo test -p experiments --release
+cargo run -p experiments --release --example mine
 ```
 
 ## Design Notes
@@ -50,16 +52,16 @@ leading-zero difficulty.
 ## Examples
 
 ```bash
-cargo run -p pearl_chain --release --example mine
-cargo run -p pearl_chain --release --example break_assumption
-cargo run -p pearl_chain --release --example paper_param_probe
-cargo run -p pearl_chain --release --example paper_param_practical_break
-cargo run -p pearl_chain --release --example gf2_bitpack_break
+cargo run -p experiments --release --example mine
+cargo run -p experiments --release --example break_assumption
+cargo run -p experiments --release --example paper_param_probe
+cargo run -p experiments --release --example paper_param_practical_break
+cargo run -p experiments --release --example gf2_bitpack_break
 ```
 
 ## Related Notes
 
-- [Paper critique](../../docs/pearl/critique.md)
-- [AI reproducibility schemes](../../docs/pearl/ai_reproducibility_schemes.md)
-- [Attack matrix](../../docs/attacks/attack_matrix.md)
-- [GF(2) bit-packing break](../../docs/attacks/gf2_bitpack_break.md)
+- [Paper critique](docs/pearl/critique.md)
+- [AI reproducibility schemes](docs/pearl/ai_reproducibility_schemes.md)
+- [Attack matrix](docs/attacks/attack_matrix.md)
+- [GF(2) bit-packing break](docs/attacks/gf2_bitpack_break.md)

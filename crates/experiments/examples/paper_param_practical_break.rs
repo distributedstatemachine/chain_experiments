@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
-use pearl_chain::attack::{solve_zero_job_no_decode, solve_zero_job_shortcut};
-use pearl_chain::hash::{hex, leading_zero_bits};
-use pearl_chain::{
+use experiments::attack::{solve_zero_job_no_decode, solve_zero_job_shortcut};
+use experiments::hash::{hex, leading_zero_bits};
+use experiments::{
     Block, BlockHeader, Chain, CuPowParams, Matrix, MatrixJob, Result, solve, verify,
 };
 

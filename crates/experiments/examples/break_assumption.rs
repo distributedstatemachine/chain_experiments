@@ -1,6 +1,6 @@
-use pearl_chain::attack::{solve_zero_job_shortcut, zero_job_shortcut_work};
-use pearl_chain::hash::hex;
-use pearl_chain::{CuPowParams, Matrix, Result, solve, verify};
+use experiments::attack::{solve_zero_job_shortcut, zero_job_shortcut_work};
+use experiments::hash::hex;
+use experiments::{CuPowParams, Matrix, Result, solve, verify};
 
 fn main() -> Result<()> {
     unsafe_params_are_rejected();

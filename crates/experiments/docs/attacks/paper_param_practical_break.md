@@ -39,7 +39,7 @@ Two malicious routes are tested:
 ## Run
 
 ```bash
-cargo run -p pearl_chain --release --example paper_param_practical_break
+cargo run -p experiments --release --example paper_param_practical_break
 ```
 
 The example:

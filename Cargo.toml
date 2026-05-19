@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/pearl_chain", "crates/tensor_vm"]
+members = ["crates/experiments", "crates/tensor_vm"]
 resolver = "3"
 
 [workspace.package]

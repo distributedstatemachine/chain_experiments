@@ -58,7 +58,7 @@ transcript tile size.
 Run:
 
 ```bash
-cargo run -p pearl_chain --release --example break_assumption
+cargo run -p experiments --release --example break_assumption
 ```
 
 Expected behavior:

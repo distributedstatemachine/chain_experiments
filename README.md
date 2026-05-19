@@ -1,33 +1,32 @@
-# TensorVM Workspace
+# TensorVM
 
-Cargo workspace for TensorVM (TVM) and related proof-of-useful-work chain experiments.
+TensorVM is a proof-of-useful-work chain for deterministic tensor programs. Miners run useful matrix and
+training jobs, validators check receipts and data availability, and the chain turns settled tensor work into
+rewards and proposer weight.
 
-## Crates
+The repo has two crates:
 
-| Crate | Purpose |
-| --- | --- |
-| [pearl_chain](crates/pearl_chain/README.md) | Matrix-multiplication proof-of-useful-work chain prototype based on [`pearl.pdf`](docs/pearl/pearl.pdf). |
-| [tensor_vm](crates/tensor_vm/README.md) | Reference implementation of the reviewed TensorVM MVP spec. |
+- [tensor_vm](crates/tensor_vm/README.md): the node, chain, CPU/CUDA runtimes, libp2p service, RPC surfaces,
+  evidence tooling, and local CPU testnet.
+- [experiments](crates/experiments/README.md): non-TensorVM research prototypes, paper notes, and attack
+  probes.
 
-New chain designs should live under `crates/<name>/` and include their own `README.md`.
-Protocol papers and research notes live in [docs](docs/README.md).
+TensorVM docs live in [docs/tensorvm](docs/tensorvm/README.md). Deployment assets live in
+[deploy/tensorvm](deploy/tensorvm/README.md).
 
-## Workspace Commands
+## Try It
 
 ```bash
+cargo test -p tensor_vm local_testnet --release
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+```
+
+## Check Everything
+
+```bash
+cargo fmt --check --all
 cargo test --workspace --release
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check --all
 cargo tarpaulin
 ```
-
-Run a crate example:
-
-```bash
-cargo run -p pearl_chain --release --example mine
-cargo test -p tensor_vm --release
-```
-
-## Documentation
-
-See [docs](docs/README.md) for papers, protocol reviews, implementation notes, and attack writeups.

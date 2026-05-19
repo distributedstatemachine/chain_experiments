@@ -1,10 +1,10 @@
 use std::time::Instant;
 
-use pearl_chain::hash::{hex, leading_zero_bits};
-use pearl_chain::oracle::OracleRng;
-use pearl_chain::{Chain, CuPowParams, Matrix, MatrixJob};
+use experiments::hash::{hex, leading_zero_bits};
+use experiments::oracle::OracleRng;
+use experiments::{Chain, CuPowParams, Matrix, MatrixJob};
 
-fn main() -> pearl_chain::Result<()> {
+fn main() -> experiments::Result<()> {
     let mut rng = OracleRng::new(b"pearl-chain-example", &[b"mine"]);
     let left = Matrix::random(16, 16, &mut rng);
     let right = Matrix::random(16, 16, &mut rng);

@@ -1,12 +1,8 @@
-# Documentation
+# TensorVM Docs
 
-Research notes, protocol reviews, implementation status, and paper references for the TensorVM (TVM)
-workspace.
+TensorVM implementation specs, status, evidence formats, and deployment notes.
 
-## Sections
+- [TensorVM](tensorvm/README.md): MVP spec, local CPU testnet spec, implementation status, coverage,
+  networking, public-testnet evidence, and TorchLean analysis.
 
-- [TensorVM](tensorvm/README.md): MVP spec, implementation status, coverage, networking, and TorchLean analysis.
-- [Pearl](pearl/README.md): Pearl paper notes, critique, and reproducibility research.
-- [Ambient](ambient/README.md): Ambient litepaper reference.
-- [Reviews](reviews/README.md): cross-protocol reviews and design comparisons.
-- [Attacks](attacks/README.md): attack matrix and proof-of-concept notes.
+Non-TensorVM research notes now live with the [experiments crate](../crates/experiments/README.md).
