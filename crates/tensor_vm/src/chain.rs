@@ -11,6 +11,7 @@ mod accounts;
 mod blocks;
 mod operators;
 mod proposer;
+mod receipts;
 mod roots;
 mod settlement;
 mod state;
@@ -176,44 +177,19 @@ impl LocalChain {
     }
 
     pub fn submit_job(&mut self, job: JobState) {
-        self.state.jobs.insert(job.job_id(), job);
+        receipts::submit_job(self, job);
     }
 
     pub fn job(&self, job_id: &Hash) -> Option<&JobState> {
-        self.state.jobs.get(job_id)
+        receipts::job(self, job_id)
     }
 
     pub fn submit_tensor_op_receipt(&mut self, receipt: TensorOpReceipt) -> Result<()> {
-        if !self.state.miners.contains_key(&receipt.miner) {
-            return Err(TvmError::UnknownMiner);
-        }
-        if !self.state.jobs.contains_key(&receipt.job_id) {
-            return Err(TvmError::InvalidReceipt("unknown job"));
-        }
-        if self.state.receipts.contains_key(&receipt.receipt_id) {
-            return Err(TvmError::InvalidReceipt("duplicate receipt"));
-        }
-        self.state
-            .receipts
-            .insert(receipt.receipt_id, ReceiptState::TensorOp(receipt));
-        Ok(())
+        receipts::submit_tensor_op(self, receipt)
     }
 
     pub fn submit_linear_receipt(&mut self, receipt: LinearTrainingStepReceipt) -> Result<()> {
-        if !self.state.miners.contains_key(&receipt.miner) {
-            return Err(TvmError::UnknownMiner);
-        }
-        if !self.state.jobs.contains_key(&receipt.job_id) {
-            return Err(TvmError::InvalidReceipt("unknown job"));
-        }
-        if self.state.receipts.contains_key(&receipt.receipt_id) {
-            return Err(TvmError::InvalidReceipt("duplicate receipt"));
-        }
-        self.state.receipts.insert(
-            receipt.receipt_id,
-            ReceiptState::LinearTrainingStep(receipt),
-        );
-        Ok(())
+        receipts::submit_linear_training_step(self, receipt)
     }
 
     pub fn apply_transaction(&mut self, from: Option<Address>, tx: Transaction) -> Result<()> {

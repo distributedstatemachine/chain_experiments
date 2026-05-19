@@ -1,0 +1,49 @@
+use super::{JobState, LocalChain, ReceiptState};
+use crate::error::{Result, TvmError};
+use crate::jobs::{LinearTrainingStepReceipt, TensorOpReceipt};
+use crate::types::Hash;
+
+pub fn submit_job(chain: &mut LocalChain, job: JobState) {
+    chain.state.jobs.insert(job.job_id(), job);
+}
+
+pub fn job<'a>(chain: &'a LocalChain, job_id: &Hash) -> Option<&'a JobState> {
+    chain.state.jobs.get(job_id)
+}
+
+pub fn submit_tensor_op(chain: &mut LocalChain, receipt: TensorOpReceipt) -> Result<()> {
+    if !chain.state.miners.contains_key(&receipt.miner) {
+        return Err(TvmError::UnknownMiner);
+    }
+    if !chain.state.jobs.contains_key(&receipt.job_id) {
+        return Err(TvmError::InvalidReceipt("unknown job"));
+    }
+    if chain.state.receipts.contains_key(&receipt.receipt_id) {
+        return Err(TvmError::InvalidReceipt("duplicate receipt"));
+    }
+    chain
+        .state
+        .receipts
+        .insert(receipt.receipt_id, ReceiptState::TensorOp(receipt));
+    Ok(())
+}
+
+pub fn submit_linear_training_step(
+    chain: &mut LocalChain,
+    receipt: LinearTrainingStepReceipt,
+) -> Result<()> {
+    if !chain.state.miners.contains_key(&receipt.miner) {
+        return Err(TvmError::UnknownMiner);
+    }
+    if !chain.state.jobs.contains_key(&receipt.job_id) {
+        return Err(TvmError::InvalidReceipt("unknown job"));
+    }
+    if chain.state.receipts.contains_key(&receipt.receipt_id) {
+        return Err(TvmError::InvalidReceipt("duplicate receipt"));
+    }
+    chain.state.receipts.insert(
+        receipt.receipt_id,
+        ReceiptState::LinearTrainingStep(receipt),
+    );
+    Ok(())
+}
