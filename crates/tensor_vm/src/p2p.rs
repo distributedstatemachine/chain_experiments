@@ -989,47 +989,87 @@ mod tests {
                 .behaviour_mut()
                 .gossipsub
                 .add_explicit_peer(&producer.peer_id);
-            wait_for_block_subscription(&mut producer, consumer.peer_id).await;
-
-            let block_hash = hash_bytes(b"test", &[b"gate-0-libp2p-block"]);
-            let (topic, payload) =
-                encode_gossipsub_message(&P2pMessage::NewBlock(block_hash)).unwrap();
-            producer
-                .swarm
-                .behaviour_mut()
-                .gossipsub
-                .publish(topic, payload)
-                .unwrap();
-            wait_for_gossip_message(
+            wait_for_gossip_subscriptions(
                 &mut producer,
-                &mut consumer,
-                P2pMessage::NewBlock(block_hash),
+                consumer.peer_id,
+                &[
+                    GossipTopic::Blocks,
+                    GossipTopic::Jobs,
+                    GossipTopic::Receipts,
+                    GossipTopic::Attestations,
+                    GossipTopic::Peers,
+                ],
             )
             .await;
+
+            let gossip_messages = [
+                P2pMessage::NewBlock(hash_bytes(b"test", &[b"gate-0-libp2p-block"])),
+                P2pMessage::NewJob(hash_bytes(b"test", &[b"gate-0-libp2p-job"])),
+                P2pMessage::NewReceipt(hash_bytes(b"test", &[b"gate-0-libp2p-receipt"])),
+                P2pMessage::NewAttestation(hash_bytes(b"test", &[b"gate-0-libp2p-attestation"])),
+                P2pMessage::PeerInfo {
+                    address: address(b"gate-0-libp2p-peer"),
+                },
+            ];
+            for message in gossip_messages {
+                let (topic, payload) = encode_gossipsub_message(&message).unwrap();
+                producer
+                    .swarm
+                    .behaviour_mut()
+                    .gossipsub
+                    .publish(topic, payload)
+                    .unwrap();
+                wait_for_gossip_message(&mut producer, &mut consumer, message).await;
+            }
 
             let tensor_id = hash_bytes(b"test", &[b"gate-0-libp2p-tensor"]);
-            let request = P2pMessage::RequestTensorRow {
-                tensor_id,
-                row_index: 2,
-            };
-            let response = P2pMessage::TensorRowResponse {
-                tensor_id,
-                row_index: 2,
-                values: vec![3, 5, 8],
-            };
-            let request_id = consumer
-                .swarm
-                .behaviour_mut()
-                .request_response
-                .send_request(&producer.peer_id, request.clone());
-            wait_for_request_response(
-                &mut producer,
-                &mut consumer,
-                &request,
-                &response,
-                request_id,
-            )
-            .await;
+            let program_hash = hash_bytes(b"test", &[b"gate-0-libp2p-program"]);
+            let request_response_messages = [
+                (
+                    P2pMessage::RequestTensorChunk {
+                        tensor_id,
+                        chunk_index: 1,
+                    },
+                    P2pMessage::TensorChunkResponse {
+                        tensor_id,
+                        chunk_index: 1,
+                        bytes: vec![1, 1, 2, 3, 5, 8],
+                    },
+                ),
+                (
+                    P2pMessage::RequestTensorRow {
+                        tensor_id,
+                        row_index: 2,
+                    },
+                    P2pMessage::TensorRowResponse {
+                        tensor_id,
+                        row_index: 2,
+                        values: vec![3, 5, 8],
+                    },
+                ),
+                (
+                    P2pMessage::RequestProgram(program_hash),
+                    P2pMessage::ProgramResponse {
+                        program_hash,
+                        bytes: b"tensor-vm-gate-0-program".to_vec(),
+                    },
+                ),
+            ];
+            for (request, response) in request_response_messages {
+                let request_id = consumer
+                    .swarm
+                    .behaviour_mut()
+                    .request_response
+                    .send_request(&producer.peer_id, request.clone());
+                wait_for_request_response(
+                    &mut producer,
+                    &mut consumer,
+                    &request,
+                    &response,
+                    request_id,
+                )
+                .await;
+            }
         });
     }
 
@@ -1076,21 +1116,32 @@ mod tests {
         .expect("libp2p swarms must connect");
     }
 
-    async fn wait_for_block_subscription(node: &mut TensorVmLibp2pNode, expected_peer: PeerId) {
+    async fn wait_for_gossip_subscriptions(
+        node: &mut TensorVmLibp2pNode,
+        expected_peer: PeerId,
+        expected_topics: &[GossipTopic],
+    ) {
         tokio::time::timeout(Duration::from_secs(10), async {
+            let mut seen_topics = Vec::new();
             loop {
                 if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
                     libp2p::gossipsub::Event::Subscribed { peer_id, topic },
                 )) = node.swarm.select_next_some().await
                     && peer_id == expected_peer
-                    && topic.to_string() == GossipTopic::Blocks.as_str()
+                    && expected_topics
+                        .iter()
+                        .any(|expected| topic.to_string() == expected.as_str())
+                    && !seen_topics.contains(&topic.to_string())
                 {
-                    break;
+                    seen_topics.push(topic.to_string());
+                    if seen_topics.len() == expected_topics.len() {
+                        break;
+                    }
                 }
             }
         })
         .await
-        .expect("libp2p peer must advertise block-topic subscription");
+        .expect("libp2p peer must advertise all TensorVM gossip subscriptions");
     }
 
     async fn wait_for_gossip_message(

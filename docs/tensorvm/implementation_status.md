@@ -202,8 +202,8 @@ preflight, public evidence, or deployment-gated work can count:
 
 - `cargo test -p tensor_vm local_testnet --release`: 4 TensorVM tests passed, covering the local
   10-miner/5-validator bootstrap shape, separate participant identities and libp2p endpoints, live
-  mandatory libp2p control-plane startup under default features, real loopback libp2p gossipsub and
-  request-response delivery for TensorVM P2P messages, matmul settlement/rewards, LinearTrainingStep
+  mandatory libp2p control-plane startup under default features, real loopback libp2p delivery across every
+  TensorVM gossip topic and request-response message family, matmul settlement/rewards, LinearTrainingStep
   state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
