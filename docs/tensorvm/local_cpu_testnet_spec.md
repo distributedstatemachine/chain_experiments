@@ -257,7 +257,8 @@ tensor data available through the local tensor-server path
 gateway health, chain head, explorer, faucet, and telemetry routes reachable from the host
 standalone explorer route reachable from the host
 standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
-all 15 operator node stores advanced past the seed and reported the same first live finalized block hash
+all 15 operator node stores advanced past the seed, reported role status and live chain counters, and
+reported the same first live finalized block hash
 ```
 
 The check must also verify that the run reports itself as local-only:

@@ -265,15 +265,43 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let first_live_block_hash = first_live_block
         .map(|block| block.hash())
         .unwrap_or([0; 32]);
+    let bootstrap_peer_count = if store.peer_book_store().path().exists() {
+        store
+            .peer_book_store()
+            .load_bootstrap_addresses()
+            .map_err(|error| format!("failed to inspect peer book {data_dir}: {error}"))?
+            .len()
+    } else {
+        0
+    };
+    let attestation_count: usize = chain.state.attestations.values().map(Vec::len).sum();
+    let reward_account_count = chain
+        .state
+        .rewards
+        .balances
+        .values()
+        .filter(|balance| **balance > 0)
+        .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_hash={}\nstate_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_hash={}\nstate_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
+        ready_file_field(data_dir, "operator_name"),
+        ready_file_field(data_dir, "operator_id"),
+        ready_file_field(data_dir, "role"),
+        ready_file_field(data_dir, "node_multiaddr"),
+        ready_file_field(data_dir, "p2p_peer_id"),
         chain.state.height,
         chain.state.epoch,
         status.block_count,
         hex(&status.latest_block_hash),
         hex(&chain.state_root()),
         hex(&first_live_block_hash),
+        chain.state.miners.len(),
+        chain.state.validators.len(),
+        chain.state.jobs.len(),
+        chain.state.receipts.len(),
+        chain.state.settled_receipts.len(),
+        chain.state.model_states.len(),
     ))
 }
 
@@ -389,6 +417,19 @@ fn local_cpu_block_interval() -> Option<Duration> {
 
 fn local_cpu_seed_beacon() -> [u8; 32] {
     hash_bytes(b"tensor-vm-local-cpu-compose-seed", &[b"shared-chain-base"])
+}
+
+fn ready_file_field(data_dir: &str, key: &str) -> String {
+    let path = Path::new(data_dir).join("local-cpu-ready");
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|contents| {
+            contents.lines().find_map(|line| {
+                let value = line.strip_prefix(key)?.strip_prefix('=')?;
+                Some(value.to_owned())
+            })
+        })
+        .unwrap_or_else(|| "unknown".to_owned())
 }
 
 fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {

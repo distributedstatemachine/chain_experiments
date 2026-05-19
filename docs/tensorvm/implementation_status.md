@@ -293,9 +293,11 @@ preflight, public evidence, or deployment-gated work can count:
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
   settled live work credits new rewards; the gate also runs `tvmd service status` inside all 15 operator
   containers and requires `all_operator_live_block_convergence=true`, proving every durable node store
-  advanced past the shared seed and reports the same first live finalized block hash; the same check passed
-  again after `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
-  and after `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00`
+  advanced past the shared seed and reports the same first live finalized block hash, plus
+  `all_operator_role_status=true` and `all_operator_chain_counters=true`, proving each operator status
+  surface reports its role and live chain counters; the same check passed again after
+  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02` and after
+  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00`
 
 The workspace currently has 212 passing library tests under Tarpaulin:
 

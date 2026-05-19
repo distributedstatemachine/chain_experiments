@@ -161,6 +161,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_min_height=",
         "all_operator_first_live_block_hash=",
         "all_operator_live_block_convergence=true",
+        "all_operator_role_status=true",
+        "all_operator_chain_counters=true",
         "data-ui=\"ratzilla-tui\"",
         "new WebSocket",
         "cargo test -p tensor_vm local_testnet --release",

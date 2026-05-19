@@ -261,15 +261,36 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_FINALIZED_BLOCK_COUNT=$(status_value finalized_block_count "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HEIGHT=$(status_value first_live_block_height "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HASH=$(status_value first_live_block_hash "$STATUS")
+    SERVICE_ROLE=$(status_value role "$STATUS")
+    SERVICE_REGISTERED_MINER_COUNT=$(status_value registered_miner_count "$STATUS")
+    SERVICE_REGISTERED_VALIDATOR_COUNT=$(status_value registered_validator_count "$STATUS")
+    SERVICE_JOB_COUNT=$(status_value job_count "$STATUS")
+    SERVICE_RECEIPT_COUNT=$(status_value receipt_count "$STATUS")
+    SERVICE_ATTESTATION_COUNT=$(status_value attestation_count "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FINALIZED_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_REGISTERED_MINER_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_REGISTERED_VALIDATOR_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_JOB_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_RECEIPT_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ATTESTATION_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    case "$service" in
+      miner-*) [ "$SERVICE_ROLE" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
+      validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
+    esac
     if [ "$SERVICE_HEIGHT" -le 2 ] \
       || [ "$SERVICE_BLOCK_COUNT" -le 2 ] \
       || [ "$SERVICE_FINALIZED_BLOCK_COUNT" -le 2 ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" -le 2 ] \
+      || [ "$SERVICE_REGISTERED_MINER_COUNT" -ne 10 ] \
+      || [ "$SERVICE_REGISTERED_VALIDATOR_COUNT" -ne 5 ] \
+      || [ "$SERVICE_JOB_COUNT" -le 2 ] \
+      || [ "$SERVICE_RECEIPT_COUNT" -le 10 ] \
+      || [ "$SERVICE_ATTESTATION_COUNT" -le "$SEED_ATTESTATION_COUNT" ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
       STATUS_MISMATCH=true
       continue
@@ -329,6 +350,8 @@ all_operator_status_count=15
 all_operator_min_height=${ALL_OPERATOR_MIN_HEIGHT}
 all_operator_first_live_block_hash=${ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH}
 all_operator_live_block_convergence=true
+all_operator_role_status=true
+all_operator_chain_counters=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

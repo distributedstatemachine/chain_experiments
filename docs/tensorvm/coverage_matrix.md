@@ -161,7 +161,7 @@ verifies the local-only evidence boundary, and passes after restarting `miner-03
   systemd/env/nginx templates, a documented mandatory-libp2p networking choice, and a restartable reference
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
-  persistence. The local CPU checker now also requires all 15 operator node stores to advance past the
-  shared seed and report the same first live finalized block hash.
+  persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
+  live chain counters, advancement past the shared seed, and the same first live finalized block hash.
 - Instrumented line coverage has been generated with Tarpaulin; see `tarpaulin_report.md`.
   Branch coverage is not reported because the installed Tarpaulin version lists branch coverage as not implemented.

@@ -82,8 +82,9 @@ The local bundle is useful and should remain the first operational target:
   not advance.
 - Every operator now starts from the same deterministic local CPU seed and exposes durable node-store status
   through `tvmd service status`.
-- The checker fails unless all 15 operator node stores advance past the seed and report the same first live
-  finalized block hash before and after restart checks.
+- The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
+  and live chain counters, and report the same first live finalized block hash before and after restart
+  checks.
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
@@ -155,12 +156,13 @@ Required fix:
 ### 4. Non-Bootstrap Operators Do Not Prove Chain Sync
 
 The checker validates that all operators are running and libp2p-ready, and now checks every node store for
-the same first live finalized block hash. It still does not prove live state was propagated through the
-network or that every operator is executing a distinct role loop.
+role status, live chain counters, and the same first live finalized block hash. It still does not prove live
+state was propagated through the network or that every operator is executing a distinct role loop.
 
 Required fix:
 
-- Extend `tvmd service status` or the local node API to include peer count and role-specific work counters.
+- Extend `tvmd service status` or the local node API to include real connected peer count and role-specific
+  work counters sourced from role loops.
 - Move the convergence assertion from deterministic same-seed first-live-block equality to the shared
   network event path.
 - The checker must eventually fail unless all 15 operators converge on the same latest finalized head within
@@ -455,8 +457,8 @@ jobs, receipts, attestations, and votes.
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
-all 15 operator node stores reporting the same first live finalized block hash. Latest-head convergence via
-the shared network event path still needs hard checker assertions.
+all 15 operator node stores reporting role status, live chain counters, and the same first live finalized
+block hash. Latest-head convergence via the shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

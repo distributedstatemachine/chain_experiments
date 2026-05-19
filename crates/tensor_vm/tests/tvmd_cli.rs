@@ -947,6 +947,28 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(status.contains("command=service_status"));
     assert!(status.contains("node_store_ready=true"));
     assert!(status.contains("status_source=node_store"));
+    assert!(status.contains("operator_name=unknown"));
+    assert!(status.contains("role=unknown"));
+    assert_eq!(stdout_value(&status, "registered_miner_count"), "10");
+    assert_eq!(stdout_value(&status, "registered_validator_count"), "5");
+    assert!(
+        stdout_value(&status, "job_count")
+            .parse::<u64>()
+            .expect("service status job count must parse")
+            > 2
+    );
+    assert!(
+        stdout_value(&status, "receipt_count")
+            .parse::<u64>()
+            .expect("service status receipt count must parse")
+            > 10
+    );
+    assert!(
+        stdout_value(&status, "attestation_count")
+            .parse::<u64>()
+            .expect("service status attestation count must parse")
+            > 50
+    );
     assert!(
         stdout_value(&status, "height")
             .parse::<u64>()
