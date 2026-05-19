@@ -517,8 +517,8 @@ checks now live behind `chain::validation`, and account creation/transfer/reward
 behind `chain::accounts`. Miner/validator registration and hardware-profile checks now live behind
 `chain::operators`, job/receipt admission now lives behind `chain::receipts`, and model registration plus
 transition checks now live behind `chain::models`. Challenge outcome and slashing mutation now lives behind
-`chain::challenges`; command routing logic still needs to move out of the remaining large `chain.rs`
-implementation.
+`chain::challenges`, and `ChainEngine` command routing now lives behind `chain::commands`. Transaction
+application remains in `chain.rs` as the last small state-mutation extraction.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

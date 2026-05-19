@@ -1,0 +1,89 @@
+use super::{
+    ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState, LocalChain, ReceiptState,
+    TensorBlock, settlement,
+};
+use crate::error::Result;
+
+impl ChainEngine for LocalChain {
+    fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>> {
+        match command {
+            ChainCommand::RegisterMiner { address, stake } => {
+                self.register_miner(address, stake)?;
+                Ok(vec![ChainEvent::MinerRegistered(address)])
+            }
+            ChainCommand::RegisterValidator { address, stake } => {
+                self.register_validator(address, stake)?;
+                Ok(vec![ChainEvent::ValidatorRegistered(address)])
+            }
+            ChainCommand::SubmitJob(job) => {
+                let job_id = job.job_id();
+                self.submit_job(job);
+                Ok(vec![ChainEvent::JobAccepted(job_id)])
+            }
+            ChainCommand::SubmitReceipt(receipt) => {
+                let receipt_id = receipt.receipt_id();
+                match receipt {
+                    ReceiptState::TensorOp(receipt) => self.submit_tensor_op_receipt(receipt)?,
+                    ReceiptState::LinearTrainingStep(receipt) => {
+                        self.submit_linear_receipt(receipt)?
+                    }
+                }
+                Ok(vec![ChainEvent::ReceiptAccepted(receipt_id)])
+            }
+            ChainCommand::SubmitAttestation(attestation) => {
+                let receipt_id = attestation.receipt_id;
+                let validator = attestation.validator;
+                self.submit_attestation(attestation)?;
+                Ok(vec![ChainEvent::AttestationAccepted {
+                    receipt_id,
+                    validator,
+                }])
+            }
+            ChainCommand::SubmitBlockVote(vote) => {
+                let block_hash = vote.block_hash;
+                let validator = vote.validator;
+                let was_finalized = self.is_block_finalized(&block_hash);
+                self.submit_block_vote(vote)?;
+                let mut events = vec![ChainEvent::BlockVoteAccepted {
+                    block_hash,
+                    validator,
+                }];
+                if !was_finalized && self.is_block_finalized(&block_hash) {
+                    events.push(ChainEvent::BlockFinalized(block_hash));
+                }
+                Ok(events)
+            }
+            ChainCommand::SettleEpoch {
+                miner_reward_pool,
+                validator_reward_pool,
+            } => {
+                let settled_before = self.state.settled_receipts.clone();
+                let rewards_before = self.state.rewards.balances.clone();
+                self.settle_epoch(miner_reward_pool, validator_reward_pool);
+                Ok(settlement::events(self, &settled_before, &rewards_before))
+            }
+            ChainCommand::ProduceBlock {
+                proposer,
+                timestamp,
+            } => {
+                let block = self.produce_block(proposer, timestamp);
+                Ok(vec![ChainEvent::BlockProduced {
+                    height: block.height,
+                    hash: block.hash(),
+                }])
+            }
+        }
+    }
+
+    fn view(&self) -> &ChainState {
+        &self.state
+    }
+
+    fn params(&self) -> &ChainParams {
+        &self.params
+    }
+
+    fn blocks(&self) -> &[TensorBlock] {
+        &self.blocks
+    }
+}
