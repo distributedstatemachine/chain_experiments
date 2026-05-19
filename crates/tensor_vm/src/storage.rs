@@ -1,6 +1,6 @@
 use crate::chain::{
-    AccountState, BlockVote, ChainParams, ChainState, HardwareClass, JobState, LocalChain,
-    MinerState, ModelState, ReceiptState, RewardState, TensorBlock, ValidatorState,
+    AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainState, HardwareClass, JobState,
+    LocalChain, MinerState, ModelState, ReceiptState, RewardState, TensorBlock, ValidatorState,
 };
 use crate::error::{Result, TvmError};
 use crate::jobs::{
@@ -291,6 +291,13 @@ pub struct NodeStoreStatus {
     pub latest_block_hash: Hash,
 }
 
+pub trait ChainStore {
+    type Chain: ChainEngine;
+
+    fn persist_chain(&self, chain: &Self::Chain) -> Result<NodeStoreStatus>;
+    fn load_chain(&self) -> Result<Self::Chain>;
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NodeStore {
     data_dir: PathBuf,
@@ -391,6 +398,18 @@ impl NodeStore {
             block_count: blocks.len(),
             latest_block_hash,
         })
+    }
+}
+
+impl ChainStore for NodeStore {
+    type Chain = Chain;
+
+    fn persist_chain(&self, chain: &Self::Chain) -> Result<NodeStoreStatus> {
+        NodeStore::persist_chain(self, chain)
+    }
+
+    fn load_chain(&self) -> Result<Self::Chain> {
+        NodeStore::load_chain(self)
     }
 }
 
@@ -1590,6 +1609,41 @@ mod tests {
         assert_eq!(updated.block_count, 3);
         assert_eq!(store.load().unwrap().blocks, chain.blocks);
         assert_eq!(store.load_chain().unwrap(), chain);
+
+        let _ = std::fs::remove_file(store.snapshot_store().path());
+        let _ = std::fs::remove_file(store.block_log_store().path());
+        let _ = std::fs::remove_file(store.chain_state_store().path());
+        let _ = std::fs::remove_dir(store.data_dir());
+    }
+
+    #[test]
+    fn node_store_satisfies_chain_store_boundary() {
+        fn persist_and_reload<S>(store: &S, chain: &Chain) -> (NodeStoreStatus, Chain)
+        where
+            S: ChainStore<Chain = Chain>,
+        {
+            let status = store.persist_chain(chain).unwrap();
+            let loaded = store.load_chain().unwrap();
+            (status, loaded)
+        }
+
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"chain-store-boundary"]));
+        let miner = address(b"chain-store-boundary-miner");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000);
+
+        let data_dir = std::env::temp_dir().join(format!(
+            "tensor-vm-chain-store-boundary-{}",
+            std::process::id()
+        ));
+        let store = NodeStore::open(data_dir);
+        let (status, loaded) = persist_and_reload(&store, &chain);
+
+        assert_eq!(status.block_count, 1);
+        assert_eq!(status.latest_block_hash, chain.blocks[0].hash());
+        assert_eq!(loaded, chain);
 
         let _ = std::fs::remove_file(store.snapshot_store().path());
         let _ = std::fs::remove_file(store.block_log_store().path());

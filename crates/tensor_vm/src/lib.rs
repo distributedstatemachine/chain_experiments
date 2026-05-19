@@ -65,8 +65,8 @@ pub use runtime::{
 };
 pub use scheduler::{JobScheduler, MinerAssignment, ValidatorAssignment};
 pub use storage::{
-    BlockLogStore, ChainSnapshot, ChainStateStore, NodeStore, NodeStoreStatus, PersistedNodeState,
-    SnapshotStore,
+    BlockLogStore, ChainSnapshot, ChainStateStore, ChainStore, NodeStore, NodeStoreStatus,
+    PersistedNodeState, SnapshotStore,
 };
 pub use study::{
     CollusionRiskAssessment, CollusionRiskInput, DataWithholdingStudy, FreivaldsSecurity,
