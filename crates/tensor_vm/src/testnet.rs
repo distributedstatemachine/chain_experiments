@@ -6161,10 +6161,19 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         mismatched_health_path_rpc.public_url = String::from("https://rpc.tensorvm.net/wrong");
         assert!(!mismatched_health_path_rpc.is_ready_for_public_run());
 
+        let mut root_health_path_rpc = rpc.clone();
+        root_health_path_rpc.public_url = String::from("https://rpc.tensorvm.net/");
+        assert!(!root_health_path_rpc.is_ready_for_public_run());
+
         let mut wrong_content_path_rpc = rpc.clone();
         wrong_content_path_rpc.content_url = String::from("https://rpc.tensorvm.net/wrong");
         assert!(!wrong_content_path_rpc.has_public_content_surface());
         assert!(!wrong_content_path_rpc.is_ready_for_public_run());
+
+        let mut root_content_path_rpc = rpc.clone();
+        root_content_path_rpc.content_url = String::from("https://rpc.tensorvm.net/");
+        assert!(!root_content_path_rpc.has_public_content_surface());
+        assert!(!root_content_path_rpc.is_ready_for_public_run());
 
         let mut http_content_rpc = rpc.clone();
         http_content_rpc.content_url = String::from("http://rpc.tensorvm.net/chain/head");
@@ -6232,6 +6241,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!obfuscated_local_rpc_report.has_public_service_plan);
         assert!(!obfuscated_local_rpc_report.can_start_public_run);
 
+        let root_health_path = manifest.replace(
+            "https://rpc.tensorvm.net/health,/health",
+            "https://rpc.tensorvm.net/,/health",
+        );
+        let root_health_path_report = parse_public_testnet_preflight_manifest(&root_health_path)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!root_health_path_report.has_rpc_service_plan);
+        assert!(!root_health_path_report.has_public_service_plan);
+        assert!(!root_health_path_report.can_start_public_run);
+
         let bad_content_path = manifest.replace(
             "https://rpc.tensorvm.net/chain/head,/chain/head",
             "https://rpc.tensorvm.net/wrong,/chain/head",
@@ -6243,6 +6263,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!bad_content_path_report.has_public_service_content_plan);
         assert!(!bad_content_path_report.has_public_service_plan);
         assert!(!bad_content_path_report.can_start_public_run);
+
+        let root_content_path = manifest.replace(
+            "https://rpc.tensorvm.net/chain/head,/chain/head",
+            "https://rpc.tensorvm.net/,/chain/head",
+        );
+        let root_content_path_report = parse_public_testnet_preflight_manifest(&root_content_path)
+            .unwrap()
+            .evaluate(ChainParams::default().block_time_seconds);
+        assert!(!root_content_path_report.has_rpc_service_plan);
+        assert!(!root_content_path_report.has_public_service_content_plan);
+        assert!(!root_content_path_report.has_public_service_plan);
+        assert!(!root_content_path_report.can_start_public_run);
 
         let health_url_with_space = manifest.replace(
             "https://rpc.tensorvm.net/health,/health",
