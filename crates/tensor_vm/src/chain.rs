@@ -3,9 +3,15 @@ use crate::error::{Result, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
 };
-use crate::types::{Address, Hash, Signature, hash_bytes, hash_to_u128, sign, verify_signature};
+use crate::types::{Address, Hash, Signature, hash_bytes, sign, verify_signature};
 use crate::verify::{FreivaldsParams, ValidatorAttestation, VerificationResult};
 use std::collections::{BTreeMap, BTreeSet};
+
+mod proposer;
+mod settlement;
+
+#[cfg(test)]
+use settlement::{has_conflicting_linear_receipt, receipts_agree};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChainParams {
@@ -726,26 +732,11 @@ impl LocalChain {
     }
 
     pub fn redundant_agreement_count(&self, receipt_id: &Hash) -> usize {
-        let Some(receipt) = self.state.receipts.get(receipt_id) else {
-            return 0;
-        };
-        let mut agreeing_miners = BTreeSet::new();
-        for (other_id, other) in &self.state.receipts {
-            if self.has_attestation_quorum(other_id) && receipts_agree(receipt, other) {
-                agreeing_miners.insert(other.miner());
-            }
-        }
-        agreeing_miners.len()
+        settlement::redundant_agreement_count(self, receipt_id)
     }
 
     pub fn has_redundant_agreement(&self, receipt_id: &Hash) -> bool {
-        if !self.state.receipts.contains_key(receipt_id) {
-            return false;
-        }
-        if self.params.agreement_quorum <= 1 {
-            return true;
-        }
-        self.redundant_agreement_count(receipt_id) >= self.params.agreement_quorum
+        settlement::has_redundant_agreement(self, receipt_id)
     }
 
     pub fn submit_block_vote(&mut self, vote: BlockVote) -> Result<()> {
@@ -905,66 +896,7 @@ impl LocalChain {
     }
 
     pub fn settle_epoch(&mut self, miner_reward_pool: u64, validator_reward_pool: u64) {
-        let mut newly_settled = Vec::new();
-        for (receipt_id, receipt) in &self.state.receipts {
-            if self.state.settled_receipts.contains(receipt_id) {
-                continue;
-            }
-            if self.has_attestation_quorum(receipt_id) {
-                if !self.has_redundant_agreement(receipt_id) {
-                    continue;
-                }
-                if let ReceiptState::LinearTrainingStep(receipt) = receipt
-                    && self.has_conflicting_linear_receipt(*receipt_id, receipt)
-                {
-                    continue;
-                }
-                newly_settled.push((*receipt_id, receipt.clone()));
-            }
-        }
-
-        let total_work: u64 = newly_settled
-            .iter()
-            .map(|(_, receipt)| receipt.tensor_work_units())
-            .sum();
-        let newly_settled_ids: BTreeSet<Hash> = newly_settled
-            .iter()
-            .map(|(receipt_id, _)| *receipt_id)
-            .collect();
-        for (receipt_id, receipt) in newly_settled {
-            self.state.settled_receipts.insert(receipt_id);
-            if let Some(miner) = self.state.miners.get_mut(&receipt.miner()) {
-                miner.pending_tensor_work = miner
-                    .pending_tensor_work
-                    .saturating_add(receipt.tensor_work_units());
-                miner.settled_tensor_work = miner
-                    .settled_tensor_work
-                    .saturating_add(receipt.tensor_work_units());
-                if total_work > 0 {
-                    let reward =
-                        miner_reward_pool.saturating_mul(receipt.tensor_work_units()) / total_work;
-                    self.state.rewards.credit(miner.address, reward);
-                }
-            }
-        }
-
-        let valid_attestations: Vec<_> = self
-            .state
-            .attestations
-            .iter()
-            .filter(|(receipt_id, _)| newly_settled_ids.contains(*receipt_id))
-            .flat_map(|(_, items)| items.iter())
-            .filter(|att| att.result == VerificationResult::Valid && att.data_availability_passed)
-            .cloned()
-            .collect();
-        let total_valid = valid_attestations.len() as u64;
-        if total_valid > 0 {
-            for attestation in valid_attestations {
-                self.state
-                    .rewards
-                    .credit(attestation.validator, validator_reward_pool / total_valid);
-            }
-        }
+        settlement::settle_epoch(self, miner_reward_pool, validator_reward_pool);
     }
 
     pub fn settle_epoch_rewards(&mut self, allocation: RewardAllocation, proposer: Address) {
@@ -985,28 +917,7 @@ impl LocalChain {
     }
 
     pub fn proposer_for_next_epoch(&self, beacon: &Hash) -> Option<Address> {
-        let total_work: u64 = self
-            .state
-            .miners
-            .values()
-            .map(|miner| miner.settled_tensor_work)
-            .sum();
-        if total_work == 0 {
-            return self.fallback_proposer(beacon);
-        }
-        let mut draw = (hash_to_u128(beacon) % total_work as u128) as u64;
-        let mut selected = None;
-        for miner in self.state.miners.values() {
-            if miner.settled_tensor_work == 0 {
-                continue;
-            }
-            selected = Some(miner.address);
-            if draw < miner.settled_tensor_work {
-                break;
-            }
-            draw -= miner.settled_tensor_work;
-        }
-        selected
+        proposer::for_next_epoch(&self.state, beacon)
     }
 
     pub fn produce_block(&mut self, proposer: Address, timestamp: u64) -> TensorBlock {
@@ -1096,51 +1007,6 @@ impl LocalChain {
             nonce: 0,
         })
     }
-
-    fn fallback_proposer(&self, beacon: &Hash) -> Option<Address> {
-        if self.state.validators.is_empty() {
-            return self.state.miners.keys().next().copied();
-        }
-        let total_stake: u64 = self
-            .state
-            .validators
-            .values()
-            .map(|validator| validator.stake)
-            .sum();
-        let mut draw = if total_stake == 0 {
-            0
-        } else {
-            (hash_to_u128(beacon) % total_stake as u128) as u64
-        };
-        for validator in self.state.validators.values() {
-            if draw < validator.stake {
-                return Some(validator.address);
-            }
-            draw -= validator.stake;
-        }
-        self.state.validators.keys().next().copied()
-    }
-
-    fn has_conflicting_linear_receipt(
-        &self,
-        receipt_id: Hash,
-        receipt: &LinearTrainingStepReceipt,
-    ) -> bool {
-        self.state
-            .receipts
-            .iter()
-            .any(|(other_id, other)| match other {
-                ReceiptState::LinearTrainingStep(other) => {
-                    *other_id != receipt_id
-                        && other.model_id == receipt.model_id
-                        && other.step == receipt.step
-                        && other.weight_root_before == receipt.weight_root_before
-                        && other.weight_root_after != receipt.weight_root_after
-                        && self.has_attestation_quorum(other_id)
-                }
-                ReceiptState::TensorOp(_) => false,
-            })
-    }
 }
 
 impl ChainEngine for LocalChain {
@@ -1199,7 +1065,7 @@ impl ChainEngine for LocalChain {
                 let settled_before = self.state.settled_receipts.clone();
                 let rewards_before = self.state.rewards.balances.clone();
                 self.settle_epoch(miner_reward_pool, validator_reward_pool);
-                Ok(settlement_events(self, &settled_before, &rewards_before))
+                Ok(settlement::events(self, &settled_before, &rewards_before))
             }
             ChainCommand::ProduceBlock {
                 proposer,
@@ -1227,27 +1093,6 @@ impl ChainEngine for LocalChain {
     }
 }
 
-fn settlement_events(
-    chain: &LocalChain,
-    settled_before: &BTreeSet<Hash>,
-    rewards_before: &BTreeMap<Address, u64>,
-) -> Vec<ChainEvent> {
-    let mut events = Vec::new();
-    for receipt_id in chain.state.settled_receipts.difference(settled_before) {
-        events.push(ChainEvent::ReceiptSettled(*receipt_id));
-    }
-    for (address, balance) in &chain.state.rewards.balances {
-        let credited = balance.saturating_sub(rewards_before.get(address).copied().unwrap_or(0));
-        if credited > 0 {
-            events.push(ChainEvent::RewardCredited {
-                address: *address,
-                amount: credited,
-            });
-        }
-    }
-    events
-}
-
 fn reward_root(rewards: &RewardState) -> Hash {
     let mut encoded = Vec::new();
     for (address, balance) in &rewards.balances {
@@ -1260,31 +1105,6 @@ fn reward_root(rewards: &RewardState) -> Hash {
 
 fn reward_share(total_emission: u64, basis_points: u64) -> u64 {
     total_emission.saturating_mul(basis_points) / 10_000
-}
-
-fn receipts_agree(left: &ReceiptState, right: &ReceiptState) -> bool {
-    match (left, right) {
-        (ReceiptState::TensorOp(left), ReceiptState::TensorOp(right)) => {
-            left.job_id == right.job_id
-                && left.program_hash == right.program_hash
-                && left.input_roots == right.input_roots
-                && left.output_roots == right.output_roots
-                && left.trace_root == right.trace_root
-        }
-        (ReceiptState::LinearTrainingStep(left), ReceiptState::LinearTrainingStep(right)) => {
-            left.job_id == right.job_id
-                && left.model_id == right.model_id
-                && left.step == right.step
-                && left.weight_root_before == right.weight_root_before
-                && left.batch_root == right.batch_root
-                && left.y_root == right.y_root
-                && left.loss_commitment == right.loss_commitment
-                && left.grad_w_root == right.grad_w_root
-                && left.weight_root_after == right.weight_root_after
-                && left.trace_root == right.trace_root
-        }
-        _ => false,
-    }
 }
 
 fn block_finality_root(votes: &BTreeMap<Hash, Vec<BlockVote>>, finalized: &BTreeSet<Hash>) -> Hash {
@@ -2761,7 +2581,11 @@ mod tests {
             .submit_tensor_op_receipt(tensor_receipt.clone())
             .unwrap();
         chain.submit_linear_receipt(receipt.clone()).unwrap();
-        assert!(!chain.has_conflicting_linear_receipt(receipt.receipt_id, &receipt));
+        assert!(!has_conflicting_linear_receipt(
+            &chain,
+            receipt.receipt_id,
+            &receipt
+        ));
         chain.submit_linear_receipt(conflicting.clone()).unwrap();
 
         for receipt in [&receipt, &conflicting] {

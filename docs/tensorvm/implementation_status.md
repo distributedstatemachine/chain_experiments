@@ -28,10 +28,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Account, miner, validator, job, receipt, attestation, reward, and model-state registries
 - Miner hardware-class profiles with bounded reported GPU utilization for telemetry
 - Content roots for jobs, receipts, attestations, rewards, and full chain state
-- Receipt settlement, 70/20/5/5 reward allocation, proposer/treasury rewards, reward accounting without
-  repeated payout, and no-quorum rejection
+- Receipt settlement in the internal `chain::settlement` boundary, 70/20/5/5 reward allocation,
+  proposer/treasury rewards, reward accounting without repeated payout, and no-quorum rejection
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations
-- Settled prior-epoch TensorWork proposer selection, pending-work exclusion, and zero-work fallback
+- Settled prior-epoch TensorWork proposer selection through the internal `chain::proposer` boundary,
+  pending-work exclusion, and zero-work fallback
 - Profile-neutral `ChainEngine`, file-backed `ChainStore`, and shared `ChainProfile`/`NodeConfig`
   boundaries so local CPU, public testnet, and future mainnet profiles build the same transition engine
 - Receipt-bound validation seeds derived from finalized randomness
