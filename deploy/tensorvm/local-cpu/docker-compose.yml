@@ -1,0 +1,300 @@
+name: tensorvm-local-cpu
+
+x-operator-common: &operator-common
+  image: tensorvm-local-cpu:latest
+  env_file:
+    - env/local-cpu.env.example
+  networks:
+    - tensorvm-local
+  restart: unless-stopped
+  healthcheck:
+    test:
+      [
+        "CMD-SHELL",
+        "test -f /var/lib/tensorvm/local-cpu-ready && grep -q 'libp2p_ready=true' /var/lib/tensorvm/local-cpu-ready",
+      ]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+    start_period: 5s
+
+services:
+  miner-00:
+    <<: *operator-common
+    build:
+      context: ../../..
+      dockerfile: deploy/tensorvm/local-cpu/Dockerfile
+    hostname: miner-00
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-00
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001000
+      TENSORVM_WALLET: local-miner-00.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-00/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+      TENSORVM_IS_BOOTSTRAP: "true"
+    ports:
+      - "127.0.0.1:8545:8545"
+      - "127.0.0.1:4001:4001"
+    volumes:
+      - miner-00-data:/var/lib/tensorvm
+
+  miner-01:
+    <<: *operator-common
+    hostname: miner-01
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-01
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001001
+      TENSORVM_WALLET: local-miner-01.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-01/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-01-data:/var/lib/tensorvm
+
+  miner-02:
+    <<: *operator-common
+    hostname: miner-02
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-02
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001002
+      TENSORVM_WALLET: local-miner-02.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-02/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-02-data:/var/lib/tensorvm
+
+  miner-03:
+    <<: *operator-common
+    hostname: miner-03
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-03
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001003
+      TENSORVM_WALLET: local-miner-03.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-03/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-03-data:/var/lib/tensorvm
+
+  miner-04:
+    <<: *operator-common
+    hostname: miner-04
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-04
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001004
+      TENSORVM_WALLET: local-miner-04.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-04/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-04-data:/var/lib/tensorvm
+
+  miner-05:
+    <<: *operator-common
+    hostname: miner-05
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-05
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001005
+      TENSORVM_WALLET: local-miner-05.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-05/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-05-data:/var/lib/tensorvm
+
+  miner-06:
+    <<: *operator-common
+    hostname: miner-06
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-06
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001006
+      TENSORVM_WALLET: local-miner-06.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-06/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-06-data:/var/lib/tensorvm
+
+  miner-07:
+    <<: *operator-common
+    hostname: miner-07
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-07
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001007
+      TENSORVM_WALLET: local-miner-07.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-07/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-07-data:/var/lib/tensorvm
+
+  miner-08:
+    <<: *operator-common
+    hostname: miner-08
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-08
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001008
+      TENSORVM_WALLET: local-miner-08.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-08/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-08-data:/var/lib/tensorvm
+
+  miner-09:
+    <<: *operator-common
+    hostname: miner-09
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: miner
+      TENSORVM_OPERATOR_NAME: miner-09
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000001009
+      TENSORVM_WALLET: local-miner-09.key
+      TENSORVM_NODE_MULTIADDR: /dns4/miner-09/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - miner-09-data:/var/lib/tensorvm
+
+  validator-00:
+    <<: *operator-common
+    hostname: validator-00
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: validator
+      TENSORVM_OPERATOR_NAME: validator-00
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000002000
+      TENSORVM_WALLET: local-validator-00.key
+      TENSORVM_NODE_MULTIADDR: /dns4/validator-00/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - validator-00-data:/var/lib/tensorvm
+
+  validator-01:
+    <<: *operator-common
+    hostname: validator-01
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: validator
+      TENSORVM_OPERATOR_NAME: validator-01
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000002001
+      TENSORVM_WALLET: local-validator-01.key
+      TENSORVM_NODE_MULTIADDR: /dns4/validator-01/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - validator-01-data:/var/lib/tensorvm
+
+  validator-02:
+    <<: *operator-common
+    hostname: validator-02
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: validator
+      TENSORVM_OPERATOR_NAME: validator-02
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000002002
+      TENSORVM_WALLET: local-validator-02.key
+      TENSORVM_NODE_MULTIADDR: /dns4/validator-02/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - validator-02-data:/var/lib/tensorvm
+
+  validator-03:
+    <<: *operator-common
+    hostname: validator-03
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: validator
+      TENSORVM_OPERATOR_NAME: validator-03
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000002003
+      TENSORVM_WALLET: local-validator-03.key
+      TENSORVM_NODE_MULTIADDR: /dns4/validator-03/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - validator-03-data:/var/lib/tensorvm
+
+  validator-04:
+    <<: *operator-common
+    hostname: validator-04
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    environment:
+      TENSORVM_ROLE: validator
+      TENSORVM_OPERATOR_NAME: validator-04
+      TENSORVM_OPERATOR_ID: 0000000000000000000000000000000000000000000000000000000000002004
+      TENSORVM_WALLET: local-validator-04.key
+      TENSORVM_NODE_MULTIADDR: /dns4/validator-04/tcp/4001
+      TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
+      TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+    volumes:
+      - validator-04-data:/var/lib/tensorvm
+
+networks:
+  tensorvm-local:
+    driver: bridge
+
+volumes:
+  miner-00-data:
+  miner-01-data:
+  miner-02-data:
+  miner-03-data:
+  miner-04-data:
+  miner-05-data:
+  miner-06-data:
+  miner-07-data:
+  miner-08-data:
+  miner-09-data:
+  validator-00-data:
+  validator-01-data:
+  validator-02-data:
+  validator-03-data:
+  validator-04-data:
