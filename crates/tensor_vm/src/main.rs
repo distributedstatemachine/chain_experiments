@@ -6,7 +6,7 @@ use std::{
 };
 use tensor_vm::{
     CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord,
-    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy,
+    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -354,7 +354,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_latest_observed_block_hash={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -369,6 +369,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_p2p_connected_peers"),
         role_runtime_status_field(data_dir, "role_p2p_observed_blocks"),
         role_runtime_status_field(data_dir, "role_p2p_latest_observed_block_hash"),
+        role_runtime_status_field(data_dir, "role_p2p_observed_block_hashes"),
         ready_file_field(data_dir, "node_multiaddr"),
         ready_file_field(data_dir, "p2p_peer_id"),
         chain.state.height,
@@ -539,12 +540,7 @@ fn serve_service_with_runtime(
     let mut produced_blocks = 0usize;
     write_role_runtime_status(
         &config,
-        served_requests,
-        produced_blocks,
-        server.gateway().node.chain.state.height,
-        p2p_service.connected_peer_count(),
-        p2p_service.observed_block_gossip_count(),
-        p2p_service.latest_observed_block_hash(),
+        &role_runtime_status_snapshot(&server, &p2p_service, served_requests, produced_blocks),
     )?;
     if block_interval.is_some() {
         server.set_nonblocking(true).map_err(|error| {
@@ -564,12 +560,12 @@ fn serve_service_with_runtime(
                     served_requests = served_requests.saturating_add(1);
                     write_role_runtime_status(
                         &config,
-                        served_requests,
-                        produced_blocks,
-                        server.gateway().node.chain.state.height,
-                        p2p_service.connected_peer_count(),
-                        p2p_service.observed_block_gossip_count(),
-                        p2p_service.latest_observed_block_hash(),
+                        &role_runtime_status_snapshot(
+                            &server,
+                            &p2p_service,
+                            served_requests,
+                            produced_blocks,
+                        ),
                     )?;
                 }
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {}
@@ -601,12 +597,12 @@ fn serve_service_with_runtime(
                     produced_blocks = produced_blocks.saturating_add(1);
                     write_role_runtime_status(
                         &config,
-                        served_requests,
-                        produced_blocks,
-                        server.gateway().node.chain.state.height,
-                        p2p_service.connected_peer_count(),
-                        p2p_service.observed_block_gossip_count(),
-                        p2p_service.latest_observed_block_hash(),
+                        &role_runtime_status_snapshot(
+                            &server,
+                            &p2p_service,
+                            served_requests,
+                            produced_blocks,
+                        ),
                     )?;
                 }
                 next_block_at = Some(Instant::now() + interval);
@@ -622,17 +618,17 @@ fn serve_service_with_runtime(
             served_requests = served_requests.saturating_add(1);
             write_role_runtime_status(
                 &config,
-                served_requests,
-                produced_blocks,
-                server.gateway().node.chain.state.height,
-                p2p_service.connected_peer_count(),
-                p2p_service.observed_block_gossip_count(),
-                p2p_service.latest_observed_block_hash(),
+                &role_runtime_status_snapshot(
+                    &server,
+                    &p2p_service,
+                    served_requests,
+                    produced_blocks,
+                ),
             )?;
         }
     }
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_latest_observed_block_hash={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}",
+        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}",
         config.runtime_command,
         config.role,
         config.listen,
@@ -640,25 +636,54 @@ fn serve_service_with_runtime(
         p2p_service.connected_peer_count(),
         p2p_service.observed_block_gossip_count(),
         hex(&p2p_service.latest_observed_block_hash()),
+        hex_hash_list(&p2p_service.observed_block_hashes()),
         config.data_dir
     ))
 }
 
-fn write_role_runtime_status(
-    config: &ServiceRuntimeConfig<'_>,
+struct RoleRuntimeStatusSnapshot {
     served_requests: usize,
     produced_blocks: usize,
     latest_height: u64,
     p2p_connected_peers: usize,
     p2p_observed_blocks: usize,
     p2p_latest_observed_block_hash: [u8; 32],
+    p2p_observed_block_hashes: Vec<[u8; 32]>,
+}
+
+fn role_runtime_status_snapshot(
+    server: &RpcHttpServer,
+    p2p_service: &TensorVmLibp2pService,
+    served_requests: usize,
+    produced_blocks: usize,
+) -> RoleRuntimeStatusSnapshot {
+    RoleRuntimeStatusSnapshot {
+        served_requests,
+        produced_blocks,
+        latest_height: server.gateway().node.chain.state.height,
+        p2p_connected_peers: p2p_service.connected_peer_count(),
+        p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
+        p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
+        p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
+    }
+}
+
+fn write_role_runtime_status(
+    config: &ServiceRuntimeConfig<'_>,
+    snapshot: &RoleRuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
     let path = Path::new(config.data_dir).join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_served_requests={served_requests}\nrole_produced_blocks={produced_blocks}\nrole_latest_height={latest_height}\nrole_p2p_connected_peers={p2p_connected_peers}\nrole_p2p_observed_blocks={p2p_observed_blocks}\nrole_p2p_latest_observed_block_hash={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role,
-        hex(&p2p_latest_observed_block_hash)
+        snapshot.served_requests,
+        snapshot.produced_blocks,
+        snapshot.latest_height,
+        snapshot.p2p_connected_peers,
+        snapshot.p2p_observed_blocks,
+        hex(&snapshot.p2p_latest_observed_block_hash),
+        hex_hash_list(&snapshot.p2p_observed_block_hashes)
     );
     std::fs::write(&path, contents).map_err(|error| {
         format!(
@@ -666,6 +691,17 @@ fn write_role_runtime_status(
             path.display()
         )
     })
+}
+
+fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
+    if hashes.is_empty() {
+        return "none".to_owned();
+    }
+    hashes
+        .iter()
+        .map(|hash| hex(hash))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn local_cpu_block_interval() -> Option<Duration> {

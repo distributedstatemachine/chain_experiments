@@ -30,6 +30,13 @@ contains_line() {
   printf '%s\n' "$1" | grep -qx "$2"
 }
 
+csv_contains_value() {
+  case ",$1," in
+    *",$2,"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 unique_count() {
   sort -u "$1" | wc -l | tr -d ' '
 }
@@ -349,6 +356,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
     SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH=$(status_value role_p2p_latest_observed_block_hash "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES=$(status_value role_p2p_observed_block_hashes "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -376,6 +384,9 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" != "none" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-*) [ "$SERVICE_ROLE" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
@@ -409,6 +420,8 @@ while [ "$attempt" -lt 60 ]; do
       STATUS_MISMATCH=true
       continue
     fi
+    csv_contains_value "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" "$ALL_OPERATOR_TARGET_HEAD_HASH" \
+      || { STATUS_MISMATCH=true; continue; }
     if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
       ALL_OPERATOR_MIN_HEIGHT="$SERVICE_LATEST_BLOCK_HEIGHT"
     fi
@@ -522,6 +535,7 @@ all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
+all_operator_p2p_target_head_observed=true
 all_operator_chain_counters=true
 all_operator_block_log_roots_observed=true
 public_evidence_full_spec=false

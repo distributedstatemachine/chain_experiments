@@ -5,7 +5,7 @@ use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -147,10 +147,13 @@ pub struct TensorVmLibp2pService {
     connected_peer_count: Arc<AtomicUsize>,
     observed_block_gossip_count: Arc<AtomicUsize>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
+    observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
     publish_tx: mpsc::Sender<P2pMessage>,
     stop: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
 }
+
+const OBSERVED_BLOCK_HASH_LIMIT: usize = 256;
 
 impl TensorVmLibp2pService {
     pub fn info(&self) -> &TensorVmLibp2pServiceInfo {
@@ -174,6 +177,13 @@ impl TensorVmLibp2pService {
             .lock()
             .map(|hash| *hash)
             .unwrap_or([0; 32])
+    }
+
+    pub fn observed_block_hashes(&self) -> Vec<Hash> {
+        self.observed_block_hashes
+            .lock()
+            .map(|hashes| hashes.iter().copied().collect())
+            .unwrap_or_default()
     }
 
     pub fn publish_gossip(&self, message: P2pMessage) -> TvmResult<()> {
@@ -268,6 +278,8 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_observed_block_gossip_count = Arc::clone(&observed_block_gossip_count);
     let latest_observed_block_hash = Arc::new(Mutex::new([0; 32]));
     let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
+    let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
+    let worker_observed_block_hashes = Arc::clone(&observed_block_hashes);
     let (publish_tx, publish_rx) = mpsc::channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -314,6 +326,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                         &worker_connected_peer_count,
                         &worker_observed_block_gossip_count,
                         &worker_latest_observed_block_hash,
+                        &worker_observed_block_hashes,
                     );
                 }
                 if !bootstrap_multiaddrs.is_empty()
@@ -338,6 +351,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             connected_peer_count,
             observed_block_gossip_count,
             latest_observed_block_hash,
+            observed_block_hashes,
             publish_tx,
             stop,
             worker: Some(worker),
@@ -355,6 +369,7 @@ fn handle_swarm_event(
     connected_peer_count: &AtomicUsize,
     observed_block_gossip_count: &AtomicUsize,
     latest_observed_block_hash: &Mutex<Hash>,
+    observed_block_hashes: &Mutex<VecDeque<Hash>>,
 ) {
     match event {
         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
@@ -378,9 +393,22 @@ fn handle_swarm_event(
                 if let Ok(mut latest_block_hash) = latest_observed_block_hash.lock() {
                     *latest_block_hash = block_hash;
                 }
+                if let Ok(mut block_hashes) = observed_block_hashes.lock() {
+                    remember_observed_block_hash(&mut block_hashes, block_hash);
+                }
             }
         }
         _ => {}
+    }
+}
+
+fn remember_observed_block_hash(block_hashes: &mut VecDeque<Hash>, block_hash: Hash) {
+    if block_hashes.contains(&block_hash) {
+        return;
+    }
+    block_hashes.push_back(block_hash);
+    while block_hashes.len() > OBSERVED_BLOCK_HASH_LIMIT {
+        block_hashes.pop_front();
     }
 }
 
@@ -1192,6 +1220,24 @@ mod tests {
     }
 
     #[test]
+    fn observed_block_hashes_are_bounded_and_deduplicated() {
+        let mut block_hashes = VecDeque::new();
+        let first_hash = hash_bytes(b"test", &[b"first-observed-block"]);
+        remember_observed_block_hash(&mut block_hashes, first_hash);
+        remember_observed_block_hash(&mut block_hashes, first_hash);
+
+        for height in 0..(OBSERVED_BLOCK_HASH_LIMIT + 3) {
+            let block_hash = hash_bytes(b"test", &[&height.to_le_bytes()]);
+            remember_observed_block_hash(&mut block_hashes, block_hash);
+        }
+
+        assert_eq!(block_hashes.len(), OBSERVED_BLOCK_HASH_LIMIT);
+        assert!(!block_hashes.contains(&first_hash));
+        let last_hash = hash_bytes(b"test", &[&(OBSERVED_BLOCK_HASH_LIMIT + 2).to_le_bytes()]);
+        assert_eq!(block_hashes.back(), Some(&last_hash));
+    }
+
+    #[test]
     fn local_testnet_libp2p_swarms_exchange_gossip_and_request_response() {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_io()
@@ -1351,6 +1397,7 @@ mod tests {
 
         assert!(observer.observed_block_gossip_count() > 0);
         assert_eq!(observer.latest_observed_block_hash(), block_hash);
+        assert!(observer.observed_block_hashes().contains(&block_hash));
     }
 
     async fn wait_for_listen_addr(node: &mut TensorVmLibp2pNode) -> Multiaddr {

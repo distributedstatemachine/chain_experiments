@@ -42,10 +42,12 @@ receipts, live tensor descriptor/row/chunk/opening fetches, and reward growth fr
 also runs `tvmd service status` in every operator container and
 fails unless all 15 node stores advance past the seed, report role-specific status and the expected
 role-runtime command, expose live role-loop counters, real libp2p connected-peer counts, observed
-block-gossip counters, latest observed block hashes, and chain counters, report the same first live
-finalized block hash, and return the same finalized common-head block hash through `tvmd service block`.
+block-gossip counters, latest observed block hashes, the bounded observed block-hash set, and chain
+counters, report the same first live finalized block hash, and return the same finalized common-head block
+hash through `tvmd service block`.
 It also pins miner-00's latest produced block height and fails unless every operator can return that exact
-finalized block hash and state root, with a nonempty block-log root reported by each node store.
+finalized block hash and state root, has observed that target hash through libp2p block gossip, and reports
+a nonempty block-log root.
 
 ## Commands
 

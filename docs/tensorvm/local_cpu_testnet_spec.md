@@ -182,8 +182,9 @@ paths. Role loops may be supervised by an entrypoint script, but the role loops 
 protocol paths and persisted state. The readiness file and `tvmd service status` output must expose the
 actual long-running role command so the checker can reject operators that fall back to a generic service
 entrypoint. The status output must also expose role-loop counters, the runtime-observed libp2p connected
-peer count, and latest observed block-gossip counters so the first gate proves every operator is connected
-and receiving live `NewBlock` announcements, not merely configured.
+peer count, latest observed block-gossip counters, and the bounded observed block-hash set so the first
+gate proves every operator is connected and receiving live `NewBlock` announcements for the convergence
+target, not merely configured.
 
 After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work. Each
 live block must come from the normal protocol path: a generated TensorWork job, miner receipts, validator
@@ -269,6 +270,7 @@ reported the same first live finalized block hash plus the same finalized common
 bounded convergence height
 all 15 operator node stores returned the miner-00 latest produced block-height target hash and state root
 after catch-up
+all 15 operators observed that target block hash through libp2p block gossip
 all 15 operator node stores reported nonempty block-log roots
 restarted operators repair torn snapshot/block-log state from persisted chain state before readiness
 ```

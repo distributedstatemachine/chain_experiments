@@ -68,8 +68,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
   disconnect, local block-announcement publishing over Gossipsub, runtime-observed block-gossip counters
-  exposed through role status, and durable libp2p bootstrap peer-book storage with checksum validation and
-  `/p2p/<peer-id>` dial multiaddr loading
+  and bounded observed block-hash sets exposed through role status, and durable libp2p bootstrap peer-book
+  storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
@@ -307,13 +307,14 @@ preflight, public evidence, or deployment-gated work can count:
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
   catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
-  state root via `all_operator_target_head_convergence=true`, plus
+  state root via `all_operator_target_head_convergence=true`, plus p2p observation of that same target hash,
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
-  `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`, and
+  `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
+  `all_operator_p2p_target_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
-  command, live role-loop counters, real libp2p connected-peer count, observed block gossip, live chain
-  counters, and durable block-log root;
+  command, live role-loop counters, real libp2p connected-peer count, observed block gossip for the target
+  convergence head, live chain counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
@@ -321,10 +322,10 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 218 passing library tests under Tarpaulin:
+The workspace currently has 219 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 203 in `tensor_vm`
+- 204 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 3 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -352,10 +353,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.18% workspace line coverage
-- 9972/10054 workspace lines covered
+- 99.19% workspace line coverage
+- 9987/10069 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9127/9127 `tensor_vm` lines covered
+- 9142/9142 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
