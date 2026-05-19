@@ -49,7 +49,7 @@ The objective decomposes into these deliverables:
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain`, 174 `tensor_vm` library tests, 2 `tvmd` binary tests, and 5 `tvmd` CLI integration tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 188 instrumented tests | Passed |
-| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 8019/8019 lines covered | Passed |
+| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 8093/8093 lines covered | Passed |
 | CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 178 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 Current AC13 evidence tooling also includes `tvmd public-evidence run-window-from-file ...`, which derives

@@ -145,9 +145,9 @@ Counted miner and validator operator and node-address sets must be disjoint; the
 address cannot satisfy both role minima in a public-run bundle, and repeated node addresses cannot inflate a
 single role's independent participant count. Counted participants must admit a one-to-one matching between
 live operator IDs and live node addresses; separate unique operator and address totals are not sufficient
-without that matching. The matching is criteria-aware: if miner-first and validator-first deterministic
-matchings disagree, the validator must use the matching that satisfies the requested miner and validator
-minima when one exists.
+without that matching. The matching is criteria-aware: if greedy role ordering or address choice would miss
+a satisfiable set, the validator must use an independent operator/address set that satisfies the requested
+miner and validator minima when one exists.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
 attestations must have observation timestamps inside the signed run window, match the selected counted

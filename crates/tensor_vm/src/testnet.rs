@@ -882,7 +882,7 @@ fn public_evidence_manifest_field_allows_repeated(key: &str) -> bool {
     )
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum PublicNodeRole {
     Miner,
     Validator,
@@ -3136,11 +3136,69 @@ impl PublicTestnetRunEvidence {
             self.matched_independent_public_operators_starting_with(PublicNodeRole::Validator);
         let miner_first_score = public_operator_matching_score(criteria, &miner_first);
         let validator_first_score = public_operator_matching_score(criteria, &validator_first);
-        if validator_first_score > miner_first_score {
+        let best_greedy = if validator_first_score > miner_first_score {
             validator_first
         } else {
             miner_first
+        };
+        if public_operator_matching_satisfies_criteria(criteria, &best_greedy) {
+            return best_greedy;
         }
+        self.find_public_operator_quota_matching(criteria)
+            .unwrap_or(best_greedy)
+    }
+
+    fn find_public_operator_quota_matching(
+        &self,
+        criteria: &PublicTestnetCriteria,
+    ) -> Option<(MatchedPublicOperators, MatchedPublicOperators)> {
+        let candidates = self.public_operator_candidates();
+        let miner_quota = criteria.min_miners;
+        let validator_quota = criteria.min_validators;
+        if miner_quota == 0 && validator_quota == 0 {
+            return Some((
+                MatchedPublicOperators::default(),
+                MatchedPublicOperators::default(),
+            ));
+        }
+        let mut suffix_miners = vec![0; candidates.len() + 1];
+        let mut suffix_validators = vec![0; candidates.len() + 1];
+        for index in (0..candidates.len()).rev() {
+            suffix_miners[index] = suffix_miners[index + 1]
+                + usize::from(candidates[index].role == PublicNodeRole::Miner);
+            suffix_validators[index] = suffix_validators[index + 1]
+                + usize::from(candidates[index].role == PublicNodeRole::Validator);
+        }
+        let mut search = PublicOperatorQuotaSearch {
+            candidates: &candidates,
+            suffix_miners: &suffix_miners,
+            suffix_validators: &suffix_validators,
+            used_operator_ids: BTreeSet::new(),
+            used_addresses: BTreeSet::new(),
+            selected: Vec::with_capacity(miner_quota + validator_quota),
+        };
+        search
+            .find(0, miner_quota, validator_quota)
+            .map(|selected| {
+                (
+                    MatchedPublicOperators::from_candidates(PublicNodeRole::Miner, &selected),
+                    MatchedPublicOperators::from_candidates(PublicNodeRole::Validator, &selected),
+                )
+            })
+    }
+
+    fn public_operator_candidates(&self) -> Vec<PublicOperatorCandidate> {
+        let mut candidates = BTreeSet::new();
+        for node in &self.nodes {
+            if node.is_live_for_run(self.observed_blocks) {
+                candidates.insert(PublicOperatorCandidate {
+                    role: node.role,
+                    operator_id: node.operator_id,
+                    address: node.address,
+                });
+            }
+        }
+        candidates.into_iter().collect()
     }
 
     fn matched_independent_public_operators_starting_with(
@@ -3217,6 +3275,15 @@ impl MatchedPublicOperators {
         matched
     }
 
+    fn from_candidates(role: PublicNodeRole, candidates: &[PublicOperatorCandidate]) -> Self {
+        let address_to_operator = candidates
+            .iter()
+            .filter(|candidate| candidate.role == role)
+            .map(|candidate| (candidate.address, candidate.operator_id))
+            .collect();
+        Self::from_address_matching(address_to_operator)
+    }
+
     fn attestation_keys_for_role(&self, role: PublicNodeRole) -> BTreeSet<Hash> {
         let mut attestation_keys = BTreeSet::new();
         for (address, operator_id) in &self.address_to_operator {
@@ -3226,6 +3293,75 @@ impl MatchedPublicOperators {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct PublicOperatorCandidate {
+    role: PublicNodeRole,
+    operator_id: Hash,
+    address: Address,
+}
+
+struct PublicOperatorQuotaSearch<'a> {
+    candidates: &'a [PublicOperatorCandidate],
+    suffix_miners: &'a [usize],
+    suffix_validators: &'a [usize],
+    used_operator_ids: BTreeSet<Hash>,
+    used_addresses: BTreeSet<Address>,
+    selected: Vec<PublicOperatorCandidate>,
+}
+
+impl PublicOperatorQuotaSearch<'_> {
+    fn find(
+        &mut self,
+        index: usize,
+        miners_needed: usize,
+        validators_needed: usize,
+    ) -> Option<Vec<PublicOperatorCandidate>> {
+        if miners_needed == 0 && validators_needed == 0 {
+            return Some(self.selected.clone());
+        }
+        if index >= self.candidates.len()
+            || self.suffix_miners[index] < miners_needed
+            || self.suffix_validators[index] < validators_needed
+        {
+            return None;
+        }
+        let candidate = self.candidates[index];
+        let candidate_needed = match candidate.role {
+            PublicNodeRole::Miner => miners_needed > 0,
+            PublicNodeRole::Validator => validators_needed > 0,
+        };
+        if candidate_needed
+            && !self.used_operator_ids.contains(&candidate.operator_id)
+            && !self.used_addresses.contains(&candidate.address)
+        {
+            self.used_operator_ids.insert(candidate.operator_id);
+            self.used_addresses.insert(candidate.address);
+            self.selected.push(candidate);
+            let (next_miners_needed, next_validators_needed) = match candidate.role {
+                PublicNodeRole::Miner => (miners_needed.saturating_sub(1), validators_needed),
+                PublicNodeRole::Validator => (miners_needed, validators_needed.saturating_sub(1)),
+            };
+            if let Some(selection) =
+                self.find(index + 1, next_miners_needed, next_validators_needed)
+            {
+                return Some(selection);
+            }
+            self.selected.pop();
+            self.used_addresses.remove(&candidate.address);
+            self.used_operator_ids.remove(&candidate.operator_id);
+        }
+        self.find(index + 1, miners_needed, validators_needed)
+    }
+}
+
+fn public_operator_matching_satisfies_criteria(
+    criteria: &PublicTestnetCriteria,
+    operators: &(MatchedPublicOperators, MatchedPublicOperators),
+) -> bool {
+    operators.0.operator_ids.len() >= criteria.min_miners
+        && operators.1.operator_ids.len() >= criteria.min_validators
+}
+
 fn public_operator_matching_score(
     criteria: &PublicTestnetCriteria,
     operators: &(MatchedPublicOperators, MatchedPublicOperators),
@@ -3233,7 +3369,7 @@ fn public_operator_matching_score(
     let miner_count = operators.0.operator_ids.len();
     let validator_count = operators.1.operator_ids.len();
     (
-        miner_count >= criteria.min_miners && validator_count >= criteria.min_validators,
+        public_operator_matching_satisfies_criteria(criteria, operators),
         miner_count.min(criteria.min_miners) + validator_count.min(criteria.min_validators),
         miner_count + validator_count,
         miner_count,
@@ -4888,6 +5024,32 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(role_order_match.has_required_validators);
         assert!(role_order_match.public_criterion_met);
 
+        let mut greedy_address_conflict = run.clone();
+        greedy_address_conflict.nodes = vec![
+            PublicNodeEvidence::miner([1; 32], [1; 32], 0, 9, 10),
+            PublicNodeEvidence::miner([2; 32], [2; 32], 0, 9, 10),
+            PublicNodeEvidence::miner([3; 32], [2; 32], 0, 9, 10),
+            PublicNodeEvidence::validator([1; 32], [10; 32], 0, 9, 10),
+            PublicNodeEvidence::validator([2; 32], [10; 32], 0, 9, 10),
+        ];
+        let greedy_address_match = greedy_address_conflict.evaluate(&criteria, 6, true);
+        assert_eq!(greedy_address_match.miner_count, 2);
+        assert_eq!(greedy_address_match.validator_count, 1);
+        assert!(greedy_address_match.has_required_miners);
+        assert!(greedy_address_match.has_required_validators);
+        assert!(greedy_address_match.public_criterion_met);
+
+        let zero_quota_criteria = PublicTestnetCriteria {
+            min_miners: 0,
+            min_validators: 0,
+            ..criteria.clone()
+        };
+        let (zero_quota_miners, zero_quota_validators) = greedy_address_conflict
+            .find_public_operator_quota_matching(&zero_quota_criteria)
+            .expect("zero public-operator quotas should always match");
+        assert!(zero_quota_miners.operator_ids.is_empty());
+        assert!(zero_quota_validators.operator_ids.is_empty());
+
         run.nodes[1] = PublicNodeEvidence::miner(
             address(b"miner-a"),
             hash_bytes(b"test", &[b"miner-b-operator"]),
@@ -5574,6 +5736,78 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(role_order_report.has_network_runtime_observations);
         assert!(role_order_report.independently_checkable);
         assert!(!role_order_report.full_spec_evidence_met);
+
+        let mut exact_quota_bundle = complete_public_evidence_bundle();
+        exact_quota_bundle.run.nodes = vec![
+            PublicNodeEvidence::miner([1; 32], [1; 32], 0, 9, 10),
+            PublicNodeEvidence::miner([2; 32], [2; 32], 0, 9, 10),
+            PublicNodeEvidence::miner([3; 32], [2; 32], 0, 9, 10),
+            PublicNodeEvidence::validator([1; 32], [10; 32], 0, 9, 10),
+            PublicNodeEvidence::validator([2; 32], [10; 32], 0, 9, 10),
+        ];
+        exact_quota_bundle.operator_identity_attestation_records = 3;
+        exact_quota_bundle.operator_identity_attestations = vec![
+            PublicOperatorIdentityAttestation::new(
+                PublicNodeRole::Miner,
+                [1; 32],
+                [1; 32],
+                manifest_operator_identity_uri(&[1; 32]),
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+            PublicOperatorIdentityAttestation::new(
+                PublicNodeRole::Miner,
+                [3; 32],
+                [2; 32],
+                manifest_operator_identity_uri(&[2; 32]),
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+            PublicOperatorIdentityAttestation::new(
+                PublicNodeRole::Validator,
+                [2; 32],
+                [10; 32],
+                manifest_operator_identity_uri(&[10; 32]),
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+        ];
+        exact_quota_bundle.network_runtime_observations = vec![
+            public_network_runtime_observation(
+                [1; 32],
+                0,
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+            public_network_runtime_observation(
+                [2; 32],
+                1,
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+            public_network_runtime_observation(
+                [10; 32],
+                2,
+                exact_quota_bundle.run.run_started_at_unix_seconds,
+            ),
+        ];
+        let exact_quota_network_root = aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &exact_quota_bundle
+                .network_runtime_observations
+                .iter()
+                .map(|observation| observation.record_root)
+                .collect::<Vec<_>>(),
+        )
+        .expect("exact-quota network observation roots should aggregate");
+        resign_record_summary_and_artifact(
+            &mut exact_quota_bundle,
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            exact_quota_network_root,
+            3,
+        );
+        let exact_quota_report = exact_quota_bundle.evaluate(&criteria, 6);
+        assert_eq!(exact_quota_report.run_evidence.miner_count, 2);
+        assert_eq!(exact_quota_report.run_evidence.validator_count, 1);
+        assert!(exact_quota_report.run_evidence.public_criterion_met);
+        assert!(exact_quota_report.has_operator_identity_attestations);
+        assert!(exact_quota_report.has_network_runtime_observations);
+        assert!(exact_quota_report.independently_checkable);
 
         bundle.publication.manifest_signature = [9; 32];
         let tampered_manifest_signature = bundle.evaluate(&criteria, 6);

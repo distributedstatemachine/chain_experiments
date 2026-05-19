@@ -1890,8 +1890,8 @@ heartbeats must cover the manifest's full observed block count, counted operator
 node addresses through a one-to-one matching of live operator IDs to live node addresses, and counted miner
 and validator operator/address sets must be disjoint. Unique operator and address totals without such a
 matching do not satisfy public operator independence. Public operator matching must be criteria-aware:
-when one deterministic role ordering satisfies the requested miner and validator minima and another does
-not, the evidence gate must count the satisfying independent operator/address set. The current evidence
+when greedy role ordering or address choice would miss a satisfiable set for the requested miner and
+validator minima, the evidence gate must count a satisfying independent operator/address set. The current evidence
 manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
 scalar fields, whitespace-padded field keys, and whitespace-padded scalar values. Public evidence

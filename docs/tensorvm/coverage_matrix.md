@@ -62,7 +62,7 @@ deployment gate.
   operators and aggregating to the signed network-runtime root,
   an exact one-signature manifest publication count for the current manifest format, exactly one signed
   external artifact locator for each required raw supporting-record kind, one-to-one live operator/address
-  matching for counted public participants with criteria-aware role-order selection, disjoint
+  matching for counted public participants with criteria-aware quota selection, disjoint
   miner/validator operator IDs and node addresses, auditor IDs distinct from the manifest signer with
   auditor observations at or after the signed run end and valid signed
   auditor-record counts exactly matching `independent_auditor_count`,
