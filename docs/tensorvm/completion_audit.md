@@ -94,7 +94,7 @@ These are not satisfied by local tests or manifests alone:
 | Published evidence bundle | Public `https://`, `ipfs://`, or `ar://` manifest URI that validates with `public_evidence_full_spec=true` and is linked from [`implementation_status.md`](implementation_status.md) | Manifest format, parser, validator, and non-full-spec example | Needs the completed external run bundle to be published |
 
 Local evidence validators reject malformed HTTPS authorities, userinfo, whitespace, invalid DNS host
-labels, invalid ports, missing HTTPS evidence paths, HTTPS evidence query strings or fragments, localhost,
+labels, invalid ports, missing or root-only HTTPS evidence paths, HTTPS evidence query strings or fragments, localhost,
 `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example domains, private, link-local,
 documentation, shared-address, benchmarking,
 multicast, reserved, empty publication endpoints, and malformed `ipfs://`/`ar://` identifiers, and they verify manifest publication

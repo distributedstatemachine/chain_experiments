@@ -129,7 +129,7 @@ auditor HTTPS URIs, and operator identity HTTPS URIs must use well-formed extern
 userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed
 IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
 domains, loopback, private, link-local, unspecified, documentation, shared-address, benchmarking,
-multicast, reserved IP hosts, missing HTTPS paths, HTTPS query strings, and HTTPS fragments are rejected.
+multicast, reserved IP hosts, missing or root-only HTTPS paths, HTTPS query strings, and HTTPS fragments are rejected.
 Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` or `ar://` identifiers
 with the same well-formed first-segment rule and no raw whitespace or control characters.
 The service-health URL path must match the signed health path exactly and must not include a query string

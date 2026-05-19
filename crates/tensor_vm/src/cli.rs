@@ -6064,6 +6064,16 @@ p2p_idle_timeout_seconds=60
         );
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://tensorvm.net/".to_owned(),
+                manifest_signer: address(b"public-evidence-publisher"),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
                 bundle_id: [0; 32],
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -6135,9 +6145,29 @@ p2p_idle_timeout_seconds=60
         assert!(
             execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://tensorvm.net/".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: manifest_auditor_uri(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
                 auditor_id: address(b"public-evidence-auditor-0"),
                 audit_uri: "https://localhost/audit.json".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+                auditor_id: address(b"public-evidence-auditor-0"),
+                audit_uri: "https://auditor.tensorvm.net/".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
             })
             .is_err()
@@ -6369,6 +6399,16 @@ p2p_idle_timeout_seconds=60
                 role: PublicNodeRole::Miner,
                 address: address(b"miner-a"),
                 operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
+                identity_uri: "https://operators.tensorvm.net/".to_owned(),
+                observed_at_unix_seconds: 1_700_000_000,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+                role: PublicNodeRole::Miner,
+                address: address(b"miner-a"),
+                operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
                 identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at_unix_seconds: 0,
             })
@@ -6510,6 +6550,17 @@ p2p_idle_timeout_seconds=60
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
                 artifact_uri: "https://localhost/network-runtime.json".to_owned(),
+                record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
+                record_count: 4,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+                kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                manifest_signer: address(b"public-evidence-publisher"),
+                artifact_uri: "https://evidence.tensorvm.net/".to_owned(),
                 record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
                 record_count: 4,
             })
