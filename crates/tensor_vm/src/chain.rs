@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod accounts;
 mod blocks;
+mod models;
 mod operators;
 mod proposer;
 mod receipts;
@@ -246,17 +247,7 @@ impl LocalChain {
         weight_root: Hash,
         config_hash: Hash,
     ) {
-        self.state.model_states.insert(
-            model_id,
-            ModelState {
-                model_id,
-                architecture_hash,
-                weight_root,
-                optimizer_state_root: None,
-                step: 0,
-                config_hash,
-            },
-        );
+        models::register(self, model_id, architecture_hash, weight_root, config_hash);
     }
 
     pub fn apply_model_transition(
@@ -266,20 +257,7 @@ impl LocalChain {
         weight_root_before: &Hash,
         weight_root_after: Hash,
     ) -> Result<()> {
-        let model = self
-            .state
-            .model_states
-            .get_mut(model_id)
-            .ok_or(TvmError::InvalidReceipt("unknown model"))?;
-        if model.step != step {
-            return Err(TvmError::InvalidReceipt("model step mismatch"));
-        }
-        if &model.weight_root != weight_root_before {
-            return Err(TvmError::InvalidReceipt("model weight root mismatch"));
-        }
-        model.weight_root = weight_root_after;
-        model.step += 1;
-        Ok(())
+        models::apply_transition(self, model_id, step, weight_root_before, weight_root_after)
     }
 
     pub fn apply_challenge_outcome(&mut self, outcome: ChallengeOutcome) -> Result<()> {

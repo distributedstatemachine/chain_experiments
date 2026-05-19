@@ -42,6 +42,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   the internal `chain::operators` boundary
 - Job submission, job lookup, and tensor/linear receipt admission through the internal `chain::receipts`
   boundary
+- Model registration and linear-training model-state transitions through the internal `chain::models`
+  boundary
 - Attestation acceptance, quorum checks, validation seeds, and stake-weighted block finality checks through
   the internal `chain::validation` boundary
 - Profile-neutral `ChainEngine`, file-backed `ChainStore`, and shared `ChainProfile`/`NodeConfig`
@@ -364,9 +366,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.19% workspace line coverage
-- 10032/10114 workspace lines covered
+- 10036/10118 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9187/9187 `tensor_vm` lines covered
+- 9191/9191 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
