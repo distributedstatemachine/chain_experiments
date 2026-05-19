@@ -122,16 +122,16 @@ For block, finality, data-availability, invalid-work, and reward summaries, the 
 contain exact typed lines:
 
 ```text
-block_history_record=...
-finality_history_record=...
-data_availability_measurement=...
-invalid_work_rejection=...
-reward_settlement=...
+block_history_record=<block>,<block-root-hex>
+finality_history_record=<block>,<block-root-hex>,finalized|unfinalized
+data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>
+invalid_work_rejection=<receipt-root-hex>,rejected,<block>
+reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>
 ```
 
-`record-summary-from-file` and `record-artifact-from-file` hash each exact typed line with the selected
-record kind before aggregation. Do not trim or pad those lines; whitespace-padded record lines are
-rejected.
+`record-summary-from-file` and `record-artifact-from-file` validate each typed line against the selected
+record kind, then hash the exact line with that kind before aggregation. Do not trim or pad those lines;
+whitespace-padded record lines and empty fields are rejected.
 
 ## Daily Checks
 

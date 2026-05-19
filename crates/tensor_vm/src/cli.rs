@@ -2119,6 +2119,7 @@ fn supporting_record_root_from_line(
             "invalid public evidence supporting record line",
         ));
     }
+    validate_supporting_record_payload(kind, payload)?;
     Ok(hash_bytes(
         b"tensor-vm-public-evidence-supporting-record-root-v1",
         &[
@@ -2126,6 +2127,72 @@ fn supporting_record_root_from_line(
             line.as_bytes(),
         ],
     ))
+}
+
+fn validate_supporting_record_payload(kind: PublicEvidenceRecordKind, payload: &str) -> Result<()> {
+    let fields = payload.split(',').collect::<Vec<_>>();
+    if fields
+        .iter()
+        .any(|field| field.is_empty() || field.trim() != *field)
+    {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => {
+            require_supporting_record_field_count(&fields, 2)?;
+            parse_u64(fields[0])?;
+            parse_hash_argument(fields[1])?;
+        }
+        PublicEvidenceRecordKind::FinalityHistory => {
+            require_supporting_record_field_count(&fields, 3)?;
+            parse_u64(fields[0])?;
+            parse_hash_argument(fields[1])?;
+            require_supporting_record_status(fields[2], &["finalized", "unfinalized"])?;
+        }
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => {
+            return Err(TvmError::InvalidReceipt(
+                "invalid public evidence supporting record line",
+            ));
+        }
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+            require_supporting_record_field_count(&fields, 3)?;
+            parse_hash_argument(fields[0])?;
+            require_supporting_record_status(fields[1], &["available", "unavailable"])?;
+            parse_u64(fields[2])?;
+        }
+        PublicEvidenceRecordKind::InvalidWorkRejections => {
+            require_supporting_record_field_count(&fields, 3)?;
+            parse_hash_argument(fields[0])?;
+            require_supporting_record_status(fields[1], &["rejected"])?;
+            parse_u64(fields[2])?;
+        }
+        PublicEvidenceRecordKind::RewardSettlements => {
+            require_supporting_record_field_count(&fields, 4)?;
+            parse_hash_argument(fields[0])?;
+            parse_u64(fields[3])?;
+        }
+    }
+    Ok(())
+}
+
+fn require_supporting_record_field_count(fields: &[&str], expected: usize) -> Result<()> {
+    if fields.len() != expected {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    Ok(())
+}
+
+fn require_supporting_record_status(status: &str, allowed: &[&str]) -> Result<()> {
+    if !allowed.contains(&status) {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    Ok(())
 }
 
 fn parse_record_file_root(root: &str) -> Result<Hash> {
@@ -5428,6 +5495,45 @@ p2p_idle_timeout_seconds=60
             );
             std::fs::remove_file(&raw_record_file).unwrap();
         }
+        let malformed_supporting_record_cases = [
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                "block_history_record=0",
+            ),
+            (
+                PublicEvidenceRecordKind::BlockHistory,
+                "block_history_record=0,not-a-root",
+            ),
+            (
+                PublicEvidenceRecordKind::FinalityHistory,
+                "finality_history_record=0,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,pending",
+            ),
+            (
+                PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+                "data_availability_measurement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,missing,0",
+            ),
+            (
+                PublicEvidenceRecordKind::InvalidWorkRejections,
+                "invalid_work_rejection=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,accepted,0",
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                "reward_settlement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,miner,,0",
+            ),
+        ];
+        for (kind, raw_line) in malformed_supporting_record_cases {
+            assert!(matches!(
+                public_evidence_record_root_from_line(kind, raw_line),
+                Err(TvmError::InvalidReceipt(_))
+            ));
+        }
+        assert!(matches!(
+            validate_supporting_record_payload(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+            Err(TvmError::InvalidReceipt(_))
+        ));
         assert_eq!(
             public_evidence_record_roots_from_file(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,

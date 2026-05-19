@@ -183,10 +183,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence record-artifact-from-file ...` generation from saved raw-record files containing
   `record_root=...` lines, fully verified signed `network_runtime_observation=...` lines, or typed
   `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
-  `invalid_work_rejection=...`, and `reward_settlement=...` supporting-record lines with exact-line hashing
-  and whitespace-padded record rejection; network-runtime file derivation rejects malformed peer IDs,
-  non-public multiaddrs, zero counters, and mismatched observation roots or signatures before aggregation; a process-level `tvmd`
-  integration test now assembles a short
+  `invalid_work_rejection=...`, and `reward_settlement=...` supporting-record lines with kind-specific
+  field validation, exact-line hashing, and whitespace-padded or empty-field rejection; network-runtime file
+  derivation rejects malformed peer IDs, non-public multiaddrs, zero counters, and mismatched observation
+  roots or signatures before aggregation; a process-level `tvmd` integration test now assembles a short
   external-addressed evidence manifest entirely from the signed generator subcommands, validates it from
   disk, and proves it is independently checkable without allowing the default full-spec flag to pass
 
@@ -242,9 +242,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.04% workspace line coverage
-- 8439/8521 workspace lines covered
+- 8478/8560 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7871/7871 `tensor_vm` lines covered
+- 7912/7912 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

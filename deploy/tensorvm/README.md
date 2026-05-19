@@ -50,7 +50,12 @@ record kinds.
 For block, finality, data-availability, invalid-work, and reward evidence, the saved raw-record file can
 contain exact `block_history_record=...`, `finality_history_record=...`,
 `data_availability_measurement=...`, `invalid_work_rejection=...`, and `reward_settlement=...` lines; the
-file-derived commands hash those exact typed lines before aggregating the record root.
+file-derived commands validate those typed fields, then hash each exact line before aggregating the record
+root. Use `block_history_record=<block>,<block-root-hex>`,
+`finality_history_record=<block>,<block-root-hex>,finalized|unfinalized`,
+`data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>`,
+`invalid_work_rejection=<receipt-root-hex>,rejected,<block>`, and
+`reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>`.
 Run-window records can be derived from saved per-block observation files with
 `run_window_observation=<block>,<unix-seconds>` lines using `run-window-from-file`.
 Service-health records can likewise be derived from saved per-block observation files with

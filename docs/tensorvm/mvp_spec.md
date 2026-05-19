@@ -1980,9 +1980,15 @@ exact signed `network_runtime_observation=...` lines emitted by `network-observa
 `network-observation-from-service-log`. Non-network supporting-record files may contain exact
 `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
 `invalid_work_rejection=...`, or `reward_settlement=...` raw record lines. Those typed raw lines are
-hashed with the record kind and exact line bytes before aggregation, so operators can derive summary roots
-and artifact locators from captured records without precomputing each `record_root=<hex>` by hand.
-Whitespace-padded record lines are rejected.
+validated against the selected record kind before hashing with the record kind and exact line bytes, so
+operators can derive summary roots and artifact locators from captured records without precomputing each
+`record_root=<hex>` by hand. The accepted typed fields are
+`block_history_record=<block>,<block-root-hex>`,
+`finality_history_record=<block>,<block-root-hex>,finalized|unfinalized`,
+`data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>`,
+`invalid_work_rejection=<receipt-root-hex>,rejected,<block>`, and
+`reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>`. Whitespace-padded record lines
+or empty fields are rejected.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 `public_evidence_full_spec=true` is reserved for default-or-stricter public-testnet criteria; shortened or
