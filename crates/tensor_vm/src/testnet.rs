@@ -2936,14 +2936,15 @@ impl PublicTestnetRunEvidence {
         let external_operator_evidence =
             external_operator_evidence && miner_count > 0 && validator_count > 0;
         let has_production_libp2p_runtime = self.network_runtime.has_production_libp2p_runtime();
-        let has_rpc_content =
-            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Rpc);
-        let has_explorer_content =
-            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Explorer);
-        let has_faucet_content =
-            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Faucet);
-        let has_telemetry_content =
-            self.has_service_content_for_reachable_endpoint(PublicServiceKind::Telemetry);
+        let has_exact_deployed_service_records = self.has_exact_deployed_service_records();
+        let has_rpc_content = has_exact_deployed_service_records
+            && self.has_service_content_for_reachable_endpoint(PublicServiceKind::Rpc);
+        let has_explorer_content = has_exact_deployed_service_records
+            && self.has_service_content_for_reachable_endpoint(PublicServiceKind::Explorer);
+        let has_faucet_content = has_exact_deployed_service_records
+            && self.has_service_content_for_reachable_endpoint(PublicServiceKind::Faucet);
+        let has_telemetry_content = has_exact_deployed_service_records
+            && self.has_service_content_for_reachable_endpoint(PublicServiceKind::Telemetry);
         let has_distinct_deployed_service_endpoint_ids =
             self.has_distinct_deployed_service_endpoint_ids();
         let has_distinct_deployed_service_content_roots =
@@ -3011,6 +3012,24 @@ impl PublicTestnetRunEvidence {
 
     fn has_service_content_for_reachable_endpoint(&self, kind: PublicServiceKind) -> bool {
         self.deployed_service_content_root(kind).is_some()
+    }
+
+    fn has_exact_deployed_service_records(&self) -> bool {
+        self.services.len() == public_service_kinds().len()
+            && self.service_content.len() == public_service_kinds().len()
+            && public_service_kinds().iter().all(|kind| {
+                self.services
+                    .iter()
+                    .filter(|service| service.kind == *kind)
+                    .count()
+                    == 1
+                    && self
+                        .service_content
+                        .iter()
+                        .filter(|content| content.kind == *kind)
+                        .count()
+                        == 1
+            })
     }
 
     fn deployed_service_content_root(&self, kind: PublicServiceKind) -> Option<Hash> {
@@ -4802,6 +4821,30 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(complete.has_deployed_public_service_content);
         assert!(complete.has_deployed_public_services);
         assert!(complete.public_criterion_met);
+
+        run.services.push(public_service(
+            PublicServiceKind::Rpc,
+            b"extra-rpc-service",
+            0,
+            9,
+        ));
+        let extra_rpc_service = run.evaluate(&criteria, 6, true);
+        assert!(!extra_rpc_service.has_deployed_rpc_service);
+        assert!(!extra_rpc_service.has_deployed_public_service_content);
+        assert!(!extra_rpc_service.has_deployed_public_services);
+        assert!(!extra_rpc_service.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.service_content.push(public_service_content(
+            PublicServiceKind::Rpc,
+            b"extra-rpc-service",
+        ));
+        let extra_rpc_content = run.evaluate(&criteria, 6, true);
+        assert!(!extra_rpc_content.has_deployed_rpc_service);
+        assert!(!extra_rpc_content.has_deployed_public_service_content);
+        assert!(!extra_rpc_content.has_deployed_public_services);
+        assert!(!extra_rpc_content.public_criterion_met);
+        run.service_content = deployed_public_service_content();
 
         run.services[1] = PublicServiceEvidence::new(
             PublicServiceKind::Explorer,

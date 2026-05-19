@@ -145,8 +145,8 @@ During the run, preserve signed checkpoint batches for every operator and public
 final summaries must cover the full observed block range and the full wall-clock run window:
 
 - node heartbeats for every active miner and validator
-- service-health records for every public service
-- service-content records for every public service
+- exactly one service-health record for each public RPC, explorer, faucet, and telemetry service
+- exactly one service-content record for each public RPC, explorer, faucet, and telemetry service
 - libp2p network-observation records from independent observers, one per counted public operator
 - finalized block count and finality rate
 - tensor receipt availability sample count and available count

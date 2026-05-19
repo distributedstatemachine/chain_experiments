@@ -147,10 +147,12 @@ For a run to satisfy the public gate, every counted miner/validator heartbeat su
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
 attestations must have observation timestamps inside the signed run window, match live node-heartbeat
 records, and be at least as numerous as the `operator_identity_attestation_records` manifest count.
-Counted service-content records must have observation timestamps inside the signed run window.
-Every counted service health summary must likewise span the full observed block range and carry at least
-one reachable observation and one signed health check per observed block. The reachable observation count
-must not exceed the signed health-check count.
+The public service gate counts exactly one service-health record and exactly one service-content record
+for each RPC, explorer, faucet, and telemetry surface; extra service-health or service-content records do
+not satisfy the deployed public-service gate. Counted service-content records must have observation
+timestamps inside the signed run window. Every counted service health summary must likewise span the full
+observed block range and carry at least one reachable observation and one signed health check per observed
+block. The reachable observation count must not exceed the signed health-check count.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
 checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
 public gate. Signed overcounts or undercounts for block-history, finality-history, data-availability,

@@ -73,7 +73,8 @@ deployment gate.
   URI concrete-path enforcement with root-only, query, and fragment rejection, duplicate scalar manifest-field rejection,
   whitespace-padded field-key and scalar-value rejection, duplicate supporting-record root rejection, repeated node-address count rejection, exact service URL path matching with root-only, query, and fragment rejection, no overreported operator-attestation counts,
   full-spec flag rejection for relaxed local harness criteria, well-formed `ipfs://`/`ar://` identifier
-  validation with traversal/query/fragment path rejection, and deployed public-service reachability plus distinct endpoint IDs and distinct content
+  validation with traversal/query/fragment path rejection, and deployed public-service reachability with exactly
+  one service-health and one service-content record per deployed service kind, distinct endpoint IDs, and distinct content
   roots with at least 64 observed bytes bound to external HTTPS URLs. A local launch
   preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), requires a CUDA-ready miner count matching
@@ -101,7 +102,8 @@ deployment gate.
   blocks, gaps, unsupported lines, and whitespace-padded records, service-health evidence rejects
   reachable counts above signed health-check counts, repeated public-evidence manifest records reject
   whitespace-padded comma-separated values, service health/content evidence must use matching HTTPS
-  authorities for each endpoint ID, and the required post-run evidence-bundle shape is
+  authorities for each endpoint ID and reject extra service-health or service-content records, and the
+  required post-run evidence-bundle shape is
   documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is linked yet.
 - Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web

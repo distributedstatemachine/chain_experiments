@@ -1933,11 +1933,11 @@ exact captured response body bytes using the TensorVM service-content-root domai
 `service_content=...` manifest line with `min_content_bytes` set to the captured byte length. Operators
 should prefer the file form when turning raw public service observations into evidence, and keep the exact
 captured files as raw supporting artifacts.
-Deployed public service evidence must include both signed health and signed content records with matching
-endpoint IDs and matching HTTPS authorities for `/chain/head`, `/explorer`, `/faucet/page`, and
-`/telemetry/dashboard`. The RPC, explorer, faucet, and telemetry service surfaces must use distinct
-endpoint IDs and distinct service-content roots; reused IDs or content roots do not satisfy the public
-service gate.
+Deployed public service evidence must include exactly one signed health record and exactly one signed
+content record for each RPC, explorer, faucet, and telemetry service surface, with matching endpoint IDs
+and matching HTTPS authorities for `/chain/head`, `/explorer`, `/faucet/page`, and
+`/telemetry/dashboard`. Extra service-health or service-content records, reused endpoint IDs, or reused
+service-content roots do not satisfy the public service gate.
 Public service health and content URLs must use concrete non-root paths that exactly match the signed path,
 with no query string or fragment.
 External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
