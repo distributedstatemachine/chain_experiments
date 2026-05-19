@@ -1918,9 +1918,10 @@ The `operator-attestation` command emits the exact `operator=...` manifest line 
 identity URI bound to a node address, role, operator ID, and observation time. Counted operator
 attestations must be observed inside the signed run window, and the
 `operator_identity_attestation_records` manifest count must exactly match the number of repeated
-`operator=...` lines and the number of valid signed operator-attestation records that match live
-node-heartbeat evidence. Missing, invalid, duplicate, or extra operator-attestation records do not satisfy
-external-operator evidence.
+`operator=...` lines and the number of valid signed operator-attestation records for the exact independent
+operator/address pairs selected by the public operator matching. A valid attestation for a live but
+uncounted node does not satisfy a missing counted operator attestation. Missing, invalid, duplicate,
+uncounted, or extra operator-attestation records do not satisfy external-operator evidence.
 The `node-heartbeat-from-file` command derives the same signed `node=...` line from a saved
 line-oriented heartbeat observation file using
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. Blank lines and
@@ -2268,8 +2269,8 @@ a public testnet runs for 7 consecutive days with independent external miner and
 the evidence bundle includes a signed wall-clock run window proving the 7-day duration, not only expected
 block-count evidence
 the evidence bundle includes post-run signed independent auditor records, signed node heartbeats,
-block/finality history, operator identities or
-attestations, data-availability measurements, invalid-work rejection evidence, and reward-settlement records
+block/finality history, operator identity attestations that exactly match the counted public operators,
+data-availability measurements, invalid-work rejection evidence, and reward-settlement records
 the evidence bundle includes signed external artifact locators for every raw supporting-record summary root
 the evidence bundle is stored or linked from docs/tensorvm/implementation_status.md
 ```

@@ -1058,12 +1058,6 @@ impl PublicOperatorIdentityAttestation {
             && public_evidence_uri_is_external(&self.identity_uri)
             && self.operator_signature_valid()
     }
-
-    fn matches_node(&self, node: &PublicNodeEvidence) -> bool {
-        self.role == node.role
-            && self.address == node.address
-            && self.operator_id == node.operator_id
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2610,14 +2604,13 @@ impl PublicTestnetEvidenceBundle {
                 &self.finality_history_signature,
             );
         let (miner_count, validator_count) = self.run.independent_operator_counts();
-        let required_operator_attestations = (miner_count + validator_count) as u64;
-        let valid_operator_attestation_count =
-            self.valid_operator_identity_attestation_count() as u64;
+        let required_operator_attestation_count = miner_count + validator_count;
+        let required_operator_attestations = required_operator_attestation_count as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
             && self.operator_identity_attestation_records == required_operator_attestations
-            && self.operator_identity_attestations.len() as u64
-                == self.operator_identity_attestation_records
-            && valid_operator_attestation_count == required_operator_attestations;
+            && self.has_operator_identity_attestation_records_for_public_operators(
+                required_operator_attestation_count,
+            );
         let run_evidence = self.run.evaluate(
             criteria,
             block_time_seconds,
@@ -2817,33 +2810,44 @@ impl PublicTestnetEvidenceBundle {
         valid_auditors.len()
     }
 
-    fn valid_operator_identity_attestation_count(&self) -> usize {
-        let mut valid_attestations = BTreeSet::new();
+    fn has_operator_identity_attestation_records_for_public_operators(
+        &self,
+        required_count: usize,
+    ) -> bool {
+        if self.operator_identity_attestations.len() != required_count {
+            return false;
+        }
+        let expected_attestation_keys = self.live_public_operator_attestation_keys();
+        if expected_attestation_keys.len() != required_count {
+            return false;
+        }
+        let mut observed_attestation_keys = BTreeSet::new();
         for attestation in &self.operator_identity_attestations {
-            if !attestation.has_external_identity_proof() {
-                continue;
-            }
-            if !self
-                .run
-                .observation_is_within_run(attestation.observed_at_unix_seconds)
+            let attestation_key = public_operator_attestation_key(
+                attestation.role,
+                &attestation.address,
+                &attestation.operator_id,
+            );
+            if !expected_attestation_keys.contains(&attestation_key)
+                || !attestation.has_external_identity_proof()
+                || !self
+                    .run
+                    .observation_is_within_run(attestation.observed_at_unix_seconds)
+                || !observed_attestation_keys.insert(attestation_key)
             {
-                continue;
-            }
-            let matches_public_node = self.run.nodes.iter().any(|node| {
-                node.is_live_for_run(self.run.observed_blocks) && attestation.matches_node(node)
-            });
-            if matches_public_node {
-                valid_attestations.insert(hash_bytes(
-                    b"tensor-vm-public-operator-attestation-key-v1",
-                    &[
-                        public_node_role_tag(attestation.role),
-                        &attestation.address,
-                        &attestation.operator_id,
-                    ],
-                ));
+                return false;
             }
         }
-        valid_attestations.len()
+        observed_attestation_keys == expected_attestation_keys
+    }
+
+    fn live_public_operator_attestation_keys(&self) -> BTreeSet<Hash> {
+        let (miner_operators, validator_operators) =
+            self.run.matched_independent_public_operators();
+        let mut attestation_keys = miner_operators.attestation_keys_for_role(PublicNodeRole::Miner);
+        attestation_keys
+            .extend(validator_operators.attestation_keys_for_role(PublicNodeRole::Validator));
+        attestation_keys
     }
 
     fn live_public_operator_ids(&self) -> BTreeSet<Hash> {
@@ -3167,17 +3171,38 @@ impl PublicTestnetRunEvidence {
 struct MatchedPublicOperators {
     operator_ids: BTreeSet<Hash>,
     addresses: BTreeSet<Address>,
+    address_to_operator: BTreeMap<Address, Hash>,
 }
 
 impl MatchedPublicOperators {
     fn from_address_matching(address_to_operator: BTreeMap<Address, Hash>) -> Self {
         let mut matched = Self::default();
-        for (address, operator_id) in address_to_operator {
-            matched.operator_ids.insert(operator_id);
-            matched.addresses.insert(address);
+        for (address, operator_id) in &address_to_operator {
+            matched.operator_ids.insert(*operator_id);
+            matched.addresses.insert(*address);
         }
+        matched.address_to_operator = address_to_operator;
         matched
     }
+
+    fn attestation_keys_for_role(&self, role: PublicNodeRole) -> BTreeSet<Hash> {
+        let mut attestation_keys = BTreeSet::new();
+        for (address, operator_id) in &self.address_to_operator {
+            attestation_keys.insert(public_operator_attestation_key(role, address, operator_id));
+        }
+        attestation_keys
+    }
+}
+
+fn public_operator_attestation_key(
+    role: PublicNodeRole,
+    address: &Address,
+    operator_id: &Hash,
+) -> Hash {
+    hash_bytes(
+        b"tensor-vm-public-operator-attestation-key-v1",
+        &[public_node_role_tag(role), address, operator_id],
+    )
 }
 
 fn match_public_operator_address(
@@ -5666,6 +5691,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 .public_criterion_met
         );
         assert!(!missing_operator_attestations.independently_checkable);
+        bundle.operator_identity_attestations.truncate(2);
+        assert!(!bundle.has_operator_identity_attestation_records_for_public_operators(2));
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestation_records = 4;
@@ -5713,6 +5740,38 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 .external_operator_evidence
         );
         assert!(!stale_operator_attestation.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let uncounted_validator_operator_id =
+            hash_bytes(b"test", &[b"uncounted-validator-operator"]);
+        let uncounted_validator_address = bundle.run.nodes[0].address;
+        bundle.run.nodes.push(PublicNodeEvidence::validator(
+            uncounted_validator_address,
+            uncounted_validator_operator_id,
+            0,
+            9,
+            10,
+        ));
+        bundle.operator_identity_attestations[2] = PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Validator,
+            uncounted_validator_address,
+            uncounted_validator_operator_id,
+            manifest_operator_identity_uri(&uncounted_validator_operator_id),
+            bundle.run.run_started_at_unix_seconds,
+        );
+        let uncounted_operator_attestation = bundle.evaluate(&criteria, 6);
+        assert_eq!(uncounted_operator_attestation.run_evidence.miner_count, 2);
+        assert_eq!(
+            uncounted_operator_attestation.run_evidence.validator_count,
+            1
+        );
+        assert!(!uncounted_operator_attestation.has_operator_identity_attestations);
+        assert!(
+            !uncounted_operator_attestation
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(!uncounted_operator_attestation.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestations.clear();
