@@ -64,8 +64,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
   tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
   `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
-  `tvmd service serve` long-running startup of the same runtime, and durable libp2p bootstrap peer-book
-  storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
+  `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
+  disconnect, and durable libp2p bootstrap peer-book storage with checksum validation and
+  `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
@@ -305,9 +306,10 @@ preflight, public evidence, or deployment-gated work can count:
   catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
   state root via `all_operator_target_head_convergence=true`, plus
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
-  `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`, and
-  `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
-  command, live role-loop counters, live chain counters, and durable block-log root;
+  `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
+  `all_operator_p2p_connected_peers=true`, and `all_operator_chain_counters=true`, proving each operator
+  status surface reports its role, runtime command, live role-loop counters, real libp2p connected-peer
+  count, live chain counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state

@@ -163,7 +163,7 @@ continues finalizing blocks after restart.
   `tvmd service readiness` startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` startup of the same runtime, `tvmd miner run` and `tvmd validator run`
   role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
-  with peer-ID-preserving dial multiaddrs, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
+  with peer-ID-preserving DNS/TCP dial multiaddrs and bootstrap redial, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
   `tvmd service status` durable node-store reporting,
   telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
@@ -172,8 +172,9 @@ continues finalizing blocks after restart.
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
-  runtime command, live role-loop counters, live chain counters, advancement past the shared seed, the same
-  first live finalized block hash, and the same finalized common-head block hash through `tvmd service block`. The restart-continuity gate captures
+  runtime command, live role-loop counters, real libp2p connected-peer counts, live chain counters,
+  advancement past the shared seed, the same first live finalized block hash, and the same finalized
+  common-head block hash through `tvmd service block`. The restart-continuity gate captures
   pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while
   service init validates full node-store consistency and repairs torn snapshot/block-log state from
   `chain.state`.

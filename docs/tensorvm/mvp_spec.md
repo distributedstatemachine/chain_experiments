@@ -215,6 +215,11 @@ local CPU testnet where all 10 miner operators and 5 validator operators are dep
 Compose, use durable per-operator state, and communicate through the mandatory libp2p runtime. It does
 not include CUDA, public infrastructure, or 7-day public-run evidence.
 
+The local, public-testnet, and future mainnet modes must share the same chain engine, store boundary,
+network event loop, and profile-driven configuration model. Local-only code may supply deterministic CPU
+job generation and Compose wiring, but it must not fork consensus, storage, networking, or role-loop logic
+away from the base TensorVM runtime.
+
 Gate 0 is also the first executable gate for every new or resumed MVP implementation iteration. Context
 gathering may happen before it, but the first acceptance command for the iteration must be the CPU local
 multi-participant testnet command below. No later gate, implementation slice, or completion claim counts

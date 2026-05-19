@@ -3,14 +3,16 @@ use crate::error::{Result as TvmResult, TvmError};
 use crate::types::{Hash, hash_bytes};
 use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
+use libp2p::swarm::SwarmEvent;
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
 const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
@@ -142,6 +144,7 @@ pub struct TensorVmLibp2pServiceInfo {
 
 pub struct TensorVmLibp2pService {
     info: TensorVmLibp2pServiceInfo,
+    connected_peer_count: Arc<AtomicUsize>,
     stop: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
 }
@@ -153,6 +156,10 @@ impl TensorVmLibp2pService {
 
     pub fn peer_id(&self) -> PeerId {
         self.info.peer_id
+    }
+
+    pub fn connected_peer_count(&self) -> usize {
+        self.connected_peer_count.load(Ordering::Relaxed)
     }
 }
 
@@ -192,6 +199,8 @@ pub fn build_libp2p_node(config: &Libp2pControlPlaneConfig) -> TvmResult<TensorV
             libp2p::yamux::Config::default,
         )
         .map_err(|_| TvmError::InvalidReceipt("libp2p transport build failed"))?
+        .with_dns()
+        .map_err(|_| TvmError::InvalidReceipt("libp2p dns transport build failed"))?
         .with_behaviour(|_| behaviour)
         .map_err(|_| TvmError::InvalidReceipt("libp2p behaviour build failed"))?
         .with_swarm_config(|swarm_config| {
@@ -232,6 +241,8 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let (ready_tx, ready_rx) = mpsc::sync_channel(1);
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = Arc::clone(&stop);
+    let connected_peer_count = Arc::new(AtomicUsize::new(0));
+    let worker_connected_peer_count = Arc::clone(&connected_peer_count);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -253,11 +264,34 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 request_response_protocols: node.request_response_protocols.clone(),
             };
             let _ = ready_tx.send(Ok(info));
+            let bootstrap_multiaddrs = config
+                .bootstrap_addresses
+                .iter()
+                .filter_map(|address| parse_multiaddr(address).ok())
+                .collect::<Vec<_>>();
+            let mut next_bootstrap_dial = Instant::now() + Duration::from_millis(250);
+            let mut peer_connections = HashMap::new();
 
             while !worker_stop.load(Ordering::Relaxed) {
-                let _ =
+                if let Ok(event) =
                     tokio::time::timeout(Duration::from_millis(100), node.swarm.select_next_some())
-                        .await;
+                        .await
+                {
+                    update_connected_peer_count(
+                        event,
+                        &mut peer_connections,
+                        &worker_connected_peer_count,
+                    );
+                }
+                if !bootstrap_multiaddrs.is_empty()
+                    && peer_connections.is_empty()
+                    && Instant::now() >= next_bootstrap_dial
+                {
+                    for address in &bootstrap_multiaddrs {
+                        let _ = node.swarm.dial(address.clone());
+                    }
+                    next_bootstrap_dial = Instant::now() + Duration::from_secs(1);
+                }
             }
         });
     });
@@ -268,6 +302,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     {
         Ok(info) => Ok(TensorVmLibp2pService {
             info,
+            connected_peer_count,
             stop,
             worker: Some(worker),
         }),
@@ -275,6 +310,29 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             let _ = worker.join();
             Err(error)
         }
+    }
+}
+
+fn update_connected_peer_count(
+    event: SwarmEvent<TensorVmNetworkBehaviourEvent>,
+    peer_connections: &mut HashMap<PeerId, usize>,
+    connected_peer_count: &AtomicUsize,
+) {
+    match event {
+        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+            *peer_connections.entry(peer_id).or_default() += 1;
+            connected_peer_count.store(peer_connections.len(), Ordering::Relaxed);
+        }
+        SwarmEvent::ConnectionClosed { peer_id, .. } => {
+            if let Some(connection_count) = peer_connections.get_mut(&peer_id) {
+                *connection_count = connection_count.saturating_sub(1);
+                if *connection_count == 0 {
+                    peer_connections.remove(&peer_id);
+                }
+            }
+            connected_peer_count.store(peer_connections.len(), Ordering::Relaxed);
+        }
+        _ => {}
     }
 }
 
@@ -992,6 +1050,59 @@ mod tests {
     }
 
     #[test]
+    fn libp2p_service_reports_connected_peer_count() {
+        let port = free_tcp_port();
+        let service_a = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-connected-a"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        let bootstrap_address = format!("/ip4/127.0.0.1/tcp/{port}/p2p/{}", service_a.peer_id());
+        let service_b = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![bootstrap_address],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-connected-b"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+
+        wait_for_connected_services(&service_a, &service_b);
+    }
+
+    #[test]
+    fn libp2p_service_redials_bootstrap_peer_after_restart() {
+        let port = free_tcp_port();
+        let seed_a = hash_bytes(b"test", &[b"libp2p-service-redial-a"]);
+        let mut service_a = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(seed_a),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        let bootstrap_address = format!("/ip4/127.0.0.1/tcp/{port}/p2p/{}", service_a.peer_id());
+        let service_b = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![bootstrap_address],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-redial-b"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        wait_for_connected_services(&service_a, &service_b);
+
+        drop(service_a);
+        wait_for_peer_count(&service_b, 0);
+        service_a = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(seed_a),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+
+        wait_for_connected_services(&service_a, &service_b);
+    }
+
+    #[test]
     fn local_testnet_libp2p_swarms_exchange_gossip_and_request_response() {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_io()
@@ -1103,6 +1214,37 @@ mod tests {
                 .await;
             }
         });
+    }
+
+    fn free_tcp_port() -> u16 {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    fn wait_for_connected_services(
+        service_a: &TensorVmLibp2pService,
+        service_b: &TensorVmLibp2pService,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline
+            && (service_a.connected_peer_count() == 0 || service_b.connected_peer_count() == 0)
+        {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        assert_eq!(service_a.connected_peer_count(), 1);
+        assert_eq!(service_b.connected_peer_count(), 1);
+    }
+
+    fn wait_for_peer_count(service: &TensorVmLibp2pService, expected_count: usize) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline && service.connected_peer_count() != expected_count {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(service.connected_peer_count(), expected_count);
     }
 
     async fn wait_for_listen_addr(node: &mut TensorVmLibp2pNode) -> Multiaddr {

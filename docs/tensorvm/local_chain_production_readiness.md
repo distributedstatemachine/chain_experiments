@@ -76,6 +76,8 @@ The local bundle is useful and should remain the first operational target:
   the standalone explorer.
 - Each counted operator has a stable operator ID, stable libp2p identity seed, distinct volume, and
   mandatory libp2p readiness check.
+- The libp2p runtime resolves Docker DNS bootstrap multiaddrs, preserves `/p2p/<peer-id>` dial targets, and
+  redials bootstrap peers after disconnects so local peer counts recover across restarts.
 - `miner-00` exposes local RPC, explorer data, faucet, telemetry, and the host-facing WebSocket endpoint.
 - The current live producer keeps `/chain/head` advancing past the seeded two-block baseline.
 - `check-local-testnet.sh` now fails if live jobs, receipts, settled receipts, height, and block count do
@@ -101,8 +103,9 @@ The local bundle is useful and should remain the first operational target:
   fails unless all 15 operators report the role command expected for their Compose service.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
-  `role_produced_blocks`, and `role_latest_height`; the checker fails unless every counted operator reports
-  a live role loop with produced-block progress.
+  `role_produced_blocks`, `role_latest_height`, and `role_p2p_connected_peers`; the checker fails unless
+  every counted operator reports a live role loop with produced-block progress and at least one real
+  libp2p connection observed by the runtime.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -192,9 +195,10 @@ Required fix:
 - The checker must eventually fail unless all 15 operators converge on the same network-derived latest
   finalized head within a bounded time.
 
-Status: started for role-loop counters. `tvmd service status` now exposes role-runtime command, role-loop
-readiness, role, produced-block, and latest-height counters from the long-running command. Real connected
-peer counts and network-derived latest-head convergence still need to be wired from the libp2p event path.
+Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
+command, role-loop readiness, role, produced-block, latest-height, and real libp2p connected-peer counters
+from the long-running command. Network-derived latest-head convergence still needs to replace the current
+same-seed/pinned-head convergence proof.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -510,8 +514,8 @@ proposer selection, and state views still live mostly in one large `chain.rs` im
 Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
 Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
 `runtime_command=validator_run` through ready files and `tvmd service status`. The status path also exposes
-live role-loop counters for every counted operator. The commands still delegate to the service runtime
-internally, and proposer/node run ownership still needs to be split out.
+live role-loop counters and real libp2p connected-peer counts for every counted operator. The commands still
+delegate to the service runtime internally, and proposer/node run ownership still needs to be split out.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

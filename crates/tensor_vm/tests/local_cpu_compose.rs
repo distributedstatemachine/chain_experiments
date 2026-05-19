@@ -92,6 +92,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
     assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
+    assert!(env_file.contains(
+        "TENSORVM_BOOTSTRAP_PEER_ID=12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
+    ));
     assert_eq!(
         compose
             .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
@@ -190,6 +193,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_role_status=true",
         "all_operator_role_runtime_commands=true",
         "all_operator_role_runtime_counters=true",
+        "all_operator_p2p_connected_peers=true",
         "all_operator_chain_counters=true",
         "all_operator_block_log_roots_observed=true",
         "data-ui=\"ratzilla-tui\"",

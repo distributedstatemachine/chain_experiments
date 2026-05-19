@@ -14,7 +14,7 @@ cuda-kernels = []
 futures = "0.3"
 # Mandatory TensorVM runtime dependency. `default-features = false` only limits the
 # upstream libp2p protocol surface; libp2p itself is not a TensorVM feature gate.
-libp2p = { version = "0.54.1", default-features = false, features = ["ed25519", "gossipsub", "identify", "json", "kad", "macros", "request-response", "tcp", "tls", "tokio", "yamux"] }
+libp2p = { version = "0.54.1", default-features = false, features = ["dns", "ed25519", "gossipsub", "identify", "json", "kad", "macros", "request-response", "tcp", "tls", "tokio", "yamux"] }
 serde = { version = "1", features = ["derive"] }
 tensor_vm_explorer = { path = "../tensor_vm_explorer" }
 tokio = { version = "1", features = ["net", "rt", "time"] }
