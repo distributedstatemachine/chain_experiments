@@ -18,15 +18,15 @@ Host notes:
 Result:
 
 ```text
-187 tests passed under instrumentation:
+188 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 173 tensor_vm library tests
+- 174 tensor_vm library tests
 
-99.04% workspace line coverage
-8500/8582 workspace lines covered
+99.05% workspace line coverage
+8529/8611 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-7932/7932 tensor_vm lines covered
+7961/7961 tensor_vm lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps
@@ -34,7 +34,7 @@ the portable default feature set:
 
 ```text
 cargo test -p tensor_vm --features cuda-kernels --release
-177 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
+178 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
 canonical CPU output
 ```
 

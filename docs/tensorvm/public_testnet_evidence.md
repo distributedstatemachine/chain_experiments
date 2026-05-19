@@ -143,7 +143,9 @@ must not include a query string or fragment. Public service-content URLs use the
 exact-path rule for their required content path.
 Counted miner and validator operator and node-address sets must be disjoint; the same operator ID or node
 address cannot satisfy both role minima in a public-run bundle, and repeated node addresses cannot inflate a
-single role's independent participant count.
+single role's independent participant count. Counted participants must admit a one-to-one matching between
+live operator IDs and live node addresses; separate unique operator and address totals are not sufficient
+without that matching.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
 attestations must have observation timestamps inside the signed run window, match live node-heartbeat

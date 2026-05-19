@@ -61,7 +61,8 @@ deployment gate.
   runtime use with signed per-operator network-observation records exactly matching counted public
   operators and aggregating to the signed network-runtime root,
   an exact one-signature manifest publication count for the current manifest format, exactly one signed
-  external artifact locator for each required raw supporting-record kind, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
+  external artifact locator for each required raw supporting-record kind, one-to-one live operator/address
+  matching for counted public participants, disjoint miner/validator operator IDs and node addresses, auditor IDs distinct
   from the manifest signer with auditor observations at or after the signed run end and valid signed
   auditor-record counts exactly matching `independent_auditor_count`,
   operator-attestation and service-content timestamps inside the signed run window, observed-block

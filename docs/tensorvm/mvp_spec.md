@@ -1879,7 +1879,9 @@ The `publication`, `auditor-record`, `run-window`, `node-heartbeat`, and `operat
 emit the signed manifest fields for the public evidence location, independent auditor records, wall-clock
 run duration, external operator node heartbeats, and operator identity attestations. Counted node
 heartbeats must cover the manifest's full observed block count, counted operators must also have distinct
-node addresses, and counted miner and validator operator/address sets must be disjoint. The current evidence
+node addresses through a one-to-one matching of live operator IDs to live node addresses, and counted miner
+and validator operator/address sets must be disjoint. Unique operator and address totals without such a
+matching do not satisfy public operator independence. The current evidence
 manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
 scalar fields, whitespace-padded field keys, and whitespace-padded scalar values. Public evidence

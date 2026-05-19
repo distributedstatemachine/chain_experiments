@@ -15,7 +15,7 @@ use crate::types::{Address, Hash, Signature, address, hash_bytes, sign, verify_s
 use crate::validator::ValidatorNode;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
@@ -2847,24 +2847,11 @@ impl PublicTestnetEvidenceBundle {
     }
 
     fn live_public_operator_ids(&self) -> BTreeSet<Hash> {
-        let mut miner_operator_ids = BTreeSet::new();
-        let mut validator_operator_ids = BTreeSet::new();
-        for node in &self.run.nodes {
-            if !node.is_live_for_run(self.run.observed_blocks) {
-                continue;
-            }
-            match node.role {
-                PublicNodeRole::Miner => {
-                    miner_operator_ids.insert(node.operator_id);
-                }
-                PublicNodeRole::Validator => {
-                    validator_operator_ids.insert(node.operator_id);
-                }
-            }
-        }
-        validator_operator_ids.retain(|operator_id| !miner_operator_ids.contains(operator_id));
-        miner_operator_ids.extend(validator_operator_ids);
-        miner_operator_ids
+        let (miner_operators, validator_operators) =
+            self.run.matched_independent_public_operators();
+        let mut operator_ids = miner_operators.operator_ids;
+        operator_ids.extend(validator_operators.operator_ids);
+        operator_ids
     }
 
     fn has_network_runtime_observation_records_for_public_operators(
@@ -3118,32 +3105,108 @@ impl PublicTestnetRunEvidence {
     }
 
     fn independent_operator_counts(&self) -> (usize, usize) {
-        let mut miner_operator_ids = BTreeSet::new();
-        let mut miner_addresses = BTreeSet::new();
-        let mut validator_operator_ids = BTreeSet::new();
-        let mut validator_addresses = BTreeSet::new();
-        for node in &self.nodes {
-            if !node.is_live_for_run(self.observed_blocks) {
-                continue;
-            }
-            match node.role {
-                PublicNodeRole::Miner => {
-                    miner_operator_ids.insert(node.operator_id);
-                    miner_addresses.insert(node.address);
-                }
-                PublicNodeRole::Validator => {
-                    validator_operator_ids.insert(node.operator_id);
-                    validator_addresses.insert(node.address);
-                }
-            }
-        }
-        validator_operator_ids.retain(|operator_id| !miner_operator_ids.contains(operator_id));
-        validator_addresses.retain(|address| !miner_addresses.contains(address));
+        let (miner_operators, validator_operators) = self.matched_independent_public_operators();
         (
-            miner_operator_ids.len().min(miner_addresses.len()),
-            validator_operator_ids.len().min(validator_addresses.len()),
+            miner_operators.operator_ids.len(),
+            validator_operators.operator_ids.len(),
         )
     }
+
+    fn matched_independent_public_operators(
+        &self,
+    ) -> (MatchedPublicOperators, MatchedPublicOperators) {
+        let miner_operators = self.matched_public_operators_for_role(
+            PublicNodeRole::Miner,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        );
+        let validator_operators = self.matched_public_operators_for_role(
+            PublicNodeRole::Validator,
+            &miner_operators.operator_ids,
+            &miner_operators.addresses,
+        );
+        (miner_operators, validator_operators)
+    }
+
+    fn matched_public_operators_for_role(
+        &self,
+        role: PublicNodeRole,
+        forbidden_operator_ids: &BTreeSet<Hash>,
+        forbidden_addresses: &BTreeSet<Address>,
+    ) -> MatchedPublicOperators {
+        let mut candidate_addresses_by_operator: BTreeMap<Hash, BTreeSet<Address>> =
+            BTreeMap::new();
+        for node in &self.nodes {
+            if node.role != role
+                || !node.is_live_for_run(self.observed_blocks)
+                || forbidden_operator_ids.contains(&node.operator_id)
+                || forbidden_addresses.contains(&node.address)
+            {
+                continue;
+            }
+            candidate_addresses_by_operator
+                .entry(node.operator_id)
+                .or_default()
+                .insert(node.address);
+        }
+        let mut address_to_operator = BTreeMap::new();
+        for operator_id in candidate_addresses_by_operator.keys().copied() {
+            let mut seen_addresses = BTreeSet::new();
+            match_public_operator_address(
+                operator_id,
+                &candidate_addresses_by_operator,
+                &mut address_to_operator,
+                &mut seen_addresses,
+            );
+        }
+        MatchedPublicOperators::from_address_matching(address_to_operator)
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct MatchedPublicOperators {
+    operator_ids: BTreeSet<Hash>,
+    addresses: BTreeSet<Address>,
+}
+
+impl MatchedPublicOperators {
+    fn from_address_matching(address_to_operator: BTreeMap<Address, Hash>) -> Self {
+        let mut matched = Self::default();
+        for (address, operator_id) in address_to_operator {
+            matched.operator_ids.insert(operator_id);
+            matched.addresses.insert(address);
+        }
+        matched
+    }
+}
+
+fn match_public_operator_address(
+    operator_id: Hash,
+    candidate_addresses_by_operator: &BTreeMap<Hash, BTreeSet<Address>>,
+    address_to_operator: &mut BTreeMap<Address, Hash>,
+    seen_addresses: &mut BTreeSet<Address>,
+) -> bool {
+    let Some(candidate_addresses) = candidate_addresses_by_operator.get(&operator_id) else {
+        return false;
+    };
+    for address in candidate_addresses {
+        if !seen_addresses.insert(*address) {
+            continue;
+        }
+        if let Some(existing_operator_id) = address_to_operator.get(address).copied()
+            && !match_public_operator_address(
+                existing_operator_id,
+                candidate_addresses_by_operator,
+                address_to_operator,
+                seen_addresses,
+            )
+        {
+            continue;
+        }
+        address_to_operator.insert(*address, operator_id);
+        return true;
+    }
+    false
 }
 
 #[derive(Clone, Debug)]
@@ -3962,6 +4025,20 @@ mod tests {
     }
 
     #[test]
+    fn public_operator_matching_rejects_missing_operator_candidates() {
+        let mut address_to_operator = BTreeMap::new();
+        let mut seen_addresses = BTreeSet::new();
+        assert!(!match_public_operator_address(
+            hash_bytes(b"test", &[b"missing-public-operator"]),
+            &BTreeMap::new(),
+            &mut address_to_operator,
+            &mut seen_addresses,
+        ));
+        assert!(address_to_operator.is_empty());
+        assert!(seen_addresses.is_empty());
+    }
+
+    #[test]
     fn network_runtime_observation_helpers_reject_bad_roots_addresses_and_counts() {
         let root_a = hash_bytes(b"test", &[b"network-observation-a"]);
         assert!(
@@ -4672,6 +4749,33 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(shared_node_address.miner_count, 1);
         assert!(!shared_node_address.has_required_miners);
         assert!(!shared_node_address.public_criterion_met);
+
+        let mut unmatched_independence_graph = run.clone();
+        let operator_a = hash_bytes(b"test", &[b"matching-miner-a-operator"]);
+        let operator_b = hash_bytes(b"test", &[b"matching-miner-b-operator"]);
+        let operator_c = hash_bytes(b"test", &[b"matching-miner-c-operator"]);
+        let address_a = address(b"matching-miner-a-address");
+        let address_b = address(b"matching-miner-b-address");
+        let address_c = address(b"matching-miner-c-address");
+        unmatched_independence_graph.nodes = vec![
+            PublicNodeEvidence::miner(address_a, operator_a, 0, 9, 10),
+            PublicNodeEvidence::miner(address_b, operator_a, 0, 9, 10),
+            PublicNodeEvidence::miner(address_c, operator_a, 0, 9, 10),
+            PublicNodeEvidence::miner(address_a, operator_b, 0, 9, 10),
+            PublicNodeEvidence::miner(address_a, operator_c, 0, 9, 10),
+            PublicNodeEvidence::validator(address(b"validator-a"), validator_operator, 0, 9, 10),
+        ];
+        let matching_criteria = PublicTestnetCriteria {
+            min_miners: 3,
+            min_validators: 1,
+            ..criteria
+        };
+        let unmatched_independence_graph =
+            unmatched_independence_graph.evaluate(&matching_criteria, 6, true);
+        assert_eq!(unmatched_independence_graph.miner_count, 2);
+        assert_eq!(unmatched_independence_graph.validator_count, 1);
+        assert!(!unmatched_independence_graph.has_required_miners);
+        assert!(!unmatched_independence_graph.public_criterion_met);
 
         run.nodes[1] = PublicNodeEvidence::miner(
             address(b"miner-b"),

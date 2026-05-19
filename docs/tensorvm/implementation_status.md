@@ -82,7 +82,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   missing quorum, missing redundant agreement, and conflicting learning-state transitions
 - Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
-- Typed public-testnet run evidence evaluation for disjoint distinct miner/validator operators,
+- Typed public-testnet run evidence evaluation for disjoint distinct miner/validator operators, one-to-one
+  matching between live operator IDs and live node addresses for counted public participants,
   signature-verified node heartbeat summaries that cover the observed block count, signed wall-clock
   run-window evidence, observed block continuity, finality rate, data-availability rate, invalid-work
   rejection evidence, reward-settlement records, production libp2p runtime evidence, internally consistent
@@ -222,10 +223,10 @@ preflight, public evidence, or deployment-gated work can count:
   state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 187 passing library tests under Tarpaulin:
+The workspace currently has 188 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 173 in `tensor_vm`
+- 174 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
@@ -249,14 +250,14 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.04% workspace line coverage
-- 8500/8582 workspace lines covered
+- 99.05% workspace line coverage
+- 8529/8611 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7932/7932 `tensor_vm` lines covered
+- 7961/7961 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 177 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 178 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
