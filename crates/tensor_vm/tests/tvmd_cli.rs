@@ -796,6 +796,69 @@ invalid_receipts_rejected=1
 }
 
 #[test]
+fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
+    let data_dir = unique_test_dir("local-testnet-seed");
+    let data_dir_text = data_dir.to_string_lossy().into_owned();
+
+    let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+    assert!(seed.contains("command=local_testnet_seed"));
+    assert!(seed.contains("miners=10"));
+    assert!(seed.contains("validators=5"));
+    assert!(seed.contains("height=2"));
+    assert!(seed.contains("blocks=2"));
+    assert!(seed.contains("matmul_settled=true"));
+    assert!(seed.contains("linear_training_settled=true"));
+    assert!(seed.contains("rewarded_miners="));
+    assert!(seed.contains("data_availability_bps=10000"));
+    assert!(seed.contains("node_store_ready=true"));
+    assert!(seed.contains("persisted_block_count=2"));
+    assert!(seed.contains("public_evidence_full_spec=false"));
+    assert!(seed.contains("independently_checkable=false"));
+
+    let rpc_port = free_local_port();
+    let listen = format!("127.0.0.1:{rpc_port}");
+    let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
+        .args([
+            "service",
+            "serve",
+            "--listen",
+            &listen,
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/0",
+            "--data-dir",
+            &data_dir_text,
+            "--auth-token",
+            "service-token",
+            "--max-requests",
+            "1",
+        ])
+        .current_dir(workspace_root())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("tvmd service serve must spawn");
+
+    let chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(chain_head.contains("HTTP/1.1 200 OK"));
+    assert!(chain_head.contains("\"height\":2"));
+    assert!(chain_head.contains("\"block_count\":2"));
+
+    let output = child.wait_with_output().expect("service process must exit");
+    assert!(
+        output.status.success(),
+        "service serve failed with status {:?}\nstdout:\n{}\nstderr:\n{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
+    assert!(stdout.contains("command=service_serve"));
+    assert!(stdout.contains("served_requests=1"));
+
+    std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+}
+
+#[test]
 fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let data_dir = unique_test_dir("service-cli-lifecycle");
     let data_dir_text = data_dir.to_string_lossy().into_owned();

@@ -83,6 +83,7 @@ pub struct Libp2pControlPlaneConfig {
     pub request_response_protocols: Vec<RequestResponseProtocol>,
     pub listen_addresses: Vec<String>,
     pub bootstrap_addresses: Vec<String>,
+    pub identity_seed: Option<[u8; 32]>,
     pub max_gossipsub_transmit_bytes: usize,
     pub request_timeout_seconds: u64,
     pub max_concurrent_request_streams: usize,
@@ -106,6 +107,7 @@ impl Default for Libp2pControlPlaneConfig {
             ],
             listen_addresses: Vec::new(),
             bootstrap_addresses: Vec::new(),
+            identity_seed: None,
             max_gossipsub_transmit_bytes: 1024 * 1024,
             request_timeout_seconds: 10,
             max_concurrent_request_streams: 128,
@@ -164,7 +166,11 @@ impl Drop for TensorVmLibp2pService {
 }
 
 pub fn build_libp2p_node(config: &Libp2pControlPlaneConfig) -> TvmResult<TensorVmLibp2pNode> {
-    let keypair = libp2p::identity::Keypair::generate_ed25519();
+    let keypair = match config.identity_seed {
+        Some(seed) => libp2p::identity::Keypair::ed25519_from_bytes(seed)
+            .map_err(|_| TvmError::InvalidReceipt("libp2p identity seed rejected"))?,
+        None => libp2p::identity::Keypair::generate_ed25519(),
+    };
     let peer_id = PeerId::from(keypair.public());
     let behaviour = build_libp2p_behaviour(config, &keypair)?;
     let identify_protocol = format!("{LIBP2P_PROTOCOL_PREFIX}/identify");
@@ -917,6 +923,32 @@ mod tests {
                 .contains(&"/tensorchain/1/tensor/chunk".to_owned())
         );
         assert_eq!(node.identify_protocol, "/tensorchain/1/identify");
+    }
+
+    #[test]
+    fn libp2p_node_uses_configured_identity_seed() {
+        let seed = hash_bytes(b"test", &[b"libp2p-identity-seed"]);
+        let peer_a = build_libp2p_node(&Libp2pControlPlaneConfig {
+            identity_seed: Some(seed),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap()
+        .peer_id;
+        let peer_b = build_libp2p_node(&Libp2pControlPlaneConfig {
+            identity_seed: Some(seed),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap()
+        .peer_id;
+        let peer_c = build_libp2p_node(&Libp2pControlPlaneConfig {
+            identity_seed: Some(hash_bytes(b"test", &[b"other-libp2p-identity-seed"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap()
+        .peer_id;
+
+        assert_eq!(peer_a, peer_b);
+        assert_ne!(peer_a, peer_c);
     }
 
     #[test]

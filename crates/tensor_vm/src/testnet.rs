@@ -7206,6 +7206,65 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         }
     }
 
+    #[test]
+    fn public_deployment_readme_records_scaffold_boundary_and_operator_flow() {
+        let readme = include_str!("../../../deploy/tensorvm/README.md");
+        for required in [
+            "These files are not public-testnet evidence by themselves",
+            "env/public-testnet.env.example",
+            "RUNBOOK.md",
+            "systemd/tensorvm.service",
+            "nginx/tensorvm.conf",
+            "manifests/public-testnet.preflight.example",
+            "manifests/public-testnet.evidence.example",
+        ] {
+            assert!(
+                readme.contains(required),
+                "deployment README should list scaffold artifact {required}"
+            );
+        }
+
+        for route in [
+            "GET /health",
+            "GET /rpc/health",
+            "GET /explorer/health",
+            "GET /faucet/health",
+            "GET /telemetry/health",
+            "GET /chain/head",
+            "GET /explorer",
+            "GET /faucet/page",
+            "GET /telemetry/dashboard",
+        ] {
+            assert!(
+                readme.contains(route),
+                "deployment README should record public route {route}"
+            );
+        }
+
+        for required in [
+            "signed service-health records",
+            "signed service-content records",
+            "one signed `network_runtime_observation=...` record per counted public operator",
+            "record-summary-from-file",
+            "record-artifact-from-file",
+            "exactly one artifact locator for each of those six supporting",
+            "cargo build -p tensor_vm --release --features cuda-kernels",
+            "target/release/tvmd miner start --wallet miner.key --device cuda:0 --node",
+            "tvmd service peer add",
+            "tvmd service readiness",
+            "cuda_ready_miner_count",
+            "libp2p_ready_node_count",
+            "independently_checkable=false",
+            "public_evidence_full_spec=false",
+            "real 7-day public run",
+        ] {
+            assert!(
+                readme.contains(required),
+                "deployment README should record operator-flow requirement {required}"
+            );
+        }
+    }
+
     fn assert_public_testnet_preflight_manifest_is_pending(manifest: &str) {
         let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
         let report = plan.evaluate(ChainParams::default().block_time_seconds);

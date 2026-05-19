@@ -15,6 +15,8 @@ VALIDATOR_STAKE="${TENSORVM_VALIDATOR_STAKE:-10000}"
 BOOTSTRAP_PEER_ID="${TENSORVM_BOOTSTRAP_PEER_ID:?TENSORVM_BOOTSTRAP_PEER_ID is required}"
 BOOTSTRAP_ADDRESS="${TENSORVM_BOOTSTRAP_ADDRESS:-/dns4/miner-00/tcp/4001}"
 IS_BOOTSTRAP="${TENSORVM_IS_BOOTSTRAP:-false}"
+IDENTITY_SEED="${TENSORVM_LIBP2P_IDENTITY_SEED:-$OPERATOR_ID}"
+SEED_LOCAL_TESTNET="${TENSORVM_SEED_LOCAL_TESTNET:-false}"
 READY_FILE="$DATA_DIR/local-cpu-ready"
 INIT_OUT="/tmp/tensorvm-service-init.out"
 
@@ -51,9 +53,14 @@ case "$ROLE" in
     ;;
 esac
 
+if [ "$SEED_LOCAL_TESTNET" = "true" ]; then
+  tvmd local-testnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out"
+fi
+
 tvmd service readiness \
   --p2p-listen "$P2P_LISTEN" \
-  --data-dir "$DATA_DIR" > "$DATA_DIR/service-readiness.out"
+  --data-dir "$DATA_DIR" \
+  --identity-seed "$IDENTITY_SEED" > "$DATA_DIR/service-readiness.out"
 
 {
   echo "operator_name=$OPERATOR_NAME"
@@ -61,6 +68,9 @@ tvmd service readiness \
   echo "role=$ROLE"
   echo "node_multiaddr=$NODE_MULTIADDR"
   cat "$DATA_DIR/role-start.out"
+  if [ -f "$DATA_DIR/local-testnet-seed.out" ]; then
+    cat "$DATA_DIR/local-testnet-seed.out"
+  fi
   cat "$DATA_DIR/service-readiness.out"
   echo "public_evidence_full_spec=false"
   echo "independently_checkable=false"
@@ -70,5 +80,6 @@ exec tvmd service serve \
   --listen "$RPC_LISTEN" \
   --p2p-listen "$P2P_LISTEN" \
   --data-dir "$DATA_DIR" \
+  --identity-seed "$IDENTITY_SEED" \
   --auth-token "$AUTH_TOKEN" \
   --max-requests 0

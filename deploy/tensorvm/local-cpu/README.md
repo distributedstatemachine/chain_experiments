@@ -21,9 +21,10 @@ validator-00 ... validator-04
 ```
 
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
-distinct data volume, runs the mandatory libp2p readiness path, and starts `tvmd service serve`. Miner
-containers also run the CPU miner readiness command with `--device cpu`; validators run the validator
-readiness command.
+distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
+libp2p readiness path, and starts `tvmd service serve`. Miner containers also run the CPU miner readiness
+command with `--device cpu`; validators run the validator readiness command. `miner-00` seeds the local
+CPU chain so the gateway exposes settled matmul and LinearTrainingStep work through `/chain/head`.
 
 ## Commands
 

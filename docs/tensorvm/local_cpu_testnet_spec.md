@@ -216,7 +216,7 @@ deployment:
 10 ready miner operators
 5 ready validator operators
 15 distinct operator IDs
-15 distinct libp2p peer IDs
+15 distinct libp2p peer IDs derived from stable operator identities
 15 distinct durable data directories or volumes
 15 libp2p-ready nodes
 10 CPU-ready miners

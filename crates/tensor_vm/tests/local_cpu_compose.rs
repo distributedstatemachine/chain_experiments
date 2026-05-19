@@ -69,6 +69,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("127.0.0.1:8545:8545"));
     assert!(compose.contains("127.0.0.1:4001:4001"));
     assert!(compose.contains("condition: service_healthy"));
+    assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
     assert_eq!(
         compose
             .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
@@ -97,6 +98,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "--device cpu",
         "tvmd validator start",
         "tvmd service readiness",
+        "--identity-seed",
+        "tvmd local-testnet seed",
+        "local-testnet-seed.out",
         "tvmd service serve",
         "public_evidence_full_spec=false",
         "independently_checkable=false",
@@ -113,9 +117,19 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "ready_miners=10",
         "ready_validators=5",
         "distinct_operator_ids=15",
+        "distinct_libp2p_peer_ids=15",
         "libp2p_ready_node_count=15",
         "cpu_ready_miner_count=10",
         "cuda_required_miner_count=0",
+        "p2p_identity_seeded=true",
+        "settled_receipts=10",
+        "matmul_settled=true",
+        "linear_training_settled=true",
+        "rewarded_miners=9",
+        "finality_rate_bps=10000",
+        "data_availability_bps=10000",
+        "\"height\":2",
+        "\"block_count\":2",
         "cargo test -p tensor_vm local_testnet --release",
         "public_evidence_full_spec=false",
         "independently_checkable=false",

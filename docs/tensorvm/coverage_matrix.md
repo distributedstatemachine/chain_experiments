@@ -27,6 +27,30 @@ LinearTrainingStep validation and state transition, local tensor-server availabi
 local-only networking-shim credit, and the explicit separation between local evidence and the 7-day public
 deployment gate.
 
+## Local CPU Compose Gate
+
+[`local_cpu_testnet_spec.md`](local_cpu_testnet_spec.md) maps the first local deployment milestone to the
+checked `deploy/tensorvm/local-cpu/` bundle. The bundle is guarded by
+`local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape`, and the runnable gate is:
+
+```bash
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
+```
+
+The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
+15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
+requires 10 CPU-ready miners and zero CUDA-required miners, verifies the seeded local CPU chain has 10
+settled receipts, settled matmul work, settled LinearTrainingStep work, 9 rewarded miners, full finality
+and data availability, checks that the host gateway exposes the seeded chain head, checks the host gateway
+routes with the local auth token, reruns Gate 0 from the checker, verifies the local-only evidence
+boundary, and passes after restarting `miner-03` and `validator-02`.
+
 ## Acceptance Criteria
 
 | # | Criterion | Evidence |
@@ -91,7 +115,9 @@ deployment gate.
   `testnet::tests::public_deployment_runbook_records_required_evidence_flow` guarding
   `deploy/tensorvm/RUNBOOK.md` coverage of preflight status flags, evidence generator commands, daily
   checkpoint requirements, post-run validation flags, publication artifacts, and the explicit no-real-run
-  blocker, signed public
+  blocker, `testnet::tests::public_deployment_readme_records_scaffold_boundary_and_operator_flow`
+  guarding the deployment README's scaffold file list, public service routes, minimal operator flow,
+  evidence commands, and non-evidence boundary, signed public
   libp2p network-observation CLI generation rejects missing or zero TCP listen ports plus non-public and
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
   from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level

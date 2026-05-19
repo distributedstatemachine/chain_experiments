@@ -49,13 +49,18 @@ pub enum CliCommand {
     ServiceReadiness {
         p2p_listen: String,
         data_dir: String,
+        identity_seed: Option<Hash>,
     },
     ServiceServe {
         listen: String,
         p2p_listen: String,
         data_dir: String,
+        identity_seed: Option<Hash>,
         auth_token: String,
         max_requests: usize,
+    },
+    LocalTestnetSeed {
+        data_dir: String,
     },
     PublicEvidenceValidate {
         manifest: String,
@@ -277,6 +282,21 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         ] => Ok(CliCommand::ServiceReadiness {
             p2p_listen: (*p2p_listen).to_owned(),
             data_dir: (*data_dir).to_owned(),
+            identity_seed: None,
+        }),
+        [
+            "service",
+            "readiness",
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--identity-seed",
+            identity_seed,
+        ] => Ok(CliCommand::ServiceReadiness {
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: Some(parse_hash_argument(identity_seed)?),
         }),
         [
             "service",
@@ -295,8 +315,35 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             listen: (*listen).to_owned(),
             p2p_listen: (*p2p_listen).to_owned(),
             data_dir: (*data_dir).to_owned(),
+            identity_seed: None,
             auth_token: (*auth_token).to_owned(),
             max_requests: parse_usize(max_requests)?,
+        }),
+        [
+            "service",
+            "serve",
+            "--listen",
+            listen,
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+            "--identity-seed",
+            identity_seed,
+            "--auth-token",
+            auth_token,
+            "--max-requests",
+            max_requests,
+        ] => Ok(CliCommand::ServiceServe {
+            listen: (*listen).to_owned(),
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
+            identity_seed: Some(parse_hash_argument(identity_seed)?),
+            auth_token: (*auth_token).to_owned(),
+            max_requests: parse_usize(max_requests)?,
+        }),
+        ["local-testnet", "seed", "--data-dir", data_dir] => Ok(CliCommand::LocalTestnetSeed {
+            data_dir: (*data_dir).to_owned(),
         }),
         ["public-evidence", "validate", "--manifest", manifest] => {
             Ok(CliCommand::PublicEvidenceValidate {
@@ -768,10 +815,12 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::ServiceReadiness {
             p2p_listen,
             data_dir,
+            identity_seed,
         } => {
             let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_description(*identity_seed);
             format!(
-                "check mandatory libp2p service readiness p2p_listen={p2p_listen} data_dir={data_dir} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                "check mandatory libp2p service readiness p2p_listen={p2p_listen} data_dir={data_dir}{identity} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
@@ -782,17 +831,22 @@ pub fn describe_command(command: &CliCommand) -> String {
             listen,
             p2p_listen,
             data_dir,
+            identity_seed,
             auth_token: _,
             max_requests,
         } => {
             let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_description(*identity_seed);
             format!(
-                "serve RPC explorer faucet telemetry over mandatory libp2p listen={listen} p2p_listen={p2p_listen} data_dir={data_dir} max_requests={max_requests} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                "serve RPC explorer faucet telemetry over mandatory libp2p listen={listen} p2p_listen={p2p_listen} data_dir={data_dir}{identity} max_requests={max_requests} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds
             )
+        }
+        CliCommand::LocalTestnetSeed { data_dir } => {
+            format!("seed local CPU testnet data_dir={data_dir}")
         }
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
@@ -996,6 +1050,19 @@ pub fn describe_command(command: &CliCommand) -> String {
     }
 }
 
+fn identity_description(identity_seed: Option<Hash>) -> String {
+    identity_seed
+        .map(|seed| format!(" identity_seed={}", hex(&seed)))
+        .unwrap_or_default()
+}
+
+fn identity_report(identity_seed: Option<Hash>) -> String {
+    match identity_seed {
+        Some(seed) => format!("p2p_identity_seeded=true\np2p_identity_seed={}", hex(&seed)),
+        None => "p2p_identity_seeded=false".to_owned(),
+    }
+}
+
 pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
     let params = ChainParams::default();
     match command {
@@ -1062,12 +1129,14 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
         CliCommand::ServiceReadiness {
             p2p_listen,
             data_dir,
+            identity_seed,
         } => {
             ensure_libp2p_multiaddr(p2p_listen)?;
             ensure_data_dir(data_dir)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_report(*identity_seed);
             Ok(format!(
-                "command=service_readiness\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nnode_store_required=true\nlibp2p_ready=true",
+                "command=service_readiness\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nnode_store_required=true\nlibp2p_ready=true",
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
@@ -1078,6 +1147,7 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             listen,
             p2p_listen,
             data_dir,
+            identity_seed,
             auth_token,
             max_requests,
         } => {
@@ -1086,12 +1156,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             ensure_data_dir(data_dir)?;
             ensure_auth_token(auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
+            let identity = identity_report(*identity_seed);
             Ok(format!(
-                "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true",
+                "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nauth_enabled=true\nmax_requests={max_requests}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true",
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds
+            ))
+        }
+        CliCommand::LocalTestnetSeed { data_dir } => {
+            ensure_data_dir(data_dir)?;
+            Ok(format!(
+                "command=local_testnet_seed\ndata_dir={data_dir}\nlocal_cpu_seed_ready=true"
             ))
         }
         CliCommand::PublicEvidenceServiceHealth {
@@ -3567,6 +3644,12 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             CliCommand::ValidatorStatus
         );
         assert_eq!(
+            parse_cli_parts(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+            CliCommand::LocalTestnetSeed {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+            }
+        );
+        assert_eq!(
             parse_cli_parts(&[
                 "public-evidence",
                 "validate",
@@ -4154,6 +4237,26 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             CliCommand::ServiceReadiness {
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
+            }
+        );
+        let identity_seed = "11".repeat(32);
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
+                "readiness",
+                "--p2p-listen",
+                "/ip4/0.0.0.0/tcp/4001",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--identity-seed",
+                &identity_seed,
+            ])
+            .unwrap(),
+            CliCommand::ServiceReadiness {
+                p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: Some([0x11; 32]),
             }
         );
         assert_eq!(
@@ -4176,6 +4279,34 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 listen: "0.0.0.0:8545".to_owned(),
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
+                auth_token: "secret".to_owned(),
+                max_requests: 0,
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
+                "serve",
+                "--listen",
+                "0.0.0.0:8545",
+                "--p2p-listen",
+                "/ip4/0.0.0.0/tcp/4001",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--identity-seed",
+                &identity_seed,
+                "--auth-token",
+                "secret",
+                "--max-requests",
+                "0",
+            ])
+            .unwrap(),
+            CliCommand::ServiceServe {
+                listen: "0.0.0.0:8545".to_owned(),
+                p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: Some([0x11; 32]),
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
             }
@@ -4244,6 +4375,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 CliCommand::ServiceReadiness {
                     p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                     data_dir: "/var/lib/tensorvm".to_owned(),
+                    identity_seed: None,
                 },
                 "check mandatory libp2p service readiness p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
             ),
@@ -4252,10 +4384,17 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     listen: "0.0.0.0:8545".to_owned(),
                     p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                     data_dir: "/var/lib/tensorvm".to_owned(),
+                    identity_seed: None,
                     auth_token: "secret".to_owned(),
                     max_requests: 0,
                 },
                 "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
+            ),
+            (
+                CliCommand::LocalTestnetSeed {
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                },
+                "seed local CPU testnet data_dir=/var/lib/tensorvm",
             ),
             (
                 CliCommand::PublicEvidenceValidate {
@@ -4638,6 +4777,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let service_readiness = execute_reference_cli_command(&CliCommand::ServiceReadiness {
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
+            identity_seed: Some([0x11; 32]),
         })
         .unwrap();
         assert!(service_readiness.contains("command=service_readiness"));
@@ -4646,6 +4786,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_readiness.contains("p2p_identify=enabled"));
         assert!(service_readiness.contains("p2p_kademlia=enabled"));
         assert!(service_readiness.contains("p2p_request_response=enabled"));
+        assert!(service_readiness.contains("p2p_identity_seeded=true"));
+        assert!(service_readiness.contains(&format!("p2p_identity_seed={}", "11".repeat(32))));
         assert!(service_readiness.contains("p2p_max_transmit_bytes=1048576"));
         assert!(service_readiness.contains("p2p_request_timeout_seconds=10"));
         assert!(service_readiness.contains("p2p_max_concurrent_streams=128"));
@@ -4653,10 +4795,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_readiness.contains("node_store_required=true"));
         assert!(service_readiness.contains("libp2p_ready=true"));
 
+        let unseeded_service_readiness =
+            execute_reference_cli_command(&CliCommand::ServiceReadiness {
+                p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
+            })
+            .unwrap();
+        assert!(unseeded_service_readiness.contains("p2p_identity_seeded=false"));
+
         let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
+            identity_seed: Some([0x22; 32]),
             auth_token: "secret".to_owned(),
             max_requests: 0,
         })
@@ -4667,6 +4819,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_serve.contains("p2p_identify=enabled"));
         assert!(service_serve.contains("p2p_kademlia=enabled"));
         assert!(service_serve.contains("p2p_request_response=enabled"));
+        assert!(service_serve.contains("p2p_identity_seeded=true"));
+        assert!(service_serve.contains(&format!("p2p_identity_seed={}", "22".repeat(32))));
         assert!(service_serve.contains("p2p_max_transmit_bytes=1048576"));
         assert!(service_serve.contains("p2p_request_timeout_seconds=10"));
         assert!(service_serve.contains("p2p_max_concurrent_streams=128"));
@@ -4677,6 +4831,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_serve.contains("faucet_routes=enabled"));
         assert!(service_serve.contains("telemetry_routes=enabled"));
         assert!(service_serve.contains("node_store_required=true"));
+
+        let local_seed = execute_reference_cli_command(&CliCommand::LocalTestnetSeed {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+        })
+        .unwrap();
+        assert!(local_seed.contains("command=local_testnet_seed"));
+        assert!(local_seed.contains("data_dir=/var/lib/tensorvm"));
+        assert!(local_seed.contains("local_cpu_seed_ready=true"));
 
         let public_command = CliCommand::PublicEvidenceValidate {
             manifest: "evidence.txt".to_owned(),
@@ -5864,6 +6026,7 @@ p2p_idle_timeout_seconds=60
                 listen: "localhost:8545".to_owned(),
                 p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
             })
@@ -5873,6 +6036,7 @@ p2p_idle_timeout_seconds=60
             execute_reference_cli_command(&CliCommand::ServiceReadiness {
                 p2p_listen: "not-a-multiaddr".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
             })
             .is_err()
         );
@@ -5880,6 +6044,7 @@ p2p_idle_timeout_seconds=60
             execute_reference_cli_command(&CliCommand::ServiceReadiness {
                 p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: " ".to_owned(),
+                identity_seed: None,
             })
             .is_err()
         );
@@ -5888,6 +6053,7 @@ p2p_idle_timeout_seconds=60
                 listen: "127.0.0.1:8545".to_owned(),
                 p2p_listen: "not-a-multiaddr".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
             })
@@ -5898,6 +6064,7 @@ p2p_idle_timeout_seconds=60
                 listen: "127.0.0.1:8545".to_owned(),
                 p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: " ".to_owned(),
+                identity_seed: None,
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
             })
@@ -5908,6 +6075,7 @@ p2p_idle_timeout_seconds=60
                 listen: "127.0.0.1:8545".to_owned(),
                 p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
+                identity_seed: None,
                 auth_token: " ".to_owned(),
                 max_requests: 0,
             })
