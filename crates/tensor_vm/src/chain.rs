@@ -1,5 +1,7 @@
 use crate::challenge::ChallengeOutcome;
-use crate::error::{Result, TvmError};
+use crate::error::Result;
+#[cfg(test)]
+use crate::error::TvmError;
 #[cfg(test)]
 use crate::jobs::PrimitiveType;
 use crate::jobs::{LinearTrainingStepReceipt, TensorOpReceipt};
@@ -18,6 +20,7 @@ mod receipts;
 mod roots;
 mod settlement;
 mod state;
+mod transactions;
 mod validation;
 
 use roots::{
@@ -196,22 +199,7 @@ impl LocalChain {
     }
 
     pub fn apply_transaction(&mut self, from: Option<Address>, tx: Transaction) -> Result<()> {
-        match tx {
-            Transaction::RegisterMiner(address) => {
-                self.register_miner(address, self.params.miner_min_stake)
-            }
-            Transaction::RegisterValidator(address) => {
-                self.register_validator(address, self.params.validator_min_stake)
-            }
-            Transaction::Transfer { to, amount } => {
-                let from = from.ok_or(TvmError::InvalidReceipt("missing sender"))?;
-                self.transfer(from, to, amount)
-            }
-            Transaction::ClaimReward(address) => accounts::claim_reward(self, address),
-            Transaction::SubmitTensorOpReceipt(_)
-            | Transaction::SubmitLinearTrainingStepReceipt(_)
-            | Transaction::SubmitAttestation(_) => Ok(()),
-        }
+        transactions::apply(self, from, tx)
     }
 
     pub fn submit_attestation(&mut self, attestation: ValidatorAttestation) -> Result<()> {
