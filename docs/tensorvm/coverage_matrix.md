@@ -84,7 +84,10 @@ deployment gate.
   deployment readiness can pass, rejects whitespace-padded preflight `service=...` comma-separated values,
   requires exactly one ready RPC, explorer, faucet, and telemetry preflight service plan, rejects duplicate
   or extra preflight service plans, and deployment templates plus checked preflight and non-full-spec post-run evidence example manifests
-  live under `deploy/tensorvm/`,
+  live under `deploy/tensorvm/`, with
+  `testnet::tests::public_deployment_templates_require_libp2p_and_https_surfaces` guarding the env,
+  systemd, and nginx templates for mandatory libp2p startup, durable data-dir use, auth-token wiring,
+  TLS proxying, and the required public HTTPS surfaces,
   `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, signed public
   libp2p network-observation CLI generation rejects missing or zero TCP listen ports plus non-public and
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
@@ -117,8 +120,8 @@ deployment gate.
   `tvmd service serve` startup of the same runtime, durable bootstrap peer-book persistence
   with peer-ID-preserving dial multiaddrs, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer/telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
-  `tvmd service init/peer add/readiness/serve` launch validation with required libp2p listen multiaddrs, deployable
-  systemd/nginx templates, a documented mandatory-libp2p networking choice, and a restartable reference
+  `tvmd service init/peer add/readiness/serve` launch validation with required libp2p listen multiaddrs, checked deployable
+  systemd/env/nginx templates, a documented mandatory-libp2p networking choice, and a restartable reference
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence.

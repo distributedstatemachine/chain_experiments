@@ -7089,6 +7089,55 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_public_testnet_preflight_manifest_is_pending(manifest);
     }
 
+    #[test]
+    fn public_deployment_templates_require_libp2p_and_https_surfaces() {
+        let env = include_str!("../../../deploy/tensorvm/env/public-testnet.env.example");
+        for required in [
+            "TVMD_LISTEN=127.0.0.1:8545",
+            "TVMD_P2P_LISTEN=/ip4/0.0.0.0/tcp/4001",
+            "TVMD_DATA_DIR=/var/lib/tensorvm",
+            "TVMD_AUTH_TOKEN=replace-with-high-entropy-token",
+            "tvmd service peer add --data-dir \"$TVMD_DATA_DIR\"",
+        ] {
+            assert!(
+                env.contains(required),
+                "deployment env template should contain {required}"
+            );
+        }
+
+        let systemd = include_str!("../../../deploy/tensorvm/systemd/tensorvm.service");
+        for required in [
+            "ExecStartPre=/usr/local/bin/tvmd service init --data-dir ${TVMD_DATA_DIR}",
+            "ExecStart=/usr/local/bin/tvmd service serve",
+            "--p2p-listen ${TVMD_P2P_LISTEN}",
+            "--data-dir ${TVMD_DATA_DIR}",
+            "--auth-token ${TVMD_AUTH_TOKEN}",
+            "ReadWritePaths=/var/lib/tensorvm",
+            "NoNewPrivileges=true",
+            "ProtectSystem=strict",
+        ] {
+            assert!(
+                systemd.contains(required),
+                "systemd service template should contain {required}"
+            );
+        }
+
+        let nginx = include_str!("../../../deploy/tensorvm/nginx/tensorvm.conf");
+        for required in [
+            "listen 443 ssl http2;",
+            "server_name rpc.example.test explorer.example.test faucet.example.test telemetry.example.test;",
+            "proxy_set_header X-Forwarded-Proto https;",
+            "client_max_body_size 2m;",
+            "proxy_pass http://tensorvm_service;",
+            "return 301 https://$host$request_uri;",
+        ] {
+            assert!(
+                nginx.contains(required),
+                "nginx template should contain {required}"
+            );
+        }
+    }
+
     fn assert_public_testnet_preflight_manifest_is_pending(manifest: &str) {
         let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
         let report = plan.evaluate(ChainParams::default().block_time_seconds);

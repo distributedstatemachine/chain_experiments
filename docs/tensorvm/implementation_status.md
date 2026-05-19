@@ -140,7 +140,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   manifest and reports `public_evidence_full_spec=false`
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
-  hostnames, an operator runbook for external launch/evidence collection/publication, a preflight manifest
+  hostnames, a template guard test that requires mandatory libp2p startup, durable data-dir use,
+  auth-token wiring, hardened systemd settings, TLS proxying, and the required public HTTPS surfaces, an
+  operator runbook for external launch/evidence collection/publication, a preflight manifest
   example that parses but does not report launch readiness until special-use placeholder hosts are
   replaced, checked spec-path pending manifests at `docs/tensorvm/public-testnet.preflight` and
   `docs/tensorvm/public-testnet.evidence` that parse from the documented CLI paths while intentionally
@@ -228,10 +230,10 @@ preflight, public evidence, or deployment-gated work can count:
   state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 188 passing library tests under Tarpaulin:
+The workspace currently has 189 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 174 in `tensor_vm`
+- 175 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
@@ -262,7 +264,7 @@ The current instrumented Tarpaulin line coverage is documented in
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 178 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 179 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
@@ -294,7 +296,7 @@ These spec items require real deployment or non-reference infrastructure and are
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
   wrapper, `tvmd service init/peer add/readiness/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
-  block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
+  block-log, full-chain state, and peer-book persistence, plus tested deployable systemd/env/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,
   shared-address, benchmarking, multicast, reserved, malformed service URLs, root-only service URLs, and
   service URLs with query strings or fragments
