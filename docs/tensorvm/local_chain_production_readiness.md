@@ -450,8 +450,8 @@ jobs, receipts, attestations, and votes.
 
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
-receipts. Live per-receipt attestation details, tensor-server fetch evidence, and all-node head convergence
-still need hard checker assertions.
+receipts, and per-receipt validator-attestation details. Live tensor-server fetch evidence and all-node
+head convergence still need hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

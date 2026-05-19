@@ -142,6 +142,20 @@ fn json_number_field(body: &str, key: &str) -> u64 {
     digits.parse().expect("JSON numeric field must parse")
 }
 
+fn json_positive_field_count(body: &str, key: &str) -> usize {
+    let marker = format!("\"{key}\":");
+    body.match_indices(&marker)
+        .filter(|(idx, _)| {
+            let tail = &body[idx + marker.len()..];
+            let digits = tail
+                .chars()
+                .take_while(|character| character.is_ascii_digit())
+                .collect::<String>();
+            digits.parse::<u64>().is_ok_and(|value| value > 0)
+        })
+        .count()
+}
+
 fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
     stdout
         .lines()
@@ -845,7 +859,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "3",
+            "4",
         ])
         .env("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS", "25")
         .current_dir(workspace_root())
@@ -870,6 +884,12 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(json_number_field(overview_body, "receipt_count") > 10);
     assert!(json_number_field(overview_body, "settled_receipt_count") > 10);
 
+    let receipts = authenticated_get_request(rpc_port, "/explorer/receipts/latest/500");
+    assert!(receipts.contains("HTTP/1.1 200 OK"));
+    let receipts_body = response_body(&receipts);
+    assert!(receipts_body.contains("\"validator_attestations\""));
+    assert!(json_positive_field_count(receipts_body, "attestation_count") > 10);
+
     let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
     assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
@@ -887,7 +907,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
     assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("served_requests=3"));
+    assert!(stdout.contains("served_requests=4"));
     assert!(
         stdout_value(&stdout, "produced_blocks")
             .parse::<usize>()

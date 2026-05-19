@@ -147,6 +147,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "live_synthetic_jobs=true",
         "live_linear_training_jobs=true",
         "live_attestations=true",
+        "live_receipt_attestations=true",
         "live_rewards=true",
         "data-ui=\"ratzilla-tui\"",
         "new WebSocket",

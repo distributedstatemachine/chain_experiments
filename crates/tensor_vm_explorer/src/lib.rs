@@ -159,18 +159,22 @@ pub struct ExplorerReceipt {
     pub primitive_type: String,
     pub miner: String,
     pub tensor_work_units: u64,
+    pub attestation_count: usize,
+    pub validator_attestations: Vec<String>,
     pub settled: bool,
 }
 
 impl ExplorerReceipt {
     pub fn to_json(&self) -> String {
         format!(
-            "{{\"receipt_id\":\"{}\",\"job_id\":\"{}\",\"primitive_type\":\"{}\",\"miner\":\"{}\",\"tensor_work_units\":{},\"settled\":{}}}",
+            "{{\"receipt_id\":\"{}\",\"job_id\":\"{}\",\"primitive_type\":\"{}\",\"miner\":\"{}\",\"tensor_work_units\":{},\"attestation_count\":{},\"validator_attestations\":{},\"settled\":{}}}",
             escape_json(&self.receipt_id),
             escape_json(&self.job_id),
             escape_json(&self.primitive_type),
             escape_json(&self.miner),
             self.tensor_work_units,
+            self.attestation_count,
+            json_string_array(&self.validator_attestations),
             self.settled
         )
     }
@@ -434,8 +438,8 @@ function renderOverview(data) {
     `<tr>${cell(m.address, true)}${cell(m.stake)}${cell(m.settled_tensor_work)}${cell(m.pending_tensor_work)}${cell(m.hardware_class)}${cell(m.reward_balance)}</tr>`));
   renderTable("validators", "validator-count", ["Address", "Stake", "Valid", "Missed", "Rewards"], (data.validators || []).map(v =>
     `<tr>${cell(v.address, true)}${cell(v.stake)}${cell(v.valid_attestations)}${cell(v.missed_assignments)}${cell(v.reward_balance)}</tr>`));
-  renderTable("receipts", "receipt-count", ["Receipt", "Job", "Type", "Miner", "Work", "Settled"], (data.receipts || []).map(r =>
-    `<tr>${cell(r.receipt_id, true)}${cell(r.job_id, true)}${cell(r.primitive_type)}${cell(r.miner, true)}${cell(r.tensor_work_units)}${cell(r.settled)}</tr>`));
+  renderTable("receipts", "receipt-count", ["Receipt", "Job", "Type", "Miner", "Work", "Attest", "Settled"], (data.receipts || []).map(r =>
+    `<tr>${cell(r.receipt_id, true)}${cell(r.job_id, true)}${cell(r.primitive_type)}${cell(r.miner, true)}${cell(r.tensor_work_units)}${cell(r.attestation_count)}${cell(r.settled)}</tr>`));
   renderTable("jobs", "job-count", ["Job", "Type", "Deadline", "Detail"], (data.jobs || []).map(j =>
     `<tr>${cell(j.job_id, true)}${cell(j.primitive_type)}${cell(j.deadline_block)}${cell(j.detail)}</tr>`));
 }
@@ -483,6 +487,14 @@ setInterval(refresh, 3000);
 
 fn json_array<T>(items: &[T], render: fn(&T) -> String) -> String {
     let parts = items.iter().map(render).collect::<Vec<_>>();
+    format!("[{}]", parts.join(","))
+}
+
+fn json_string_array(items: &[String]) -> String {
+    let parts = items
+        .iter()
+        .map(|item| format!("\"{}\"", escape_json(item)))
+        .collect::<Vec<_>>();
     format!("[{}]", parts.join(","))
 }
 
@@ -543,6 +555,18 @@ mod tests {
         assert!(summary.to_json().contains("\"settled_receipt_count\":10"));
         assert!(summary.to_json().contains("\"model_count\":1"));
         assert!(summary.to_json().contains("\"attestation_count\":30"));
+        let receipts = receipts_json(&[ExplorerReceipt {
+            receipt_id: "receipt".to_owned(),
+            job_id: "job".to_owned(),
+            primitive_type: "tensor_op".to_owned(),
+            miner: "miner".to_owned(),
+            tensor_work_units: 5,
+            attestation_count: 2,
+            validator_attestations: vec!["validator-a".to_owned(), "validator-b".to_owned()],
+            settled: true,
+        }]);
+        assert!(receipts.contains("\"attestation_count\":2"));
+        assert!(receipts.contains("\"validator_attestations\":[\"validator-a\",\"validator-b\"]"));
 
         let html = explorer_shell_html("ws://127.0.0.1:8545/explorer/ws?token=secret");
         assert!(html.contains("TensorVM Explorer"));

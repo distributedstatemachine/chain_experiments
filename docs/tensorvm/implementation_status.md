@@ -283,10 +283,11 @@ preflight, public evidence, or deployment-gated work can count:
   with `standalone_explorer_ready=true` and
   `standalone_explorer_websocket_polling=true`; the gate now also requires
   `live_block_production=true`, `live_synthetic_jobs=true`, `live_linear_training_jobs=true`,
-  `live_attestations=true`, and `live_rewards=true`, proving `/chain/head` and explorer counters advance
-  past the seeded two-block baseline, at least one live LinearTrainingStep advances model state after
-  startup, validators add attestations, and settled live work credits new rewards; the same check passed
-  again after
+  `live_attestations=true`, `live_receipt_attestations=true`, and `live_rewards=true`, proving
+  `/chain/head` and explorer counters advance past the seeded two-block baseline, at least one live
+  LinearTrainingStep advances model state after startup, validators add attestations, `/explorer/receipts`
+  exposes per-receipt validator attestation details for live receipts, and settled live work credits new
+  rewards; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
 The workspace currently has 211 passing library tests under Tarpaulin:
@@ -319,12 +320,12 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.15% workspace line coverage
-- 9620/9702 workspace lines covered
+- 99.16% workspace line coverage
+- 9636/9718 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8780/8780 `tensor_vm` lines covered
+- 8791/8791 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
-- 272/272 `tensor_vm_explorer` lines covered
+- 277/277 `tensor_vm_explorer` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

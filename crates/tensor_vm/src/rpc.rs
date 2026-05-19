@@ -982,13 +982,25 @@ fn explorer_receipts(chain: &LocalChain, limit: usize) -> Vec<ExplorerReceipt> {
         .iter()
         .rev()
         .take(limit)
-        .map(|(receipt_id, receipt)| ExplorerReceipt {
-            receipt_id: hex(receipt_id),
-            job_id: hex(&receipt.job_id()),
-            primitive_type: primitive_label(receipt.primitive_type()).to_owned(),
-            miner: hex(&receipt.miner()),
-            tensor_work_units: receipt.tensor_work_units(),
-            settled: chain.state.settled_receipts.contains(receipt_id),
+        .map(|(receipt_id, receipt)| {
+            let validator_attestations: Vec<_> = chain
+                .state
+                .attestations
+                .get(receipt_id)
+                .into_iter()
+                .flat_map(|attestations| attestations.iter())
+                .map(|attestation| hex(&attestation.validator))
+                .collect();
+            ExplorerReceipt {
+                receipt_id: hex(receipt_id),
+                job_id: hex(&receipt.job_id()),
+                primitive_type: primitive_label(receipt.primitive_type()).to_owned(),
+                miner: hex(&receipt.miner()),
+                tensor_work_units: receipt.tensor_work_units(),
+                attestation_count: validator_attestations.len(),
+                validator_attestations,
+                settled: chain.state.settled_receipts.contains(receipt_id),
+            }
         })
         .collect()
 }
@@ -2198,6 +2210,8 @@ mod tests {
         let receipts =
             rpc.explorer_websocket_response("{\"type\":\"receipts\",\"receipt_limit\":1}");
         assert!(receipts.contains("\"primitive_type\":\"tensor_op\""));
+        assert!(receipts.contains("\"attestation_count\":0"));
+        assert!(receipts.contains("\"validator_attestations\":[]"));
         assert!(receipts.contains("\"settled\":true"));
         let blocks = rpc.explorer_websocket_response("{\"type\":\"blocks\",\"block_limit\":1}");
         assert!(blocks.contains("\"blocks\""));

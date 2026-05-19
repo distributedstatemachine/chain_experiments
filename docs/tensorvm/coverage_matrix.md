@@ -53,8 +53,9 @@ routes with the local auth token, checks the standalone explorer service on port
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup
 height, block, job, receipt, settled-receipt, model-count, attestation-count, and reward-balance
 advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
-rewards after the seed, reruns Gate 0 from the checker, verifies the local-only evidence boundary, and
-passes after restarting `miner-03` and `validator-02`.
+rewards after the seed, requires live receipt details to expose validator attestation counts, reruns Gate 0
+from the checker, verifies the local-only evidence boundary, and passes after restarting `miner-03` and
+`validator-02`.
 
 ## Acceptance Criteria
 

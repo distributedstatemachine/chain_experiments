@@ -36,7 +36,7 @@ script.
 
 The check script waits for `/chain/head` and `/explorer/overview` to move past the seeded two-block
 snapshot, including new jobs, receipts, settled receipts, model-count advancement, validator-attestation
-growth, and reward growth from live synthetic work.
+growth, per-receipt validator-attestation details, and reward growth from live synthetic work.
 
 ## Commands
 
