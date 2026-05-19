@@ -2603,13 +2603,19 @@ impl PublicTestnetEvidenceBundle {
                 self.finality_history_records,
                 &self.finality_history_signature,
             );
-        let (miner_count, validator_count) = self.run.independent_operator_counts();
+        let (miner_operators, validator_operators) = self
+            .run
+            .matched_independent_public_operators_for_criteria(criteria);
+        let miner_count = miner_operators.operator_ids.len();
+        let validator_count = validator_operators.operator_ids.len();
         let required_operator_attestation_count = miner_count + validator_count;
         let required_operator_attestations = required_operator_attestation_count as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
             && self.operator_identity_attestation_records == required_operator_attestations
             && self.has_operator_identity_attestation_records_for_public_operators(
                 required_operator_attestation_count,
+                &miner_operators,
+                &validator_operators,
             );
         let run_evidence = self.run.evaluate(
             criteria,
@@ -2626,6 +2632,8 @@ impl PublicTestnetEvidenceBundle {
                     == required_network_runtime_observations
                 && self.has_network_runtime_observation_records_for_public_operators(
                     required_network_runtime_observation_count,
+                    &miner_operators,
+                    &validator_operators,
                 )
                 && self.public_record_signature_valid(
                     PublicEvidenceRecordKind::NetworkRuntimeObservations,
@@ -2813,11 +2821,14 @@ impl PublicTestnetEvidenceBundle {
     fn has_operator_identity_attestation_records_for_public_operators(
         &self,
         required_count: usize,
+        miner_operators: &MatchedPublicOperators,
+        validator_operators: &MatchedPublicOperators,
     ) -> bool {
         if self.operator_identity_attestations.len() != required_count {
             return false;
         }
-        let expected_attestation_keys = self.live_public_operator_attestation_keys();
+        let expected_attestation_keys =
+            Self::public_operator_attestation_keys(miner_operators, validator_operators);
         if expected_attestation_keys.len() != required_count {
             return false;
         }
@@ -2841,31 +2852,35 @@ impl PublicTestnetEvidenceBundle {
         observed_attestation_keys == expected_attestation_keys
     }
 
-    fn live_public_operator_attestation_keys(&self) -> BTreeSet<Hash> {
-        let (miner_operators, validator_operators) =
-            self.run.matched_independent_public_operators();
+    fn public_operator_attestation_keys(
+        miner_operators: &MatchedPublicOperators,
+        validator_operators: &MatchedPublicOperators,
+    ) -> BTreeSet<Hash> {
         let mut attestation_keys = miner_operators.attestation_keys_for_role(PublicNodeRole::Miner);
         attestation_keys
             .extend(validator_operators.attestation_keys_for_role(PublicNodeRole::Validator));
         attestation_keys
     }
 
-    fn live_public_operator_ids(&self) -> BTreeSet<Hash> {
-        let (miner_operators, validator_operators) =
-            self.run.matched_independent_public_operators();
-        let mut operator_ids = miner_operators.operator_ids;
-        operator_ids.extend(validator_operators.operator_ids);
+    fn public_operator_ids(
+        miner_operators: &MatchedPublicOperators,
+        validator_operators: &MatchedPublicOperators,
+    ) -> BTreeSet<Hash> {
+        let mut operator_ids = miner_operators.operator_ids.clone();
+        operator_ids.extend(validator_operators.operator_ids.iter().copied());
         operator_ids
     }
 
     fn has_network_runtime_observation_records_for_public_operators(
         &self,
         required_count: usize,
+        miner_operators: &MatchedPublicOperators,
+        validator_operators: &MatchedPublicOperators,
     ) -> bool {
         if self.network_runtime_observations.len() != required_count {
             return false;
         }
-        let expected_operator_ids = self.live_public_operator_ids();
+        let expected_operator_ids = Self::public_operator_ids(miner_operators, validator_operators);
         if expected_operator_ids.len() != required_count {
             return false;
         }
@@ -2899,7 +2914,10 @@ impl PublicTestnetRunEvidence {
         block_time_seconds: u64,
         external_operator_evidence: bool,
     ) -> PublicTestnetEvidence {
-        let (miner_count, validator_count) = self.independent_operator_counts();
+        let (miner_operators, validator_operators) =
+            self.matched_independent_public_operators_for_criteria(criteria);
+        let miner_count = miner_operators.operator_ids.len();
+        let validator_count = validator_operators.operator_ids.len();
         let required_blocks =
             required_blocks_for_days(criteria.duration_days, block_time_seconds.max(1));
         let required_duration_seconds = required_duration_seconds_for_days(criteria.duration_days);
@@ -3108,28 +3126,42 @@ impl PublicTestnetRunEvidence {
             && observed_at_unix_seconds <= self.run_ended_at_unix_seconds
     }
 
-    fn independent_operator_counts(&self) -> (usize, usize) {
-        let (miner_operators, validator_operators) = self.matched_independent_public_operators();
-        (
-            miner_operators.operator_ids.len(),
-            validator_operators.operator_ids.len(),
-        )
+    fn matched_independent_public_operators_for_criteria(
+        &self,
+        criteria: &PublicTestnetCriteria,
+    ) -> (MatchedPublicOperators, MatchedPublicOperators) {
+        let miner_first =
+            self.matched_independent_public_operators_starting_with(PublicNodeRole::Miner);
+        let validator_first =
+            self.matched_independent_public_operators_starting_with(PublicNodeRole::Validator);
+        let miner_first_score = public_operator_matching_score(criteria, &miner_first);
+        let validator_first_score = public_operator_matching_score(criteria, &validator_first);
+        if validator_first_score > miner_first_score {
+            validator_first
+        } else {
+            miner_first
+        }
     }
 
-    fn matched_independent_public_operators(
+    fn matched_independent_public_operators_starting_with(
         &self,
+        first_role: PublicNodeRole,
     ) -> (MatchedPublicOperators, MatchedPublicOperators) {
-        let miner_operators = self.matched_public_operators_for_role(
-            PublicNodeRole::Miner,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
+        let first_operators =
+            self.matched_public_operators_for_role(first_role, &BTreeSet::new(), &BTreeSet::new());
+        let second_role = match first_role {
+            PublicNodeRole::Miner => PublicNodeRole::Validator,
+            PublicNodeRole::Validator => PublicNodeRole::Miner,
+        };
+        let second_operators = self.matched_public_operators_for_role(
+            second_role,
+            &first_operators.operator_ids,
+            &first_operators.addresses,
         );
-        let validator_operators = self.matched_public_operators_for_role(
-            PublicNodeRole::Validator,
-            &miner_operators.operator_ids,
-            &miner_operators.addresses,
-        );
-        (miner_operators, validator_operators)
+        match first_role {
+            PublicNodeRole::Miner => (first_operators, second_operators),
+            PublicNodeRole::Validator => (second_operators, first_operators),
+        }
     }
 
     fn matched_public_operators_for_role(
@@ -3192,6 +3224,21 @@ impl MatchedPublicOperators {
         }
         attestation_keys
     }
+}
+
+fn public_operator_matching_score(
+    criteria: &PublicTestnetCriteria,
+    operators: &(MatchedPublicOperators, MatchedPublicOperators),
+) -> (bool, usize, usize, usize, usize) {
+    let miner_count = operators.0.operator_ids.len();
+    let validator_count = operators.1.operator_ids.len();
+    (
+        miner_count >= criteria.min_miners && validator_count >= criteria.min_validators,
+        miner_count.min(criteria.min_miners) + validator_count.min(criteria.min_validators),
+        miner_count + validator_count,
+        miner_count,
+        validator_count,
+    )
 }
 
 fn public_operator_attestation_key(
@@ -4049,6 +4096,29 @@ mod tests {
         .expect("generated network observation roots should aggregate")
     }
 
+    fn public_network_runtime_observation(
+        operator_id: Hash,
+        node_index: usize,
+        observed_at_unix_seconds: u64,
+    ) -> PublicNetworkRuntimeObservation {
+        PublicNetworkRuntimeObservation::new(PublicNetworkRuntimeObservationDetails {
+            operator_id,
+            peer_id: deterministic_public_network_peer_id(&operator_id),
+            listen_address: format!(
+                "/dns/role-order-node-{node_index}.tensorvm.net/tcp/{}",
+                4_101 + node_index
+            ),
+            observed_at_unix_seconds,
+            gossip_topic_count: 5,
+            request_response_protocol_count: 3,
+            bootstrap_peer_count: 2,
+            max_transmit_bytes: 1_048_576,
+            request_timeout_seconds: 10,
+            max_concurrent_streams: 128,
+            idle_connection_timeout_seconds: 60,
+        })
+    }
+
     #[test]
     fn public_operator_matching_rejects_missing_operator_candidates() {
         let mut address_to_operator = BTreeMap::new();
@@ -4109,7 +4179,25 @@ mod tests {
 
         let mut bundle = complete_public_evidence_bundle();
         bundle.run.nodes[0].signed_heartbeat_count = 0;
-        assert!(!bundle.has_network_runtime_observation_records_for_public_operators(3));
+        let criteria = PublicTestnetCriteria {
+            min_miners: 2,
+            min_validators: 1,
+            duration_days: 0,
+            min_finality_rate_bps: 9_000,
+            min_data_availability_bps: 9_500,
+            min_invalid_work_rejections: 1,
+            min_reward_settlement_records: 1,
+        };
+        let (miner_operators, validator_operators) = bundle
+            .run
+            .matched_independent_public_operators_for_criteria(&criteria);
+        assert!(
+            !bundle.has_network_runtime_observation_records_for_public_operators(
+                3,
+                &miner_operators,
+                &validator_operators
+            )
+        );
     }
 
     fn manifest_hash(domain: &[u8], label: &[u8]) -> String {
@@ -4763,6 +4851,43 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(insufficient.has_reward_settlement_records);
         assert!(!insufficient.public_criterion_met);
 
+        let mut role_order_conflict = run.clone();
+        let shared_node_address = address(b"role-order-shared-address");
+        role_order_conflict.nodes = vec![
+            PublicNodeEvidence::miner(
+                shared_node_address,
+                hash_bytes(b"test", &[b"role-order-miner-shared-operator"]),
+                0,
+                9,
+                10,
+            ),
+            PublicNodeEvidence::miner(
+                address(b"role-order-independent-miner-address"),
+                hash_bytes(b"test", &[b"role-order-independent-miner-operator"]),
+                0,
+                9,
+                10,
+            ),
+            PublicNodeEvidence::validator(
+                shared_node_address,
+                hash_bytes(b"test", &[b"role-order-validator-operator"]),
+                0,
+                9,
+                10,
+            ),
+        ];
+        let role_order_criteria = PublicTestnetCriteria {
+            min_miners: 1,
+            min_validators: 1,
+            ..criteria.clone()
+        };
+        let role_order_match = role_order_conflict.evaluate(&role_order_criteria, 6, true);
+        assert_eq!(role_order_match.miner_count, 1);
+        assert_eq!(role_order_match.validator_count, 1);
+        assert!(role_order_match.has_required_miners);
+        assert!(role_order_match.has_required_validators);
+        assert!(role_order_match.public_criterion_met);
+
         run.nodes[1] = PublicNodeEvidence::miner(
             address(b"miner-a"),
             hash_bytes(b"test", &[b"miner-b-operator"]),
@@ -5374,6 +5499,82 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(full_spec_report.independently_checkable);
         assert!(full_spec_report.full_spec_evidence_met);
 
+        let mut role_order_bundle = complete_public_evidence_bundle();
+        let shared_node_address = address(b"bundle-role-order-shared-address");
+        let shared_miner_operator = hash_bytes(b"test", &[b"bundle-role-order-shared-miner"]);
+        let independent_miner_address = address(b"bundle-role-order-independent-miner-address");
+        let independent_miner_operator =
+            hash_bytes(b"test", &[b"bundle-role-order-independent-miner"]);
+        let validator_operator = hash_bytes(b"test", &[b"bundle-role-order-validator"]);
+        role_order_bundle.run.nodes = vec![
+            PublicNodeEvidence::miner(shared_node_address, shared_miner_operator, 0, 9, 10),
+            PublicNodeEvidence::miner(
+                independent_miner_address,
+                independent_miner_operator,
+                0,
+                9,
+                10,
+            ),
+            PublicNodeEvidence::validator(shared_node_address, validator_operator, 0, 9, 10),
+        ];
+        role_order_bundle.operator_identity_attestation_records = 2;
+        role_order_bundle.operator_identity_attestations = vec![
+            PublicOperatorIdentityAttestation::new(
+                PublicNodeRole::Miner,
+                independent_miner_address,
+                independent_miner_operator,
+                manifest_operator_identity_uri(&independent_miner_operator),
+                role_order_bundle.run.run_started_at_unix_seconds,
+            ),
+            PublicOperatorIdentityAttestation::new(
+                PublicNodeRole::Validator,
+                shared_node_address,
+                validator_operator,
+                manifest_operator_identity_uri(&validator_operator),
+                role_order_bundle.run.run_started_at_unix_seconds,
+            ),
+        ];
+        role_order_bundle.network_runtime_observations = vec![
+            public_network_runtime_observation(
+                independent_miner_operator,
+                0,
+                role_order_bundle.run.run_started_at_unix_seconds,
+            ),
+            public_network_runtime_observation(
+                validator_operator,
+                1,
+                role_order_bundle.run.run_started_at_unix_seconds,
+            ),
+        ];
+        let role_order_network_root = aggregate_public_evidence_record_roots(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            &role_order_bundle
+                .network_runtime_observations
+                .iter()
+                .map(|observation| observation.record_root)
+                .collect::<Vec<_>>(),
+        )
+        .expect("role-order network observation roots should aggregate");
+        resign_record_summary_and_artifact(
+            &mut role_order_bundle,
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            role_order_network_root,
+            2,
+        );
+        let role_order_criteria = PublicTestnetCriteria {
+            min_miners: 1,
+            min_validators: 1,
+            ..criteria.clone()
+        };
+        let role_order_report = role_order_bundle.evaluate(&role_order_criteria, 6);
+        assert_eq!(role_order_report.run_evidence.miner_count, 1);
+        assert_eq!(role_order_report.run_evidence.validator_count, 1);
+        assert!(role_order_report.run_evidence.public_criterion_met);
+        assert!(role_order_report.has_operator_identity_attestations);
+        assert!(role_order_report.has_network_runtime_observations);
+        assert!(role_order_report.independently_checkable);
+        assert!(!role_order_report.full_spec_evidence_met);
+
         bundle.publication.manifest_signature = [9; 32];
         let tampered_manifest_signature = bundle.evaluate(&criteria, 6);
         assert!(!tampered_manifest_signature.has_published_evidence_bundle);
@@ -5692,7 +5893,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         );
         assert!(!missing_operator_attestations.independently_checkable);
         bundle.operator_identity_attestations.truncate(2);
-        assert!(!bundle.has_operator_identity_attestation_records_for_public_operators(2));
+        let (miner_operators, validator_operators) = bundle
+            .run
+            .matched_independent_public_operators_for_criteria(&criteria);
+        assert!(
+            !bundle.has_operator_identity_attestation_records_for_public_operators(
+                2,
+                &miner_operators,
+                &validator_operators
+            )
+        );
 
         bundle = complete_public_evidence_bundle();
         bundle.operator_identity_attestation_records = 4;

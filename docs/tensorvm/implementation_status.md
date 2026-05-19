@@ -100,9 +100,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   at or after the signed run-window end with an exact match to `independent_auditor_count`, a signed
   run-window record, block/finality history, signed
   operator identity attestations observed inside the signed run window and matched exactly to the
-  independent operator/address pairs selected by one-to-one public matching, so live but uncounted nodes
-  cannot satisfy a missing counted operator attestation and missing, duplicate, extra, or overreported
-  operator-attestation records are rejected, signed
+  independent operator/address pairs selected by criteria-aware one-to-one public matching, so a
+  validator-satisfying match is not rejected merely because miner-first matching consumed a shared address,
+  live but uncounted nodes cannot satisfy a missing counted operator attestation, and missing, duplicate,
+  extra, or overreported operator-attestation records are rejected, signed
   per-operator production libp2p network-observation records, signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary roots, signed
   external artifact locators for the raw records behind each summary root with exactly one locator for
@@ -255,9 +256,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.05% workspace line coverage
-- 8562/8644 workspace lines covered
+- 8587/8669 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7986/7986 `tensor_vm` lines covered
+- 8019/8019 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

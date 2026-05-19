@@ -145,12 +145,14 @@ Counted miner and validator operator and node-address sets must be disjoint; the
 address cannot satisfy both role minima in a public-run bundle, and repeated node addresses cannot inflate a
 single role's independent participant count. Counted participants must admit a one-to-one matching between
 live operator IDs and live node addresses; separate unique operator and address totals are not sufficient
-without that matching.
+without that matching. The matching is criteria-aware: if miner-first and validator-first deterministic
+matchings disagree, the validator must use the matching that satisfies the requested miner and validator
+minima when one exists.
 For a run to satisfy the public gate, every counted miner/validator heartbeat summary must span the full
 observed block range and carry at least one signed heartbeat per observed block. Counted operator identity
-attestations must have observation timestamps inside the signed run window, match live node-heartbeat
-records, and exactly match the `operator_identity_attestation_records` manifest count and the repeated
-`operator=...` line count.
+attestations must have observation timestamps inside the signed run window, match the selected counted
+operator/address pairs from live node-heartbeat records, and exactly match the
+`operator_identity_attestation_records` manifest count and the repeated `operator=...` line count.
 The public service gate counts exactly one service-health record and exactly one service-content record
 for each RPC, explorer, faucet, and telemetry surface; extra service-health or service-content records do
 not satisfy the deployed public-service gate. Counted service-content records must have observation
@@ -307,7 +309,8 @@ rejects zero
 IDs/signers, inverted time windows, and empty block counts. The node-heartbeat command rejects zero node
 addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summaries. Bundle validation
 only counts a node toward the public run when its signed heartbeat count covers the manifest's observed
-block count, and miner/validator operator IDs must be disjoint for the role minima to count independently.
+block count, and miner/validator operator IDs and addresses must be disjoint under the criteria-aware
+one-to-one matching for the role minima to count independently.
 The `run-window-from-file` form derives the same run-window manifest fields from raw
 `run_window_observation=<block>,<unix-seconds>` records. It ignores blank lines and `#` comments, rejects
 duplicate or non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported lines,
