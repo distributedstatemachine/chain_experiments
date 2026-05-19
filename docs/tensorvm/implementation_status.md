@@ -277,10 +277,10 @@ preflight, public evidence, or deployment-gated work can count:
   counters advance past the seeded two-block baseline; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 197 passing library tests under Tarpaulin:
+The workspace currently has 198 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 182 in `tensor_vm`
+- 183 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -307,10 +307,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.13% workspace line coverage
-- 9347/9429 workspace lines covered
+- 99.14% workspace line coverage
+- 9413/9495 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8508/8508 `tensor_vm` lines covered
+- 8574/8574 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 271/271 `tensor_vm_explorer` lines covered
 

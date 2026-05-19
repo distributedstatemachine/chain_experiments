@@ -349,6 +349,65 @@ pub struct LocalChain {
     pub blocks: Vec<TensorBlock>,
 }
 
+pub type Chain = LocalChain;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ChainCommand {
+    RegisterMiner {
+        address: Address,
+        stake: u64,
+    },
+    RegisterValidator {
+        address: Address,
+        stake: u64,
+    },
+    SubmitJob(JobState),
+    SubmitReceipt(ReceiptState),
+    SubmitAttestation(ValidatorAttestation),
+    SubmitBlockVote(BlockVote),
+    SettleEpoch {
+        miner_reward_pool: u64,
+        validator_reward_pool: u64,
+    },
+    ProduceBlock {
+        proposer: Address,
+        timestamp: u64,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ChainEvent {
+    MinerRegistered(Address),
+    ValidatorRegistered(Address),
+    JobAccepted(Hash),
+    ReceiptAccepted(Hash),
+    AttestationAccepted {
+        receipt_id: Hash,
+        validator: Address,
+    },
+    BlockVoteAccepted {
+        block_hash: Hash,
+        validator: Address,
+    },
+    ReceiptSettled(Hash),
+    RewardCredited {
+        address: Address,
+        amount: u64,
+    },
+    BlockProduced {
+        height: u64,
+        hash: Hash,
+    },
+    BlockFinalized(Hash),
+}
+
+pub trait ChainEngine {
+    fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>>;
+    fn view(&self) -> &ChainState;
+    fn params(&self) -> &ChainParams;
+    fn blocks(&self) -> &[TensorBlock];
+}
+
 impl LocalChain {
     pub fn new(finalized_randomness: Hash) -> Self {
         Self::with_params(ChainParams::default(), finalized_randomness)
@@ -1084,6 +1143,111 @@ impl LocalChain {
     }
 }
 
+impl ChainEngine for LocalChain {
+    fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>> {
+        match command {
+            ChainCommand::RegisterMiner { address, stake } => {
+                self.register_miner(address, stake)?;
+                Ok(vec![ChainEvent::MinerRegistered(address)])
+            }
+            ChainCommand::RegisterValidator { address, stake } => {
+                self.register_validator(address, stake)?;
+                Ok(vec![ChainEvent::ValidatorRegistered(address)])
+            }
+            ChainCommand::SubmitJob(job) => {
+                let job_id = job.job_id();
+                self.submit_job(job);
+                Ok(vec![ChainEvent::JobAccepted(job_id)])
+            }
+            ChainCommand::SubmitReceipt(receipt) => {
+                let receipt_id = receipt.receipt_id();
+                match receipt {
+                    ReceiptState::TensorOp(receipt) => self.submit_tensor_op_receipt(receipt)?,
+                    ReceiptState::LinearTrainingStep(receipt) => {
+                        self.submit_linear_receipt(receipt)?
+                    }
+                }
+                Ok(vec![ChainEvent::ReceiptAccepted(receipt_id)])
+            }
+            ChainCommand::SubmitAttestation(attestation) => {
+                let receipt_id = attestation.receipt_id;
+                let validator = attestation.validator;
+                self.submit_attestation(attestation)?;
+                Ok(vec![ChainEvent::AttestationAccepted {
+                    receipt_id,
+                    validator,
+                }])
+            }
+            ChainCommand::SubmitBlockVote(vote) => {
+                let block_hash = vote.block_hash;
+                let validator = vote.validator;
+                let was_finalized = self.is_block_finalized(&block_hash);
+                self.submit_block_vote(vote)?;
+                let mut events = vec![ChainEvent::BlockVoteAccepted {
+                    block_hash,
+                    validator,
+                }];
+                if !was_finalized && self.is_block_finalized(&block_hash) {
+                    events.push(ChainEvent::BlockFinalized(block_hash));
+                }
+                Ok(events)
+            }
+            ChainCommand::SettleEpoch {
+                miner_reward_pool,
+                validator_reward_pool,
+            } => {
+                let settled_before = self.state.settled_receipts.clone();
+                let rewards_before = self.state.rewards.balances.clone();
+                self.settle_epoch(miner_reward_pool, validator_reward_pool);
+                Ok(settlement_events(self, &settled_before, &rewards_before))
+            }
+            ChainCommand::ProduceBlock {
+                proposer,
+                timestamp,
+            } => {
+                let block = self.produce_block(proposer, timestamp);
+                Ok(vec![ChainEvent::BlockProduced {
+                    height: block.height,
+                    hash: block.hash(),
+                }])
+            }
+        }
+    }
+
+    fn view(&self) -> &ChainState {
+        &self.state
+    }
+
+    fn params(&self) -> &ChainParams {
+        &self.params
+    }
+
+    fn blocks(&self) -> &[TensorBlock] {
+        &self.blocks
+    }
+}
+
+fn settlement_events(
+    chain: &LocalChain,
+    settled_before: &BTreeSet<Hash>,
+    rewards_before: &BTreeMap<Address, u64>,
+) -> Vec<ChainEvent> {
+    let mut events = Vec::new();
+    for receipt_id in chain.state.settled_receipts.difference(settled_before) {
+        events.push(ChainEvent::ReceiptSettled(*receipt_id));
+    }
+    for (address, balance) in &chain.state.rewards.balances {
+        let credited = balance.saturating_sub(rewards_before.get(address).copied().unwrap_or(0));
+        if credited > 0 {
+            events.push(ChainEvent::RewardCredited {
+                address: *address,
+                amount: credited,
+            });
+        }
+    }
+    events
+}
+
 fn reward_root(rewards: &RewardState) -> Hash {
     let mut encoded = Vec::new();
     for (address, balance) in &rewards.balances {
@@ -1366,6 +1530,160 @@ mod tests {
         AttestationStatement, FreivaldsParams, ValidatorAttestation, VerificationResult,
         verify_tensor_op,
     };
+
+    #[test]
+    fn chain_engine_applies_profile_neutral_commands() {
+        let beacon = hash_bytes(b"test", &[b"chain-engine"]);
+        let params = ChainParams {
+            agreement_quorum: 1,
+            freivalds: FreivaldsParams {
+                minimum_validators: 1,
+                validators_per_job: 1,
+                ..FreivaldsParams::default()
+            },
+            ..ChainParams::default()
+        };
+        let mut chain = Chain::with_params(params, beacon);
+        let miner = address(b"engine-miner");
+        let validator = address(b"engine-validator");
+
+        assert_eq!(chain.params().agreement_quorum, 1);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::RegisterMiner {
+                    address: miner,
+                    stake: 100,
+                })
+                .unwrap(),
+            vec![ChainEvent::MinerRegistered(miner)]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::RegisterValidator {
+                    address: validator,
+                    stake: 10_000,
+                })
+                .unwrap(),
+            vec![ChainEvent::ValidatorRegistered(validator)]
+        );
+
+        let matmul_job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
+        let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&matmul_job, miner, 0, 3).unwrap();
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitJob(JobState::TensorOp(
+                    matmul_job.clone()
+                )))
+                .unwrap(),
+            vec![ChainEvent::JobAccepted(matmul_job.job_id)]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitReceipt(ReceiptState::TensorOp(
+                    receipt.clone()
+                )))
+                .unwrap(),
+            vec![ChainEvent::ReceiptAccepted(receipt.receipt_id)]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitAttestation(ValidatorAttestation::new(
+                    validator,
+                    10_000,
+                    AttestationStatement {
+                        receipt_id: receipt.receipt_id,
+                        job_id: receipt.job_id,
+                        primitive_type: PrimitiveType::TensorOp,
+                        result: VerificationResult::Valid,
+                        checks_root: hash_bytes(b"test", &[b"engine-checks"]),
+                        data_availability_passed: true,
+                    },
+                )))
+                .unwrap(),
+            vec![ChainEvent::AttestationAccepted {
+                receipt_id: receipt.receipt_id,
+                validator,
+            }]
+        );
+
+        let settlement_events = chain
+            .apply_command(ChainCommand::SettleEpoch {
+                miner_reward_pool: 1_000,
+                validator_reward_pool: 500,
+            })
+            .unwrap();
+        assert!(settlement_events.contains(&ChainEvent::ReceiptSettled(receipt.receipt_id)));
+        assert!(settlement_events.contains(&ChainEvent::RewardCredited {
+            address: miner,
+            amount: 1_000,
+        }));
+        assert!(settlement_events.contains(&ChainEvent::RewardCredited {
+            address: validator,
+            amount: 500,
+        }));
+
+        let block_events = chain
+            .apply_command(ChainCommand::ProduceBlock {
+                proposer: miner,
+                timestamp: 6,
+            })
+            .unwrap();
+        let block = chain.blocks().last().unwrap().clone();
+        assert_eq!(
+            block_events,
+            vec![ChainEvent::BlockProduced {
+                height: 0,
+                hash: block.hash(),
+            }]
+        );
+        assert_eq!(chain.view().height, 1);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitBlockVote(BlockVote::new(
+                    validator, 10_000, &block
+                )))
+                .unwrap(),
+            vec![
+                ChainEvent::BlockVoteAccepted {
+                    block_hash: block.hash(),
+                    validator,
+                },
+                ChainEvent::BlockFinalized(block.hash()),
+            ]
+        );
+
+        let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
+        let model_id = hash_bytes(b"test", &[b"engine-model"]);
+        let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id,
+            step: 0,
+            batch_seed: hash_bytes(b"test", &[b"engine-batch"]),
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![2, 2],
+            weight_shape: vec![2, 2],
+            target_shape: vec![2, 2],
+            lr: 1,
+            deadline_block: 20,
+        });
+        let (linear_receipt, _) =
+            LinearTrainingStepReceipt::from_job(&linear_job, miner, &weights, 1, 4).unwrap();
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitJob(JobState::LinearTrainingStep(
+                    linear_job.clone()
+                )))
+                .unwrap(),
+            vec![ChainEvent::JobAccepted(linear_job.job_id)]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::SubmitReceipt(
+                    ReceiptState::LinearTrainingStep(linear_receipt.clone())
+                ))
+                .unwrap(),
+            vec![ChainEvent::ReceiptAccepted(linear_receipt.receipt_id)]
+        );
+    }
 
     #[test]
     fn chain_settles_valid_tensorwork_and_rewards_participants() {
