@@ -15,6 +15,7 @@ pub struct ExplorerSummary {
     pub validator_count: usize,
     pub job_count: usize,
     pub model_count: usize,
+    pub attestation_count: usize,
     pub receipt_count: usize,
     pub settled_receipt_count: usize,
     pub finalized_block_count: usize,
@@ -25,7 +26,7 @@ pub struct ExplorerSummary {
 impl ExplorerSummary {
     pub fn to_json(&self) -> String {
         format!(
-            "{{\"height\":{},\"epoch\":{},\"block_count\":{},\"miner_count\":{},\"validator_count\":{},\"job_count\":{},\"model_count\":{},\"receipt_count\":{},\"settled_receipt_count\":{},\"finalized_block_count\":{},\"treasury_balance\":{},\"total_reward_balance\":{}}}",
+            "{{\"height\":{},\"epoch\":{},\"block_count\":{},\"miner_count\":{},\"validator_count\":{},\"job_count\":{},\"model_count\":{},\"attestation_count\":{},\"receipt_count\":{},\"settled_receipt_count\":{},\"finalized_block_count\":{},\"treasury_balance\":{},\"total_reward_balance\":{}}}",
             self.height,
             self.epoch,
             self.block_count,
@@ -33,6 +34,7 @@ impl ExplorerSummary {
             self.validator_count,
             self.job_count,
             self.model_count,
+            self.attestation_count,
             self.receipt_count,
             self.settled_receipt_count,
             self.finalized_block_count,
@@ -418,7 +420,7 @@ function renderOverview(data) {
     metric("miners", s.miner_count), metric("validators", s.validator_count),
     metric("receipts", `${s.settled_receipt_count}/${s.receipt_count}`),
     metric("jobs", s.job_count), metric("models", s.model_count),
-    metric("rewards", s.total_reward_balance)
+    metric("attest", s.attestation_count), metric("rewards", s.total_reward_balance)
   ].join("");
   document.getElementById("operator-lines").textContent = [
     `miners      ${s.miner_count}`,
@@ -531,6 +533,7 @@ mod tests {
             validator_count: 5,
             job_count: 2,
             model_count: 1,
+            attestation_count: 30,
             receipt_count: 10,
             settled_receipt_count: 10,
             finalized_block_count: 2,
@@ -539,6 +542,7 @@ mod tests {
         };
         assert!(summary.to_json().contains("\"settled_receipt_count\":10"));
         assert!(summary.to_json().contains("\"model_count\":1"));
+        assert!(summary.to_json().contains("\"attestation_count\":30"));
 
         let html = explorer_shell_html("ws://127.0.0.1:8545/explorer/ws?token=secret");
         assert!(html.contains("TensorVM Explorer"));

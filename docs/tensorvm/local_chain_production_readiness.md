@@ -413,8 +413,9 @@ jobs, receipts, attestations, and votes.
 - Add checker assertions for live rewards, live attestations, and live tensor data fetch.
 
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
-jobs, model-count advancement, receipts, and settled receipts. Live rewards, live attestation details,
-tensor-server fetch evidence, and all-node head convergence still need hard checker assertions.
+jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
+receipts. Live per-receipt attestation details, tensor-server fetch evidence, and all-node head convergence
+still need hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

@@ -822,6 +822,8 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(seed.contains("matmul_settled=true"));
     assert!(seed.contains("linear_training_settled=true"));
     assert!(seed.contains("rewarded_miners="));
+    assert!(seed.contains("total_reward_balance="));
+    assert!(seed.contains("attestation_count="));
     assert!(seed.contains("data_availability_bps=10000"));
     assert!(seed.contains("node_store_ready=true"));
     assert!(seed.contains("persisted_block_count=2"));

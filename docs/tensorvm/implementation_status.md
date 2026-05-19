@@ -278,12 +278,15 @@ preflight, public evidence, or deployment-gated work can count:
   `distinct_operator_ids=15`, `distinct_libp2p_peer_ids=15`, `distinct_node_multiaddrs=15`,
   `libp2p_ready_node_count=15`, `cpu_ready_miner_count=10`, `cuda_required_miner_count=0`,
   `settled_receipts=10`, `matmul_settled=true`, `linear_training_settled=true`, `rewarded_miners=9`,
-  `finality_rate_bps=10000`, `data_availability_bps=10000`, `public_evidence_full_spec=false`, and
-  `independently_checkable=false`, with `standalone_explorer_ready=true` and
+  seeded `total_reward_balance`, seeded `attestation_count`, `finality_rate_bps=10000`,
+  `data_availability_bps=10000`, `public_evidence_full_spec=false`, and `independently_checkable=false`,
+  with `standalone_explorer_ready=true` and
   `standalone_explorer_websocket_polling=true`; the gate now also requires
-  `live_block_production=true`, `live_synthetic_jobs=true`, and `live_linear_training_jobs=true`, proving
-  `/chain/head` and explorer counters advance past the seeded two-block baseline and at least one live
-  LinearTrainingStep advances model state after startup; the same check passed again after
+  `live_block_production=true`, `live_synthetic_jobs=true`, `live_linear_training_jobs=true`,
+  `live_attestations=true`, and `live_rewards=true`, proving `/chain/head` and explorer counters advance
+  past the seeded two-block baseline, at least one live LinearTrainingStep advances model state after
+  startup, validators add attestations, and settled live work credits new rewards; the same check passed
+  again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
 The workspace currently has 211 passing library tests under Tarpaulin:
@@ -317,9 +320,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.15% workspace line coverage
-- 9618/9700 workspace lines covered
+- 9620/9702 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8778/8778 `tensor_vm` lines covered
+- 8780/8780 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 272/272 `tensor_vm_explorer` lines covered
 

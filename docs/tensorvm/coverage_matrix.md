@@ -51,9 +51,10 @@ settled receipts, settled matmul work, settled LinearTrainingStep work, 9 reward
 and data availability, checks that the host gateway exposes the seeded chain head, checks the host gateway
 routes with the local auth token, checks the standalone explorer service on port 8080, verifies the
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup
-height, block, job, receipt, settled-receipt, and model-count advancement so the live producer must settle
-at least one LinearTrainingStep after the seed, reruns Gate 0 from the checker, verifies the local-only
-evidence boundary, and passes after restarting `miner-03` and `validator-02`.
+height, block, job, receipt, settled-receipt, model-count, attestation-count, and reward-balance
+advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
+rewards after the seed, reruns Gate 0 from the checker, verifies the local-only evidence boundary, and
+passes after restarting `miner-03` and `validator-02`.
 
 ## Acceptance Criteria
 

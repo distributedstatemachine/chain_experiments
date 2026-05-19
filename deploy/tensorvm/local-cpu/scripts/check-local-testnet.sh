@@ -34,6 +34,11 @@ unique_count() {
   sort -u "$1" | wc -l | tr -d ' '
 }
 
+seed_report_value() {
+  key="$1"
+  compose exec -T miner-00 sed -n "s/^${key}=//p" /var/lib/tensorvm/local-testnet-seed.out | tr -d '\r'
+}
+
 require_command docker
 require_command grep
 require_command sed
@@ -119,6 +124,10 @@ compose exec -T miner-00 grep -q "finality_rate_bps=10000" /var/lib/tensorvm/loc
   || fail "seeded local testnet did not report full finality"
 compose exec -T miner-00 grep -q "data_availability_bps=10000" /var/lib/tensorvm/local-testnet-seed.out \
   || fail "seeded local testnet did not report full data availability"
+SEED_TOTAL_REWARD_BALANCE=$(seed_report_value total_reward_balance)
+[ -n "$SEED_TOTAL_REWARD_BALANCE" ] || fail "seeded local testnet did not report total reward balance"
+SEED_ATTESTATION_COUNT=$(seed_report_value attestation_count)
+[ -n "$SEED_ATTESTATION_COUNT" ] || fail "seeded local testnet did not report attestation count"
 
 for path in /health /rpc/health /chain/head /jobs/current /explorer/health /explorer /faucet/health /faucet/page /telemetry/health /telemetry/dashboard; do
   curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null \
@@ -144,8 +153,10 @@ LIVE_BLOCK_COUNT=0
 LIVE_OVERVIEW=""
 LIVE_JOB_COUNT=0
 LIVE_MODEL_COUNT=0
+LIVE_ATTESTATION_COUNT=0
 LIVE_RECEIPT_COUNT=0
 LIVE_SETTLED_RECEIPT_COUNT=0
+LIVE_TOTAL_REWARD_BALANCE=0
 attempt=0
 while [ "$attempt" -lt 30 ]; do
   LIVE_CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
@@ -154,14 +165,18 @@ while [ "$attempt" -lt 30 ]; do
   LIVE_OVERVIEW=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
   LIVE_JOB_COUNT=$(json_number job_count "$LIVE_OVERVIEW")
   LIVE_MODEL_COUNT=$(json_number model_count "$LIVE_OVERVIEW")
+  LIVE_ATTESTATION_COUNT=$(json_number attestation_count "$LIVE_OVERVIEW")
   LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
   LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
+  LIVE_TOTAL_REWARD_BALANCE=$(json_number total_reward_balance "$LIVE_OVERVIEW")
   if [ "${LIVE_HEIGHT:-0}" -gt 2 ] \
     && [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] \
     && [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] \
     && [ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] \
+    && [ "${LIVE_ATTESTATION_COUNT:-0}" -gt "$SEED_ATTESTATION_COUNT" ] \
     && [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] \
-    && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ]; then
+    && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] \
+    && [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ]; then
     break
   fi
   attempt=$((attempt + 1))
@@ -172,8 +187,10 @@ done
 [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks"
 [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] || fail "protocol did not generate synthetic jobs after seed"
 [ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] || fail "protocol did not settle a live LinearTrainingStep after seed"
+[ "${LIVE_ATTESTATION_COUNT:-0}" -gt "$SEED_ATTESTATION_COUNT" ] || fail "live synthetic jobs did not add validator attestations"
 [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts"
 [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts"
+[ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
 cargo test -p tensor_vm local_testnet --release
 
@@ -198,6 +215,8 @@ standalone_explorer_websocket_polling=true
 live_block_production=true
 live_synthetic_jobs=true
 live_linear_training_jobs=true
+live_attestations=true
+live_rewards=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

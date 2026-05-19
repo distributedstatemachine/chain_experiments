@@ -3746,6 +3746,7 @@ impl LocalTestnet {
             validator_count: self.chain.state.validators.len(),
             job_count: self.chain.state.jobs.len(),
             model_count: self.chain.state.model_states.len(),
+            attestation_count: self.chain.state.attestations.values().map(Vec::len).sum(),
             receipt_count: self.chain.state.receipts.len(),
             settled_receipt_count: self.chain.state.settled_receipts.len(),
             finalized_block_count: self.chain.state.finalized_blocks.len(),
