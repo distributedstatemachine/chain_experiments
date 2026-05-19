@@ -224,8 +224,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job production on the
   bootstrap gateway so post-startup blocks advance through receipts, attestations, settlement, proposer
   selection, and finality instead of a static snapshot, miner rewards, finality, data availability, a
-  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a restart gate
-  for `miner-03` and `validator-02`, a local-only evidence boundary, and
+  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, restart gates
+  for `miner-03`, `validator-02`, and `miner-00`, all-operator durable status checks, an all-operator
+  finalized common-head checkpoint queried through `tvmd service block`, a local-only evidence boundary, and
   `local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape` guarding the artifact shape
 
 ## Implemented In `crates/tensor_vm_explorer`
@@ -291,9 +292,11 @@ preflight, public evidence, or deployment-gated work can count:
   baseline, at least one live LinearTrainingStep advances model state after startup, validators add
   attestations, `/explorer/receipts` exposes per-receipt validator attestation details for live receipts,
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
-  settled live work credits new rewards; the gate also runs `tvmd service status` inside all 15 operator
-  containers and requires `all_operator_live_block_convergence=true`, proving every durable node store
-  advanced past the shared seed and reports the same first live finalized block hash, plus
+  settled live work credits new rewards; the gate also runs `tvmd service status` and
+  `tvmd service block` inside all 15 operator containers and requires
+  `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
+  every durable node store advanced past the shared seed, reports the same first live finalized block
+  hash, and can return the same finalized common-head block hash at the bounded convergence height, plus
   `all_operator_role_status=true` and `all_operator_chain_counters=true`, proving each operator status
   surface reports its role and live chain counters; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02` and after
@@ -330,9 +333,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.16% workspace line coverage
-- 9673/9755 workspace lines covered
+- 9686/9768 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8828/8828 `tensor_vm` lines covered
+- 8841/8841 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

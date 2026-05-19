@@ -988,9 +988,26 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             > 2
     );
     assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
-    assert_ne!(
-        stdout_value(&status, "first_live_block_hash"),
-        "0".repeat(64)
+    let first_live_block_hash = stdout_value(&status, "first_live_block_hash");
+    assert_ne!(first_live_block_hash, "0".repeat(64));
+
+    let block = run_tvmd(&[
+        "service",
+        "block",
+        "--data-dir",
+        &data_dir_text,
+        "--height",
+        stdout_value(&status, "first_live_block_height"),
+    ]);
+    assert!(block.contains("command=service_block"));
+    assert_eq!(stdout_value(&block, "height"), "3");
+    assert_eq!(stdout_value(&block, "block_hash"), first_live_block_hash);
+    assert_eq!(stdout_value(&block, "finalized"), "true");
+    assert!(
+        stdout_value(&block, "latest_height")
+            .parse::<u64>()
+            .expect("service block latest height must parse")
+            > 2
     );
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");

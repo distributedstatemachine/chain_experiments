@@ -89,6 +89,10 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             service_status(data_dir)
         }
+        CliCommand::ServiceBlock { data_dir, height } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            service_block_status(data_dir, *height)
+        }
         CliCommand::LocalTestnetSeed { data_dir } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             seed_local_testnet(data_dir)
@@ -302,6 +306,26 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         chain.state.receipts.len(),
         chain.state.settled_receipts.len(),
         chain.state.model_states.len(),
+    ))
+}
+
+fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<String, String> {
+    let store = NodeStore::open(data_dir);
+    let chain = store
+        .load_chain()
+        .map_err(|error| format!("failed to load node store {data_dir}: {error}"))?;
+    let Some(block) = chain.blocks.iter().find(|block| block.height == height) else {
+        return Err(format!(
+            "block height {height} is not in node store {data_dir}"
+        ));
+    };
+    let block_hash = block.hash();
+    Ok(format!(
+        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nepoch={}\nlatest_height={}\nfinalized={}\nstatus_source=node_store",
+        hex(&block_hash),
+        block.epoch,
+        chain.state.height,
+        chain.is_block_finalized(&block_hash),
     ))
 }
 

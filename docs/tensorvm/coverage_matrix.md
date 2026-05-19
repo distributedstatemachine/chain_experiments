@@ -41,6 +41,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -55,7 +57,9 @@ height, block, job, receipt, settled-receipt, model-count, attestation-count, an
 advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
 rewards after the seed, requires live receipt details to expose validator attestation counts, fetches a live
 tensor descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
-verifies the local-only evidence boundary, and passes after restarting `miner-03` and `validator-02`.
+verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
+common-head block hash through `tvmd service block`, and passes after restarting `miner-03`,
+`validator-02`, and `miner-00`.
 
 ## Acceptance Criteria
 
@@ -162,6 +166,7 @@ verifies the local-only evidence boundary, and passes after restarting `miner-03
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
-  live chain counters, advancement past the shared seed, and the same first live finalized block hash.
+  live chain counters, advancement past the shared seed, the same first live finalized block hash, and the
+  same finalized common-head block hash through `tvmd service block`.
 - Instrumented line coverage has been generated with Tarpaulin; see `tarpaulin_report.md`.
   Branch coverage is not reported because the installed Tarpaulin version lists branch coverage as not implemented.

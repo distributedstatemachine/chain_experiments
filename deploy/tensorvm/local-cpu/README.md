@@ -39,7 +39,8 @@ snapshot, including new jobs, receipts, settled receipts, model-count advancemen
 growth, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
 reward growth from live synthetic work. It also runs `tvmd service status` in every operator container and
 fails unless all 15 node stores advance past the seed, report role-specific status, expose live chain
-counters, and report the same first live finalized block hash.
+counters, report the same first live finalized block hash, and return the same finalized common-head block
+hash through `tvmd service block`.
 
 ## Commands
 

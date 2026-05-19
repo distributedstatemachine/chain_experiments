@@ -242,6 +242,8 @@ curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}
 
 ALL_OPERATOR_MIN_HEIGHT=0
 ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
+ALL_OPERATOR_COMMON_HEAD_HEIGHT=0
+ALL_OPERATOR_COMMON_HEAD_HASH=""
 CONVERGED_OPERATOR_COUNT=0
 attempt=0
 while [ "$attempt" -lt 60 ]; do
@@ -307,7 +309,30 @@ while [ "$attempt" -lt 60 ]; do
     CONVERGED_OPERATOR_COUNT=$((CONVERGED_OPERATOR_COUNT + 1))
   done
   if [ "$CONVERGED_OPERATOR_COUNT" = "15" ] && [ "$STATUS_MISMATCH" = "false" ]; then
-    break
+    COMMON_HEAD_MISMATCH=false
+    ALL_OPERATOR_COMMON_HEAD_HEIGHT="$ALL_OPERATOR_MIN_HEIGHT"
+    ALL_OPERATOR_COMMON_HEAD_HASH=""
+    for service in $EXPECTED_SERVICES; do
+      if BLOCK_RAW=$(compose exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$ALL_OPERATOR_COMMON_HEAD_HEIGHT" 2>/dev/null); then
+        BLOCK_STATUS=$(printf '%s\n' "$BLOCK_RAW" | tr -d '\r')
+      else
+        COMMON_HEAD_MISMATCH=true
+        continue
+      fi
+      SERVICE_COMMON_BLOCK_HASH=$(status_value block_hash "$BLOCK_STATUS")
+      SERVICE_COMMON_BLOCK_FINALIZED=$(status_value finalized "$BLOCK_STATUS")
+      [ -n "$SERVICE_COMMON_BLOCK_HASH" ] || { COMMON_HEAD_MISMATCH=true; continue; }
+      [ "$SERVICE_COMMON_BLOCK_FINALIZED" = "true" ] || { COMMON_HEAD_MISMATCH=true; continue; }
+      if [ -z "$ALL_OPERATOR_COMMON_HEAD_HASH" ]; then
+        ALL_OPERATOR_COMMON_HEAD_HASH="$SERVICE_COMMON_BLOCK_HASH"
+      elif [ "$SERVICE_COMMON_BLOCK_HASH" != "$ALL_OPERATOR_COMMON_HEAD_HASH" ]; then
+        COMMON_HEAD_MISMATCH=true
+        continue
+      fi
+    done
+    if [ "$COMMON_HEAD_MISMATCH" = "false" ]; then
+      break
+    fi
   fi
   attempt=$((attempt + 1))
   sleep 1
@@ -318,6 +343,8 @@ done
 [ "$ALL_OPERATOR_MIN_HEIGHT" -gt 2 ] || fail "not all operators advanced past seeded height 2"
 [ -n "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ] || fail "operator live block hash convergence was not observed"
 [ "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" != "$ZERO_HASH" ] || fail "operator live block hash convergence was empty"
+[ -n "$ALL_OPERATOR_COMMON_HEAD_HASH" ] || fail "operator common head hash convergence was not observed"
+[ "$ALL_OPERATOR_COMMON_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator common head hash convergence was empty"
 
 cargo test -p tensor_vm local_testnet --release
 
@@ -350,6 +377,9 @@ all_operator_status_count=15
 all_operator_min_height=${ALL_OPERATOR_MIN_HEIGHT}
 all_operator_first_live_block_hash=${ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH}
 all_operator_live_block_convergence=true
+all_operator_common_head_height=${ALL_OPERATOR_COMMON_HEAD_HEIGHT}
+all_operator_common_head_hash=${ALL_OPERATOR_COMMON_HEAD_HASH}
+all_operator_common_head_convergence=true
 all_operator_role_status=true
 all_operator_chain_counters=true
 public_evidence_full_spec=false

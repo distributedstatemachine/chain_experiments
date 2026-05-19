@@ -62,6 +62,10 @@ pub enum CliCommand {
     ServiceStatus {
         data_dir: String,
     },
+    ServiceBlock {
+        data_dir: String,
+        height: u64,
+    },
     LocalTestnetSeed {
         data_dir: String,
     },
@@ -347,6 +351,17 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         ["service", "status", "--data-dir", data_dir] => Ok(CliCommand::ServiceStatus {
             data_dir: (*data_dir).to_owned(),
+        }),
+        [
+            "service",
+            "block",
+            "--data-dir",
+            data_dir,
+            "--height",
+            height,
+        ] => Ok(CliCommand::ServiceBlock {
+            data_dir: (*data_dir).to_owned(),
+            height: parse_u64(height)?,
         }),
         ["local-testnet", "seed", "--data-dir", data_dir] => Ok(CliCommand::LocalTestnetSeed {
             data_dir: (*data_dir).to_owned(),
@@ -854,6 +869,9 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::ServiceStatus { data_dir } => {
             format!("show service node store status data_dir={data_dir}")
         }
+        CliCommand::ServiceBlock { data_dir, height } => {
+            format!("show service node store block data_dir={data_dir} height={height}")
+        }
         CliCommand::LocalTestnetSeed { data_dir } => {
             format!("seed local CPU testnet data_dir={data_dir}")
         }
@@ -1178,6 +1196,12 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             ensure_data_dir(data_dir)?;
             Ok(format!(
                 "command=service_status\ndata_dir={data_dir}\nstatus_source=node_store"
+            ))
+        }
+        CliCommand::ServiceBlock { data_dir, height } => {
+            ensure_data_dir(data_dir)?;
+            Ok(format!(
+                "command=service_block\ndata_dir={data_dir}\nheight={height}\nstatus_source=node_store"
             ))
         }
         CliCommand::LocalTestnetSeed { data_dir } => {
@@ -4332,6 +4356,21 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 data_dir: "/var/lib/tensorvm".to_owned(),
             }
         );
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
+                "block",
+                "--data-dir",
+                "/var/lib/tensorvm",
+                "--height",
+                "3"
+            ])
+            .unwrap(),
+            CliCommand::ServiceBlock {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+                height: 3,
+            }
+        );
     }
 
     #[test]
@@ -4416,6 +4455,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     data_dir: "/var/lib/tensorvm".to_owned(),
                 },
                 "show service node store status data_dir=/var/lib/tensorvm",
+            ),
+            (
+                CliCommand::ServiceBlock {
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                    height: 3,
+                },
+                "show service node store block data_dir=/var/lib/tensorvm height=3",
             ),
             (
                 CliCommand::LocalTestnetSeed {
@@ -4866,6 +4912,16 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_status.contains("command=service_status"));
         assert!(service_status.contains("data_dir=/var/lib/tensorvm"));
         assert!(service_status.contains("status_source=node_store"));
+
+        let service_block = execute_reference_cli_command(&CliCommand::ServiceBlock {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            height: 3,
+        })
+        .unwrap();
+        assert!(service_block.contains("command=service_block"));
+        assert!(service_block.contains("data_dir=/var/lib/tensorvm"));
+        assert!(service_block.contains("height=3"));
+        assert!(service_block.contains("status_source=node_store"));
 
         let local_seed = execute_reference_cli_command(&CliCommand::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
