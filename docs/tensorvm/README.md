@@ -4,6 +4,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 
 - [MVP spec](mvp_spec.md)
 - [Local CPU testnet spec](local_cpu_testnet_spec.md)
+- [Local chain production readiness](local_chain_production_readiness.md)
 - [Implementation status](implementation_status.md)
 - [Completion audit](completion_audit.md)
 - [Coverage matrix](coverage_matrix.md)

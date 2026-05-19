@@ -1,0 +1,481 @@
+# Local Chain Production Readiness And Chain-Core Refactor Plan
+
+This document records the current local-chain readiness gaps and the refactor path for making TensorVM's
+local chain production-grade while keeping it local-only. It combines the local setup review with an
+architecture plan for using one shared chain base across local, testnet, and mainnet profiles.
+
+The target is not public infrastructure. The target is a real local chain where all Docker Compose
+participants run the same protocol code paths that a public testnet or mainnet profile would use.
+
+## Scope
+
+Local production-ready means:
+
+```text
+CPU-only default execution remains supported
+all 10 miners and 5 validators are real long-running participants
+jobs, receipts, attestations, blocks, votes, and tensor fetches move through libp2p/RPC boundaries
+all operators persist and sync chain state
+the explorer reads live chain data from the node API
+restart and rollback behavior is checked locally
+the implementation remains explicitly non-public evidence
+```
+
+It does not mean:
+
+```text
+CUDA requirement
+public DNS or TLS
+systemd/nginx deployment
+external independent operators
+7-day public-run evidence
+mainnet security claims
+```
+
+## Current State
+
+The local bundle is useful and should remain the first operational target:
+
+- `deploy/tensorvm/local-cpu/docker-compose.yml` starts 10 miner containers, 5 validator containers, and
+  the standalone explorer.
+- Each counted operator has a stable operator ID, stable libp2p identity seed, distinct volume, and
+  mandatory libp2p readiness check.
+- `miner-00` exposes local RPC, explorer data, faucet, telemetry, and the host-facing WebSocket endpoint.
+- The current live producer keeps `/chain/head` advancing past the seeded two-block baseline.
+- `check-local-testnet.sh` now fails if live jobs, receipts, settled receipts, height, and block count do
+  not advance.
+
+That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
+
+## Highest-Priority Gaps
+
+### 1. Local Production Is Still Single-Process
+
+Current live production runs inside `miner-00`'s service loop. It directly creates CPU miner objects,
+validator objects, receipts, attestations, settlement, block production, and finality votes against one
+in-memory `LocalChain`.
+
+This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
+propagation, local-only networking shims, and single-participant shortcuts.
+
+Required fix:
+
+- Move synthetic job generation into a `JobSource`.
+- Broadcast jobs over the same network path used by every profile.
+- Have miner containers receive jobs, execute them, serve tensor data, and submit receipts.
+- Have validator containers receive assignments, fetch tensor data, validate, and submit attestations.
+- Have proposers collect network-visible state before producing blocks.
+
+### 2. Miner And Validator Containers Are Readiness Shells
+
+`tvmd miner start` and `tvmd validator start` currently prove local readiness, then each container execs
+`tvmd service serve`. They do not run independent role loops.
+
+Required fix:
+
+- Add long-running commands:
+  - `tvmd miner run`
+  - `tvmd validator run`
+  - `tvmd proposer run` or `tvmd node run --role <role>`
+- Make each role loop own only its role responsibilities.
+- Keep readiness commands as preflight checks, not the runtime.
+
+### 3. Libp2p Runs But Does Not Drive Chain State
+
+The libp2p control plane subscribes to TensorVM topics and supports request-response protocols, but
+production state changes still happen through local memory in the gateway process.
+
+Required fix:
+
+- Implement a node event loop that ingests libp2p messages:
+  - `NewJob`
+  - `NewReceipt`
+  - `NewAttestation`
+  - `NewBlock`
+  - `PeerInfo`
+- Validate message payloads before applying them.
+- Persist accepted events through the shared chain engine.
+- Publish local events back out through libp2p.
+
+### 4. Non-Bootstrap Operators Do Not Prove Chain Sync
+
+The checker validates that all operators are running and libp2p-ready, but live chain state is only checked
+through `miner-00`.
+
+Required fix:
+
+- Every operator must expose a local health/status route or command that reports:
+  - current height
+  - current finalized head
+  - local block count
+  - peer count
+  - role-specific work counters
+- The checker must fail unless all 15 operators converge on the same finalized head within a bounded time.
+
+### 5. Restart Gate Needs Continuity Assertions
+
+The local spec requires restarted operators to reuse durable state and libp2p identity, rejoin the network,
+and avoid chain rollback. The current check does not record pre-restart and post-restart continuity.
+
+Required fix:
+
+- Capture before restart:
+  - peer IDs
+  - chain height
+  - finalized head
+  - block count
+  - volume-backed store checksum or latest block hash
+- Restart at least one miner and one validator.
+- Verify:
+  - peer IDs are unchanged
+  - height does not decrease
+  - finalized head is compatible with the previous head
+  - blocks continue advancing after restart
+
+### 6. Ongoing Production Only Exercises Matmul
+
+The seed covers both TensorOp and LinearTrainingStep. Live post-startup production currently generates only
+synthetic matmul jobs.
+
+Required fix:
+
+- Add a deterministic local `JobSource` that can emit both:
+  - TensorOp matmul jobs
+  - LinearTrainingStep jobs
+- Gate on both primitives appearing in live post-startup blocks.
+
+### 7. The Checker Does Not Prove All Local-Spec Acceptance Items
+
+The local spec requires validator attestations, rewards, data availability, telemetry, and tensor-server
+availability evidence. The checker currently verifies some seed strings and aggregate live counters.
+
+Required fix:
+
+- Query live receipt details and prove at least one new post-startup receipt has validator attestations.
+- Query miner and validator rewards after live jobs, not only from seed output.
+- Perform a live tensor row/chunk/opening fetch through the local tensor-server path.
+- Assert telemetry counters advance with the live chain.
+- Record exact observed values in checker output.
+
+## Shared Chain-Core Refactor
+
+The core architectural goal is:
+
+```text
+local, testnet, and mainnet use the same deterministic chain engine
+```
+
+The profiles should differ by configuration, adapters, and launch topology, not by separate chain logic.
+
+### Current Coupling To Reduce
+
+`LocalChain` currently contains state, parameters, blocks, registration, transaction application, receipt
+submission, attestation validation, settlement, rewards, proposer selection, block production, and finality
+helpers in one type.
+
+That is practical for a reference core, but it makes it easy for local/testnet helpers to bypass real
+runtime boundaries.
+
+### Target Module Shape
+
+Refactor toward these boundaries:
+
+```text
+chain::state
+  ChainState, ChainParams, account/miner/validator/job/receipt/block state types
+
+chain::engine
+  ChainEngine, deterministic state transitions, command application, event emission
+
+chain::validation
+  receipt, attestation, block-vote, and transaction validation
+
+chain::settlement
+  epoch settlement, reward accounting, model-state transition settlement
+
+chain::proposer
+  proposer eligibility and settled-prior-epoch TensorWork selection
+
+node::runtime
+  event loop joining network, store, txpool, chain engine, clock, and role services
+
+node::roles
+  miner, validator, proposer, watcher
+
+node::profiles
+  local, testnet, mainnet runtime profiles
+
+network
+  libp2p adapter, message codec, gossip/request-response routing
+
+storage
+  ChainStore trait, NodeStore implementation, recovery and consistency checks
+```
+
+### Shared Profile Model
+
+Use a single profile type instead of environment-specific branches:
+
+```rust
+pub enum ChainProfile {
+    Local(LocalProfile),
+    Testnet(TestnetProfile),
+    Mainnet(MainnetProfile),
+}
+
+pub struct NodeConfig {
+    pub chain: ChainParams,
+    pub profile: ChainProfile,
+    pub role: NodeRole,
+    pub network: NetworkConfig,
+    pub storage: StorageConfig,
+}
+```
+
+Local/testnet/mainnet should select different values for:
+
+- genesis state
+- chain ID
+- job source policy
+- block interval
+- peer discovery/bootstrap
+- auth/exposure policy
+- reward caps
+- persistence paths
+- telemetry/evidence requirements
+
+They should not select different state-transition code.
+
+### Engine API Direction
+
+The chain engine should expose a small command/event boundary:
+
+```rust
+pub enum ChainCommand {
+    RegisterMiner(...),
+    RegisterValidator(...),
+    SubmitJob(JobState),
+    SubmitReceipt(ReceiptState),
+    SubmitAttestation(ValidatorAttestation),
+    SubmitBlock(TensorBlock),
+    SubmitBlockVote(BlockVote),
+    SettleEpoch,
+}
+
+pub enum ChainEvent {
+    JobAccepted(Hash),
+    ReceiptAccepted(Hash),
+    AttestationAccepted(Hash),
+    ReceiptSettled(Hash),
+    BlockAccepted(Hash),
+    BlockFinalized(Hash),
+    RewardCredited { address: Address, amount: u64 },
+}
+
+pub trait ChainEngine {
+    fn apply(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>>;
+    fn view(&self) -> &ChainState;
+}
+```
+
+This makes tests, local Compose, public testnet, and future mainnet run the same transition path while
+still allowing different runtimes to drive it.
+
+### Traits To Introduce
+
+Keep traits narrow and role-specific:
+
+```rust
+pub trait ChainStore {
+    fn load_chain(&self) -> Result<ChainSnapshot>;
+    fn persist_events(&self, events: &[ChainEvent]) -> Result<()>;
+    fn persist_snapshot(&self, state: &ChainState) -> Result<()>;
+}
+
+pub trait Network {
+    fn publish(&self, message: P2pMessage) -> Result<()>;
+    fn recv(&mut self) -> Result<NetworkEvent>;
+    fn request(&self, peer: PeerId, request: P2pMessage) -> Result<P2pMessage>;
+}
+
+pub trait JobSource {
+    fn next_job(&mut self, state: &ChainState) -> Option<JobState>;
+}
+
+pub trait MinerExecutor {
+    fn execute(&mut self, job: &JobState, context: &ExecutionContext) -> Result<ReceiptBundle>;
+}
+
+pub trait ReceiptVerifier {
+    fn verify(&self, receipt: &ReceiptState, context: &ValidationContext) -> Result<ValidatorAttestation>;
+}
+```
+
+Concrete implementations:
+
+- `NodeStore` implements `ChainStore`.
+- `Libp2pNetwork` implements `Network`.
+- `SyntheticLocalJobSource` implements `JobSource`.
+- `CpuReferenceMiner` implements `MinerExecutor`.
+- `TensorVmReceiptVerifier` implements `ReceiptVerifier`.
+
+### SOLID/Rust Guidelines
+
+Use SOLID as a practical constraint, not as ceremony:
+
+- Single responsibility: chain transition logic should not know Docker, HTTP, CLI, or libp2p details.
+- Open/closed: adding `MainnetProfile` should not require editing settlement or validation internals.
+- Liskov substitution: tests should run against the same `ChainEngine` trait as local Compose.
+- Interface segregation: miners should not depend on proposer APIs; validators should not depend on faucet APIs.
+- Dependency inversion: `node::runtime` depends on `Network` and `ChainStore` traits, not concrete libp2p or file-store types.
+
+Rust-specific practices:
+
+- Prefer explicit domain types over `String`/`usize` plumbing at module boundaries.
+- Keep `Result<T, TvmError>` for fallible domain paths and avoid stringly errors in core logic.
+- Make command application deterministic and side-effect-free except through returned events.
+- Keep IO at adapter edges: storage, network, CLI, RPC.
+- Avoid large `impl` blocks that mix registration, execution, settlement, and API concerns.
+- Prefer small structs with explicit ownership over shared mutable globals.
+- Use `#[cfg(test)]` helpers only for tests; do not let production code call testnet-only shortcuts.
+
+## Role Runtime Design
+
+### Miner Loop
+
+Responsibilities:
+
+```text
+subscribe to jobs
+check assignment
+execute with CPU reference backend
+serve tensor rows/chunks/openings
+submit receipts
+gossip receipt announcements
+track local work metrics
+```
+
+### Validator Loop
+
+Responsibilities:
+
+```text
+subscribe to jobs and receipts
+check validation assignment
+request tensor data from assigned miner
+verify TensorOp and LinearTrainingStep receipts
+submit attestations
+gossip attestation announcements
+vote on valid blocks
+track validation metrics
+```
+
+### Proposer Loop
+
+Responsibilities:
+
+```text
+watch settled receipts and prior-epoch TensorWork
+select eligible proposer with finalized randomness
+assemble blocks from accepted state
+publish blocks
+collect block votes
+track finality metrics
+```
+
+In local mode, `miner-00` may be the first proposer for simplicity, but it must still consume network-visible
+jobs, receipts, attestations, and votes.
+
+## Proposed Implementation Phases
+
+### Phase 1: Document And Harden The Gate
+
+- Add this document.
+- Update the local checker to emit exact live counters.
+- Update `coverage_matrix.md` so it describes live post-startup jobs, not only seeded state.
+- Add checker assertions for live rewards, live attestations, and live tensor data fetch.
+
+### Phase 2: Extract Chain Engine Boundaries
+
+- Rename `LocalChain` to a profile-neutral `Chain` or wrap it behind `ChainEngine`.
+- Move validation, settlement, proposer selection, and state views into separate modules.
+- Preserve all existing behavior and tests.
+- Keep `LocalChain` as a compatibility type alias temporarily if needed.
+
+### Phase 3: Add Role Loops Without Changing Consensus Semantics
+
+- Add long-running miner, validator, and proposer/node commands.
+- Initially run them against the existing RPC endpoints.
+- Then move gossip/request-response ingestion into the node runtime.
+
+### Phase 4: Make Compose Participants Actually Participate
+
+- `miner-*` containers run miner role loops.
+- `validator-*` containers run validator role loops.
+- `miner-00` runs gateway/proposer duties, but no longer creates all receipts and attestations locally.
+- The checker requires all operators to converge on the same finalized head.
+
+### Phase 5: Shared Profiles
+
+- Introduce `NodeConfig` and `ChainProfile`.
+- Express local, testnet, and future mainnet as config profiles.
+- Remove profile-specific chain transition branches.
+- Ensure all profile tests instantiate the same engine.
+
+### Phase 6: Restart And Recovery
+
+- Restart miner, validator, and proposer/gateway roles independently.
+- Verify no rollback.
+- Verify catch-up from persisted block log and peer state.
+- Verify block production continues after restart.
+
+## Local Production-Ready Acceptance Gate
+
+The local chain should not be called production-ready until this command sequence passes:
+
+```bash
+cargo test -p tensor_vm local_testnet --release
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
+```
+
+And the checker must prove:
+
+```text
+all 15 counted operators are running real role loops
+all 15 operators have stable identities after restart
+all 15 operators converge on the same finalized head
+blocks continue after restarts
+jobs are delivered through libp2p or the shared node event path
+receipts are produced by miner containers
+attestations are produced by validator containers
+blocks are produced from network-visible receipts and attestations
+TensorOp and LinearTrainingStep live jobs both settle after startup
+tensor rows/chunks/openings are fetched through the local tensor-server path
+live rewards accrue to miners and validators
+telemetry reflects live post-startup work
+local evidence remains explicitly non-public
+```
+
+## Recommended Next Commit Sequence
+
+Keep this incremental:
+
+1. Strengthen the checker for live attestations, live rewards, tensor fetch, and all-node head convergence.
+2. Extract a profile-neutral `ChainEngine` facade over the current `LocalChain`.
+3. Add role-loop commands while keeping current tests green.
+4. Wire miner receipt production through role processes.
+5. Wire validator attestation production through role processes.
+6. Wire proposer/block production through network-visible state.
+7. Replace the gateway-local synthetic round with a profile-configured `SyntheticLocalJobSource`.
+8. Add restart continuity checks for `miner-00`.
+
+This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
+testnet and mainnet profiles should use.
