@@ -115,6 +115,24 @@ read_service_block() {
   return 1
 }
 
+find_service_block_by_hash() {
+  service="$1"
+  target_hash="$2"
+  max_height="$3"
+  height="$max_height"
+  while [ "$height" -gt 2 ]; do
+    if block_raw=$(read_service_block "$service" "$height"); then
+      block_hash=$(status_value block_hash "$block_raw")
+      if [ "$block_hash" = "$target_hash" ]; then
+        printf '%s\n' "$block_raw"
+        return 0
+      fi
+    fi
+    height=$((height - 1))
+  done
+  return 1
+}
+
 cd "$REPO_ROOT"
 
 compose config --quiet
@@ -296,23 +314,55 @@ curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}
 curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
   || fail "live tensor opening was not fetchable"
 
-TARGET_STATUS_RAW=$(read_service_status miner-00) \
-  || fail "could not read miner-00 target service status"
-TARGET_STATUS="$TARGET_STATUS_RAW"
-ALL_OPERATOR_TARGET_HEAD_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
-ALL_OPERATOR_TARGET_HEAD_HASH=$(status_value latest_block_hash "$TARGET_STATUS")
-[ -n "$ALL_OPERATOR_TARGET_HEAD_HEIGHT" ] || fail "target latest head height was not observed"
-[ "$ALL_OPERATOR_TARGET_HEAD_HEIGHT" -gt 2 ] || fail "target latest head did not advance past seeded height 2"
-[ -n "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || fail "target latest head hash was not observed"
-[ "$ALL_OPERATOR_TARGET_HEAD_HASH" != "$ZERO_HASH" ] || fail "target latest head hash was empty"
-TARGET_BLOCK_RAW=$(read_service_block miner-00 "$ALL_OPERATOR_TARGET_HEAD_HEIGHT") \
-  || fail "could not read miner-00 target service block"
-TARGET_BLOCK_STATUS="$TARGET_BLOCK_RAW"
-TARGET_BLOCK_HASH=$(status_value block_hash "$TARGET_BLOCK_STATUS")
-ALL_OPERATOR_TARGET_STATE_ROOT=$(status_value state_root "$TARGET_BLOCK_STATUS")
-[ "$TARGET_BLOCK_HASH" = "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || fail "target latest head hash did not match target block"
-[ -n "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || fail "target latest head state root was not observed"
-[ "$ALL_OPERATOR_TARGET_STATE_ROOT" != "$ZERO_HASH" ] || fail "target latest head state root was empty"
+ALL_OPERATOR_NETWORK_HEAD_HEIGHT=""
+ALL_OPERATOR_NETWORK_HEAD_HASH=""
+ALL_OPERATOR_NETWORK_STATE_ROOT=""
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+  TARGET_STATUS_RAW=$(read_service_status miner-00) \
+    || fail "could not read miner-00 network-observed service status"
+  TARGET_STATUS="$TARGET_STATUS_RAW"
+  CANDIDATE_NETWORK_MAX_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_hash "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_hashes "$TARGET_STATUS")
+  if [ -n "$CANDIDATE_NETWORK_MAX_HEIGHT" ] \
+    && [ "$CANDIDATE_NETWORK_MAX_HEIGHT" -gt 2 ] \
+    && [ -n "$CANDIDATE_NETWORK_HEAD_HASH" ] \
+    && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "unknown" ] \
+    && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] \
+    && csv_contains_value "$CANDIDATE_NETWORK_HASHES" "$CANDIDATE_NETWORK_HEAD_HASH"; then
+    if NETWORK_BLOCK_RAW=$(find_service_block_by_hash miner-00 "$CANDIDATE_NETWORK_HEAD_HASH" "$CANDIDATE_NETWORK_MAX_HEIGHT"); then
+      NETWORK_BLOCK_STATUS="$NETWORK_BLOCK_RAW"
+      NETWORK_BLOCK_HEIGHT=$(status_value height "$NETWORK_BLOCK_STATUS")
+      NETWORK_BLOCK_HASH=$(status_value block_hash "$NETWORK_BLOCK_STATUS")
+      NETWORK_BLOCK_STATE_ROOT=$(status_value state_root "$NETWORK_BLOCK_STATUS")
+      NETWORK_BLOCK_FINALIZED=$(status_value finalized "$NETWORK_BLOCK_STATUS")
+      if [ -n "$NETWORK_BLOCK_HEIGHT" ] \
+        && [ "$NETWORK_BLOCK_HEIGHT" -gt 2 ] \
+        && [ "$NETWORK_BLOCK_HASH" = "$CANDIDATE_NETWORK_HEAD_HASH" ] \
+        && [ -n "$NETWORK_BLOCK_STATE_ROOT" ] \
+        && [ "$NETWORK_BLOCK_STATE_ROOT" != "$ZERO_HASH" ] \
+        && [ "$NETWORK_BLOCK_FINALIZED" = "true" ]; then
+        ALL_OPERATOR_NETWORK_HEAD_HEIGHT="$NETWORK_BLOCK_HEIGHT"
+        ALL_OPERATOR_NETWORK_HEAD_HASH="$NETWORK_BLOCK_HASH"
+        ALL_OPERATOR_NETWORK_STATE_ROOT="$NETWORK_BLOCK_STATE_ROOT"
+        break
+      fi
+    fi
+  fi
+  attempt=$((attempt + 1))
+  sleep 1
+done
+[ -n "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" ] || fail "network-observed latest head height was not observed"
+[ "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" -gt 2 ] || fail "network-observed latest head did not advance past seeded height 2"
+[ -n "$ALL_OPERATOR_NETWORK_HEAD_HASH" ] || fail "network-observed latest head hash was not observed"
+[ "$ALL_OPERATOR_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] || fail "network-observed latest head hash was empty"
+[ -n "$ALL_OPERATOR_NETWORK_STATE_ROOT" ] || fail "network-observed latest head state root was not observed"
+[ "$ALL_OPERATOR_NETWORK_STATE_ROOT" != "$ZERO_HASH" ] || fail "network-observed latest head state root was empty"
+
+ALL_OPERATOR_TARGET_HEAD_HEIGHT="$ALL_OPERATOR_NETWORK_HEAD_HEIGHT"
+ALL_OPERATOR_TARGET_HEAD_HASH="$ALL_OPERATOR_NETWORK_HEAD_HASH"
+ALL_OPERATOR_TARGET_STATE_ROOT="$ALL_OPERATOR_NETWORK_STATE_ROOT"
 
 ALL_OPERATOR_MIN_HEIGHT=0
 ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
@@ -420,7 +470,7 @@ while [ "$attempt" -lt 60 ]; do
       STATUS_MISMATCH=true
       continue
     fi
-    csv_contains_value "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" "$ALL_OPERATOR_TARGET_HEAD_HASH" \
+    csv_contains_value "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" "$ALL_OPERATOR_NETWORK_HEAD_HASH" \
       || { STATUS_MISMATCH=true; continue; }
     if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
       ALL_OPERATOR_MIN_HEIGHT="$SERVICE_LATEST_BLOCK_HEIGHT"
@@ -457,7 +507,7 @@ while [ "$attempt" -lt 60 ]; do
       fi
     done
     for service in $EXPECTED_SERVICES; do
-      if BLOCK_RAW=$(read_service_block "$service" "$ALL_OPERATOR_TARGET_HEAD_HEIGHT"); then
+      if BLOCK_RAW=$(read_service_block "$service" "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT"); then
         BLOCK_STATUS="$BLOCK_RAW"
       else
         TARGET_HEAD_MISMATCH=true
@@ -466,8 +516,8 @@ while [ "$attempt" -lt 60 ]; do
       SERVICE_TARGET_BLOCK_HASH=$(status_value block_hash "$BLOCK_STATUS")
       SERVICE_TARGET_STATE_ROOT=$(status_value state_root "$BLOCK_STATUS")
       SERVICE_TARGET_BLOCK_FINALIZED=$(status_value finalized "$BLOCK_STATUS")
-      [ "$SERVICE_TARGET_BLOCK_HASH" = "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || { TARGET_HEAD_MISMATCH=true; continue; }
-      [ "$SERVICE_TARGET_STATE_ROOT" = "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || { TARGET_HEAD_MISMATCH=true; continue; }
+      [ "$SERVICE_TARGET_BLOCK_HASH" = "$ALL_OPERATOR_NETWORK_HEAD_HASH" ] || { TARGET_HEAD_MISMATCH=true; continue; }
+      [ "$SERVICE_TARGET_STATE_ROOT" = "$ALL_OPERATOR_NETWORK_STATE_ROOT" ] || { TARGET_HEAD_MISMATCH=true; continue; }
       [ "$SERVICE_TARGET_BLOCK_FINALIZED" = "true" ] || { TARGET_HEAD_MISMATCH=true; continue; }
     done
     if [ "$COMMON_HEAD_MISMATCH" = "false" ] && [ "$TARGET_HEAD_MISMATCH" = "false" ]; then
@@ -489,6 +539,10 @@ done
 [ "$ALL_OPERATOR_TARGET_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator target latest head hash convergence was empty"
 [ -n "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || fail "operator target latest state-root convergence was not observed"
 [ "$ALL_OPERATOR_TARGET_STATE_ROOT" != "$ZERO_HASH" ] || fail "operator target latest state-root convergence was empty"
+[ -n "$ALL_OPERATOR_NETWORK_HEAD_HASH" ] || fail "operator network-observed latest head hash convergence was not observed"
+[ "$ALL_OPERATOR_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator network-observed latest head hash convergence was empty"
+[ -n "$ALL_OPERATOR_NETWORK_STATE_ROOT" ] || fail "operator network-observed latest state-root convergence was not observed"
+[ "$ALL_OPERATOR_NETWORK_STATE_ROOT" != "$ZERO_HASH" ] || fail "operator network-observed latest state-root convergence was empty"
 
 cargo test -p tensor_vm local_testnet --release
 
@@ -530,12 +584,17 @@ all_operator_target_head_height=${ALL_OPERATOR_TARGET_HEAD_HEIGHT}
 all_operator_target_head_hash=${ALL_OPERATOR_TARGET_HEAD_HASH}
 all_operator_target_state_root=${ALL_OPERATOR_TARGET_STATE_ROOT}
 all_operator_target_head_convergence=true
+all_operator_network_head_height=${ALL_OPERATOR_NETWORK_HEAD_HEIGHT}
+all_operator_network_head_hash=${ALL_OPERATOR_NETWORK_HEAD_HASH}
+all_operator_network_state_root=${ALL_OPERATOR_NETWORK_STATE_ROOT}
+all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
 all_operator_p2p_target_head_observed=true
+all_operator_p2p_latest_head_observed=true
 all_operator_chain_counters=true
 all_operator_block_log_roots_observed=true
 public_evidence_full_spec=false

@@ -268,9 +268,9 @@ standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
 all 15 operator node stores advanced past the seed, reported role status and live chain counters, and
 reported the same first live finalized block hash plus the same finalized common-head block hash at the
 bounded convergence height
-all 15 operator node stores returned the miner-00 latest produced block-height target hash and state root
-after catch-up
-all 15 operators observed that target block hash through libp2p block gossip
+all 15 operator node stores returned the p2p-observed finalized head checkpoint hash and state root after
+catch-up
+all 15 operators observed that checkpoint block hash through libp2p block gossip
 all 15 operator node stores reported nonempty block-log roots
 restarted operators repair torn snapshot/block-log state from persisted chain state before readiness
 ```

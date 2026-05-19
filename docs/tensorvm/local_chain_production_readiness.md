@@ -86,9 +86,10 @@ The local bundle is useful and should remain the first operational target:
   through `tvmd service status`.
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
-  common-head block hash through `tvmd service block` before and after restart checks. It also pins
-  miner-00's latest produced block height and fails unless every operator catches up to the same finalized
-  block hash and state root, with a nonempty block-log root reported from every node store.
+  common-head block hash through `tvmd service block` before and after restart checks. It also selects a
+  finalized head checkpoint from miner-00's p2p-observed block-gossip set, finds that checkpoint in
+  miner-00's local block log, then fails unless every operator catches up to that same finalized block hash
+  and state root, with a nonempty block-log root reported from every node store.
 - `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, block-log
   roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
   keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
@@ -107,7 +108,7 @@ The local bundle is useful and should remain the first operational target:
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
   loop with produced-block progress, at least one real libp2p connection, at least one block announcement
-  observed through Gossipsub, and an observed network announcement for the pinned target head hash.
+  observed through Gossipsub, and an observed network announcement for the selected p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -184,16 +185,16 @@ Required fix:
 
 The checker validates that all operators are running and libp2p-ready, and now checks every node store for
 role status, live chain counters, the same first live finalized block hash, the same finalized common-head
-block hash, and a pinned miner-00 latest produced block-height target/state root through
-`tvmd service block`. It still does not prove live state was propagated through the network or that every
+block hash, and a p2p-observed latest-head checkpoint/state root through `tvmd service block`. It still
+does not prove live state was fully applied from the shared network event loop or that every
 operator is executing a distinct role loop.
 
 Required fix:
 
 - Extend `tvmd service status` or the local node API to include real connected peer count and role-specific
   work counters sourced from role loops.
-- Move the convergence assertion from deterministic same-seed first-live/common-head and pinned-target
-  equality to the shared network event path.
+- Move the convergence assertion from deterministic same-seed first-live/common-head equality to the
+  shared network event path.
 - The checker must eventually fail unless all 15 operators converge on the same network-derived latest
   finalized head within a bounded time.
 
@@ -201,8 +202,8 @@ Status: started for role-loop and network counters. `tvmd service status` now ex
 command, role-loop readiness, role, produced-block, latest-height, real libp2p connected-peer counters,
 and runtime-observed block-gossip counters from the long-running command. Local block production now
 publishes `NewBlock` announcements over Gossipsub, and the checker requires every counted operator to
-observe the pinned target head block hash through libp2p. Full p2p-driven latest-head convergence still
-needs to replace the remaining local-store catch-up proof.
+observe and serve the selected network-observed head block hash through libp2p. Full state application
+from the shared node event loop still needs to replace the remaining local-store catch-up proof.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -493,10 +494,10 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
-hash, the same finalized common-head block hash, and a pinned miner-00 latest produced block-height
-target/state root through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
-receipt evidence, real libp2p connected-peer counts, target-head block-gossip observations from every role
-runtime, and nonempty block-log roots from every node store. The restart-continuity script also captures
+hash, the same finalized common-head block hash, and a p2p-observed latest-head checkpoint/state root
+through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real
+libp2p connected-peer counts, selected-head block-gossip observations from every role runtime, and
+nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
 selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
 Fully applying blocks from the shared network event path still needs hard checker assertions.
@@ -603,14 +604,12 @@ local evidence remains explicitly non-public
 
 Keep this incremental:
 
-1. Replace pinned latest produced block-height convergence with latest-head convergence through the shared
-   network event path.
-2. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
+1. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
    proposer/node run surface while keeping current tests green.
-3. Wire miner receipt production through role processes.
-4. Wire validator attestation production through role processes.
-5. Wire proposer/block production through network-visible state.
-6. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
+2. Wire miner receipt production through role processes.
+3. Wire validator attestation production through role processes.
+4. Wire proposer/block production through network-visible state.
+5. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that

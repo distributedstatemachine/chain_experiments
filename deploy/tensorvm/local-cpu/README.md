@@ -45,9 +45,10 @@ role-runtime command, expose live role-loop counters, real libp2p connected-peer
 block-gossip counters, latest observed block hashes, the bounded observed block-hash set, and chain
 counters, report the same first live finalized block hash, and return the same finalized common-head block
 hash through `tvmd service block`.
-It also pins miner-00's latest produced block height and fails unless every operator can return that exact
-finalized block hash and state root, has observed that target hash through libp2p block gossip, and reports
-a nonempty block-log root.
+It also selects a finalized head checkpoint from miner-00's p2p-observed block-gossip set, finds that
+checkpoint in miner-00's local block log, then fails unless every operator can return that exact finalized
+block hash and state root, has observed that network head through libp2p block gossip, and reports a
+nonempty block-log root.
 
 ## Commands
 

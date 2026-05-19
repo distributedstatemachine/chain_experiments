@@ -58,9 +58,9 @@ rewards after the seed, requires live receipt details to expose validator attest
 the seeded count of both `tensor_op` and `linear_training_step` primitive receipts, fetches a live tensor
 descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
-common-head block hash through `tvmd service block`, pins a miner-00 latest produced block-height target
-and requires every operator to return the matching finalized block hash and state root while reporting a
-nonempty block-log root, and uses
+common-head block hash through `tvmd service block`, selects a finalized head checkpoint from miner-00's
+p2p-observed block-gossip set and requires every operator to return the matching finalized block hash and
+state root while reporting a nonempty block-log root, and uses
 `check-rolling-restart-continuity.sh` to run the restart-continuity gate one service at a time across every
 counted operator, proving each restarted service keeps its libp2p peer ID, preserves the pre-restart
 finalized common head and state root, advances height/block-count/state-root/block-log-root evidence, and

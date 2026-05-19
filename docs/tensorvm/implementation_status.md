@@ -326,12 +326,13 @@ preflight, public evidence, or deployment-gated work can count:
   `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
-  catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
-  state root via `all_operator_target_head_convergence=true`, plus p2p observation of that same target hash,
+  catch up to a finalized head checkpoint selected from miner-00's p2p-observed block-gossip set and
+  found in miner-00's local block log with matching finalized block hash and state root via
+  `all_operator_network_head_convergence=true`, plus p2p observation of that same network head hash,
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
   `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
-  `all_operator_p2p_target_head_observed=true`, and
+  `all_operator_p2p_target_head_observed=true`, `all_operator_p2p_latest_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
   command, live role-loop counters, real libp2p connected-peer count, observed block gossip for the target
   convergence head, live chain counters, and durable block-log root;
