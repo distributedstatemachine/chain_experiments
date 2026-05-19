@@ -194,6 +194,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_role_runtime_commands=true",
         "all_operator_role_runtime_counters=true",
         "all_operator_p2p_connected_peers=true",
+        "all_operator_p2p_block_gossip=true",
         "all_operator_chain_counters=true",
         "all_operator_block_log_roots_observed=true",
         "data-ui=\"ratzilla-tui\"",

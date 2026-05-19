@@ -103,9 +103,10 @@ The local bundle is useful and should remain the first operational target:
   fails unless all 15 operators report the role command expected for their Compose service.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
-  `role_produced_blocks`, `role_latest_height`, and `role_p2p_connected_peers`; the checker fails unless
-  every counted operator reports a live role loop with produced-block progress and at least one real
-  libp2p connection observed by the runtime.
+  `role_produced_blocks`, `role_latest_height`, `role_p2p_connected_peers`,
+  `role_p2p_observed_blocks`, and `role_p2p_latest_observed_block_hash`; the checker fails unless every
+  counted operator reports a live role loop with produced-block progress, at least one real libp2p
+  connection, and at least one block announcement observed through Gossipsub.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -196,9 +197,11 @@ Required fix:
   finalized head within a bounded time.
 
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
-command, role-loop readiness, role, produced-block, latest-height, and real libp2p connected-peer counters
-from the long-running command. Network-derived latest-head convergence still needs to replace the current
-same-seed/pinned-head convergence proof.
+command, role-loop readiness, role, produced-block, latest-height, real libp2p connected-peer counters,
+and runtime-observed block-gossip counters from the long-running command. Local block production now
+publishes `NewBlock` announcements over Gossipsub, and the checker requires every counted operator to
+observe at least one block announcement through libp2p. Network-derived latest-head convergence still needs
+to replace the current same-seed/pinned-head convergence proof.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -491,10 +494,11 @@ receipts, per-receipt validator-attestation details, live tensor descriptor/row/
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
 hash, the same finalized common-head block hash, and a pinned miner-00 latest produced block-height
 target/state root through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
-receipt evidence, and nonempty block-log roots from every node store. The restart-continuity script also
-captures pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads
-for selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
-Latest-head convergence via the shared network event path still needs hard checker assertions.
+receipt evidence, real libp2p connected-peer counts, block-gossip observations from every role runtime,
+and nonempty block-log roots from every node store. The restart-continuity script also captures pre/post
+peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for selected
+restart gates, and the rolling wrapper applies that gate to every counted operator by default. Latest-head
+convergence via the shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -518,8 +522,9 @@ still need to move out of the remaining large `chain.rs` implementation.
 Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
 Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
 `runtime_command=validator_run` through ready files and `tvmd service status`. The status path also exposes
-live role-loop counters and real libp2p connected-peer counts for every counted operator. The commands still
-delegate to the service runtime internally, and proposer/node run ownership still needs to be split out.
+live role-loop counters, real libp2p connected-peer counts, and observed block-gossip counters for every
+counted operator. The commands still delegate to the service runtime internally, and proposer/node run
+ownership still needs to be split out.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

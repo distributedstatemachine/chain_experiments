@@ -8,9 +8,9 @@ use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -145,6 +145,9 @@ pub struct TensorVmLibp2pServiceInfo {
 pub struct TensorVmLibp2pService {
     info: TensorVmLibp2pServiceInfo,
     connected_peer_count: Arc<AtomicUsize>,
+    observed_block_gossip_count: Arc<AtomicUsize>,
+    latest_observed_block_hash: Arc<Mutex<Hash>>,
+    publish_tx: mpsc::Sender<P2pMessage>,
     stop: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
 }
@@ -160,6 +163,24 @@ impl TensorVmLibp2pService {
 
     pub fn connected_peer_count(&self) -> usize {
         self.connected_peer_count.load(Ordering::Relaxed)
+    }
+
+    pub fn observed_block_gossip_count(&self) -> usize {
+        self.observed_block_gossip_count.load(Ordering::Relaxed)
+    }
+
+    pub fn latest_observed_block_hash(&self) -> Hash {
+        self.latest_observed_block_hash
+            .lock()
+            .map(|hash| *hash)
+            .unwrap_or([0; 32])
+    }
+
+    pub fn publish_gossip(&self, message: P2pMessage) -> TvmResult<()> {
+        encode_gossipsub_message(&message)?;
+        self.publish_tx
+            .send(message)
+            .map_err(|_| TvmError::InvalidReceipt("libp2p publish worker stopped"))
     }
 }
 
@@ -243,6 +264,11 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_stop = Arc::clone(&stop);
     let connected_peer_count = Arc::new(AtomicUsize::new(0));
     let worker_connected_peer_count = Arc::clone(&connected_peer_count);
+    let observed_block_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_block_gossip_count = Arc::clone(&observed_block_gossip_count);
+    let latest_observed_block_hash = Arc::new(Mutex::new([0; 32]));
+    let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
+    let (publish_tx, publish_rx) = mpsc::channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -273,14 +299,21 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             let mut peer_connections = HashMap::new();
 
             while !worker_stop.load(Ordering::Relaxed) {
+                while let Ok(message) = publish_rx.try_recv() {
+                    if let Ok((topic, payload)) = encode_gossipsub_message(&message) {
+                        let _ = node.swarm.behaviour_mut().gossipsub.publish(topic, payload);
+                    }
+                }
                 if let Ok(event) =
                     tokio::time::timeout(Duration::from_millis(100), node.swarm.select_next_some())
                         .await
                 {
-                    update_connected_peer_count(
+                    handle_swarm_event(
                         event,
                         &mut peer_connections,
                         &worker_connected_peer_count,
+                        &worker_observed_block_gossip_count,
+                        &worker_latest_observed_block_hash,
                     );
                 }
                 if !bootstrap_multiaddrs.is_empty()
@@ -303,6 +336,9 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
         Ok(info) => Ok(TensorVmLibp2pService {
             info,
             connected_peer_count,
+            observed_block_gossip_count,
+            latest_observed_block_hash,
+            publish_tx,
             stop,
             worker: Some(worker),
         }),
@@ -313,10 +349,12 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     }
 }
 
-fn update_connected_peer_count(
+fn handle_swarm_event(
     event: SwarmEvent<TensorVmNetworkBehaviourEvent>,
     peer_connections: &mut HashMap<PeerId, usize>,
     connected_peer_count: &AtomicUsize,
+    observed_block_gossip_count: &AtomicUsize,
+    latest_observed_block_hash: &Mutex<Hash>,
 ) {
     match event {
         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
@@ -331,6 +369,16 @@ fn update_connected_peer_count(
                 }
             }
             connected_peer_count.store(peer_connections.len(), Ordering::Relaxed);
+        }
+        SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
+            libp2p::gossipsub::Event::Message { message, .. },
+        )) => {
+            if let Ok(P2pMessage::NewBlock(block_hash)) = decode_message(&message.data) {
+                observed_block_gossip_count.fetch_add(1, Ordering::Relaxed);
+                if let Ok(mut latest_block_hash) = latest_observed_block_hash.lock() {
+                    *latest_block_hash = block_hash;
+                }
+            }
         }
         _ => {}
     }
@@ -1103,6 +1151,47 @@ mod tests {
     }
 
     #[test]
+    fn libp2p_service_publishes_and_observes_block_gossip() {
+        let port = free_tcp_port();
+        let service_a = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-gossip-a"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        let bootstrap_address = format!("/ip4/127.0.0.1/tcp/{port}/p2p/{}", service_a.peer_id());
+        let service_b = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![bootstrap_address],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-gossip-b"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        wait_for_connected_services(&service_a, &service_b);
+
+        let block_hash = hash_bytes(b"test", &[b"libp2p-service-observed-block"]);
+        wait_for_observed_block(&service_a, &service_b, block_hash);
+    }
+
+    #[test]
+    fn libp2p_service_rejects_request_response_gossip_publish() {
+        let service = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-bad-publish"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        let hash = hash_bytes(b"test", &[b"request-response-publish"]);
+
+        assert_eq!(
+            service.publish_gossip(P2pMessage::RequestProgram(hash)),
+            Err(TvmError::InvalidReceipt(
+                "message is not a gossipsub announcement"
+            ))
+        );
+    }
+
+    #[test]
     fn local_testnet_libp2p_swarms_exchange_gossip_and_request_response() {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_io()
@@ -1245,6 +1334,23 @@ mod tests {
             std::thread::sleep(Duration::from_millis(50));
         }
         assert_eq!(service.connected_peer_count(), expected_count);
+    }
+
+    fn wait_for_observed_block(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        block_hash: Hash,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline && observer.latest_observed_block_hash() != block_hash {
+            publisher
+                .publish_gossip(P2pMessage::NewBlock(block_hash))
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert!(observer.observed_block_gossip_count() > 0);
+        assert_eq!(observer.latest_observed_block_hash(), block_hash);
     }
 
     async fn wait_for_listen_addr(node: &mut TensorVmLibp2pNode) -> Multiaddr {

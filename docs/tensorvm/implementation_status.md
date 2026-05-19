@@ -67,7 +67,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
   `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
-  disconnect, and durable libp2p bootstrap peer-book storage with checksum validation and
+  disconnect, local block-announcement publishing over Gossipsub, runtime-observed block-gossip counters
+  exposed through role status, and durable libp2p bootstrap peer-book storage with checksum validation and
   `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
@@ -82,7 +83,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - Role-specific long-running `tvmd miner run` and `tvmd validator run` command surfaces that validate the
   role config, start the mandatory libp2p-backed service runtime, write live role-loop counters, and
-  report role runtime readiness through `tvmd service status`
+  report role runtime readiness plus observed block-gossip counters through `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -309,9 +310,10 @@ preflight, public evidence, or deployment-gated work can count:
   state root via `all_operator_target_head_convergence=true`, plus
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
-  `all_operator_p2p_connected_peers=true`, and `all_operator_chain_counters=true`, proving each operator
-  status surface reports its role, runtime command, live role-loop counters, real libp2p connected-peer
-  count, live chain counters, and durable block-log root;
+  `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`, and
+  `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
+  command, live role-loop counters, real libp2p connected-peer count, observed block gossip, live chain
+  counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
@@ -319,10 +321,10 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 214 passing library tests under Tarpaulin:
+The workspace currently has 218 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 199 in `tensor_vm`
+- 203 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 3 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -351,9 +353,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.18% workspace line coverage
-- 9892/9974 workspace lines covered
+- 9972/10054 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9047/9047 `tensor_vm` lines covered
+- 9127/9127 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

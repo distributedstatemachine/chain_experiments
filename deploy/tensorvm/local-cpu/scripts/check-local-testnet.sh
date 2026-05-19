@@ -347,6 +347,8 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_LATEST_HEIGHT=$(status_value role_latest_height "$STATUS")
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
+    SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH=$(status_value role_p2p_latest_observed_block_hash "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -370,6 +372,10 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_LATEST_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_CONNECTED_PEERS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-*) [ "$SERVICE_ROLE" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
@@ -397,6 +403,8 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -le 0 ] \
       || [ "$SERVICE_ROLE_LATEST_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
       STATUS_MISMATCH=true
       continue
@@ -513,6 +521,7 @@ all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
 all_operator_p2p_connected_peers=true
+all_operator_p2p_block_gossip=true
 all_operator_chain_counters=true
 all_operator_block_log_roots_observed=true
 public_evidence_full_spec=false

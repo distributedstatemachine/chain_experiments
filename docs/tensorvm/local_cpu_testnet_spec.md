@@ -181,8 +181,9 @@ Validator containers must connect through libp2p and validate receipts using the
 paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
 protocol paths and persisted state. The readiness file and `tvmd service status` output must expose the
 actual long-running role command so the checker can reject operators that fall back to a generic service
-entrypoint. The status output must also expose role-loop counters and the runtime-observed libp2p connected
-peer count so the first gate proves every operator is connected, not merely configured.
+entrypoint. The status output must also expose role-loop counters, the runtime-observed libp2p connected
+peer count, and latest observed block-gossip counters so the first gate proves every operator is connected
+and receiving live `NewBlock` announcements, not merely configured.
 
 After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work. Each
 live block must come from the normal protocol path: a generated TensorWork job, miner receipts, validator
