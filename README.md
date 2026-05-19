@@ -8,8 +8,8 @@ The repo has three crates:
 
 - [tensor_vm](crates/tensor_vm/README.md): the node, chain, CPU/CUDA runtimes, libp2p service, RPC surfaces,
   WebSocket data endpoint, evidence tooling, and local CPU testnet.
-- [tensor_vm_explorer](crates/tensor_vm_explorer/README.md): a standalone browser explorer that polls a
-  TensorVM node over WebSocket.
+- [tensor_vm_explorer](crates/tensor_vm_explorer/README.md): a standalone terminal-style browser explorer
+  with a default Ratzilla/Ratatui UI path that polls a TensorVM node over WebSocket.
 - [experiments](crates/experiments/README.md): non-TensorVM research prototypes, paper notes, and attack
   probes.
 

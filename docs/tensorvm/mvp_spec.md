@@ -2089,7 +2089,7 @@ Workspace requirements:
 ```text
 the repository root must be a Cargo workspace
 TensorVM implementation code must live under crates/tensor_vm/
-TensorVM explorer UI code must live under crates/tensor_vm_explorer/
+TensorVM explorer UI code must live under crates/tensor_vm_explorer/ and ship as a default feature
 non-TensorVM protocol experiments must live under crates/experiments/
 each crate must have its own README
 the root README must describe the workspace and link to crate-level READMEs
@@ -2146,7 +2146,8 @@ cross-machine determinism tests
 invalid-output test harness
 restartable node storage
 libp2p P2P runtime, P2P codec, RPC codec, and RPC socket tests
-TensorVM node explorer WebSocket endpoint and standalone explorer crate
+TensorVM node explorer WebSocket endpoint and standalone explorer crate with a default terminal-style
+Ratzilla/Ratatui UI path
 ```
 
 Required local verification commands before sharing changes:

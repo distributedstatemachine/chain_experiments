@@ -7,4 +7,15 @@ edition.workspace = true
 name = "tensorvm-explorer"
 path = "src/main.rs"
 
-[dependencies]
+[features]
+default = ["ui"]
+ui = ["ratzilla-ui"]
+ratzilla-ui = ["dep:ratzilla"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ratzilla = { version = "0.3.0", optional = true }
+
+[[bin]]
+name = "tensorvm-explorer-ratzilla"
+path = "src/ratzilla_main.rs"
+required-features = ["ratzilla-ui"]

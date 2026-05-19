@@ -126,6 +126,8 @@ printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' \
 EXPLORER_PAGE=$(curl -fsS "http://127.0.0.1:${EXPLORER_PORT}/")
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' \
   || fail "standalone explorer page is not reachable"
+printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' \
+  || fail "standalone explorer page is not the default Ratzilla-style TUI"
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' \
   || fail "standalone explorer page does not poll TensorVM over websocket"
 

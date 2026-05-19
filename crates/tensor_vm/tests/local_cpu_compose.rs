@@ -139,6 +139,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "\"block_count\":2",
         "standalone_explorer_ready=true",
         "standalone_explorer_websocket_polling=true",
+        "data-ui=\"ratzilla-tui\"",
         "new WebSocket",
         "cargo test -p tensor_vm local_testnet --release",
         "public_evidence_full_spec=false",

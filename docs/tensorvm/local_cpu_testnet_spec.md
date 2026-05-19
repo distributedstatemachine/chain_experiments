@@ -201,9 +201,10 @@ GET /telemetry/health
 GET /telemetry/dashboard
 ```
 
-The explorer UI must not depend on a checked static chain dump. The TensorVM node must expose
-`/explorer/ws`, and the standalone explorer must poll that WebSocket for the data it renders. The gateway
-does not need public TLS for this spec. Local HTTP/WebSocket is enough.
+The default explorer UI must be a terminal-style browser surface backed by the `tensor_vm_explorer`
+`ui` feature and its Ratzilla/Ratatui WASM path. It must not depend on a checked static chain dump.
+The TensorVM node must expose `/explorer/ws`, and the standalone explorer must poll that WebSocket for
+the data it renders. The gateway does not need public TLS for this spec. Local HTTP/WebSocket is enough.
 
 ## Acceptance Gates
 

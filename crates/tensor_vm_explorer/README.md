@@ -2,9 +2,9 @@
 
 Standalone browser explorer for TensorVM.
 
-The crate owns the explorer UI shell and neutral JSON view models. It does not embed chain state. At
-runtime `tensorvm-explorer` serves the page and the page polls a TensorVM node through the node's
-`/explorer/ws` WebSocket endpoint.
+The crate owns the default terminal-style explorer UI shell, a Ratzilla/Ratatui WASM entry point, and
+neutral JSON view models. It does not embed chain state. At runtime `tensorvm-explorer` serves the
+page and the page polls a TensorVM node through the node's `/explorer/ws` WebSocket endpoint.
 
 Default settings:
 
@@ -20,4 +20,10 @@ Run from the workspace root:
 
 ```bash
 cargo test -p tensor_vm_explorer --release
+```
+
+The `ui` feature is enabled by default. A browser/WASM Ratzilla build can be checked with:
+
+```bash
+cargo check -p tensor_vm_explorer --target wasm32-unknown-unknown --bin tensorvm-explorer-ratzilla
 ```

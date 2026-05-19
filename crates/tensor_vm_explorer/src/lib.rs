@@ -1,5 +1,8 @@
 use std::fmt::Write;
 
+#[cfg(all(feature = "ratzilla-ui", target_arch = "wasm32"))]
+pub mod ratzilla_ui;
+
 pub const DEFAULT_EXPLORER_LISTEN: &str = "127.0.0.1:8080";
 pub const DEFAULT_EXPLORER_WS_URL: &str = "ws://127.0.0.1:8545/explorer/ws";
 
@@ -261,103 +264,216 @@ pub fn explorer_health_json(ws_url: &str) -> String {
 
 pub fn explorer_shell_html(ws_url: &str) -> String {
     let html_ws = escape_html(ws_url);
-    let js_ws = escape_json(ws_url);
-    format!(
-        r#"<!doctype html>
+    let js_ws = escape_js_string(ws_url);
+    let template = r#"<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TensorVM Explorer</title>
 <style>
-:root {{ color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #080a0f; color: #eff3f8; }}
-body {{ margin: 0; background: #080a0f; }}
-main {{ max-width: 1280px; margin: 0 auto; padding: 24px; }}
-header {{ display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }}
-h1, h2 {{ margin: 0; letter-spacing: 0; }}
-h1 {{ font-size: 28px; }}
-h2 {{ font-size: 16px; margin-bottom: 10px; color: #cbd5e1; }}
-.status {{ font-size: 13px; color: #9ca3af; }}
-.grid {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 18px; }}
-.metric, section {{ background: #111827; border: 1px solid #263244; border-radius: 8px; }}
-.metric {{ padding: 12px; }}
-.label {{ color: #9ca3af; font-size: 12px; }}
-.value {{ font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums; }}
-section {{ padding: 14px; margin-bottom: 14px; overflow-x: auto; }}
-table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-th, td {{ text-align: left; padding: 8px 6px; border-bottom: 1px solid #263244; white-space: nowrap; }}
-th {{ color: #9ca3af; font-weight: 600; }}
-code {{ color: #a7f3d0; }}
-.two {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
-.lookup {{ display: flex; gap: 8px; margin-bottom: 10px; }}
-input {{ flex: 1; background: #0b1020; border: 1px solid #334155; border-radius: 6px; color: #eff3f8; padding: 9px 10px; }}
-button {{ background: #e5e7eb; color: #111827; border: 0; border-radius: 6px; padding: 9px 12px; font-weight: 700; cursor: pointer; }}
-@media (max-width: 820px) {{ main {{ padding: 16px; }} header, .two, .lookup {{ display: block; }} button {{ margin-top: 8px; width: 100%; }} }}
+* { box-sizing: border-box; }
+:root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background: #05080d; color: #dbe7f0; }
+body { margin: 0; min-height: 100vh; background: #05080d; }
+button, input { font: inherit; letter-spacing: 0; }
+code { color: #7dd3fc; }
+[hidden] { display: none !important; }
+.terminal { min-height: calc(100vh - 24px); margin: 12px; display: flex; flex-direction: column; border: 1px solid #293847; background: #070b10; box-shadow: inset 0 0 0 1px #0d141c; }
+.topbar { display: grid; grid-template-columns: minmax(190px, 1fr) auto minmax(220px, 42vw); gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid #293847; background: #0c121a; }
+.brand { color: #f8fafc; font-weight: 800; }
+.status { color: #9be9a8; text-align: center; font-size: 13px; }
+.ws { color: #98a8b8; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { display: flex; gap: 1px; padding: 0 12px; border-bottom: 1px solid #293847; background: #0a1017; }
+.tabs button { min-height: 38px; border: 0; border-left: 1px solid transparent; border-right: 1px solid transparent; background: transparent; color: #a6b6c6; padding: 0 12px; cursor: pointer; }
+.tabs button.active { background: #9be9a8; color: #071015; font-weight: 800; }
+.layout { flex: 1; display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); min-height: 0; }
+.sidebar { border-right: 1px solid #293847; padding: 12px; overflow: auto; }
+.screen { min-width: 0; overflow: auto; padding: 12px; }
+.metrics { display: grid; gap: 8px; }
+.metric { display: flex; justify-content: space-between; gap: 16px; border: 1px solid #263747; border-radius: 4px; background: #0b1118; padding: 8px 10px; }
+.metric span, .panel-title, th { color: #91a4b7; }
+.metric strong { color: #f8fafc; font-variant-numeric: tabular-nums; }
+.panel-title { margin: 16px 0 8px; font-size: 12px; text-transform: uppercase; }
+.terminal-lines { margin: 0; border: 1px solid #263747; border-radius: 4px; background: #05080d; color: #cbd5e1; min-height: 92px; padding: 10px; white-space: pre-wrap; }
+.window { border: 1px solid #2d4052; border-radius: 4px; background: #070b10; margin-bottom: 12px; }
+.window-title { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #243241; padding: 8px 10px; color: #f8fafc; background: #0b1118; }
+.window-title span:last-child { color: #91a4b7; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 7px 8px; border-bottom: 1px solid #1d2a36; text-align: left; white-space: nowrap; }
+td { color: #dbe7f0; }
+td.mono { color: #7dd3fc; }
+.empty { color: #91a4b7; }
+.command { display: flex; gap: 10px; align-items: center; border-top: 1px solid #293847; background: #0c121a; padding: 10px 12px; }
+.prompt { color: #9be9a8; font-weight: 800; }
+.command input { flex: 1; min-width: 0; border: 1px solid #33485d; border-radius: 4px; background: #05080d; color: #f8fafc; padding: 8px 10px; }
+.command button { border: 1px solid #9be9a8; border-radius: 4px; background: #9be9a8; color: #071015; cursor: pointer; font-weight: 800; padding: 8px 12px; }
+@media (max-width: 900px) {
+  .terminal { min-height: 100vh; margin: 0; border-left: 0; border-right: 0; }
+  .topbar { grid-template-columns: 1fr; }
+  .status, .ws { text-align: left; }
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; border-bottom: 1px solid #293847; }
+  .tabs { overflow-x: auto; }
+  .command { align-items: stretch; flex-direction: column; }
+  .command button { width: 100%; }
+}
 </style>
 </head>
 <body>
-<main>
-<header>
-<div><h1>TensorVM Explorer</h1><div class="status" id="status">connecting</div></div>
-<div class="status">WebSocket <code id="ws-url">{html_ws}</code></div>
-</header>
-<div class="grid" id="metrics"></div>
-<section><h2>Account Lookup</h2><div class="lookup"><input id="account-input" placeholder="64-character address hex"><button id="account-button">Lookup</button></div><pre id="account-output"></pre></section>
-<section><h2>Latest Blocks</h2><table id="blocks"></table></section>
-<div class="two"><section><h2>Miners</h2><table id="miners"></table></section><section><h2>Validators</h2><table id="validators"></table></section></div>
-<section><h2>Receipts</h2><table id="receipts"></table></section>
-<section><h2>Jobs</h2><table id="jobs"></table></section>
-</main>
+<div class="terminal" data-ui="ratzilla-tui">
+  <header class="topbar">
+    <div class="brand">TensorVM Explorer</div>
+    <div class="status" id="status">connecting</div>
+    <div class="ws">WS <code id="ws-url">__HTML_WS__</code></div>
+  </header>
+  <nav class="tabs" aria-label="Explorer views">
+    <button class="active" data-view="overview">Overview</button>
+    <button data-view="blocks">Blocks</button>
+    <button data-view="operators">Operators</button>
+    <button data-view="work">Work</button>
+  </nav>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="metrics" id="metrics"></div>
+      <div class="panel-title">Operator Status</div>
+      <pre class="terminal-lines" id="operator-lines">waiting for operator set</pre>
+      <div class="panel-title">Account</div>
+      <pre class="terminal-lines" id="account-output">address lookup idle</pre>
+    </aside>
+    <main class="screen">
+      <section class="window" data-panel="blocks">
+        <div class="window-title"><span>Latest Blocks</span><span id="block-count">0 rows</span></div>
+        <div class="table-wrap"><table id="blocks"></table></div>
+      </section>
+      <section class="window" data-panel="operators">
+        <div class="window-title"><span>Miners</span><span id="miner-count">0 rows</span></div>
+        <div class="table-wrap"><table id="miners"></table></div>
+      </section>
+      <section class="window" data-panel="operators">
+        <div class="window-title"><span>Validators</span><span id="validator-count">0 rows</span></div>
+        <div class="table-wrap"><table id="validators"></table></div>
+      </section>
+      <section class="window" data-panel="work">
+        <div class="window-title"><span>Receipts</span><span id="receipt-count">0 rows</span></div>
+        <div class="table-wrap"><table id="receipts"></table></div>
+      </section>
+      <section class="window" data-panel="work">
+        <div class="window-title"><span>Jobs</span><span id="job-count">0 rows</span></div>
+        <div class="table-wrap"><table id="jobs"></table></div>
+      </section>
+    </main>
+  </div>
+  <footer class="command">
+    <span class="prompt">tensorvm&gt;</span>
+    <input id="account-input" placeholder="lookup account address">
+    <button id="account-button">Lookup</button>
+  </footer>
+</div>
 <script>
-const WS_URL = "{js_ws}";
+const WS_URL = "__JS_WS__";
 const statusEl = document.getElementById("status");
-function setStatus(text) {{ statusEl.textContent = text; }}
-function shortHex(value) {{ return value ? value.slice(0, 12) + "..." + value.slice(-8) : ""; }}
-function cell(value, code=false) {{ return code ? `<td><code>${{shortHex(String(value))}}</code></td>` : `<td>${{value}}</td>`; }}
-function renderTable(id, headers, rows) {{
-  const head = `<tr>${{headers.map(h => `<th>${{h}}</th>`).join("")}}</tr>`;
-  document.getElementById(id).innerHTML = head + rows.join("");
-}}
-function metric(label, value) {{ return `<div class="metric"><div class="label">${{label}}</div><div class="value">${{value}}</div></div>`; }}
-function renderOverview(data) {{
+const tabs = Array.from(document.querySelectorAll("[data-view]"));
+const panels = Array.from(document.querySelectorAll("[data-panel]"));
+function escapeText(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[char]));
+}
+function setStatus(text) { statusEl.textContent = text; }
+function shortHex(value) {
+  const text = String(value ?? "");
+  return text.length > 24 ? text.slice(0, 12) + "..." + text.slice(-8) : text;
+}
+function cell(value, code=false) {
+  const text = code ? shortHex(value) : value;
+  return `<td${code ? ' class="mono"' : ""}>${escapeText(text)}</td>`;
+}
+function renderTable(id, countId, headers, rows) {
+  const head = `<thead><tr>${headers.map(h => `<th>${escapeText(h)}</th>`).join("")}</tr></thead>`;
+  const bodyRows = rows.length ? rows.join("") : `<tr><td class="empty" colspan="${headers.length}">waiting for chain data</td></tr>`;
+  document.getElementById(id).innerHTML = `${head}<tbody>${bodyRows}</tbody>`;
+  document.getElementById(countId).textContent = `${rows.length} row${rows.length === 1 ? "" : "s"}`;
+}
+function metric(label, value) {
+  return `<div class="metric"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`;
+}
+function setView(view) {
+  tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.view === view));
+  panels.forEach(panel => {
+    panel.hidden = view !== "overview" && panel.dataset.panel !== view;
+  });
+}
+tabs.forEach(tab => tab.addEventListener("click", () => setView(tab.dataset.view)));
+function renderOverview(data) {
+  if (!data || !data.summary) {
+    setStatus("invalid explorer payload");
+    return;
+  }
   const s = data.summary;
   document.getElementById("metrics").innerHTML = [
-    metric("Height", s.height), metric("Epoch", s.epoch), metric("Blocks", s.block_count),
-    metric("Miners", s.miner_count), metric("Validators", s.validator_count), metric("Receipts", s.receipt_count),
-    metric("Settled", s.settled_receipt_count), metric("Jobs", s.job_count)
+    metric("height", s.height), metric("epoch", s.epoch), metric("blocks", s.block_count),
+    metric("miners", s.miner_count), metric("validators", s.validator_count),
+    metric("receipts", `${s.settled_receipt_count}/${s.receipt_count}`),
+    metric("jobs", s.job_count), metric("rewards", s.total_reward_balance)
   ].join("");
-  renderTable("blocks", ["Height", "Epoch", "Hash", "Proposer", "State Root", "Time"], data.blocks.map(b =>
-    `<tr>${{cell(b.height)}}${{cell(b.epoch)}}${{cell(b.hash, true)}}${{cell(b.proposer, true)}}${{cell(b.state_root, true)}}${{cell(b.timestamp)}}</tr>`));
-  renderTable("miners", ["Address", "Stake", "Settled Work", "Pending", "Hardware", "Rewards"], data.miners.map(m =>
-    `<tr>${{cell(m.address, true)}}${{cell(m.stake)}}${{cell(m.settled_tensor_work)}}${{cell(m.pending_tensor_work)}}${{cell(m.hardware_class)}}${{cell(m.reward_balance)}}</tr>`));
-  renderTable("validators", ["Address", "Stake", "Valid", "Missed", "Rewards"], data.validators.map(v =>
-    `<tr>${{cell(v.address, true)}}${{cell(v.stake)}}${{cell(v.valid_attestations)}}${{cell(v.missed_assignments)}}${{cell(v.reward_balance)}}</tr>`));
-  renderTable("receipts", ["Receipt", "Job", "Type", "Miner", "Work", "Settled"], data.receipts.map(r =>
-    `<tr>${{cell(r.receipt_id, true)}}${{cell(r.job_id, true)}}${{cell(r.primitive_type)}}${{cell(r.miner, true)}}${{cell(r.tensor_work_units)}}${{cell(r.settled)}}</tr>`));
-  renderTable("jobs", ["Job", "Type", "Deadline", "Detail"], data.jobs.map(j =>
-    `<tr>${{cell(j.job_id, true)}}${{cell(j.primitive_type)}}${{cell(j.deadline_block)}}${{cell(j.detail)}}</tr>`));
-}}
-function wsRequest(payload, onData) {{
+  document.getElementById("operator-lines").textContent = [
+    `miners      ${s.miner_count}`,
+    `validators  ${s.validator_count}`,
+    `finalized   ${s.finalized_block_count}/${s.block_count}`,
+    `treasury    ${s.treasury_balance}`
+  ].join("\n");
+  renderTable("blocks", "block-count", ["Height", "Epoch", "Hash", "Proposer", "State Root", "Time"], (data.blocks || []).map(b =>
+    `<tr>${cell(b.height)}${cell(b.epoch)}${cell(b.hash, true)}${cell(b.proposer, true)}${cell(b.state_root, true)}${cell(b.timestamp)}</tr>`));
+  renderTable("miners", "miner-count", ["Address", "Stake", "Settled Work", "Pending", "Hardware", "Rewards"], (data.miners || []).map(m =>
+    `<tr>${cell(m.address, true)}${cell(m.stake)}${cell(m.settled_tensor_work)}${cell(m.pending_tensor_work)}${cell(m.hardware_class)}${cell(m.reward_balance)}</tr>`));
+  renderTable("validators", "validator-count", ["Address", "Stake", "Valid", "Missed", "Rewards"], (data.validators || []).map(v =>
+    `<tr>${cell(v.address, true)}${cell(v.stake)}${cell(v.valid_attestations)}${cell(v.missed_assignments)}${cell(v.reward_balance)}</tr>`));
+  renderTable("receipts", "receipt-count", ["Receipt", "Job", "Type", "Miner", "Work", "Settled"], (data.receipts || []).map(r =>
+    `<tr>${cell(r.receipt_id, true)}${cell(r.job_id, true)}${cell(r.primitive_type)}${cell(r.miner, true)}${cell(r.tensor_work_units)}${cell(r.settled)}</tr>`));
+  renderTable("jobs", "job-count", ["Job", "Type", "Deadline", "Detail"], (data.jobs || []).map(j =>
+    `<tr>${cell(j.job_id, true)}${cell(j.primitive_type)}${cell(j.deadline_block)}${cell(j.detail)}</tr>`));
+}
+function wsRequest(payload, onData) {
   const ws = new WebSocket(WS_URL);
   ws.onopen = () => ws.send(JSON.stringify(payload));
-  ws.onmessage = event => {{ onData(JSON.parse(event.data)); ws.close(); }};
+  ws.onmessage = event => {
+    try {
+      onData(JSON.parse(event.data));
+    } catch (error) {
+      setStatus("parse error");
+    }
+    ws.close();
+  };
   ws.onerror = () => setStatus("websocket error");
-  ws.onclose = () => {{}};
-}}
-function refresh() {{
-  wsRequest({{type: "overview", block_limit: 12, receipt_limit: 20, job_limit: 20}}, data => {{ renderOverview(data); setStatus("live " + new Date().toLocaleTimeString()); }});
-}}
-document.getElementById("account-button").onclick = () => {{
+  ws.onclose = () => {};
+}
+function refresh() {
+  wsRequest({type: "overview", block_limit: 14, receipt_limit: 24, job_limit: 24}, data => {
+    renderOverview(data);
+    setStatus("live " + new Date().toLocaleTimeString());
+  });
+}
+function lookupAccount() {
   const address = document.getElementById("account-input").value.trim();
   if (!address) return;
-  wsRequest({{type: "account", address}}, data => document.getElementById("account-output").textContent = JSON.stringify(data.account, null, 2));
-}};
+  wsRequest({type: "account", address}, data => {
+    document.getElementById("account-output").textContent = JSON.stringify(data.account, null, 2);
+  });
+}
+document.getElementById("account-button").onclick = lookupAccount;
+document.getElementById("account-input").addEventListener("keydown", event => {
+  if (event.key === "Enter") lookupAccount();
+});
+setView("overview");
 refresh();
 setInterval(refresh, 3000);
 </script>
 </body>
-</html>"#
-    )
+</html>"#;
+    template
+        .replace("__HTML_WS__", &html_ws)
+        .replace("__JS_WS__", &js_ws)
 }
 
 fn json_array<T>(items: &[T], render: fn(&T) -> String) -> String {
@@ -381,6 +497,13 @@ pub fn escape_json(value: &str) -> String {
         }
     }
     out
+}
+
+fn escape_js_string(value: &str) -> String {
+    escape_json(value)
+        .replace('<', "\\u003c")
+        .replace('>', "\\u003e")
+        .replace('&', "\\u0026")
 }
 
 fn escape_html(value: &str) -> String {
@@ -414,6 +537,7 @@ mod tests {
 
         let html = explorer_shell_html("ws://127.0.0.1:8545/explorer/ws?token=secret");
         assert!(html.contains("TensorVM Explorer"));
+        assert!(html.contains("data-ui=\"ratzilla-tui\""));
         assert!(html.contains("new WebSocket"));
         assert!(html.contains("\"overview\""));
         assert!(html.contains("ws://127.0.0.1:8545/explorer/ws?token=secret"));

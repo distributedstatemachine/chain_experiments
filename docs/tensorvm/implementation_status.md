@@ -222,8 +222,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 
 - Standalone `tensorvm-explorer` binary that serves the browser explorer from `TENSORVM_EXPLORER_LISTEN`
   and publishes the TensorVM WebSocket URL configured by `TENSORVM_EXPLORER_WS_URL`
-- Explorer UI shell and JSON view models for overview metrics, latest blocks, account lookup, miners,
-  validators, receipts, and jobs
+- Default terminal-style explorer UI shell, Ratzilla/Ratatui WASM entry point, and JSON view models for
+  overview metrics, latest blocks, account lookup, miners, validators, receipts, and jobs
 - Local CPU Compose integration on `127.0.0.1:8080`, configured to poll `miner-00` through
   `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token`
 
@@ -302,10 +302,12 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.11% workspace line coverage
-- 9151/9233 workspace lines covered
+- 99.13% workspace line coverage
+- 9343/9425 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
 - 8504/8504 `tensor_vm` lines covered
+- 100.00% `tensor_vm_explorer` crate line coverage
+- 271/271 `tensor_vm_explorer` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
