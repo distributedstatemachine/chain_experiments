@@ -51,6 +51,8 @@ deployment gate.
 
 - Optional native CUDA kernel support exists behind `--features cuda-kernels` and covers field matmul plus
   linear-step sub/scalar/transpose/squared-error kernels checked against canonical CPU outputs locally.
+  Miner CLI startup reports CPU reference readiness for `--device cpu` and rejects `--device cuda:N`
+  unless CUDA kernels are compiled and the requested device is available.
   Production GPU miner packaging and a broader optimized kernel suite remain outside the local reference
   crate.
 - Public 7-day independent-node testnet evidence is not available in this repository; typed evidence

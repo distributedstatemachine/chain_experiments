@@ -69,6 +69,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
+- Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
+  `--features cuda-kernels` plus an available CUDA device before `--device cuda:N` can report GPU miner
+  readiness
 - Optional `cuda-kernels` feature that builds `kernels/cuda/field_matmul.cu` with `nvcc`, routes the
   `GpuMinerBackend` matmul path and LinearTrainingStep forward, backward, error, update, transpose, and
   loss substeps through native CUDA kernels, and checks CUDA outputs against canonical CPU outputs
@@ -207,10 +210,10 @@ preflight, public evidence, or deployment-gated work can count:
   state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 186 passing library tests under Tarpaulin:
+The workspace currently has 187 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 172 in `tensor_vm`
+- 173 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
@@ -235,13 +238,13 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.03% workspace line coverage
-- 8345/8427 workspace lines covered
+- 8360/8442 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7777/7777 `tensor_vm` lines covered
+- 7792/7792 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 176 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 177 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed

@@ -1,6 +1,6 @@
 # TensorVM Tarpaulin Report
 
-Generated on May 18, 2026 from the workspace root with:
+Generated on May 19, 2026 from the workspace root with:
 
 ```bash
 cargo tarpaulin
@@ -18,15 +18,15 @@ Host notes:
 Result:
 
 ```text
-186 tests passed under instrumentation:
+187 tests passed under instrumentation:
 - 14 pearl_chain library tests
-- 172 tensor_vm library tests
+- 173 tensor_vm library tests
 
 99.03% workspace line coverage
-8345/8427 workspace lines covered
+8360/8442 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-7777/7777 tensor_vm lines covered
+7792/7792 tensor_vm lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps
@@ -34,7 +34,7 @@ the portable default feature set:
 
 ```text
 cargo test -p tensor_vm --features cuda-kernels --release
-176 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
+177 tensor_vm tests passed, including native CUDA field-matmul and linear-step tensor-op checks against
 canonical CPU output
 ```
 

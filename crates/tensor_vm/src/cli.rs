@@ -2,6 +2,9 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::p2p::Libp2pControlPlaneConfig;
+#[cfg(feature = "cuda-kernels")]
+use crate::runtime::cuda_device_count;
+use crate::runtime::cuda_kernels_compiled;
 use crate::testnet::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
     PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
@@ -981,10 +984,11 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             node,
         } => {
             let address = wallet_address_hex(wallet)?;
-            ensure_device(device)?;
+            let device_readiness = miner_device_readiness(device)?;
             ensure_node_endpoint(node)?;
             Ok(format!(
-                "command=miner_start\nwallet={wallet}\naddress={address}\ndevice={device}\nnode={node}\nreference_backend_ready=true"
+                "command=miner_start\nwallet={wallet}\naddress={address}\ndevice={device}\nnode={node}\n{}\nreference_backend_ready=true",
+                device_readiness.report()
             ))
         }
         CliCommand::MinerStatus => Ok(format!(
@@ -2671,11 +2675,68 @@ fn wallet_address_hex(wallet: &str) -> Result<String> {
     Ok(hex(&address(wallet.as_bytes())))
 }
 
-fn ensure_device(device: &str) -> Result<()> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum MinerDeviceReadiness {
+    CpuReference,
+    #[cfg(feature = "cuda-kernels")]
+    Cuda {
+        device_index: u32,
+        device_count: u32,
+    },
+}
+
+impl MinerDeviceReadiness {
+    fn report(&self) -> String {
+        match self {
+            Self::CpuReference => format!(
+                "device_backend=cpu-reference\ncuda_kernels_compiled={}",
+                cuda_kernels_compiled()
+            ),
+            #[cfg(feature = "cuda-kernels")]
+            Self::Cuda {
+                device_index,
+                device_count,
+            } => format!(
+                "device_backend=cuda\ngpu_backend_ready=true\ncuda_kernels_compiled=true\ncuda_device_index={device_index}\ncuda_device_count={device_count}"
+            ),
+        }
+    }
+}
+
+fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadiness> {
+    let device = device.trim();
     if device.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("device argument is empty"));
     }
-    Ok(())
+    if matches!(device, "cpu" | "cpu-reference") {
+        return Ok(MinerDeviceReadiness::CpuReference);
+    }
+
+    let Some(cuda_index) = device.strip_prefix("cuda:") else {
+        return Err(TvmError::InvalidReceipt("unsupported miner device"));
+    };
+    if cuda_index.is_empty() {
+        return Err(TvmError::InvalidReceipt("invalid cuda device"));
+    }
+    let device_index = cuda_index
+        .parse::<u32>()
+        .map_err(|_| TvmError::InvalidReceipt("invalid cuda device"))?;
+    #[cfg(not(feature = "cuda-kernels"))]
+    {
+        let _ = device_index;
+        Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
+    }
+    #[cfg(feature = "cuda-kernels")]
+    {
+        let device_count = cuda_device_count()?;
+        if device_index >= device_count {
+            return Err(TvmError::InvalidReceipt("cuda device unavailable"));
+        }
+        Ok(MinerDeviceReadiness::Cuda {
+            device_index,
+            device_count,
+        })
+    }
 }
 
 fn ensure_node_endpoint(node: &str) -> Result<()> {
@@ -3281,14 +3342,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "--wallet",
                 "miner.key",
                 "--device",
-                "cuda:0",
+                "cpu",
                 "--node",
                 "/ip4/127.0.0.1/tcp/4001"
             ])
             .unwrap(),
             CliCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
-                device: "cuda:0".to_owned(),
+                device: "cpu".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             }
         );
@@ -3950,10 +4011,10 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             (
                 CliCommand::MinerStart {
                     wallet: "miner.key".to_owned(),
-                    device: "cuda:0".to_owned(),
+                    device: "cpu".to_owned(),
                     node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 },
-                "start miner wallet=miner.key device=cuda:0 node=/ip4/127.0.0.1/tcp/4001",
+                "start miner wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001",
             ),
             (CliCommand::MinerStatus, "show miner status"),
             (
@@ -4314,13 +4375,18 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
 
         let miner_start = execute_reference_cli_command(&CliCommand::MinerStart {
             wallet: "miner.key".to_owned(),
-            device: "cuda:0".to_owned(),
+            device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         })
         .unwrap();
         assert!(miner_start.contains("command=miner_start"));
         assert!(miner_start.contains("wallet=miner.key"));
-        assert!(miner_start.contains("device=cuda:0"));
+        assert!(miner_start.contains("device=cpu"));
+        assert!(miner_start.contains("device_backend=cpu-reference"));
+        assert!(miner_start.contains(&format!(
+            "cuda_kernels_compiled={}",
+            cuda_kernels_compiled()
+        )));
         assert!(miner_start.contains("node=/ip4/127.0.0.1/tcp/4001"));
         assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
         assert!(miner_start.contains("reference_backend_ready=true"));
@@ -5277,6 +5343,44 @@ p2p_idle_timeout_seconds=60
     }
 
     #[test]
+    fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
+        let cuda_start = CliCommand::MinerStart {
+            wallet: "miner.key".to_owned(),
+            device: "cuda:0".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+        };
+
+        #[cfg(not(feature = "cuda-kernels"))]
+        assert_eq!(
+            execute_reference_cli_command(&cuda_start)
+                .unwrap_err()
+                .to_string(),
+            "invalid receipt: cuda kernels not compiled"
+        );
+
+        #[cfg(feature = "cuda-kernels")]
+        {
+            let device_count = cuda_device_count().unwrap_or(0);
+            if device_count > 0 {
+                let report = execute_reference_cli_command(&cuda_start).unwrap();
+                assert!(report.contains("device_backend=cuda"));
+                assert!(report.contains("gpu_backend_ready=true"));
+                assert!(report.contains("cuda_kernels_compiled=true"));
+                assert!(report.contains("cuda_device_index=0"));
+                assert!(report.contains(&format!("cuda_device_count={device_count}")));
+            }
+            assert!(
+                execute_reference_cli_command(&CliCommand::MinerStart {
+                    wallet: "miner.key".to_owned(),
+                    device: format!("cuda:{device_count}"),
+                    node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                })
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
     fn execute_reference_cli_command_rejects_invalid_local_args() {
         assert!(execute_reference_cli_command(&CliCommand::MinerRegister { stake: 99 }).is_err());
         assert!(
@@ -5285,7 +5389,31 @@ p2p_idle_timeout_seconds=60
         assert!(
             execute_reference_cli_command(&CliCommand::MinerStart {
                 wallet: " ".to_owned(),
-                device: "cuda:0".to_owned(),
+                device: "cpu".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: "miner.key".to_owned(),
+                device: "gpu0".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: "miner.key".to_owned(),
+                device: "cuda:abc".to_owned(),
+                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::MinerStart {
+                wallet: "miner.key".to_owned(),
+                device: "cuda:".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             })
             .is_err()
@@ -5301,7 +5429,7 @@ p2p_idle_timeout_seconds=60
         assert!(
             execute_reference_cli_command(&CliCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
-                device: "cuda:0".to_owned(),
+                device: "cpu".to_owned(),
                 node: "http://localhost:8545".to_owned(),
             })
             .is_err()

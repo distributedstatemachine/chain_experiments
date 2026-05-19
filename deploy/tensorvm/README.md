@@ -64,6 +64,7 @@ Node-heartbeat records can be derived from saved per-block
 
 ```bash
 cargo build -p tensor_vm --release --features cuda-kernels
+target/release/tvmd miner start --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001
 sudo install -m 0755 target/release/tvmd /usr/local/bin/tvmd
 sudo useradd --system --home-dir /var/lib/tensorvm --shell /usr/sbin/nologin tensorvm
 sudo install -d -o tensorvm -g tensorvm /var/lib/tensorvm
@@ -75,6 +76,10 @@ sudo -u tensorvm /usr/local/bin/tvmd service peer add --data-dir /var/lib/tensor
 sudo systemctl daemon-reload
 sudo systemctl enable --now tensorvm.service
 ```
+
+The CUDA miner-start check must report `device_backend=cuda`, `gpu_backend_ready=true`, and
+`cuda_kernels_compiled=true` on GPU-miner hosts. Use `--device cpu` only for the portable reference path;
+it is not public GPU-miner evidence.
 
 Before advertising the run, replace all example hostnames, tokens, peer IDs, and service IDs, publish HTTPS
 with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:

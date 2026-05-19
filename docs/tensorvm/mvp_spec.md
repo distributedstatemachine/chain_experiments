@@ -1640,6 +1640,10 @@ tvmd miner start \
 tvmd miner status
 ```
 
+`--device cpu` selects the deterministic CPU reference backend used by Gate 0. `--device cuda:N` is a
+GPU-miner claim and must fail unless the binary was built with `--features cuda-kernels` and device `N`
+is present; CUDA readiness cannot be satisfied by a default CPU build.
+
 ### 31.2 Validator CLI
 
 ```bash
