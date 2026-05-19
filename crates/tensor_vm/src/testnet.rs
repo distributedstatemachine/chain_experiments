@@ -1503,26 +1503,18 @@ impl PublicEvidenceManifestBuilder {
 }
 
 fn parse_manifest_supporting_artifact(value: &str) -> Result<PublicEvidenceSupportingArtifact> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 5 {
-        return Err(TvmError::InvalidReceipt(
-            "malformed supporting evidence artifact",
-        ));
-    }
+    let fields = exact_manifest_record_fields(value, 5, "malformed supporting evidence artifact")?;
     Ok(PublicEvidenceSupportingArtifact {
-        kind: parse_public_evidence_record_kind_tag(fields[0].trim())?,
+        kind: parse_public_evidence_record_kind_tag(fields[0])?,
         artifact_uri: fields[1].to_owned(),
-        record_root: parse_hash_hex(fields[2].trim())?,
-        record_count: parse_manifest_u64(fields[3].trim())?,
-        artifact_signature: parse_hash_hex(fields[4].trim())?,
+        record_root: parse_hash_hex(fields[2])?,
+        record_count: parse_manifest_u64(fields[3])?,
+        artifact_signature: parse_hash_hex(fields[4])?,
     })
 }
 
 fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
-    let fields: Vec<&str> = value.split(',').map(str::trim).collect();
-    if fields.len() != 7 {
-        return Err(TvmError::InvalidReceipt("malformed node evidence"));
-    }
+    let fields = exact_manifest_record_fields(value, 7, "malformed node evidence")?;
     let address = parse_hash_hex(fields[1])?;
     let operator_id = parse_hash_hex(fields[2])?;
     let first_seen_block = parse_manifest_u64(fields[3])?;
@@ -1553,13 +1545,8 @@ fn parse_manifest_node(value: &str) -> Result<PublicNodeEvidence> {
 fn parse_manifest_operator_identity_attestation(
     value: &str,
 ) -> Result<PublicOperatorIdentityAttestation> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 6 {
-        return Err(TvmError::InvalidReceipt(
-            "malformed operator identity attestation",
-        ));
-    }
-    let role = match fields[0].trim() {
+    let fields = exact_manifest_record_fields(value, 6, "malformed operator identity attestation")?;
+    let role = match fields[0] {
         "miner" => PublicNodeRole::Miner,
         "validator" => PublicNodeRole::Validator,
         _ => {
@@ -1570,69 +1557,58 @@ fn parse_manifest_operator_identity_attestation(
     };
     let mut attestation = PublicOperatorIdentityAttestation::new(
         role,
-        parse_hash_hex(fields[1].trim())?,
-        parse_hash_hex(fields[2].trim())?,
+        parse_hash_hex(fields[1])?,
+        parse_hash_hex(fields[2])?,
         fields[3].to_owned(),
-        parse_manifest_u64(fields[4].trim())?,
+        parse_manifest_u64(fields[4])?,
     );
-    attestation.operator_signature = parse_hash_hex(fields[5].trim())?;
+    attestation.operator_signature = parse_hash_hex(fields[5])?;
     Ok(attestation)
 }
 
 fn parse_manifest_network_runtime_observation(
     value: &str,
 ) -> Result<PublicNetworkRuntimeObservation> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 13 {
-        return Err(TvmError::InvalidReceipt(
-            "malformed network runtime observation",
-        ));
-    }
+    let fields = exact_manifest_record_fields(value, 13, "malformed network runtime observation")?;
     let mut observation =
         PublicNetworkRuntimeObservation::new(PublicNetworkRuntimeObservationDetails {
-            operator_id: parse_hash_hex(fields[0].trim())?,
+            operator_id: parse_hash_hex(fields[0])?,
             peer_id: fields[1].to_owned(),
             listen_address: fields[2].to_owned(),
-            observed_at_unix_seconds: parse_manifest_u64(fields[3].trim())?,
-            gossip_topic_count: parse_manifest_u64(fields[4].trim())?,
-            request_response_protocol_count: parse_manifest_u64(fields[5].trim())?,
-            bootstrap_peer_count: parse_manifest_u64(fields[6].trim())?,
-            max_transmit_bytes: parse_manifest_u64(fields[7].trim())?,
-            request_timeout_seconds: parse_manifest_u64(fields[8].trim())?,
-            max_concurrent_streams: parse_manifest_u64(fields[9].trim())?,
-            idle_connection_timeout_seconds: parse_manifest_u64(fields[10].trim())?,
+            observed_at_unix_seconds: parse_manifest_u64(fields[3])?,
+            gossip_topic_count: parse_manifest_u64(fields[4])?,
+            request_response_protocol_count: parse_manifest_u64(fields[5])?,
+            bootstrap_peer_count: parse_manifest_u64(fields[6])?,
+            max_transmit_bytes: parse_manifest_u64(fields[7])?,
+            request_timeout_seconds: parse_manifest_u64(fields[8])?,
+            max_concurrent_streams: parse_manifest_u64(fields[9])?,
+            idle_connection_timeout_seconds: parse_manifest_u64(fields[10])?,
         });
-    observation.record_root = parse_hash_hex(fields[11].trim())?;
-    observation.observation_signature = parse_hash_hex(fields[12].trim())?;
+    observation.record_root = parse_hash_hex(fields[11])?;
+    observation.observation_signature = parse_hash_hex(fields[12])?;
     Ok(observation)
 }
 
 fn parse_manifest_auditor_record(value: &str) -> Result<PublicEvidenceAuditorRecord> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 4 {
-        return Err(TvmError::InvalidReceipt("malformed auditor record"));
-    }
+    let fields = exact_manifest_record_fields(value, 4, "malformed auditor record")?;
     Ok(PublicEvidenceAuditorRecord {
-        auditor_id: parse_hash_hex(fields[0].trim())?,
+        auditor_id: parse_hash_hex(fields[0])?,
         audit_uri: fields[1].to_owned(),
-        observed_at_unix_seconds: parse_manifest_u64(fields[2].trim())?,
-        auditor_signature: parse_hash_hex(fields[3].trim())?,
+        observed_at_unix_seconds: parse_manifest_u64(fields[2])?,
+        auditor_signature: parse_hash_hex(fields[3])?,
     })
 }
 
 fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 9 {
-        return Err(TvmError::InvalidReceipt("malformed service evidence"));
-    }
-    let kind = parse_service_kind(fields[0].trim())?;
-    let endpoint_id = parse_hash_hex(fields[1].trim())?;
+    let fields = exact_manifest_record_fields(value, 9, "malformed service evidence")?;
+    let kind = parse_service_kind(fields[0])?;
+    let endpoint_id = parse_hash_hex(fields[1])?;
     let public_url = fields[2].to_owned();
     let health_path = fields[3].to_owned();
-    let first_seen_block = parse_manifest_u64(fields[4].trim())?;
-    let last_seen_block = parse_manifest_u64(fields[5].trim())?;
-    let reachable_observation_count = parse_manifest_u64(fields[6].trim())?;
-    let signed_health_check_count = parse_manifest_u64(fields[7].trim())?;
+    let first_seen_block = parse_manifest_u64(fields[4])?;
+    let last_seen_block = parse_manifest_u64(fields[5])?;
+    let reachable_observation_count = parse_manifest_u64(fields[6])?;
+    let signed_health_check_count = parse_manifest_u64(fields[7])?;
     let mut evidence = PublicServiceEvidence::new(
         kind,
         PublicServiceEndpoint::new(endpoint_id, public_url, health_path),
@@ -1641,28 +1617,39 @@ fn parse_manifest_service(value: &str) -> Result<PublicServiceEvidence> {
         reachable_observation_count,
         signed_health_check_count,
     );
-    evidence.health_check_signature = parse_hash_hex(fields[8].trim())?;
+    evidence.health_check_signature = parse_hash_hex(fields[8])?;
     Ok(evidence)
 }
 
 fn parse_manifest_service_content(value: &str) -> Result<PublicServiceContentEvidence> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 8 {
-        return Err(TvmError::InvalidReceipt(
-            "malformed service content evidence",
-        ));
-    }
+    let fields = exact_manifest_record_fields(value, 8, "malformed service content evidence")?;
     let mut evidence = PublicServiceContentEvidence::new(
-        parse_service_kind(fields[0].trim())?,
-        parse_hash_hex(fields[1].trim())?,
+        parse_service_kind(fields[0])?,
+        parse_hash_hex(fields[1])?,
         fields[2].to_owned(),
         fields[3].to_owned(),
-        parse_hash_hex(fields[4].trim())?,
-        parse_manifest_u64(fields[5].trim())?,
-        parse_manifest_u64(fields[6].trim())?,
+        parse_hash_hex(fields[4])?,
+        parse_manifest_u64(fields[5])?,
+        parse_manifest_u64(fields[6])?,
     );
-    evidence.content_signature = parse_hash_hex(fields[7].trim())?;
+    evidence.content_signature = parse_hash_hex(fields[7])?;
     Ok(evidence)
+}
+
+fn exact_manifest_record_fields<'a>(
+    value: &'a str,
+    expected_fields: usize,
+    error: &'static str,
+) -> Result<Vec<&'a str>> {
+    let fields: Vec<&str> = value.split(',').collect();
+    if fields.len() != expected_fields
+        || fields
+            .iter()
+            .any(|field| field.is_empty() || field.trim() != *field)
+    {
+        return Err(TvmError::InvalidReceipt(error));
+    }
+    Ok(fields)
 }
 
 fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
@@ -5847,12 +5834,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             &format!("{auditor_uri},1700000060"),
             &format!("{auditor_uri} ,1700000060"),
         );
-        let auditor_uri_with_space_report =
-            parse_public_testnet_evidence_manifest(&auditor_uri_with_space)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(!auditor_uri_with_space_report.has_independent_auditor_records);
-        assert!(!auditor_uri_with_space_report.independently_checkable);
+        assert!(parse_public_testnet_evidence_manifest(&auditor_uri_with_space).is_err());
 
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let block_artifact_uri = public_evidence_supporting_artifact_uri(
@@ -5863,12 +5845,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             &format!("record_artifact=block-history,{block_artifact_uri},"),
             &format!("record_artifact=block-history,{block_artifact_uri} ,"),
         );
-        let artifact_uri_with_space_report =
-            parse_public_testnet_evidence_manifest(&artifact_uri_with_space)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(!artifact_uri_with_space_report.has_public_supporting_record_artifacts);
-        assert!(!artifact_uri_with_space_report.independently_checkable);
+        assert!(parse_public_testnet_evidence_manifest(&artifact_uri_with_space).is_err());
 
         let miner_operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
         let operator_uri = manifest_operator_identity_uri(&miner_operator_id);
@@ -5876,47 +5853,19 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             &format!("{operator_uri},1700000000"),
             &format!(" {operator_uri},1700000000"),
         );
-        let operator_uri_with_space_report =
-            parse_public_testnet_evidence_manifest(&operator_uri_with_space)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(!operator_uri_with_space_report.has_operator_identity_attestations);
-        assert!(!operator_uri_with_space_report.independently_checkable);
+        assert!(parse_public_testnet_evidence_manifest(&operator_uri_with_space).is_err());
 
         let service_url_with_space = manifest.replace(
             "https://rpc.tensorvm.net/health,/health",
             "https://rpc.tensorvm.net/health ,/health",
         );
-        let service_url_with_space_report =
-            parse_public_testnet_evidence_manifest(&service_url_with_space)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(
-            !service_url_with_space_report
-                .run_evidence
-                .has_deployed_rpc_service
-        );
-        assert!(
-            !service_url_with_space_report
-                .run_evidence
-                .has_deployed_public_services
-        );
-        assert!(!service_url_with_space_report.full_spec_evidence_met);
+        assert!(parse_public_testnet_evidence_manifest(&service_url_with_space).is_err());
 
         let service_content_url_with_space = manifest.replace(
             "https://rpc.tensorvm.net/chain/head,/chain/head",
             "https://rpc.tensorvm.net/chain/head ,/chain/head",
         );
-        let service_content_url_with_space_report =
-            parse_public_testnet_evidence_manifest(&service_content_url_with_space)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(
-            !service_content_url_with_space_report
-                .run_evidence
-                .has_deployed_public_service_content
-        );
-        assert!(!service_content_url_with_space_report.full_spec_evidence_met);
+        assert!(parse_public_testnet_evidence_manifest(&service_content_url_with_space).is_err());
 
         let missing_operator_lines = manifest_without_line(&manifest, "operator=");
         let parsed_missing_operator_lines =

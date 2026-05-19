@@ -103,8 +103,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   external artifact locators for the raw records behind each summary root with exactly one locator for
   each required supporting-record kind, well-formed whitespace-free
   `ipfs://`/`ar://` content identifiers with traversal/query/fragment path rejection, HTTPS evidence URI
-  concrete-path enforcement with root-only/query/fragment rejection, exact untrimmed URI/path manifest-field validation, duplicate scalar manifest-field
-  rejection, whitespace-padded field-key rejection, and
+  concrete-path enforcement with root-only/query/fragment rejection, exact untrimmed URI/path manifest-field
+  validation, duplicate scalar manifest-field rejection, whitespace-padded field-key rejection,
+  whitespace-padded repeated-record value rejection, and
   exact run-derived block/finality/network-runtime/data-availability/invalid-work summary counts, distinct node-address
   counting for public operators, plus network-runtime observation rejection for missing records,
   unmatched operators, non-public listen addresses, stale timestamps, undercounts, and overcounts against
@@ -243,9 +244,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.04% workspace line coverage
-- 8479/8561 workspace lines covered
+- 8469/8551 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7913/7913 `tensor_vm` lines covered
+- 7903/7903 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

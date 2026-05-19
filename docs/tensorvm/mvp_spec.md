@@ -1877,7 +1877,8 @@ heartbeats must cover the manifest's full observed block count, counted operator
 node addresses, and counted miner and validator operator/address sets must be disjoint. The current evidence
 manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
-scalar fields and whitespace-padded field keys; only explicitly repeated record fields such as `node=`,
+scalar fields and whitespace-padded field keys. Public evidence repeated-record fields must also reject
+whitespace-padded comma-separated values; only explicitly repeated record fields such as `node=`,
 `service=`, `auditor=`, `record_artifact=`, `operator=`, and `service_content=` may appear more than once.
 For `record_artifact=`, the independently checkable public evidence gate still requires exactly one valid
 line for each required supporting-record kind and rejects extra artifact locators.

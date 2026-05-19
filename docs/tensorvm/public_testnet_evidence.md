@@ -99,7 +99,9 @@ External evidence can be represented as a line-oriented manifest parsed by
 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`. Field names
 must be exact with no leading or trailing whitespace around the key before `=`. Scalar manifest fields must
 appear exactly once; repeated record fields are allowed only for `auditor`, `record_artifact`, `operator`,
-`network_runtime_observation`, `node`, `service`, and `service_content`. For `record_artifact`, the full
+`network_runtime_observation`, `node`, `service`, and `service_content`. The comma-separated values inside
+those repeated public-evidence records must also be exact, nonempty, and free of leading or trailing
+whitespace. For `record_artifact`, the full
 independently checkable gate requires exactly one valid line for each required supporting-record kind and
 rejects extra artifact locators. The manifest signature covers the bundle ID, public URI, manifest
 signature count, and independent auditor count. The current manifest format carries exactly one

@@ -49,7 +49,7 @@ The objective decomposes into these deliverables:
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain`, 173 `tensor_vm` library tests, 2 `tvmd` binary tests, and 5 `tvmd` CLI integration tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 187 instrumented tests | Passed |
-| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7913/7913 lines covered | Passed |
+| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7903/7903 lines covered | Passed |
 | CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 177 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 Current AC13 evidence tooling also includes `tvmd public-evidence run-window-from-file ...`, which derives
@@ -105,7 +105,8 @@ labels, invalid ports, missing or root-only HTTPS evidence paths, HTTPS evidence
 documentation, shared-address, benchmarking,
 multicast, reserved, empty publication endpoints, and malformed `ipfs://`/`ar://` identifiers or path segments, and they verify manifest publication
 signatures with the current exact one-signature manifest count, reject duplicate scalar manifest fields,
-reject whitespace-padded field keys, reject duplicate supporting-record roots, signed run-window records, signed
+reject whitespace-padded field keys, reject whitespace-padded repeated-record values, reject duplicate
+supporting-record roots, signed run-window records, signed
 block/finality/data-availability/invalid-work/reward-settlement summary roots, signed production libp2p
 network-observation roots exactly matching counted public operators, signed external artifact locators for the raw records behind each summary root,
 signed service-health records bound to external HTTPS URLs, matching health paths, observed-block
