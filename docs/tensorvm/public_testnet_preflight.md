@@ -16,7 +16,8 @@ The local preflight report checks:
 - funded faucet configuration
 - available CUDA kernels for the claimed GPU mining path and one CUDA-ready miner-start check per
   planned miner
-- production libp2p runtime plan with discovery, gossip, request/response, and DoS controls
+- production libp2p runtime plan with one libp2p-ready node per planned miner and validator, plus
+  discovery, gossip, request/response, and DoS controls
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
 - distinct service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
@@ -46,6 +47,7 @@ faucet_balance=1000000
 faucet_drip=100
 cuda_kernels_available=true
 cuda_ready_miner_count=10
+libp2p_ready_node_count=15
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -60,6 +62,8 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/healt
 `cuda_ready_miner_count` must match `miner_count` and should be derived from successful
 `tvmd miner start --device cuda:N` readiness checks on each planned public miner host, not from a copied
 boolean.
+`libp2p_ready_node_count` must match `miner_count + validator_count` and should be derived from successful
+libp2p node startup/readiness checks on every planned public miner and validator.
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
@@ -131,6 +135,8 @@ funded_faucet=true
 cuda_kernels_available=true
 cuda_ready_miner_count=10
 cuda_ready_miners=true
+libp2p_ready_node_count=15
+libp2p_ready_nodes=true
 production_libp2p_runtime=true
 rpc_service_plan=true
 explorer_service_plan=true

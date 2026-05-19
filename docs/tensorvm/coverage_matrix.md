@@ -77,8 +77,9 @@ deployment gate.
   roots with at least 64 observed bytes bound to external HTTPS URLs. A local launch
   preflight manifest is documented in
   [`public_testnet_preflight.md`](public_testnet_preflight.md), requires a CUDA-ready miner count matching
-  the planned miner count before deployment readiness can pass, and deployment templates plus checked
-  preflight and non-full-spec post-run evidence example manifests live under `deploy/tensorvm/`,
+  the planned miner count plus a libp2p-ready node count matching planned miners and validators before
+  deployment readiness can pass, and deployment templates plus checked preflight and non-full-spec
+  post-run evidence example manifests live under `deploy/tensorvm/`,
   `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, signed public
   libp2p network-observation CLI generation rejects missing or zero TCP listen ports plus non-public and
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records

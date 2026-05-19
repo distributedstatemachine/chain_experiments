@@ -116,8 +116,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
   requiring exact untrimmed service URL/path manifest fields, a `cuda_ready_miner_count` that matches the
-  planned public miner count, plus distinct endpoint IDs for the planned public content paths used by
-  post-run evidence
+  planned public miner count, a `libp2p_ready_node_count` that matches the planned miner plus validator
+  count, plus distinct endpoint IDs for the planned public content paths used by post-run evidence
 - `tvmd` binary tests for the documented spec-path pending manifest commands, proving
   `tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight` reads the checked
   manifest and reports `public_testnet_preflight_ready=false`, while
@@ -239,9 +239,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.03% workspace line coverage
-- 8369/8451 workspace lines covered
+- 8383/8465 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7801/7801 `tensor_vm` lines covered
+- 7815/7815 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

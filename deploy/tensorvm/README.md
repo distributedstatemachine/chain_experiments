@@ -81,7 +81,9 @@ The CUDA miner-start check must report `device_backend=cuda`, `gpu_backend_ready
 `cuda_kernels_compiled=true` on GPU-miner hosts. Use `--device cpu` only for the portable reference path;
 it is not public GPU-miner evidence. Set `cuda_ready_miner_count` in the preflight manifest to the number
 of planned miner hosts that passed this CUDA readiness check; launch readiness requires it to match
-`miner_count`.
+`miner_count`. Set `libp2p_ready_node_count` to the number of planned miner and validator nodes that
+passed mandatory-libp2p readiness checks; launch readiness requires it to match `miner_count +
+validator_count`.
 
 Before advertising the run, replace all example hostnames, tokens, peer IDs, and service IDs, publish HTTPS
 with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:
