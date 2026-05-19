@@ -7138,6 +7138,74 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         }
     }
 
+    #[test]
+    fn public_deployment_runbook_records_required_evidence_flow() {
+        let runbook = include_str!("../../../deploy/tensorvm/RUNBOOK.md");
+        for required in [
+            "tvmd public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example",
+            "public_testnet_preflight_ready=true",
+            "deployment_plan_ready=true",
+            "cuda_ready_miners=true",
+            "libp2p_ready_nodes=true",
+            "production_libp2p_runtime=true",
+            "public_service_content_planned=true",
+            "public_services_planned=true",
+        ] {
+            assert!(
+                runbook.contains(required),
+                "runbook should guard preflight requirement {required}"
+            );
+        }
+
+        for command in [
+            "tvmd public-evidence publication ...",
+            "tvmd public-evidence auditor-record ...",
+            "tvmd public-evidence run-window ...",
+            "tvmd public-evidence run-window-from-file ...",
+            "tvmd public-evidence node-heartbeat ...",
+            "tvmd public-evidence node-heartbeat-from-file ...",
+            "tvmd public-evidence operator-attestation ...",
+            "tvmd public-evidence service-health ...",
+            "tvmd public-evidence service-health-from-file ...",
+            "tvmd public-evidence service-content ...",
+            "tvmd public-evidence service-content-from-bytes ...",
+            "tvmd public-evidence service-content-from-file ...",
+            "tvmd public-evidence network-observation ...",
+            "tvmd public-evidence network-observation-from-service-log ...",
+            "tvmd public-evidence record-summary ...",
+            "tvmd public-evidence record-artifact ...",
+            "tvmd public-evidence record-artifact-from-roots ...",
+            "tvmd public-evidence record-artifact-from-file ...",
+            "tvmd public-evidence record-summary-from-roots ...",
+            "tvmd public-evidence record-summary-from-file ...",
+        ] {
+            assert!(
+                runbook.contains(command),
+                "runbook should list evidence command {command}"
+            );
+        }
+
+        for required in [
+            "The collected records must cover the full 7-day window, not only a final snapshot.",
+            "node heartbeats for every active miner and validator",
+            "exactly one service-health record for each public RPC, explorer, faucet, and telemetry service",
+            "exactly one service-content record for each public RPC, explorer, faucet, and telemetry service",
+            "libp2p network-observation records from independent observers, one per counted public operator",
+            "Do not backfill",
+            "public_evidence_full_spec=true",
+            "independently_checkable=true",
+            "supporting_record_artifacts=true",
+            "exactly one signed artifact locator line for each required raw supporting-record kind",
+            "After validation returns `public_evidence_full_spec=true`, link the published bundle from",
+            "It does not contain a real external 7-day public run or a published independently checkable",
+        ] {
+            assert!(
+                runbook.contains(required),
+                "runbook should record external evidence requirement {required}"
+            );
+        }
+    }
+
     fn assert_public_testnet_preflight_manifest_is_pending(manifest: &str) {
         let plan = parse_public_testnet_preflight_manifest(manifest).unwrap();
         let report = plan.evaluate(ChainParams::default().block_time_seconds);

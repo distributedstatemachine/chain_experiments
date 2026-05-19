@@ -88,7 +88,10 @@ deployment gate.
   `testnet::tests::public_deployment_templates_require_libp2p_and_https_surfaces` guarding the env,
   systemd, and nginx templates for mandatory libp2p startup, durable data-dir use, auth-token wiring,
   TLS proxying, and the required public HTTPS surfaces,
-  `deploy/tensorvm/RUNBOOK.md` records the external evidence collection and publication flow, signed public
+  `testnet::tests::public_deployment_runbook_records_required_evidence_flow` guarding
+  `deploy/tensorvm/RUNBOOK.md` coverage of preflight status flags, evidence generator commands, daily
+  checkpoint requirements, post-run validation flags, publication artifacts, and the explicit no-real-run
+  blocker, signed public
   libp2p network-observation CLI generation rejects missing or zero TCP listen ports plus non-public and
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
   from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level

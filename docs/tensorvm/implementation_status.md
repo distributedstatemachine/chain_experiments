@@ -142,7 +142,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
   hostnames, a template guard test that requires mandatory libp2p startup, durable data-dir use,
   auth-token wiring, hardened systemd settings, TLS proxying, and the required public HTTPS surfaces, an
-  operator runbook for external launch/evidence collection/publication, a preflight manifest
+  operator runbook guard test that requires the preflight status flags, evidence generator commands, daily
+  checkpoint requirements, post-run validation flags, publication artifacts, and explicit no-real-run
+  blocker, a preflight manifest
   example that parses but does not report launch readiness until special-use placeholder hosts are
   replaced, checked spec-path pending manifests at `docs/tensorvm/public-testnet.preflight` and
   `docs/tensorvm/public-testnet.evidence` that parse from the documented CLI paths while intentionally
@@ -230,10 +232,10 @@ preflight, public evidence, or deployment-gated work can count:
   state transition, tensor-server availability, no simulation or local-only
   networking-shim credit, and the explicit non-public-run evidence boundary
 
-The workspace currently has 189 passing library tests under Tarpaulin:
+The workspace currently has 190 passing library tests under Tarpaulin:
 
 - 14 in `pearl_chain`
-- 175 in `tensor_vm`
+- 176 in `tensor_vm`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests and 5 `tvmd` CLI integration
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
@@ -264,7 +266,7 @@ The current instrumented Tarpaulin line coverage is documented in
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
-- `cargo test -p tensor_vm --features cuda-kernels --release`: 179 TensorVM tests passed, including
+- `cargo test -p tensor_vm --features cuda-kernels --release`: 180 TensorVM tests passed, including
   `runtime::tests::cuda_kernel_matches_canonical_field_matmul_edges` and
   `runtime::tests::cuda_kernels_match_canonical_linear_tensor_ops`
 - `cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings`: passed
