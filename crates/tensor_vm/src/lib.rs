@@ -18,6 +18,7 @@ pub mod merkle;
 pub mod miner;
 pub mod oracle;
 pub mod p2p;
+pub mod profile;
 pub mod rpc;
 pub mod runtime;
 pub mod scheduler;
@@ -58,6 +59,7 @@ pub use p2p::{
     encode_message, gossip_topic_for_message, gossipsub_ident_topic, recommended_network_stack,
     request_response_protocol_for_message, request_response_stream_protocol, spawn_libp2p_service,
 };
+pub use profile::{ChainNetwork, ChainProfile, NodeConfig, NodeRole, ServiceExposure};
 pub use rpc::{RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, RpcRequest, RpcResponse};
 pub use runtime::{
     BackendKind, CpuReferenceBackend, ExecutionBackend, GpuMinerBackend, cuda_device_count,

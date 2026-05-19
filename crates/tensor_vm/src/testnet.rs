@@ -5,6 +5,7 @@ use crate::faucet::Faucet;
 use crate::hash::hex;
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec};
 use crate::miner::MinerNode;
+use crate::profile::ChainProfile;
 use crate::runtime::CpuReferenceBackend;
 use crate::scheduler::JobScheduler;
 use crate::telemetry::TelemetrySnapshot;
@@ -41,6 +42,19 @@ impl Default for TestnetConfig {
             validator_stake: 10_000,
             faucet_balance: 1_000_000,
             faucet_drip: 100,
+        }
+    }
+}
+
+impl TestnetConfig {
+    pub fn from_profile(profile: &ChainProfile) -> Self {
+        Self {
+            miner_count: profile.miner_count,
+            validator_count: profile.validator_count,
+            miner_stake: profile.miner_stake,
+            validator_stake: profile.validator_stake,
+            faucet_balance: profile.faucet_balance,
+            faucet_drip: profile.faucet_drip,
         }
     }
 }
@@ -3469,7 +3483,22 @@ fn local_libp2p_multiaddr_has_tcp_node_path(endpoint: &str) -> bool {
 
 impl LocalTestnet {
     pub fn new(config: TestnetConfig, finalized_randomness: Hash) -> Self {
-        let params = ChainParams::default();
+        Self::with_chain_params(config, ChainParams::default(), finalized_randomness)
+    }
+
+    pub fn from_profile(profile: &ChainProfile, finalized_randomness: Hash) -> Self {
+        Self::with_chain_params(
+            TestnetConfig::from_profile(profile),
+            profile.chain_params.clone(),
+            finalized_randomness,
+        )
+    }
+
+    pub fn with_chain_params(
+        config: TestnetConfig,
+        params: ChainParams,
+        finalized_randomness: Hash,
+    ) -> Self {
         let mut chain = LocalChain::with_params(params, finalized_randomness);
         let mut miners = Vec::with_capacity(config.miner_count);
         let mut validators = Vec::with_capacity(config.validator_count);
@@ -4748,6 +4777,32 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             .filter(|line| !line.starts_with(prefix))
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn local_testnet_can_bootstrap_from_shared_profile() {
+        let mut profile = ChainProfile::local_cpu();
+        profile.chain_params.epoch_length = 17;
+        profile.miner_count = 3;
+        profile.validator_count = 2;
+        profile.miner_stake = 150;
+        profile.validator_stake = 12_000;
+
+        let testnet = LocalTestnet::from_profile(&profile, hash_bytes(b"test", &[b"profile"]));
+
+        assert_eq!(TestnetConfig::from_profile(&profile).miner_count, 3);
+        assert_eq!(testnet.chain.params.epoch_length, 17);
+        assert_eq!(testnet.miners.len(), 3);
+        assert_eq!(testnet.validators.len(), 2);
+        assert_eq!(
+            testnet.chain.state.miners[&testnet.miners[0]].stake,
+            profile.miner_stake
+        );
+        assert_eq!(
+            testnet.chain.state.validators[&testnet.validators[0]].stake,
+            profile.validator_stake
+        );
+        assert!(testnet.has_mandatory_libp2p_participant_paths());
     }
 
     #[test]

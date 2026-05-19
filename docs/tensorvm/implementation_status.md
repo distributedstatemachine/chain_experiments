@@ -32,6 +32,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   repeated payout, and no-quorum rejection
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations
 - Settled prior-epoch TensorWork proposer selection, pending-work exclusion, and zero-work fallback
+- Profile-neutral `ChainEngine`, file-backed `ChainStore`, and shared `ChainProfile`/`NodeConfig`
+  boundaries so local CPU, public testnet, and future mainnet profiles build the same transition engine
 - Receipt-bound validation seeds derived from finalized randomness
 - Model-state transition sequencing and conflicting-root settlement delay for training steps
 - Txpool with reference transaction payload parsing, receipt deduplication, and multi-validator attestation flow
@@ -277,10 +279,10 @@ preflight, public evidence, or deployment-gated work can count:
   counters advance past the seeded two-block baseline; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 199 passing library tests under Tarpaulin:
+The workspace currently has 202 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 184 in `tensor_vm`
+- 187 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -308,9 +310,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.14% workspace line coverage
-- 9417/9499 workspace lines covered
+- 9441/9523 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8578/8578 `tensor_vm` lines covered
+- 8602/8602 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 271/271 `tensor_vm_explorer` lines covered
 

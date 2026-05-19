@@ -18,16 +18,16 @@ Host notes:
 Result:
 
 ```text
-199 tests passed under instrumentation:
+202 tests passed under instrumentation:
 - 14 experiments library tests
-- 184 tensor_vm library tests
+- 187 tensor_vm library tests
 - 1 tensor_vm_explorer library test
 
 99.14% workspace line coverage
-9417/9499 workspace lines covered
+9441/9523 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-8578/8578 tensor_vm lines covered
+8602/8602 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
 271/271 tensor_vm_explorer lines covered
 ```
