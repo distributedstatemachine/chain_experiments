@@ -22,8 +22,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Sparse-corruption rejection tests for TensorOp outputs, `dY`, and `W_next`
 - Receipt digest/signature checks and trace-root recomputation
 - Validator attestations with registered-stake quorum enforcement
-- Stake-weighted block-finality votes, duplicate-vote rejection, finalized block tracking, and finality-rate
-  telemetry
+- Block assembly through the internal `chain::blocks` boundary, stake-weighted block-finality votes,
+  duplicate-vote rejection, finalized block tracking, and finality-rate telemetry
 - Duplicate registration, duplicate receipt, and duplicate validator-attestation rejection
 - Account, miner, validator, job, receipt, attestation, reward, and model-state registries
 - Miner hardware-class profiles with bounded reported GPU utilization for telemetry

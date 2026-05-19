@@ -257,10 +257,10 @@ The profiles should differ by configuration, adapters, and launch topology, not 
 
 ### Current Coupling To Reduce
 
-`LocalChain` still owns state, parameters, blocks, registration, transaction application, receipt submission,
-attestation validation, block production, and finality helpers in one type. Settlement, proposer selection,
-and deterministic commitment roots have been split into internal `chain::settlement`, `chain::proposer`,
-and `chain::roots` modules, with the public `LocalChain`/`ChainEngine` API preserved.
+`LocalChain` still owns state, parameters, registration, transaction application, receipt submission,
+attestation validation, and finality helpers in one type. Settlement, proposer selection, deterministic
+commitment roots, and block assembly have been split into internal `chain::settlement`, `chain::proposer`,
+`chain::roots`, and `chain::blocks` modules, with the public `LocalChain`/`ChainEngine` API preserved.
 
 That is practical for a reference core, but it makes it easy for local/testnet helpers to bypass real
 runtime boundaries.
@@ -505,9 +505,9 @@ Latest-head convergence via the shared network event path still needs hard check
 
 Status: started. `Chain`, `ChainEngine`, `ChainCommand`, and `ChainEvent` exist. Proposer selection now
 lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now lives behind
-`chain::settlement`, and deterministic content/state roots now live behind `chain::roots` while preserving
-the profile-neutral chain API. Validation, block production, and state views still need to move out of the
-remaining large `chain.rs` implementation.
+`chain::settlement`, deterministic content/state roots now live behind `chain::roots`, and block assembly
+now lives behind `chain::blocks` while preserving the profile-neutral chain API. Validation and state views
+still need to move out of the remaining large `chain.rs` implementation.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

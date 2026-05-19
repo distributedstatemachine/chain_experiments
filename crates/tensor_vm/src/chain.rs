@@ -7,6 +7,7 @@ use crate::types::{Address, Hash, Signature, hash_bytes, sign, verify_signature}
 use crate::verify::{FreivaldsParams, ValidatorAttestation, VerificationResult};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod blocks;
 mod proposer;
 mod roots;
 mod settlement;
@@ -926,44 +927,7 @@ impl LocalChain {
     }
 
     pub fn produce_block(&mut self, proposer: Address, timestamp: u64) -> TensorBlock {
-        let parent_hash = self.blocks.last().map(TensorBlock::hash).unwrap_or([0; 32]);
-        let job_root = job_root(&self.state.jobs);
-        let receipt_root = receipt_root(&self.state.receipts);
-        let attestation_root = attestation_root(&self.state.attestations);
-        let state_root = self.state_root();
-        let reward_root = reward_root(&self.state.rewards);
-        let randomness = hash_bytes(
-            b"tensor-vm-next-randomness-v1",
-            &[
-                &self.state.finalized_randomness,
-                &parent_hash,
-                &self.state.height.to_le_bytes(),
-            ],
-        );
-        let mut block = TensorBlock {
-            height: self.state.height,
-            parent_hash,
-            epoch: self.state.epoch,
-            proposer,
-            job_root,
-            receipt_root,
-            attestation_root,
-            state_root,
-            reward_root,
-            randomness,
-            timestamp,
-            proposer_signature: [0; 32],
-            validator_signature_aggregate: [0; 32],
-        };
-        let block_hash = block.hash();
-        block.proposer_signature = sign(&proposer, &block_hash);
-        block.validator_signature_aggregate =
-            hash_bytes(b"tensor-vm-validator-aggregate-v1", &[&block_hash]);
-        self.blocks.push(block.clone());
-        self.state.height += 1;
-        self.state.epoch = self.state.height / self.params.epoch_length.max(1);
-        self.state.finalized_randomness = randomness;
-        block
+        blocks::produce(self, proposer, timestamp)
     }
 
     pub fn produce_block_with_rewards(
@@ -973,11 +937,7 @@ impl LocalChain {
         fixed_block_reward: u64,
         fee_share: u64,
     ) -> TensorBlock {
-        let proposer_reward = fixed_block_reward.saturating_add(fee_share);
-        if proposer_reward > 0 {
-            self.state.rewards.credit(proposer, proposer_reward);
-        }
-        self.produce_block(proposer, timestamp)
+        blocks::produce_with_rewards(self, proposer, timestamp, fixed_block_reward, fee_share)
     }
 
     pub fn state_root(&self) -> Hash {
