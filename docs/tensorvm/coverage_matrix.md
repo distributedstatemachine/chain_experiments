@@ -71,7 +71,7 @@ deployment gate.
   malformed HTTPS authority rejection for public endpoints, raw-whitespace rejection for external evidence
   URLs and content-addressed identifiers including exact untrimmed manifest URI/path fields, HTTPS evidence
   URI concrete-path enforcement with root-only, query, and fragment rejection, duplicate scalar manifest-field rejection,
-  whitespace-padded field-key and scalar-value rejection, duplicate supporting-record root rejection, repeated node-address count rejection, exact service URL path matching with root-only, query, and fragment rejection, no overreported operator-attestation counts,
+  whitespace-padded field-key and scalar-value rejection, duplicate supporting-record root rejection, repeated node-address count rejection, exact service URL path matching with root-only, query, and fragment rejection, exact operator-attestation counts with no missing, duplicate, extra, or overreported records,
   full-spec flag rejection for relaxed local harness criteria, well-formed `ipfs://`/`ar://` identifier
   validation with traversal/query/fragment path rejection, and deployed public-service reachability with exactly
   one service-health and one service-content record per deployed service kind, distinct endpoint IDs, and distinct content

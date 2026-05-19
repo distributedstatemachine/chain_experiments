@@ -49,7 +49,7 @@ The objective decomposes into these deliverables:
 | `cargo test --workspace --release` | Latest iteration evidence records 14 `pearl_chain`, 173 `tensor_vm` library tests, 2 `tvmd` binary tests, and 5 `tvmd` CLI integration tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
 | `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 187 instrumented tests | Passed |
-| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7923/7923 lines covered | Passed |
+| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 7924/7924 lines covered | Passed |
 | CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 177 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 Current AC13 evidence tooling also includes `tvmd public-evidence run-window-from-file ...`, which derives
@@ -118,8 +118,9 @@ external HTTPS URLs, matching service endpoint IDs, distinct deployed service en
 service-health HTTPS authorities, distinct service-content roots, required content paths, 64-byte minimum
 content proofs, exact run-derived supporting-record counts, rejection of
 full-spec evidence status under relaxed local harness criteria, and external-operator evidence derived from signed manifest
-operator-attestation records plus distinct node-heartbeat addresses and counts that cover the observed block
-count while rejecting overreported operator-attestation counts.
+operator-attestation records exactly matching distinct node-heartbeat addresses and counts that cover the
+observed block count while rejecting missing, duplicate, extra, or overreported operator-attestation
+records.
 These blockers therefore require real external infrastructure rather than loopback, private-network,
 reserved-range, unsigned, cross-authority service-content, or out-of-band manifests.
 

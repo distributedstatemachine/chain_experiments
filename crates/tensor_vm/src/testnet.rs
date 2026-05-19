@@ -2602,9 +2602,10 @@ impl PublicTestnetEvidenceBundle {
         let valid_operator_attestation_count =
             self.valid_operator_identity_attestation_count() as u64;
         let has_operator_identity_attestations = required_operator_attestations > 0
-            && self.operator_identity_attestation_records >= required_operator_attestations
-            && self.operator_identity_attestation_records <= valid_operator_attestation_count
-            && valid_operator_attestation_count >= required_operator_attestations;
+            && self.operator_identity_attestation_records == required_operator_attestations
+            && self.operator_identity_attestations.len() as u64
+                == self.operator_identity_attestation_records
+            && valid_operator_attestation_count == required_operator_attestations;
         let run_evidence = self.run.evaluate(
             criteria,
             block_time_seconds,
@@ -5602,6 +5603,29 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let missing_signed_operator_records = bundle.evaluate(&criteria, 6);
         assert!(!missing_signed_operator_records.has_operator_identity_attestations);
         assert!(!missing_signed_operator_records.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        let duplicate_operator_node = bundle.run.nodes[0].clone();
+        bundle
+            .operator_identity_attestations
+            .push(PublicOperatorIdentityAttestation::new(
+                duplicate_operator_node.role,
+                duplicate_operator_node.address,
+                duplicate_operator_node.operator_id,
+                format!(
+                    "https://operators.tensorvm.net/{}/duplicate",
+                    hex(&duplicate_operator_node.operator_id)
+                ),
+                bundle.run.run_started_at_unix_seconds,
+            ));
+        let extra_operator_record = bundle.evaluate(&criteria, 6);
+        assert!(!extra_operator_record.has_operator_identity_attestations);
+        assert!(
+            !extra_operator_record
+                .run_evidence
+                .external_operator_evidence
+        );
+        assert!(!extra_operator_record.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.network_runtime_observation_records = 2;

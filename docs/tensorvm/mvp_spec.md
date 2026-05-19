@@ -1904,8 +1904,10 @@ count come from raw block observations instead of hand-copied counters.
 The `operator-attestation` command emits the exact `operator=...` manifest line for an external operator
 identity URI bound to a node address, role, operator ID, and observation time. Counted operator
 attestations must be observed inside the signed run window, and the
-`operator_identity_attestation_records` manifest count must not exceed the number of valid signed
-operator-attestation records that match live node-heartbeat evidence.
+`operator_identity_attestation_records` manifest count must exactly match the number of repeated
+`operator=...` lines and the number of valid signed operator-attestation records that match live
+node-heartbeat evidence. Missing, invalid, duplicate, or extra operator-attestation records do not satisfy
+external-operator evidence.
 The `node-heartbeat-from-file` command derives the same signed `node=...` line from a saved
 line-oriented heartbeat observation file using
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. Blank lines and
