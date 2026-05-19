@@ -45,6 +45,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   faucet, miner, scheduler, storage, watcher, and local testnet/public-evidence modules
 - Deterministic job scheduler, operator-separated miner replication assignment with fallback when
   diversity is insufficient, and validator assignment
+- `JobSource` and `SyntheticLocalJobSource` boundaries for local CPU job generation without embedding
+  scheduler policy directly in the block-production adapter
 - Redundant miner-output agreement quorum before settlement, with disagreement/fewer-than-quorum receipts
   delayed rather than rewarded
 - Miner node executor with receipt submission and tensor serving
@@ -281,10 +283,10 @@ preflight, public evidence, or deployment-gated work can count:
   counters advance past the seeded two-block baseline; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 206 passing library tests under Tarpaulin:
+The workspace currently has 207 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 191 in `tensor_vm`
+- 192 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -312,9 +314,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.15% workspace line coverage
-- 9509/9591 workspace lines covered
+- 9517/9599 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8670/8670 `tensor_vm` lines covered
+- 8678/8678 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 271/271 `tensor_vm_explorer` lines covered
 

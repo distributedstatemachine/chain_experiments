@@ -1,4 +1,4 @@
-use crate::chain::LocalChain;
+use crate::chain::{JobState, LocalChain};
 use crate::jobs::MatmulJob;
 use crate::types::{Address, Hash, hash_bytes, hash_to_u128};
 use std::collections::BTreeSet;
@@ -19,6 +19,45 @@ pub struct MinerAssignment {
 pub struct JobScheduler {
     pub small_matmul: (usize, usize, usize),
     pub medium_matmul: (usize, usize, usize),
+}
+
+pub trait JobSource {
+    fn next_job(&mut self, chain: &LocalChain) -> Option<JobState>;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntheticLocalJobSource {
+    scheduler: JobScheduler,
+}
+
+impl SyntheticLocalJobSource {
+    pub fn new(scheduler: JobScheduler) -> Self {
+        Self { scheduler }
+    }
+
+    pub fn next_matmul_job(&mut self, chain: &LocalChain) -> MatmulJob {
+        self.scheduler.generate_small_matmul(
+            chain.state.epoch,
+            chain.state.height,
+            &chain.state.finalized_randomness,
+            chain
+                .state
+                .height
+                .saturating_add(chain.params.receipt_submission_window),
+        )
+    }
+}
+
+impl Default for SyntheticLocalJobSource {
+    fn default() -> Self {
+        Self::new(JobScheduler::with_small_shape((8, 8, 8)))
+    }
+}
+
+impl JobSource for SyntheticLocalJobSource {
+    fn next_job(&mut self, chain: &LocalChain) -> Option<JobState> {
+        Some(JobState::TensorOp(self.next_matmul_job(chain)))
+    }
 }
 
 impl Default for JobScheduler {
@@ -124,6 +163,30 @@ mod tests {
         let b = scheduler.generate_small_matmul(1, 2, &beacon, 10);
         assert_eq!(a.job_id, b.job_id);
         assert_eq!((a.m, a.k, a.n), (4, 5, 6));
+    }
+
+    #[test]
+    fn synthetic_job_source_uses_chain_epoch_height_and_deadline() {
+        let beacon = hash_bytes(b"test", &[b"synthetic-source"]);
+        let mut chain = LocalChain::new(beacon);
+        chain.state.epoch = 7;
+        chain.state.height = 11;
+        chain.params.receipt_submission_window = 13;
+        let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
+
+        let Some(JobState::TensorOp(job)) = source.next_job(&chain) else {
+            panic!("synthetic local job source must emit TensorOp jobs");
+        };
+
+        assert_eq!(job.epoch, 7);
+        assert_eq!((job.m, job.k, job.n), (2, 3, 4));
+        assert_eq!(job.deadline_block, 24);
+        assert_eq!(
+            job.job_id,
+            JobScheduler::with_small_shape((2, 3, 4))
+                .generate_small_matmul(7, 11, &beacon, 24)
+                .job_id
+        );
     }
 
     #[test]

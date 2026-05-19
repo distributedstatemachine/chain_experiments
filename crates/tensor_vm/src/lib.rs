@@ -67,7 +67,9 @@ pub use runtime::{
     BackendKind, CpuReferenceBackend, ExecutionBackend, GpuMinerBackend, cuda_device_count,
     cuda_kernels_compiled,
 };
-pub use scheduler::{JobScheduler, MinerAssignment, ValidatorAssignment};
+pub use scheduler::{
+    JobScheduler, JobSource, MinerAssignment, SyntheticLocalJobSource, ValidatorAssignment,
+};
 pub use storage::{
     BlockLogStore, ChainSnapshot, ChainStateStore, ChainStore, NodeStore, NodeStoreStatus,
     PersistedNodeState, SnapshotStore,

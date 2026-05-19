@@ -2,24 +2,17 @@ use crate::chain::{BlockVote, Chain, JobState, TensorBlock};
 use crate::error::Result;
 use crate::miner::MinerNode;
 use crate::runtime::CpuReferenceBackend;
-use crate::scheduler::JobScheduler;
+use crate::scheduler::{JobScheduler, SyntheticLocalJobSource};
 use crate::validator::{MatmulVerificationInput, ValidatorNode};
 
 pub fn produce_synthetic_cpu_round(chain: &mut Chain) -> Result<Option<u64>> {
     if chain.state.miners.is_empty() || chain.state.validators.is_empty() {
         return Ok(None);
     }
+    let mut job_source = SyntheticLocalJobSource::default();
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     let beacon = chain.state.finalized_randomness;
-    let job = scheduler.generate_small_matmul(
-        chain.state.epoch,
-        chain.state.height,
-        &beacon,
-        chain
-            .state
-            .height
-            .saturating_add(chain.params.receipt_submission_window),
-    );
+    let job = job_source.next_matmul_job(chain);
     chain.submit_job(JobState::TensorOp(job.clone()));
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
     let mut receipts = Vec::new();
