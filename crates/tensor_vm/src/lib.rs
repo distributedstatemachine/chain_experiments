@@ -14,6 +14,7 @@ pub mod faucet;
 pub mod field;
 pub mod hash;
 pub mod jobs;
+pub mod localnet;
 pub mod merkle;
 pub mod miner;
 pub mod oracle;
@@ -51,6 +52,7 @@ pub use jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
     PrimitiveType, TensorOpReceipt,
 };
+pub use localnet::{finalize_local_cpu_block, produce_synthetic_cpu_round};
 pub use miner::MinerNode;
 pub use p2p::{
     GossipTopic, Libp2pControlPlaneConfig, NetworkStackRecommendation, PeerBookStore, PeerRecord,

@@ -53,6 +53,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Tensor server for descriptors, rows, chunks, Merkle openings, and retention-window pruning
 - End-to-end local matmul round: schedule, mine, serve tensors, verify via tensor server, attest, settle, and produce block
 - End-to-end local LinearTrainingStep round: register model, mine, verify, attest, settle, update model state, and produce block
+- Library-owned local CPU synthetic round producer that schedules jobs, executes CPU miner work, verifies,
+  settles, finalizes, and advances blocks; `tvmd service serve` now calls this shared protocol path
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
@@ -279,10 +281,10 @@ preflight, public evidence, or deployment-gated work can count:
   counters advance past the seeded two-block baseline; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 202 passing library tests under Tarpaulin:
+The workspace currently has 206 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 187 in `tensor_vm`
+- 191 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -309,10 +311,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.14% workspace line coverage
-- 9441/9523 workspace lines covered
+- 99.15% workspace line coverage
+- 9509/9591 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8602/8602 `tensor_vm` lines covered
+- 8670/8670 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 271/271 `tensor_vm_explorer` lines covered
 
