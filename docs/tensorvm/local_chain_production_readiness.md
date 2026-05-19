@@ -512,7 +512,9 @@ Status: started. `Chain`, `ChainEngine`, `ChainCommand`, and `ChainEvent` exist.
 lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now lives behind
 `chain::settlement`, deterministic content/state roots now live behind `chain::roots`, block assembly now
 lives behind `chain::blocks`, and chain parameters/state/domain view types now live behind `chain::state`
-while preserving the profile-neutral chain API. Validation still needs to move out of the remaining large
+while preserving the profile-neutral chain API. Attestation, validation-seed, quorum, and block-finality
+checks now live behind `chain::validation`; registration, receipt admission, account transfer, model
+transition, challenge outcome, and command routing logic still need to move out of the remaining large
 `chain.rs` implementation.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
