@@ -85,6 +85,10 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
                 *max_requests,
             )
         }
+        CliCommand::ServiceStatus { data_dir } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            service_status(data_dir)
+        }
         CliCommand::LocalTestnetSeed { data_dir } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             seed_local_testnet(data_dir)
@@ -190,10 +194,7 @@ fn check_service_readiness(
 }
 
 fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
-    let mut testnet = LocalTestnet::new(
-        TestnetConfig::default(),
-        hash_bytes(b"tensor-vm-local-cpu-compose-seed", &[data_dir.as_bytes()]),
-    );
+    let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     testnet.run_matmul_round(&scheduler);
     let matmul_settled_receipts = testnet.chain.state.settled_receipts.len();
@@ -241,6 +242,38 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
         local_evidence.data_availability_bps,
         status.block_count,
         hex(&status.latest_block_hash)
+    ))
+}
+
+fn service_status(data_dir: &str) -> std::result::Result<String, String> {
+    let store = NodeStore::open(data_dir);
+    let chain = store
+        .load_chain()
+        .map_err(|error| format!("failed to load node store {data_dir}: {error}"))?;
+    let status = store
+        .status()
+        .map_err(|error| format!("failed to inspect node store {data_dir}: {error}"))?;
+    let finalized_block_count = chain
+        .blocks
+        .iter()
+        .filter(|block| chain.is_block_finalized(&block.hash()))
+        .count();
+    let first_live_block = chain.blocks.iter().find(|block| block.height > 2);
+    let first_live_block_height = first_live_block
+        .map(|block| block.height)
+        .unwrap_or_default();
+    let first_live_block_hash = first_live_block
+        .map(|block| block.hash())
+        .unwrap_or([0; 32]);
+    Ok(format!(
+        "command=service_status\ndata_dir={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_hash={}\nstate_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nnode_store_ready=true\nstatus_source=node_store",
+        status.data_dir.display(),
+        chain.state.height,
+        chain.state.epoch,
+        status.block_count,
+        hex(&status.latest_block_hash),
+        hex(&chain.state_root()),
+        hex(&first_live_block_hash),
     ))
 }
 
@@ -352,6 +385,10 @@ fn local_cpu_block_interval() -> Option<Duration> {
         .and_then(|value| value.parse::<u64>().ok())
         .filter(|millis| *millis > 0)
         .map(Duration::from_millis)
+}
+
+fn local_cpu_seed_beacon() -> [u8; 32] {
+    hash_bytes(b"tensor-vm-local-cpu-compose-seed", &[b"shared-chain-base"])
 }
 
 fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {

@@ -59,6 +59,9 @@ pub enum CliCommand {
         auth_token: String,
         max_requests: usize,
     },
+    ServiceStatus {
+        data_dir: String,
+    },
     LocalTestnetSeed {
         data_dir: String,
     },
@@ -341,6 +344,9 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             identity_seed: Some(parse_hash_argument(identity_seed)?),
             auth_token: (*auth_token).to_owned(),
             max_requests: parse_usize(max_requests)?,
+        }),
+        ["service", "status", "--data-dir", data_dir] => Ok(CliCommand::ServiceStatus {
+            data_dir: (*data_dir).to_owned(),
         }),
         ["local-testnet", "seed", "--data-dir", data_dir] => Ok(CliCommand::LocalTestnetSeed {
             data_dir: (*data_dir).to_owned(),
@@ -845,6 +851,9 @@ pub fn describe_command(command: &CliCommand) -> String {
                 p2p_config.idle_connection_timeout_seconds
             )
         }
+        CliCommand::ServiceStatus { data_dir } => {
+            format!("show service node store status data_dir={data_dir}")
+        }
         CliCommand::LocalTestnetSeed { data_dir } => {
             format!("seed local CPU testnet data_dir={data_dir}")
         }
@@ -1163,6 +1172,12 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds
+            ))
+        }
+        CliCommand::ServiceStatus { data_dir } => {
+            ensure_data_dir(data_dir)?;
+            Ok(format!(
+                "command=service_status\ndata_dir={data_dir}\nstatus_source=node_store"
             ))
         }
         CliCommand::LocalTestnetSeed { data_dir } => {
@@ -4311,6 +4326,12 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 max_requests: 0,
             }
         );
+        assert_eq!(
+            parse_cli_parts(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+            CliCommand::ServiceStatus {
+                data_dir: "/var/lib/tensorvm".to_owned(),
+            }
+        );
     }
 
     #[test]
@@ -4389,6 +4410,12 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     max_requests: 0,
                 },
                 "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
+            ),
+            (
+                CliCommand::ServiceStatus {
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                },
+                "show service node store status data_dir=/var/lib/tensorvm",
             ),
             (
                 CliCommand::LocalTestnetSeed {
@@ -4831,6 +4858,14 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_serve.contains("faucet_routes=enabled"));
         assert!(service_serve.contains("telemetry_routes=enabled"));
         assert!(service_serve.contains("node_store_required=true"));
+
+        let service_status = execute_reference_cli_command(&CliCommand::ServiceStatus {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+        })
+        .unwrap();
+        assert!(service_status.contains("command=service_status"));
+        assert!(service_status.contains("data_dir=/var/lib/tensorvm"));
+        assert!(service_status.contains("status_source=node_store"));
 
         let local_seed = execute_reference_cli_command(&CliCommand::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),

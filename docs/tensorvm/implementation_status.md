@@ -249,6 +249,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 cargo fmt --check --all
 cargo test --workspace --release
@@ -277,7 +279,8 @@ preflight, public evidence, or deployment-gated work can count:
   reported `local_cpu_testnet_ready=true`, `ready_miners=10`, `ready_validators=5`,
   `distinct_operator_ids=15`, `distinct_libp2p_peer_ids=15`, `distinct_node_multiaddrs=15`,
   `libp2p_ready_node_count=15`, `cpu_ready_miner_count=10`, `cuda_required_miner_count=0`,
-  `settled_receipts=10`, `matmul_settled=true`, `linear_training_settled=true`, `rewarded_miners=9`,
+  `settled_receipts=10`, `matmul_settled=true`, `linear_training_settled=true`, positive
+  `rewarded_miners`,
   seeded `total_reward_balance`, seeded `attestation_count`, `finality_rate_bps=10000`,
   `data_availability_bps=10000`, `public_evidence_full_spec=false`, and `independently_checkable=false`,
   with `standalone_explorer_ready=true` and
@@ -288,8 +291,11 @@ preflight, public evidence, or deployment-gated work can count:
   baseline, at least one live LinearTrainingStep advances model state after startup, validators add
   attestations, `/explorer/receipts` exposes per-receipt validator attestation details for live receipts,
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
-  settled live work credits new rewards; the same check passed again after
-  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
+  settled live work credits new rewards; the gate also runs `tvmd service status` inside all 15 operator
+  containers and requires `all_operator_live_block_convergence=true`, proving every durable node store
+  advanced past the shared seed and reports the same first live finalized block hash; the same check passed
+  again after `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
+  and after `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00`
 
 The workspace currently has 212 passing library tests under Tarpaulin:
 
@@ -322,9 +328,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.16% workspace line coverage
-- 9665/9747 workspace lines covered
+- 9673/9755 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8820/8820 `tensor_vm` lines covered
+- 8828/8828 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

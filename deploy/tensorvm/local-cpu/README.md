@@ -25,9 +25,9 @@ explorer
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
 distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
 libp2p readiness path, and starts `tvmd service serve`. Miner containers also run the CPU miner readiness
-command with `--device cpu`; validators run the validator readiness command. `miner-00` seeds the local
-CPU chain so the gateway exposes settled matmul and LinearTrainingStep work through `/chain/head`, then
-keeps producing live synthetic CPU jobs so blocks continue past the seeded baseline.
+command with `--device cpu`; validators run the validator readiness command. Every operator seeds the same
+deterministic local CPU chain and keeps producing live synthetic CPU jobs from that shared base, while
+`miner-00` exposes the host-facing gateway routes.
 
 The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
 `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.
@@ -37,7 +37,8 @@ script.
 The check script waits for `/chain/head` and `/explorer/overview` to move past the seeded two-block
 snapshot, including new jobs, receipts, settled receipts, model-count advancement, validator-attestation
 growth, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
-reward growth from live synthetic work.
+reward growth from live synthetic work. It also runs `tvmd service status` in every operator container and
+fails unless all 15 node stores advance past the seed and report the same first live finalized block hash.
 
 ## Commands
 
@@ -50,6 +51,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```

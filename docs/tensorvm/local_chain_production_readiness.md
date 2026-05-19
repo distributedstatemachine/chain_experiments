@@ -80,6 +80,10 @@ The local bundle is useful and should remain the first operational target:
 - The current live producer keeps `/chain/head` advancing past the seeded two-block baseline.
 - `check-local-testnet.sh` now fails if live jobs, receipts, settled receipts, height, and block count do
   not advance.
+- Every operator now starts from the same deterministic local CPU seed and exposes durable node-store status
+  through `tvmd service status`.
+- The checker fails unless all 15 operator node stores advance past the seed and report the same first live
+  finalized block hash before and after restart checks.
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
@@ -150,18 +154,17 @@ Required fix:
 
 ### 4. Non-Bootstrap Operators Do Not Prove Chain Sync
 
-The checker validates that all operators are running and libp2p-ready, but live chain state is only checked
-through `miner-00`.
+The checker validates that all operators are running and libp2p-ready, and now checks every node store for
+the same first live finalized block hash. It still does not prove live state was propagated through the
+network or that every operator is executing a distinct role loop.
 
 Required fix:
 
-- Every operator must expose a local health/status route or command that reports:
-  - current height
-  - current finalized head
-  - local block count
-  - peer count
-  - role-specific work counters
-- The checker must fail unless all 15 operators converge on the same finalized head within a bounded time.
+- Extend `tvmd service status` or the local node API to include peer count and role-specific work counters.
+- Move the convergence assertion from deterministic same-seed first-live-block equality to the shared
+  network event path.
+- The checker must eventually fail unless all 15 operators converge on the same latest finalized head within
+  a bounded time.
 
 ### 5. Restart Gate Needs Continuity Assertions
 
@@ -446,12 +449,14 @@ jobs, receipts, attestations, and votes.
 - Add this document.
 - Update the local checker to emit exact live counters.
 - Update `coverage_matrix.md` so it describes live post-startup jobs, not only seeded state.
-- Add checker assertions for live rewards, live attestations, and live tensor data fetch.
+- Add checker assertions for live rewards, live attestations, live tensor data fetch, and all-operator
+  first-live-block convergence.
 
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
-receipts, per-receipt validator-attestation details, and live tensor descriptor/row/chunk/opening fetches.
-All-node head convergence still needs hard checker assertions.
+receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
+all 15 operator node stores reporting the same first live finalized block hash. Latest-head convergence via
+the shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -535,7 +540,8 @@ local evidence remains explicitly non-public
 
 Keep this incremental:
 
-1. Strengthen the checker for live attestations, live rewards, tensor fetch, and all-node head convergence.
+1. Strengthen the checker from first-live-block convergence to latest-head convergence through the shared
+   network event path.
 2. Split `chain.rs` into state, engine, validation, settlement, and proposer modules while preserving the
    `ChainEngine` facade.
 3. Add role-loop commands while keeping current tests green.

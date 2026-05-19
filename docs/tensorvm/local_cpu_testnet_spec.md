@@ -227,6 +227,10 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -253,6 +257,7 @@ tensor data available through the local tensor-server path
 gateway health, chain head, explorer, faucet, and telemetry routes reachable from the host
 standalone explorer route reachable from the host
 standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
+all 15 operator node stores advanced past the seed and reported the same first live finalized block hash
 ```
 
 The check must also verify that the run reports itself as local-only:
@@ -268,6 +273,8 @@ The Compose deployment must survive a local restart test before this spec is com
 
 ```bash
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
 ```
 

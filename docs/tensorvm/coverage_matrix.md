@@ -155,11 +155,13 @@ verifies the local-only evidence boundary, and passes after restarting `miner-03
   `tvmd service serve` startup of the same runtime, durable bootstrap peer-book persistence
   with peer-ID-preserving dial multiaddrs, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
+  `tvmd service status` durable node-store reporting,
   telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
   `tvmd service init/peer add/readiness/serve` launch validation with required libp2p listen multiaddrs, checked deployable
   systemd/env/nginx templates, a documented mandatory-libp2p networking choice, and a restartable reference
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
-  persistence.
+  persistence. The local CPU checker now also requires all 15 operator node stores to advance past the
+  shared seed and report the same first live finalized block hash.
 - Instrumented line coverage has been generated with Tarpaulin; see `tarpaulin_report.md`.
   Branch coverage is not reported because the installed Tarpaulin version lists branch coverage as not implemented.

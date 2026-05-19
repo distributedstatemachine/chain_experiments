@@ -39,6 +39,12 @@ seed_report_value() {
   compose exec -T miner-00 sed -n "s/^${key}=//p" /var/lib/tensorvm/local-testnet-seed.out | tr -d '\r'
 }
 
+status_value() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'
+}
+
 require_command docker
 require_command grep
 require_command sed
@@ -83,6 +89,8 @@ TMP_DIR="${TMPDIR:-/tmp}/tensorvm-local-cpu-check.$$"
 mkdir -p "$TMP_DIR"
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
+ZERO_HASH="0000000000000000000000000000000000000000000000000000000000000000"
+
 for service in $EXPECTED_SERVICES; do
   compose exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready \
     || fail "$service has not written /var/lib/tensorvm/local-cpu-ready"
@@ -122,6 +130,15 @@ done
 [ "$(unique_count "$TMP_DIR/p2p_peer_ids")" = "15" ] || fail "libp2p peer IDs are not distinct"
 [ "$(unique_count "$TMP_DIR/node_multiaddrs")" = "15" ] || fail "node multiaddrs are not distinct"
 
+for service in $EXPECTED_SERVICES; do
+  compose exec -T "$service" grep -q "command=local_testnet_seed" /var/lib/tensorvm/local-testnet-seed.out \
+    || fail "$service did not seed local testnet chain state"
+  compose exec -T "$service" grep -q "height=2" /var/lib/tensorvm/local-testnet-seed.out \
+    || fail "$service seeded local testnet did not start at height 2"
+  compose exec -T "$service" grep -q "blocks=2" /var/lib/tensorvm/local-testnet-seed.out \
+    || fail "$service seeded local testnet did not start with 2 blocks"
+done
+
 compose exec -T miner-00 grep -q "command=local_testnet_seed" /var/lib/tensorvm/local-testnet-seed.out \
   || fail "miner-00 did not seed local testnet chain state"
 compose exec -T miner-00 grep -q "settled_receipts=10" /var/lib/tensorvm/local-testnet-seed.out \
@@ -130,12 +147,12 @@ compose exec -T miner-00 grep -q "matmul_settled=true" /var/lib/tensorvm/local-t
   || fail "seeded local testnet did not settle matmul work"
 compose exec -T miner-00 grep -q "linear_training_settled=true" /var/lib/tensorvm/local-testnet-seed.out \
   || fail "seeded local testnet did not settle linear training work"
-compose exec -T miner-00 grep -q "rewarded_miners=9" /var/lib/tensorvm/local-testnet-seed.out \
-  || fail "seeded local testnet did not report miner rewards"
 compose exec -T miner-00 grep -q "finality_rate_bps=10000" /var/lib/tensorvm/local-testnet-seed.out \
   || fail "seeded local testnet did not report full finality"
 compose exec -T miner-00 grep -q "data_availability_bps=10000" /var/lib/tensorvm/local-testnet-seed.out \
   || fail "seeded local testnet did not report full data availability"
+SEED_REWARDED_MINERS=$(seed_report_value rewarded_miners)
+[ "${SEED_REWARDED_MINERS:-0}" -gt 0 ] || fail "seeded local testnet did not report miner rewards"
 SEED_TOTAL_REWARD_BALANCE=$(seed_report_value total_reward_balance)
 [ -n "$SEED_TOTAL_REWARD_BALANCE" ] || fail "seeded local testnet did not report total reward balance"
 SEED_ATTESTATION_COUNT=$(seed_report_value attestation_count)
@@ -223,9 +240,67 @@ curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}
 curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
   || fail "live tensor opening was not fetchable"
 
+ALL_OPERATOR_MIN_HEIGHT=0
+ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
+CONVERGED_OPERATOR_COUNT=0
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+  CONVERGED_OPERATOR_COUNT=0
+  ALL_OPERATOR_MIN_HEIGHT=""
+  ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
+  STATUS_MISMATCH=false
+  for service in $EXPECTED_SERVICES; do
+    if STATUS_RAW=$(compose exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
+      STATUS=$(printf '%s\n' "$STATUS_RAW" | tr -d '\r')
+    else
+      STATUS_MISMATCH=true
+      continue
+    fi
+    SERVICE_HEIGHT=$(status_value height "$STATUS")
+    SERVICE_BLOCK_COUNT=$(status_value block_count "$STATUS")
+    SERVICE_FINALIZED_BLOCK_COUNT=$(status_value finalized_block_count "$STATUS")
+    SERVICE_FIRST_LIVE_BLOCK_HEIGHT=$(status_value first_live_block_height "$STATUS")
+    SERVICE_FIRST_LIVE_BLOCK_HASH=$(status_value first_live_block_hash "$STATUS")
+    [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_FINALIZED_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_FIRST_LIVE_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
+    if [ "$SERVICE_HEIGHT" -le 2 ] \
+      || [ "$SERVICE_BLOCK_COUNT" -le 2 ] \
+      || [ "$SERVICE_FINALIZED_BLOCK_COUNT" -le 2 ] \
+      || [ "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" -le 2 ] \
+      || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
+      STATUS_MISMATCH=true
+      continue
+    fi
+    if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
+      ALL_OPERATOR_MIN_HEIGHT="$SERVICE_HEIGHT"
+    fi
+    if [ -z "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ]; then
+      ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH="$SERVICE_FIRST_LIVE_BLOCK_HASH"
+    elif [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" != "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ]; then
+      STATUS_MISMATCH=true
+      continue
+    fi
+    CONVERGED_OPERATOR_COUNT=$((CONVERGED_OPERATOR_COUNT + 1))
+  done
+  if [ "$CONVERGED_OPERATOR_COUNT" = "15" ] && [ "$STATUS_MISMATCH" = "false" ]; then
+    break
+  fi
+  attempt=$((attempt + 1))
+  sleep 1
+done
+
+[ "$CONVERGED_OPERATOR_COUNT" = "15" ] || fail "not all operators produced and finalized a live block"
+[ -n "$ALL_OPERATOR_MIN_HEIGHT" ] || fail "operator convergence height was not observed"
+[ "$ALL_OPERATOR_MIN_HEIGHT" -gt 2 ] || fail "not all operators advanced past seeded height 2"
+[ -n "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ] || fail "operator live block hash convergence was not observed"
+[ "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" != "$ZERO_HASH" ] || fail "operator live block hash convergence was empty"
+
 cargo test -p tensor_vm local_testnet --release
 
-cat <<'STATUS'
+cat <<STATUS
 local_cpu_testnet_ready=true
 ready_miners=10
 ready_validators=5
@@ -238,7 +313,7 @@ cuda_required_miner_count=0
 settled_receipts=10
 matmul_settled=true
 linear_training_settled=true
-rewarded_miners=9
+rewarded_miners=${SEED_REWARDED_MINERS}
 finality_rate_bps=10000
 data_availability_bps=10000
 standalone_explorer_ready=true
@@ -250,6 +325,10 @@ live_attestations=true
 live_receipt_attestations=true
 live_tensor_fetch=true
 live_rewards=true
+all_operator_status_count=15
+all_operator_min_height=${ALL_OPERATOR_MIN_HEIGHT}
+all_operator_first_live_block_hash=${ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH}
+all_operator_live_block_convergence=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

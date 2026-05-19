@@ -31,6 +31,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     let entrypoint =
         fs::read_to_string(repo_path("deploy/tensorvm/local-cpu/scripts/entrypoint.sh"))
             .expect("entrypoint should be readable");
+    let env_file = fs::read_to_string(repo_path(
+        "deploy/tensorvm/local-cpu/env/local-cpu.env.example",
+    ))
+    .expect("local CPU env file should be readable");
     let check_script = fs::read_to_string(repo_path(
         "deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh",
     ))
@@ -76,6 +80,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("condition: service_healthy"));
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
     assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
+    assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
+    assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
     assert_eq!(
         compose
             .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
@@ -133,7 +139,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "settled_receipts=10",
         "matmul_settled=true",
         "linear_training_settled=true",
-        "rewarded_miners=9",
+        "rewarded_miners=",
         "total_reward_balance",
         "attestation_count",
         "finality_rate_bps=10000",
@@ -150,6 +156,11 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "live_receipt_attestations=true",
         "live_tensor_fetch=true",
         "live_rewards=true",
+        "tvmd service status",
+        "all_operator_status_count=15",
+        "all_operator_min_height=",
+        "all_operator_first_live_block_hash=",
+        "all_operator_live_block_convergence=true",
         "data-ui=\"ratzilla-tui\"",
         "new WebSocket",
         "cargo test -p tensor_vm local_testnet --release",

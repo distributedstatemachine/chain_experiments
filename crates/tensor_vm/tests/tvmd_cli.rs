@@ -943,6 +943,34 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             > 0
     );
 
+    let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+    assert!(status.contains("command=service_status"));
+    assert!(status.contains("node_store_ready=true"));
+    assert!(status.contains("status_source=node_store"));
+    assert!(
+        stdout_value(&status, "height")
+            .parse::<u64>()
+            .expect("service status height must parse")
+            > initial_height
+    );
+    assert!(
+        stdout_value(&status, "block_count")
+            .parse::<u64>()
+            .expect("service status block count must parse")
+            > initial_block_count
+    );
+    assert!(
+        stdout_value(&status, "finalized_block_count")
+            .parse::<u64>()
+            .expect("service status finalized block count must parse")
+            > 2
+    );
+    assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
+    assert_ne!(
+        stdout_value(&status, "first_live_block_hash"),
+        "0".repeat(64)
+    );
+
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
 
