@@ -1,7 +1,14 @@
-use std::path::Path;
+use std::{
+    io::ErrorKind,
+    path::Path,
+    thread,
+    time::{Duration, Instant},
+};
 use tensor_vm::{
-    CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord,
-    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy,
+    BlockVote, CliCommand, CpuReferenceBackend, Faucet, JobScheduler, JobState,
+    Libp2pControlPlaneConfig, LocalChain, MatmulVerificationInput, MinerNode, NodeStore,
+    PeerRecord, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, ValidatorNode,
+    chain::TensorBlock,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
@@ -279,21 +286,173 @@ fn serve_service(
     let mut server = RpcHttpServer::bind(listen, gateway)
         .map_err(|error| format!("failed to bind service listener {listen}: {error}"))?;
     let mut served_requests = 0usize;
+    let block_interval = local_cpu_block_interval();
+    let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
+    let mut produced_blocks = 0usize;
+    if block_interval.is_some() {
+        server.set_nonblocking(true).map_err(|error| {
+            format!("failed to configure nonblocking service listener: {error}")
+        })?;
+    }
     loop {
         if max_requests != 0 && served_requests >= max_requests {
             break;
         }
-        server
-            .serve_next()
-            .map_err(|error| format!("service request failed: {error}"))?;
-        store
-            .persist_chain(&server.gateway().node.chain)
-            .map_err(|error| format!("failed to persist service state: {error}"))?;
-        served_requests = served_requests.saturating_add(1);
+        if let Some(interval) = block_interval {
+            match server.serve_next() {
+                Ok(()) => {
+                    store
+                        .persist_chain(&server.gateway().node.chain)
+                        .map_err(|error| format!("failed to persist service state: {error}"))?;
+                    served_requests = served_requests.saturating_add(1);
+                }
+                Err(error) if error.kind() == ErrorKind::WouldBlock => {}
+                Err(error) => return Err(format!("service request failed: {error}")),
+            }
+            if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
+                if produce_synthetic_local_cpu_round(&mut server.gateway_mut().node.chain)?
+                    .is_some()
+                {
+                    store
+                        .persist_chain(&server.gateway().node.chain)
+                        .map_err(|error| format!("failed to persist produced block: {error}"))?;
+                    produced_blocks = produced_blocks.saturating_add(1);
+                }
+                next_block_at = Some(Instant::now() + interval);
+            }
+            thread::sleep(Duration::from_millis(25));
+        } else {
+            server
+                .serve_next()
+                .map_err(|error| format!("service request failed: {error}"))?;
+            store
+                .persist_chain(&server.gateway().node.chain)
+                .map_err(|error| format!("failed to persist service state: {error}"))?;
+            served_requests = served_requests.saturating_add(1);
+        }
     }
     Ok(format!(
-        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={data_dir}\nserved_requests={served_requests}"
+        "command=service_serve\nlisten={listen}\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={data_dir}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}"
     ))
+}
+
+fn local_cpu_block_interval() -> Option<Duration> {
+    std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|millis| *millis > 0)
+        .map(Duration::from_millis)
+}
+
+fn produce_synthetic_local_cpu_round(
+    chain: &mut LocalChain,
+) -> std::result::Result<Option<u64>, String> {
+    if chain.state.miners.is_empty() || chain.state.validators.is_empty() {
+        return Ok(None);
+    }
+    let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+    let beacon = chain.state.finalized_randomness;
+    let job = scheduler.generate_small_matmul(
+        chain.state.epoch,
+        chain.state.height,
+        &beacon,
+        chain
+            .state
+            .height
+            .saturating_add(chain.params.receipt_submission_window),
+    );
+    chain.submit_job(JobState::TensorOp(job.clone()));
+    let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
+    let mut receipts = Vec::new();
+    for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
+        let mut miner = MinerNode::new(miner_address, CpuReferenceBackend);
+        let (receipt, a, b, c) = miner
+            .solve_matmul_job(&job, chain.state.height, 1 + index as u64)
+            .map_err(|error| format!("synthetic CPU miner failed: {error}"))?;
+        chain
+            .submit_tensor_op_receipt(receipt.clone())
+            .map_err(|error| format!("synthetic receipt rejected: {error}"))?;
+        receipts.push((receipt, a, b, c));
+    }
+    for (receipt, a, b, c) in &receipts {
+        let validation_seed = chain.validation_seed(&receipt.receipt_id);
+        let validator_assignment = scheduler.assign_validators(chain, receipt.receipt_id, &beacon);
+        for validator_address in validator_assignment.validators {
+            let stake = chain
+                .state
+                .validators
+                .get(&validator_address)
+                .map(|validator| validator.stake)
+                .unwrap_or_default();
+            let validator = ValidatorNode::new(validator_address, stake);
+            let attestation = validator
+                .verify_matmul(MatmulVerificationInput {
+                    job: &job,
+                    receipt,
+                    a,
+                    b,
+                    c,
+                    validation_seed: &validation_seed,
+                    params: &chain.params.freivalds,
+                })
+                .map_err(|error| format!("synthetic validator failed: {error}"))?;
+            chain
+                .submit_attestation(attestation)
+                .map_err(|error| format!("synthetic attestation rejected: {error}"))?;
+        }
+    }
+    let Some(canonical_receipt) = receipts.first().map(|(receipt, _, _, _)| receipt) else {
+        return Ok(None);
+    };
+    if !chain.has_attestation_quorum(&canonical_receipt.receipt_id)
+        || !chain.has_redundant_agreement(&canonical_receipt.receipt_id)
+    {
+        return Ok(None);
+    }
+    let settled_before = chain.state.settled_receipts.len();
+    chain.settle_epoch(1_000, 500);
+    if chain.state.settled_receipts.len() == settled_before {
+        return Ok(None);
+    }
+    let Some(proposer) = chain
+        .proposer_for_next_epoch(&beacon)
+        .or_else(|| chain.state.miners.keys().next().copied())
+    else {
+        return Ok(None);
+    };
+    let timestamp = chain
+        .blocks
+        .last()
+        .map(|block| {
+            block
+                .timestamp
+                .saturating_add(chain.params.block_time_seconds)
+        })
+        .unwrap_or(0);
+    let block = chain.produce_block(proposer, timestamp);
+    finalize_local_cpu_block(chain, &block)?;
+    Ok(Some(chain.state.height))
+}
+
+fn finalize_local_cpu_block(
+    chain: &mut LocalChain,
+    block: &TensorBlock,
+) -> std::result::Result<(), String> {
+    for validator_address in chain.state.validators.keys().copied().collect::<Vec<_>>() {
+        let stake = chain
+            .state
+            .validators
+            .get(&validator_address)
+            .map(|validator| validator.stake)
+            .unwrap_or_default();
+        chain
+            .submit_block_vote(BlockVote::new(validator_address, stake, block))
+            .map_err(|error| format!("synthetic block vote rejected: {error}"))?;
+        if chain.is_block_finalized(&block.hash()) {
+            break;
+        }
+    }
+    Ok(())
 }
 
 fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {

@@ -133,6 +133,14 @@ impl RpcHttpServer {
         &self.gateway
     }
 
+    pub fn gateway_mut(&mut self) -> &mut RpcGateway {
+        &mut self.gateway
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> std::io::Result<()> {
+        self.listener.set_nonblocking(nonblocking)
+    }
+
     pub fn serve_next(&mut self) -> std::io::Result<()> {
         let (mut stream, peer_addr) = self.listener.accept()?;
         stream.set_read_timeout(Some(self.read_timeout))?;
@@ -2351,6 +2359,10 @@ mod tests {
             Err(error) => panic!("failed to bind RPC HTTP server: {error}"),
         };
         assert_eq!(server.gateway().request_count("unseen-client"), 0);
+        server.set_nonblocking(true).unwrap();
+        server.set_nonblocking(false).unwrap();
+        server.gateway_mut().policy.max_body_bytes = 32;
+        assert_eq!(server.gateway().policy.max_body_bytes, 32);
         let addr = server.local_addr().unwrap();
         let server_thread = std::thread::spawn(move || server.serve_next().unwrap());
 

@@ -129,6 +129,19 @@ fn response_body(response: &str) -> &str {
         .expect("HTTP response must contain a body separator")
 }
 
+fn json_number_field(body: &str, key: &str) -> u64 {
+    let marker = format!("\"{key}\":");
+    let tail = body
+        .split_once(&marker)
+        .map(|(_, tail)| tail)
+        .expect("JSON numeric field must exist");
+    let digits = tail
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .collect::<String>();
+    digits.parse().expect("JSON numeric field must parse")
+}
+
 fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
     stdout
         .lines()
@@ -830,18 +843,37 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "1",
+            "3",
         ])
+        .env("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS", "25")
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("tvmd service serve must spawn");
 
-    let chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(chain_head.contains("HTTP/1.1 200 OK"));
-    assert!(chain_head.contains("\"height\":2"));
-    assert!(chain_head.contains("\"block_count\":2"));
+    let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(initial_chain_head.contains("HTTP/1.1 200 OK"));
+    let initial_height = json_number_field(response_body(&initial_chain_head), "height");
+    let initial_block_count = json_number_field(response_body(&initial_chain_head), "block_count");
+    assert!(initial_height >= 2);
+    assert!(initial_block_count >= 2);
+
+    std::thread::sleep(Duration::from_millis(150));
+
+    let overview = authenticated_get_request(rpc_port, "/explorer/overview");
+    assert!(overview.contains("HTTP/1.1 200 OK"));
+    let overview_body = response_body(&overview);
+    assert!(json_number_field(overview_body, "job_count") > 2);
+    assert!(json_number_field(overview_body, "receipt_count") > 10);
+    assert!(json_number_field(overview_body, "settled_receipt_count") > 10);
+
+    let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
+    assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
+    assert!(
+        json_number_field(response_body(&later_chain_head), "block_count") > initial_block_count
+    );
 
     let output = child.wait_with_output().expect("service process must exit");
     assert!(
@@ -853,7 +885,13 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
     assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("served_requests=1"));
+    assert!(stdout.contains("served_requests=3"));
+    assert!(
+        stdout_value(&stdout, "produced_blocks")
+            .parse::<usize>()
+            .expect("produced block count must parse")
+            > 0
+    );
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
