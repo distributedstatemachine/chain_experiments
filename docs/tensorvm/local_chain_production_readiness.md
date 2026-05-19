@@ -7,6 +7,42 @@ architecture plan for using one shared chain base across local, testnet, and mai
 The target is not public infrastructure. The target is a real local chain where all Docker Compose
 participants run the same protocol code paths that a public testnet or mainnet profile would use.
 
+## Architecture Decision
+
+TensorVM should have one chain base. Local CPU, public testnet, and mainnet must share the same deterministic
+state-transition engine, validation rules, settlement rules, proposer selection, block application, storage
+contract, and libp2p message handling. They may differ only through profile configuration and deployment
+adapters.
+
+Accepted profile differences:
+
+```text
+chain ID and genesis state
+operator set and bootstrap peers
+job source policy
+block and epoch timing
+reward and faucet policy
+service exposure and authentication policy
+evidence requirements
+storage paths and retention policy
+```
+
+Rejected differences:
+
+```text
+separate local-only chain transition logic
+simulation shortcuts in production paths
+in-memory propagation instead of the shared node event path
+optional libp2p for any counted operator
+testnet/mainnet-only validation or settlement code
+role processes that bypass the chain engine
+```
+
+The repository boundary should stay simple: protocol, runtime, storage, networking, and local deployment
+support live in the `tensor_vm` crate and deploy tree; non-protocol experiments, studies, and exploratory
+tools live in the `experiments` crate. A feature can be experimental, but it should not require production
+chain code to import experiment-only modules.
+
 ## Scope
 
 Local production-ready means:
