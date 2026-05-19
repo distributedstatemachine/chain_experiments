@@ -53,7 +53,7 @@ A public `https://` evidence URI must use a well-formed external host authority.
 rejects userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid ports, malformed
 bracketed IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC
 example domains, loopback, unspecified, private, link-local, documentation, shared-address, benchmarking,
-multicast, reserved IP addresses, missing HTTPS paths, HTTPS query strings, and HTTPS fragments.
+multicast, reserved IP addresses, missing or root-only HTTPS paths, HTTPS query strings, and HTTPS fragments.
 `ipfs://` and `ar://` publication URIs must start with a well-formed content identifier segment using
 only ASCII alphanumerics, `-`, or `_`.
 
@@ -283,7 +283,7 @@ tvmd public-evidence operator-attestation \
 ```
 
 The publication command rejects non-public or malformed evidence URIs, HTTPS evidence URIs without a
-query-free path, zero bundle IDs, zero manifest signers, manifest signature counts other than `1`, and
+concrete query-free path, zero bundle IDs, zero manifest signers, manifest signature counts other than `1`, and
 zero auditor counts. The
 auditor-record command rejects zero bundle IDs, non-public or malformed public or audit URIs, zero auditor
 IDs, and empty observation times; bundle validation only counts auditor records whose auditor ID differs

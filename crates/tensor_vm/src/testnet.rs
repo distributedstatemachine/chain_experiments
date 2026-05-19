@@ -1943,7 +1943,8 @@ fn public_ipv6_is_external(ip: Ipv6Addr) -> bool {
 
 fn public_evidence_uri_is_external(uri: &str) -> bool {
     if let Some(host) = public_https_host(uri) {
-        return public_host_is_external(host) && public_https_path(uri).is_some();
+        return public_host_is_external(host)
+            && public_https_path(uri).is_some_and(|path| path.len() > 1);
     }
     content_addressed_uri_has_identifier(uri, "ipfs://")
         || content_addressed_uri_has_identifier(uri, "ar://")
@@ -5268,6 +5269,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "https://[2001:db8::1]x/public-evidence.json",
             "https://[2001:4860:4860::8888]:/public-evidence.json",
             "https://evidence.tensorvm.net",
+            "https://evidence.tensorvm.net/",
             "https://evidence.tensorvm.net?manifest=1",
             "https://evidence.tensorvm.net#manifest",
             "https://evidence.tensorvm.net/public-evidence.json?download=1",
@@ -5290,6 +5292,12 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let query_publication_uri = bundle.evaluate(&criteria, 6);
         assert!(!query_publication_uri.has_published_evidence_bundle);
         assert!(!query_publication_uri.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.publication.public_uri = String::from("https://evidence.tensorvm.net/");
+        let root_only_publication_uri = bundle.evaluate(&criteria, 6);
+        assert!(!root_only_publication_uri.has_published_evidence_bundle);
+        assert!(!root_only_publication_uri.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle.publication.public_uri = String::from("ipfs://");
@@ -5660,6 +5668,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let local_supporting_artifact = bundle.evaluate(&criteria, 6);
         assert!(!local_supporting_artifact.has_public_supporting_record_artifacts);
         assert!(!local_supporting_artifact.independently_checkable);
+
+        bundle = complete_public_evidence_bundle();
+        bundle.supporting_artifacts[0].artifact_uri =
+            String::from("https://evidence.tensorvm.net/");
+        let root_only_supporting_artifact = bundle.evaluate(&criteria, 6);
+        assert!(!root_only_supporting_artifact.has_public_supporting_record_artifacts);
+        assert!(!root_only_supporting_artifact.independently_checkable);
 
         bundle = complete_public_evidence_bundle();
         bundle
