@@ -67,8 +67,9 @@ libp2p node startup/readiness checks on every planned public miner and validator
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
-health path exactly and must not include a query string or fragment. The content URL path must match the
-required public surface for that service exactly, also without a query string or fragment:
+health path exactly, must be a concrete non-root path, and must not include a query string or fragment.
+The content URL path must match the required public surface for that service exactly, also as a concrete
+non-root path without a query string or fragment:
 `/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`. The content URL authority must
 match the health URL authority so a preflight manifest cannot combine health checks from one deployed
 service with content evidence from another host. Endpoint IDs must be distinct across the RPC, explorer,

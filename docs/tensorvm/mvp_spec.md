@@ -1930,7 +1930,8 @@ endpoint IDs and matching HTTPS authorities for `/chain/head`, `/explorer`, `/fa
 `/telemetry/dashboard`. The RPC, explorer, faucet, and telemetry service surfaces must use distinct
 endpoint IDs and distinct service-content roots; reused IDs or content roots do not satisfy the public
 service gate.
-Public service health and content URLs must use the exact signed path with no query string or fragment.
+Public service health and content URLs must use concrete non-root paths that exactly match the signed path,
+with no query string or fragment.
 External public URLs must use well-formed HTTPS authorities and must not use userinfo, whitespace, invalid
 DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed IPv6 authorities, localhost,
 private, link-local, documentation, shared-address, benchmarking, multicast, reserved IP literals, or

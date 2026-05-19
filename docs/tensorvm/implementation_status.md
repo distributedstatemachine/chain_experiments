@@ -281,8 +281,8 @@ These spec items require real deployment or non-reference infrastructure and are
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,
-  shared-address, benchmarking, multicast, reserved, malformed service URLs, and service URLs with query
-  strings or fragments
+  shared-address, benchmarking, multicast, reserved, malformed service URLs, root-only service URLs, and
+  service URLs with query strings or fragments
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
   endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
   faucet claims
