@@ -2171,6 +2171,8 @@ fn validate_supporting_record_payload(kind: PublicEvidenceRecordKind, payload: &
         PublicEvidenceRecordKind::RewardSettlements => {
             require_supporting_record_field_count(&fields, 4)?;
             parse_hash_argument(fields[0])?;
+            parse_hash_argument(fields[1])?;
+            parse_hash_argument(fields[2])?;
             parse_u64(fields[3])?;
         }
     }
@@ -5401,7 +5403,12 @@ p2p_idle_timeout_seconds=60
             ),
             (
                 PublicEvidenceRecordKind::RewardSettlements,
-                "reward_settlement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,miner,validator,0",
+                concat!(
+                    "reward_settlement=",
+                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,",
+                    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,",
+                    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,0"
+                ),
                 "reward_settlement",
             ),
         ];
@@ -5519,6 +5526,24 @@ p2p_idle_timeout_seconds=60
             (
                 PublicEvidenceRecordKind::RewardSettlements,
                 "reward_settlement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,miner,,0",
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                concat!(
+                    "reward_settlement=",
+                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,",
+                    "miner,",
+                    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,0"
+                ),
+            ),
+            (
+                PublicEvidenceRecordKind::RewardSettlements,
+                concat!(
+                    "reward_settlement=",
+                    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,",
+                    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,",
+                    "validator,0"
+                ),
             ),
         ];
         for (kind, raw_line) in malformed_supporting_record_cases {

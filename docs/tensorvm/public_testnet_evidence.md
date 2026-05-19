@@ -499,9 +499,10 @@ with the record kind and exact line bytes only after the file parser validates t
 `finality_history_record=<block>,<block-root-hex>,finalized|unfinalized`,
 `data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>`,
 `invalid_work_rejection=<receipt-root-hex>,rejected,<block>`, and
-`reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>`. Saved raw artifacts can
-therefore produce matching summary roots and artifact locators without hand-copying individual
-`record_root=<hex>` values. Whitespace-padded record lines and empty fields are rejected.
+`reward_settlement=<receipt-root-hex>,<miner-id-hex>,<validator-id-hex>,<block>`. Reward-settlement
+participant IDs must be valid 64-character hex IDs. Saved raw artifacts can therefore produce matching
+summary roots and artifact locators without hand-copying individual `record_root=<hex>` values.
+Whitespace-padded record lines and empty fields are rejected.
 
 The output is a line-oriented evidence report. `public_evidence_full_spec=true` requires the default
 public-testnet criteria or stricter criteria, `public_criterion=true`, and `independently_checkable=true`.

@@ -23,10 +23,10 @@ Result:
 - 173 tensor_vm library tests
 
 99.04% workspace line coverage
-8467/8549 workspace lines covered
+8469/8551 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-7899/7899 tensor_vm lines covered
+7901/7901 tensor_vm lines covered
 ```
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps

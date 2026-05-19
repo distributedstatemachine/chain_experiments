@@ -88,8 +88,8 @@ deployment gate.
   network-runtime observation roots can be summarized and artifact-bound from external-addressed records or
   saved raw-record files with full signed network-observation line validation before aggregation, and
   file-derived block/finality/data-availability/invalid-work/reward supporting record summaries validate
-  typed raw-record fields before exact-line hashing while rejecting whitespace-padded records and empty
-  fields,
+  typed raw-record fields, including reward-settlement participant IDs, before exact-line hashing while
+  rejecting whitespace-padded records and empty fields,
   `run-window-from-file` derives signed run-window manifest lines from saved
   contiguous per-block observation files while rejecting duplicate blocks, gaps, zero timestamps,
   decreasing timestamps, unsupported lines, and whitespace-padded records, `node-heartbeat-from-file`

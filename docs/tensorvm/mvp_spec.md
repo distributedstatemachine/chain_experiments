@@ -1992,8 +1992,9 @@ operators can derive summary roots and artifact locators from captured records w
 `finality_history_record=<block>,<block-root-hex>,finalized|unfinalized`,
 `data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>`,
 `invalid_work_rejection=<receipt-root-hex>,rejected,<block>`, and
-`reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>`. Whitespace-padded record lines
-or empty fields are rejected.
+`reward_settlement=<receipt-root-hex>,<miner-id-hex>,<validator-id-hex>,<block>`. Whitespace-padded record
+lines or empty fields are rejected, and reward-settlement participant IDs must be valid 64-character hex
+IDs.
 Run-level counters must be internally consistent before the public evidence gate can pass: finalized
 blocks cannot exceed observed blocks, and available tensor receipts cannot exceed checked tensor receipts.
 `public_evidence_full_spec=true` is reserved for default-or-stricter public-testnet criteria; shortened or
