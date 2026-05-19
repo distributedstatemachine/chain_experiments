@@ -2505,7 +2505,7 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
     let plan = parse_public_testnet_preflight_manifest(input)?;
     let report = plan.evaluate(ChainParams::default().block_time_seconds);
     Ok(format!(
-        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\nrequired_miners={}\nrequired_validators={}\npositive_stakes={}\nfunded_faucet={}\ncuda_kernels_available={}\nproduction_libp2p_runtime={}\nrpc_service_plan={}\nexplorer_service_plan={}\nfaucet_service_plan={}\ntelemetry_service_plan={}\npublic_service_content_planned={}\npublic_services_planned={}",
+        "public_testnet_preflight_ready={}\nlocal_shape_ready={}\ndeployment_plan_ready={}\nminers={}\nvalidators={}\nrequired_blocks={}\nrequired_miners={}\nrequired_validators={}\npositive_stakes={}\nfunded_faucet={}\ncuda_kernels_available={}\ncuda_ready_miner_count={}\ncuda_ready_miners={}\nproduction_libp2p_runtime={}\nrpc_service_plan={}\nexplorer_service_plan={}\nfaucet_service_plan={}\ntelemetry_service_plan={}\npublic_service_content_planned={}\npublic_services_planned={}",
         report.can_start_public_run,
         report.local_shape_ready,
         report.deployment_plan_ready,
@@ -2517,6 +2517,8 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
         report.has_positive_stakes,
         report.has_funded_faucet,
         report.has_cuda_kernels_available,
+        report.cuda_ready_miner_count,
+        report.has_cuda_ready_miners,
         report.has_production_libp2p_runtime,
         report.has_rpc_service_plan,
         report.has_explorer_service_plan,
@@ -3312,6 +3314,7 @@ validator_stake=10000
 faucet_balance=1000000
 faucet_drip=100
 cuda_kernels_available=true
+cuda_ready_miner_count=10
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -6776,6 +6779,8 @@ p2p_idle_timeout_seconds=60
         assert!(report.contains("positive_stakes=true"));
         assert!(report.contains("funded_faucet=true"));
         assert!(report.contains("cuda_kernels_available=true"));
+        assert!(report.contains("cuda_ready_miner_count=10"));
+        assert!(report.contains("cuda_ready_miners=true"));
         assert!(report.contains("production_libp2p_runtime=true"));
         assert!(report.contains("rpc_service_plan=true"));
         assert!(report.contains("explorer_service_plan=true"));

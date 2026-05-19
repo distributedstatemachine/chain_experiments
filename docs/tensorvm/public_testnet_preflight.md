@@ -14,7 +14,8 @@ The local preflight report checks:
 - at least 10 planned miners and 5 planned validators under the default public criteria
 - positive miner and validator stakes
 - funded faucet configuration
-- available CUDA kernels for the claimed GPU mining path
+- available CUDA kernels for the claimed GPU mining path and one CUDA-ready miner-start check per
+  planned miner
 - production libp2p runtime plan with discovery, gossip, request/response, and DoS controls
 - public HTTPS RPC, explorer, faucet, and telemetry service plans
 - distinct service endpoint identifiers, health paths, content paths, auth, and rate limiting
@@ -44,6 +45,7 @@ validator_stake=10000
 faucet_balance=1000000
 faucet_drip=100
 cuda_kernels_available=true
+cuda_ready_miner_count=10
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -54,6 +56,10 @@ service=explorer,<endpoint-id-hex>,https://explorer.tensorvm.net/health,/health,
 service=faucet,<endpoint-id-hex>,https://faucet.tensorvm.net/health,/health,https://faucet.tensorvm.net/faucet/page,/faucet/page,true,true
 service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true
 ```
+
+`cuda_ready_miner_count` must match `miner_count` and should be derived from successful
+`tvmd miner start --device cuda:N` readiness checks on each planned public miner host, not from a copied
+boolean.
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
@@ -123,6 +129,8 @@ required_validators=true
 positive_stakes=true
 funded_faucet=true
 cuda_kernels_available=true
+cuda_ready_miner_count=10
+cuda_ready_miners=true
 production_libp2p_runtime=true
 rpc_service_plan=true
 explorer_service_plan=true

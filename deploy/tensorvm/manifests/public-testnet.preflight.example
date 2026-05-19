@@ -7,6 +7,7 @@ validator_stake=10000
 faucet_balance=1000000
 faucet_drip=100
 cuda_kernels_available=true
+cuda_ready_miner_count=10
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true

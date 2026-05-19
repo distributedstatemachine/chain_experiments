@@ -1695,6 +1695,8 @@ validators.
 Those templates include checked preflight and non-full-spec post-run evidence example manifests; the
 post-run example is only a signature-domain and parser shape check and cannot substitute for the required
 7-day external public-run evidence.
+The preflight manifest must include a `cuda_ready_miner_count` equal to the planned `miner_count`, derived
+from successful `tvmd miner start --device cuda:N` readiness checks on the planned public miner hosts.
 The external operator flow, daily evidence collection, post-run validation, and publication steps are
 recorded in `deploy/tensorvm/RUNBOOK.md`.
 

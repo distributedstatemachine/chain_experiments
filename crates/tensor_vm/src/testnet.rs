@@ -117,6 +117,7 @@ pub struct PublicTestnetPreflightPlan {
     pub config: TestnetConfig,
     pub criteria: PublicTestnetCriteria,
     pub cuda_kernels_available: bool,
+    pub cuda_ready_miner_count: usize,
     pub network_runtime: PublicNetworkRuntimeEvidence,
     pub services: Vec<PublicDeploymentServicePlan>,
 }
@@ -131,6 +132,8 @@ pub struct PublicTestnetPreflightReport {
     pub has_positive_stakes: bool,
     pub has_funded_faucet: bool,
     pub has_cuda_kernels_available: bool,
+    pub cuda_ready_miner_count: usize,
+    pub has_cuda_ready_miners: bool,
     pub has_production_libp2p_runtime: bool,
     pub has_rpc_service_plan: bool,
     pub has_explorer_service_plan: bool,
@@ -152,6 +155,9 @@ impl PublicTestnetPreflightPlan {
         let has_positive_stakes = self.config.miner_stake > 0 && self.config.validator_stake > 0;
         let has_funded_faucet =
             self.config.faucet_drip > 0 && self.config.faucet_balance >= self.config.faucet_drip;
+        let has_cuda_ready_miners = self.cuda_kernels_available
+            && self.config.miner_count > 0
+            && self.cuda_ready_miner_count == self.config.miner_count;
         let has_production_libp2p_runtime = self.network_runtime.has_production_libp2p_runtime();
         let has_rpc_service_plan = self.has_ready_service_plan(PublicServiceKind::Rpc);
         let has_explorer_service_plan = self.has_ready_service_plan(PublicServiceKind::Explorer);
@@ -174,7 +180,7 @@ impl PublicTestnetPreflightPlan {
             && has_funded_faucet
             && required_blocks > 0;
         let deployment_plan_ready =
-            self.cuda_kernels_available && has_production_libp2p_runtime && has_public_service_plan;
+            has_cuda_ready_miners && has_production_libp2p_runtime && has_public_service_plan;
         PublicTestnetPreflightReport {
             miner_count: self.config.miner_count,
             validator_count: self.config.validator_count,
@@ -184,6 +190,8 @@ impl PublicTestnetPreflightPlan {
             has_positive_stakes,
             has_funded_faucet,
             has_cuda_kernels_available: self.cuda_kernels_available,
+            cuda_ready_miner_count: self.cuda_ready_miner_count,
+            has_cuda_ready_miners,
             has_production_libp2p_runtime,
             has_rpc_service_plan,
             has_explorer_service_plan,
@@ -1173,6 +1181,7 @@ struct PublicTestnetPreflightManifestBuilder {
     faucet_balance: Option<u64>,
     faucet_drip: Option<u64>,
     cuda_kernels_available: Option<bool>,
+    cuda_ready_miner_count: Option<usize>,
     libp2p_runtime_used: Option<bool>,
     peer_discovery_observed: Option<bool>,
     gossip_propagation_observed: Option<bool>,
@@ -1201,6 +1210,9 @@ impl PublicTestnetPreflightManifestBuilder {
             "faucet_drip" => self.faucet_drip = Some(parse_manifest_u64(scalar)?),
             "cuda_kernels_available" => {
                 self.cuda_kernels_available = Some(parse_manifest_bool(scalar)?);
+            }
+            "cuda_ready_miner_count" => {
+                self.cuda_ready_miner_count = Some(parse_manifest_usize(scalar)?);
             }
             "libp2p_runtime_used" => self.libp2p_runtime_used = Some(parse_manifest_bool(scalar)?),
             "peer_discovery_observed" => {
@@ -1238,6 +1250,7 @@ impl PublicTestnetPreflightManifestBuilder {
             },
             criteria: PublicTestnetCriteria::default(),
             cuda_kernels_available: required_bool(self.cuda_kernels_available)?,
+            cuda_ready_miner_count: required_usize(self.cuda_ready_miner_count)?,
             network_runtime: PublicNetworkRuntimeEvidence {
                 libp2p_runtime_used: required_bool(self.libp2p_runtime_used)?,
                 peer_discovery_observed: required_bool(self.peer_discovery_observed)?,
@@ -4312,6 +4325,7 @@ validator_stake=10000
 faucet_balance=1000000
 faucet_drip=100
 cuda_kernels_available=true
+cuda_ready_miner_count=10
 libp2p_runtime_used=true
 peer_discovery_observed=true
 gossip_propagation_observed=true
@@ -5994,6 +6008,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(report.has_positive_stakes);
         assert!(report.has_funded_faucet);
         assert!(report.has_cuda_kernels_available);
+        assert_eq!(report.cuda_ready_miner_count, 10);
+        assert!(report.has_cuda_ready_miners);
         assert!(report.has_production_libp2p_runtime);
         assert!(report.has_rpc_service_plan);
         assert!(report.has_explorer_service_plan);
@@ -6262,8 +6278,21 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             .evaluate(ChainParams::default().block_time_seconds);
         assert!(no_cuda_report.local_shape_ready);
         assert!(!no_cuda_report.has_cuda_kernels_available);
+        assert!(!no_cuda_report.has_cuda_ready_miners);
         assert!(!no_cuda_report.deployment_plan_ready);
         assert!(!no_cuda_report.can_start_public_run);
+
+        let undercounted_cuda_miners =
+            manifest.replace("cuda_ready_miner_count=10", "cuda_ready_miner_count=9");
+        let undercounted_cuda_miner_report =
+            parse_public_testnet_preflight_manifest(&undercounted_cuda_miners)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(undercounted_cuda_miner_report.has_cuda_kernels_available);
+        assert_eq!(undercounted_cuda_miner_report.cuda_ready_miner_count, 9);
+        assert!(!undercounted_cuda_miner_report.has_cuda_ready_miners);
+        assert!(!undercounted_cuda_miner_report.deployment_plan_ready);
+        assert!(!undercounted_cuda_miner_report.can_start_public_run);
 
         let no_auth = manifest.replace(
             "https://telemetry.tensorvm.net/health,/health,https://telemetry.tensorvm.net/telemetry/dashboard,/telemetry/dashboard,true,true",
@@ -6313,6 +6342,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "cuda_kernels_available=true",
                 "cuda_kernels_available=maybe",
             ),
+            manifest_without_line(&manifest, "cuda_ready_miner_count="),
+            manifest.replace("cuda_ready_miner_count=10", "cuda_ready_miner_count=abc"),
             format!("{manifest}\nminer_count=10"),
             manifest.replace("miner_count=", " miner_count="),
             manifest.replace("miner_count=", "miner_count ="),

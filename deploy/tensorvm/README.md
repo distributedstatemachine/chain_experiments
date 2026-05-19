@@ -79,7 +79,9 @@ sudo systemctl enable --now tensorvm.service
 
 The CUDA miner-start check must report `device_backend=cuda`, `gpu_backend_ready=true`, and
 `cuda_kernels_compiled=true` on GPU-miner hosts. Use `--device cpu` only for the portable reference path;
-it is not public GPU-miner evidence.
+it is not public GPU-miner evidence. Set `cuda_ready_miner_count` in the preflight manifest to the number
+of planned miner hosts that passed this CUDA readiness check; launch readiness requires it to match
+`miner_count`.
 
 Before advertising the run, replace all example hostnames, tokens, peer IDs, and service IDs, publish HTTPS
 with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:
