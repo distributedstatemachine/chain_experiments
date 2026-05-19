@@ -55,16 +55,17 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
   tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
-  `tvmd service serve` startup of the mandatory libp2p control-plane runtime, and durable libp2p bootstrap
-  peer-book storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
+  `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
+  `tvmd service serve` long-running startup of the same runtime, and durable libp2p bootstrap peer-book
+  storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
   health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing explorer/telemetry/faucet HTML
   pages, mutable transaction submission, job lookup, HTTP response formatting, generic HTTP request
-  reading, socketed stdlib HTTP serving, `tvmd service init/peer add/serve` launch configuration for a
-  `NodeStore`-backed service process with mandatory rust-libp2p listen configuration, and gateway
-  auth/body-size/rate-limit enforcement
+  reading, socketed stdlib HTTP serving, `tvmd service init/peer add/readiness/serve` launch
+  configuration for a `NodeStore`-backed service process with mandatory rust-libp2p listen configuration,
+  and gateway auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
@@ -122,10 +123,12 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
   requiring exact untrimmed service URL/path manifest fields and exact comma-separated `service=...`
   values, a `cuda_ready_miner_count` that matches the planned public miner count, a
-  `libp2p_ready_node_count` that matches the planned miner plus validator count, plus distinct endpoint IDs
-  for exactly one ready RPC, explorer, faucet, and telemetry service plan on the planned public content paths
-  used by post-run evidence, with missing, duplicate, or extra preflight service plans rejected by the public
-  service plan gate
+  `libp2p_ready_node_count` that matches the planned miner plus validator count and can be derived from
+  process-level `tvmd service readiness` checks that load the initialized node store, load the durable peer
+  book, start the real rust-libp2p control plane, report `libp2p_ready=true`, and exit, plus distinct
+  endpoint IDs for exactly one ready RPC, explorer, faucet, and telemetry service plan on the planned
+  public content paths used by post-run evidence, with missing, duplicate, or extra preflight service plans
+  rejected by the public service plan gate
 - `tvmd` binary tests for the documented spec-path pending manifest commands, proving
   `tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight` reads the checked
   manifest and reports `public_testnet_preflight_ready=false`, while
@@ -232,8 +235,8 @@ The workspace currently has 188 passing library tests under Tarpaulin:
 tests for the documented spec-path pending manifest commands, a generated launch-ready preflight manifest
 round trip, a generated short-run evidence manifest round trip that reports `independently_checkable=true`
 and `public_evidence_full_spec=false`, plus a supervised
-`tvmd service init` / `tvmd service peer add` / bounded `tvmd service serve` lifecycle smoke
-test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
+`tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
+lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
 `/telemetry/dashboard` from the process-level service, plus authenticated mutable `/tx`, `/receipt`, and
@@ -251,9 +254,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.05% workspace line coverage
-- 8529/8611 workspace lines covered
+- 8553/8635 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7961/7961 `tensor_vm` lines covered
+- 7985/7985 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
@@ -287,7 +290,7 @@ These spec items require real deployment or non-reference infrastructure and are
   bootstrap peer-book persistence loaded as peer-ID-preserving dial multiaddrs, and the public evidence validator now requires signed
   network-observation records, but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
-  wrapper, `tvmd service init/peer add/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
+  wrapper, `tvmd service init/peer add/readiness/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus deployable systemd/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,

@@ -46,6 +46,10 @@ pub enum CliCommand {
         peer_id: String,
         address: String,
     },
+    ServiceReadiness {
+        p2p_listen: String,
+        data_dir: String,
+    },
     ServiceServe {
         listen: String,
         p2p_listen: String,
@@ -262,6 +266,17 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
             data_dir: (*data_dir).to_owned(),
             peer_id: (*peer_id).to_owned(),
             address: (*address).to_owned(),
+        }),
+        [
+            "service",
+            "readiness",
+            "--p2p-listen",
+            p2p_listen,
+            "--data-dir",
+            data_dir,
+        ] => Ok(CliCommand::ServiceReadiness {
+            p2p_listen: (*p2p_listen).to_owned(),
+            data_dir: (*data_dir).to_owned(),
         }),
         [
             "service",
@@ -750,6 +765,19 @@ pub fn describe_command(command: &CliCommand) -> String {
                 "add libp2p bootstrap peer data_dir={data_dir} peer_id={peer_id} address={address}"
             )
         }
+        CliCommand::ServiceReadiness {
+            p2p_listen,
+            data_dir,
+        } => {
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            format!(
+                "check mandatory libp2p service readiness p2p_listen={p2p_listen} data_dir={data_dir} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
+            )
+        }
         CliCommand::ServiceServe {
             listen,
             p2p_listen,
@@ -1029,6 +1057,21 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             let peer_id = record.peer_id()?;
             Ok(format!(
                 "command=service_peer_add\ndata_dir={data_dir}\npeer_id={peer_id}\naddress={address}\npeer_book_ready=true"
+            ))
+        }
+        CliCommand::ServiceReadiness {
+            p2p_listen,
+            data_dir,
+        } => {
+            ensure_libp2p_multiaddr(p2p_listen)?;
+            ensure_data_dir(data_dir)?;
+            let p2p_config = Libp2pControlPlaneConfig::default();
+            Ok(format!(
+                "command=service_readiness\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={data_dir}\nnode_store_required=true\nlibp2p_ready=true",
+                p2p_config.max_gossipsub_transmit_bytes,
+                p2p_config.request_timeout_seconds,
+                p2p_config.max_concurrent_request_streams,
+                p2p_config.idle_connection_timeout_seconds
             ))
         }
         CliCommand::ServiceServe {
@@ -4101,6 +4144,21 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             parse_cli_parts(&[
                 "service",
+                "readiness",
+                "--p2p-listen",
+                "/ip4/0.0.0.0/tcp/4001",
+                "--data-dir",
+                "/var/lib/tensorvm",
+            ])
+            .unwrap(),
+            CliCommand::ServiceReadiness {
+                p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+            }
+        );
+        assert_eq!(
+            parse_cli_parts(&[
+                "service",
                 "serve",
                 "--listen",
                 "0.0.0.0:8545",
@@ -4181,6 +4239,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                     address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
                 },
                 "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id=",
+            ),
+            (
+                CliCommand::ServiceReadiness {
+                    p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+                    data_dir: "/var/lib/tensorvm".to_owned(),
+                },
+                "check mandatory libp2p service readiness p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
             ),
             (
                 CliCommand::ServiceServe {
@@ -4569,6 +4634,24 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(service_peer_add.contains("command=service_peer_add"));
         assert!(service_peer_add.contains(&format!("peer_id={bootstrap_peer}")));
         assert!(service_peer_add.contains("peer_book_ready=true"));
+
+        let service_readiness = execute_reference_cli_command(&CliCommand::ServiceReadiness {
+            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+            data_dir: "/var/lib/tensorvm".to_owned(),
+        })
+        .unwrap();
+        assert!(service_readiness.contains("command=service_readiness"));
+        assert!(service_readiness.contains("p2p_runtime=libp2p"));
+        assert!(service_readiness.contains("p2p_gossipsub=enabled"));
+        assert!(service_readiness.contains("p2p_identify=enabled"));
+        assert!(service_readiness.contains("p2p_kademlia=enabled"));
+        assert!(service_readiness.contains("p2p_request_response=enabled"));
+        assert!(service_readiness.contains("p2p_max_transmit_bytes=1048576"));
+        assert!(service_readiness.contains("p2p_request_timeout_seconds=10"));
+        assert!(service_readiness.contains("p2p_max_concurrent_streams=128"));
+        assert!(service_readiness.contains("p2p_idle_timeout_seconds=60"));
+        assert!(service_readiness.contains("node_store_required=true"));
+        assert!(service_readiness.contains("libp2p_ready=true"));
 
         let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
@@ -5115,7 +5198,7 @@ p2p_idle_timeout_seconds=60
                 hash_bytes(b"test", &[b"network-operator"]),
                 "/dns/node-a.tensorvm.net/tcp/4001",
                 1_700_000_000,
-                "command=service_serve\np2p_runtime=shim\n",
+                "command=service_serve\np2p_runtime=disabled\n",
             )
             .unwrap_err()
             .to_string(),
@@ -5783,6 +5866,20 @@ p2p_idle_timeout_seconds=60
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 auth_token: "secret".to_owned(),
                 max_requests: 0,
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceReadiness {
+                p2p_listen: "not-a-multiaddr".to_owned(),
+                data_dir: "/var/lib/tensorvm".to_owned(),
+            })
+            .is_err()
+        );
+        assert!(
+            execute_reference_cli_command(&CliCommand::ServiceReadiness {
+                p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+                data_dir: " ".to_owned(),
             })
             .is_err()
         );

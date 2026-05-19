@@ -19,6 +19,10 @@ Before advertising a public run:
 - On every non-bootstrap node, seed the durable peer book with `tvmd service peer add --data-dir
   <data-dir> --peer-id <bootstrap-peer-id> --address <bootstrap-libp2p-tcp-multiaddr>` before the service
   starts. The stored peer ID must match any `/p2p/<peer-id>` suffix already present in the address.
+- On every planned miner and validator host, run `tvmd service readiness --p2p-listen
+  <public-libp2p-listen-multiaddr> --data-dir <data-dir>` after service init and peer-book seeding. Count
+  a node toward `libp2p_ready_node_count` only when it reports `p2p_runtime=libp2p`,
+  `node_store_ready=true`, and `libp2p_ready=true`.
 - Replace every placeholder in `env/public-testnet.env.example` and
   `manifests/public-testnet.preflight.example`.
 - Keep every scalar preflight value exact, with no leading or trailing whitespace after `=`.

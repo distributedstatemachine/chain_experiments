@@ -68,7 +68,10 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/healt
 `tvmd miner start --device cuda:N` readiness checks on each planned public miner host, not from a copied
 boolean.
 `libp2p_ready_node_count` must match `miner_count + validator_count` and should be derived from successful
-libp2p node startup/readiness checks on every planned public miner and validator.
+`tvmd service readiness --p2p-listen <multiaddr> --data-dir <path>` checks on every planned public miner
+and validator. The readiness command loads the initialized node store and durable peer book, starts the
+same mandatory rust-libp2p control plane used by `tvmd service serve`, reports `libp2p_ready=true`, and
+exits.
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
 content URL, required content path, auth flag, and rate-limit flag. The health URL path must match the
@@ -115,6 +118,7 @@ The reference service process can be prepared and launched with:
 ```bash
 tvmd service init --data-dir /var/lib/tensorvm
 tvmd service peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
+tvmd service readiness --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm
 tvmd service serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
 ```
 

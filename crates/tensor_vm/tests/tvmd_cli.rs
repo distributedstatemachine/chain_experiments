@@ -822,6 +822,27 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(peer_add.contains("/p2p/"));
     assert!(peer_add.contains("bootstrap_peers=1"));
 
+    let readiness = run_tvmd(&[
+        "service",
+        "readiness",
+        "--p2p-listen",
+        "/ip4/127.0.0.1/tcp/0",
+        "--data-dir",
+        &data_dir_text,
+    ]);
+    assert!(readiness.contains("command=service_readiness"));
+    assert!(readiness.contains("p2p_runtime=libp2p"));
+    assert!(readiness.contains("p2p_peer_id="));
+    assert!(readiness.contains("p2p_gossipsub_topics="));
+    assert!(readiness.contains("p2p_request_response_protocols="));
+    assert!(readiness.contains("p2p_bootstrap_peers=1"));
+    assert!(readiness.contains("p2p_max_transmit_bytes=1048576"));
+    assert!(readiness.contains("p2p_request_timeout_seconds=10"));
+    assert!(readiness.contains("p2p_max_concurrent_streams=128"));
+    assert!(readiness.contains("p2p_idle_timeout_seconds=60"));
+    assert!(readiness.contains("node_store_ready=true"));
+    assert!(readiness.contains("libp2p_ready=true"));
+
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))

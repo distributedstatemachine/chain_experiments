@@ -1699,6 +1699,10 @@ The preflight manifest must include a `cuda_ready_miner_count` equal to the plan
 from successful `tvmd miner start --device cuda:N` readiness checks on the planned public miner hosts.
 It must also include a `libp2p_ready_node_count` equal to `miner_count + validator_count`, derived from
 successful mandatory-libp2p node readiness checks on the planned public miners and validators.
+The `tvmd service readiness --p2p-listen <multiaddr> --data-dir <path>` command loads the initialized
+node store and durable peer book, starts the real rust-libp2p control plane with the same bounded runtime
+configuration used by `tvmd service serve`, reports `libp2p_ready=true`, and exits; this command is the
+intended per-node preflight source for `libp2p_ready_node_count`.
 Each repeated preflight `service=...` plan must contain exactly eight comma-separated, nonempty,
 untrimmed values; leading or trailing whitespace in any service value is a manifest parse error.
 Public preflight deployment readiness requires exactly one ready `service=...` plan for each RPC, explorer,
@@ -1724,6 +1728,10 @@ tvmd public-evidence validate \
 
 tvmd public-evidence validate \
   --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
+
+tvmd service readiness \
+  --p2p-listen /ip4/0.0.0.0/tcp/4001 \
+  --data-dir /var/lib/tensorvm
 
 tvmd public-evidence publication \
   --bundle-id <bundle-id-hex> \
