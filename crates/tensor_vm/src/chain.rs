@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod accounts;
 mod blocks;
+mod challenges;
 mod models;
 mod operators;
 mod proposer;
@@ -261,30 +262,7 @@ impl LocalChain {
     }
 
     pub fn apply_challenge_outcome(&mut self, outcome: ChallengeOutcome) -> Result<()> {
-        match outcome {
-            ChallengeOutcome::Rejected { .. } => Ok(()),
-            ChallengeOutcome::ProvenInvalid {
-                dishonest_party,
-                slash_amount,
-                ..
-            } => {
-                if let Some(miner) = self.state.miners.get_mut(&dishonest_party) {
-                    miner.stake = miner.stake.saturating_sub(slash_amount);
-                    miner.reputation -= 10;
-                    self.state.rewards.treasury =
-                        self.state.rewards.treasury.saturating_add(slash_amount);
-                    return Ok(());
-                }
-                if let Some(validator) = self.state.validators.get_mut(&dishonest_party) {
-                    validator.stake = validator.stake.saturating_sub(slash_amount);
-                    validator.reputation -= 10;
-                    self.state.rewards.treasury =
-                        self.state.rewards.treasury.saturating_add(slash_amount);
-                    return Ok(());
-                }
-                Err(TvmError::InvalidReceipt("unknown dishonest party"))
-            }
-        }
+        challenges::apply_outcome(self, outcome)
     }
 
     pub fn validation_seed(&self, receipt_id: &Hash) -> Hash {

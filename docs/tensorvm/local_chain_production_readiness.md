@@ -516,8 +516,9 @@ while preserving the profile-neutral chain API. Attestation, validation-seed, qu
 checks now live behind `chain::validation`, and account creation/transfer/reward-claim logic now lives
 behind `chain::accounts`. Miner/validator registration and hardware-profile checks now live behind
 `chain::operators`, job/receipt admission now lives behind `chain::receipts`, and model registration plus
-transition checks now live behind `chain::models`; challenge outcome and command routing logic still need to
-move out of the remaining large `chain.rs` implementation.
+transition checks now live behind `chain::models`. Challenge outcome and slashing mutation now lives behind
+`chain::challenges`; command routing logic still needs to move out of the remaining large `chain.rs`
+implementation.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 
