@@ -150,14 +150,16 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence operator-attestation ...` generation for signed operator identity records bound to
   external identity URIs,
   `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
-  `service=...` manifest records bound to external HTTPS health URLs and observation counts, plus
+  `service=...` manifest records bound to external HTTPS health URLs and observation counts, with
+  root-only, query-string, fragment, and non-exact health URL rejection, plus
   `tvmd public-evidence service-health-from-file ...` generation that derives the same signed
   `service=...` line from saved contiguous per-block `service_health_observation=...` files with
   duplicate-block, gap, unsupported-line, and whitespace-padded-record rejection,
   `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
-  distinct content roots, and at least 64 observed bytes, plus
+  root-only, query-string, fragment, and non-exact content URL rejection, distinct content roots, and at
+  least 64 observed bytes, plus
   `tvmd public-evidence service-content-from-bytes ...` generation that derives those content roots from
   exact captured response-body bytes and `tvmd public-evidence service-content-from-file ...` generation
   that derives them directly from captured response-body files,
