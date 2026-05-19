@@ -1882,7 +1882,8 @@ manifest has exactly one `manifest_signature` field, so
 scalar fields, whitespace-padded field keys, and whitespace-padded scalar values. Public evidence
 repeated-record fields and preflight `service=...` records must also reject whitespace-padded
 comma-separated values; only explicitly repeated record fields such as `node=`, `service=`, `auditor=`,
-`record_artifact=`, `operator=`, and `service_content=` may appear more than once.
+`record_artifact=`, `operator=`, `network_runtime_observation=`, and `service_content=` may appear more
+than once.
 For `record_artifact=`, the independently checkable public evidence gate still requires exactly one valid
 line for each required supporting-record kind and rejects extra artifact locators.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact
