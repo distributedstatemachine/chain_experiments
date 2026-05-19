@@ -2145,15 +2145,21 @@ fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
     if uri
         .bytes()
         .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+        || uri.contains(['?', '#', '\\'])
     {
         return false;
     }
     let Some(rest) = uri.strip_prefix(scheme) else {
         return false;
     };
-    rest.split('/')
-        .next()
-        .is_some_and(content_addressed_identifier_is_well_formed)
+    let (identifier, path) = rest
+        .split_once('/')
+        .map_or((rest, ""), |(identifier, path)| (identifier, path));
+    content_addressed_identifier_is_well_formed(identifier)
+        && (path.is_empty()
+            || path
+                .split('/')
+                .all(content_addressed_path_segment_is_well_formed))
 }
 
 fn content_addressed_identifier_is_well_formed(identifier: &str) -> bool {
@@ -2163,6 +2169,15 @@ fn content_addressed_identifier_is_well_formed(identifier: &str) -> bool {
         && identifier
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
+
+fn content_addressed_path_segment_is_well_formed(segment: &str) -> bool {
+    !segment.is_empty()
+        && segment != "."
+        && segment != ".."
+        && segment.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_' || byte == b'.'
+        })
 }
 
 fn public_node_role_tag(role: PublicNodeRole) -> &'static [u8] {
@@ -5309,15 +5324,31 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(public_evidence_uri_is_external(
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3g3/raw.json"
         ));
+        assert!(public_evidence_uri_is_external(
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3g3/raw-records_2026-05.json"
+        ));
+        assert!(public_evidence_uri_is_external(
+            "ar://abc_DEF-123/raw_records.json"
+        ));
         assert!(public_evidence_uri_is_external("ar://abc_DEF-123"));
         for uri in [
             "ipfs://?cid",
             "ipfs://#cid",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3?download=1",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3#manifest",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/raw.json?download=1",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/raw.json#manifest",
             "ipfs://../manifest.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/../manifest.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/./manifest.json",
             "ipfs:///manifest.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3//manifest.json",
             " ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3 ",
             "ipfs://white space",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad space.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad%20path.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3\\raw.json",
             "ar:///",
         ] {
             assert!(!public_evidence_uri_is_external(uri));

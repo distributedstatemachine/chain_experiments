@@ -186,7 +186,9 @@ The default criteria currently require at least 10 miners, 5 validators, 604800 
 Publish the final evidence bundle to an external `https://`, `ipfs://`, or `ar://` URI accepted by the
 validator. `https://` evidence URLs must use well-formed authorities without userinfo, whitespace, invalid
 ports, malformed bracketed IPv6 authorities, or non-public hosts. Content-addressed `ipfs://` and `ar://`
-URIs must start with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`. The
+URIs must start with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`; optional
+path segments may use ASCII alphanumerics, `.`, `-`, and `_`, but query strings, fragments, backslashes,
+empty path segments, and `.`/`..` segments are rejected. The
 publication must include:
 
 - the validated manifest

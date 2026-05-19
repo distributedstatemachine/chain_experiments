@@ -1888,7 +1888,9 @@ independently checkable evidence gate requires the number of valid signed `audit
 `independent_auditor_count` exactly; missing, invalid, or extra auditor records do not satisfy the gate.
 Content-addressed `ipfs://` and `ar://` evidence, auditor, artifact, or operator-identity URIs must start
 with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_`, with no raw whitespace
-or control characters.
+or control characters. Optional path segments after the identifier must use only ASCII alphanumerics,
+`.`, `-`, or `_`, must not be empty, must not be `.` or `..`, and must not include query strings,
+fragments, backslashes, raw whitespace, or control characters.
 The `run-window-from-file` command derives the signed run-window record from saved
 `run_window_observation=<block>,<unix-seconds>` lines. Blank lines and `#` comments are ignored;
 duplicate blocks, non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported
