@@ -296,12 +296,14 @@ preflight, public evidence, or deployment-gated work can count:
   `tvmd service block` inside all 15 operator containers and requires
   `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
   every durable node store advanced past the shared seed, reports the same first live finalized block
-  hash, and can return the same finalized common-head block hash at the bounded convergence height, plus
-  `all_operator_role_status=true` and `all_operator_chain_counters=true`, proving each operator status
-  surface reports its role and live chain counters; `check-restart-continuity.sh miner-03 validator-02`
-  and `check-restart-continuity.sh miner-00` additionally passed, proving restarted services kept stable
-  libp2p peer IDs, preserved the pre-restart finalized common head on every operator, did not decrease
-  height or block count, and continued finalizing blocks
+  hash, can return the same finalized common-head block hash at the bounded convergence height, and can
+  catch up to a pinned miner-00 latest produced block-height target with matching finalized block hash and
+  state root via `all_operator_target_head_convergence=true`, plus `all_operator_role_status=true` and
+  `all_operator_chain_counters=true`, proving each operator status surface reports its role and live chain
+  counters; `check-restart-continuity.sh miner-03 validator-02` and
+  `check-restart-continuity.sh miner-00` additionally passed, proving restarted services kept stable
+  libp2p peer IDs, preserved the pre-restart finalized common head and state root on every operator,
+  advanced height, block count, and state-root evidence, and continued finalizing blocks
 
 The workspace currently has 212 passing library tests under Tarpaulin:
 

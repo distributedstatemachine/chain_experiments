@@ -260,6 +260,8 @@ standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
 all 15 operator node stores advanced past the seed, reported role status and live chain counters, and
 reported the same first live finalized block hash plus the same finalized common-head block hash at the
 bounded convergence height
+all 15 operator node stores returned the miner-00 latest produced block-height target hash and state root
+after catch-up
 ```
 
 The check must also verify that the run reports itself as local-only:
@@ -278,10 +280,11 @@ deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator
 deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 ```
 
-The continuity script must capture pre-restart and post-restart peer IDs, heights, block counts, and a
-finalized common-head block. It must prove that restarted operators reused their original durable state and
-libp2p identities, rejoined the local network, did not decrease height or block count, preserved the
-pre-restart finalized common head on every operator, and continued producing finalized blocks.
+The continuity script must capture pre-restart and post-restart peer IDs, heights, block counts, state
+roots, and a finalized common-head block. It must prove that restarted operators reused their original
+durable state and libp2p identities, rejoined the local network, advanced height, block count, and state
+root, preserved the pre-restart finalized common head and state root on every operator, and continued
+producing finalized blocks.
 
 ## Completion Criteria
 

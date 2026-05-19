@@ -52,6 +52,7 @@ require_command sort
 require_command wc
 require_command cargo
 require_command curl
+require_command timeout
 
 json_number() {
   key="$1"
@@ -76,6 +77,35 @@ json_string_field_count() {
   value="$2"
   document="$3"
   printf '%s\n' "$document" | grep -o "\"$key\":\"$value\"" | wc -l | tr -d ' '
+}
+
+read_service_status() {
+  service="$1"
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
+      printf '%s\n' "$output" | tr -d '\r'
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
+}
+
+read_service_block() {
+  service="$1"
+  height="$2"
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null); then
+      printf '%s\n' "$output" | tr -d '\r'
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
 }
 
 cd "$REPO_ROOT"
@@ -255,6 +285,24 @@ curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}
 curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
   || fail "live tensor opening was not fetchable"
 
+TARGET_STATUS_RAW=$(read_service_status miner-00) \
+  || fail "could not read miner-00 target service status"
+TARGET_STATUS="$TARGET_STATUS_RAW"
+ALL_OPERATOR_TARGET_HEAD_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
+ALL_OPERATOR_TARGET_HEAD_HASH=$(status_value latest_block_hash "$TARGET_STATUS")
+[ -n "$ALL_OPERATOR_TARGET_HEAD_HEIGHT" ] || fail "target latest head height was not observed"
+[ "$ALL_OPERATOR_TARGET_HEAD_HEIGHT" -gt 2 ] || fail "target latest head did not advance past seeded height 2"
+[ -n "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || fail "target latest head hash was not observed"
+[ "$ALL_OPERATOR_TARGET_HEAD_HASH" != "$ZERO_HASH" ] || fail "target latest head hash was empty"
+TARGET_BLOCK_RAW=$(read_service_block miner-00 "$ALL_OPERATOR_TARGET_HEAD_HEIGHT") \
+  || fail "could not read miner-00 target service block"
+TARGET_BLOCK_STATUS="$TARGET_BLOCK_RAW"
+TARGET_BLOCK_HASH=$(status_value block_hash "$TARGET_BLOCK_STATUS")
+ALL_OPERATOR_TARGET_STATE_ROOT=$(status_value state_root "$TARGET_BLOCK_STATUS")
+[ "$TARGET_BLOCK_HASH" = "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || fail "target latest head hash did not match target block"
+[ -n "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || fail "target latest head state root was not observed"
+[ "$ALL_OPERATOR_TARGET_STATE_ROOT" != "$ZERO_HASH" ] || fail "target latest head state root was empty"
+
 ALL_OPERATOR_MIN_HEIGHT=0
 ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
 ALL_OPERATOR_COMMON_HEAD_HEIGHT=0
@@ -267,14 +315,17 @@ while [ "$attempt" -lt 60 ]; do
   ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""
   STATUS_MISMATCH=false
   for service in $EXPECTED_SERVICES; do
-    if STATUS_RAW=$(compose exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
-      STATUS=$(printf '%s\n' "$STATUS_RAW" | tr -d '\r')
+    if STATUS_RAW=$(read_service_status "$service"); then
+      STATUS="$STATUS_RAW"
     else
       STATUS_MISMATCH=true
       continue
     fi
     SERVICE_HEIGHT=$(status_value height "$STATUS")
     SERVICE_BLOCK_COUNT=$(status_value block_count "$STATUS")
+    SERVICE_LATEST_BLOCK_HEIGHT=$(status_value latest_block_height "$STATUS")
+    SERVICE_LATEST_BLOCK_HASH=$(status_value latest_block_hash "$STATUS")
+    SERVICE_STATE_ROOT=$(status_value state_root "$STATUS")
     SERVICE_FINALIZED_BLOCK_COUNT=$(status_value finalized_block_count "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HEIGHT=$(status_value first_live_block_height "$STATUS")
     SERVICE_FIRST_LIVE_BLOCK_HASH=$(status_value first_live_block_hash "$STATUS")
@@ -286,6 +337,9 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ATTESTATION_COUNT=$(status_value attestation_count "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_LATEST_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_STATE_ROOT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FINALIZED_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_FIRST_LIVE_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
@@ -301,6 +355,9 @@ while [ "$attempt" -lt 60 ]; do
     esac
     if [ "$SERVICE_HEIGHT" -le 2 ] \
       || [ "$SERVICE_BLOCK_COUNT" -le 2 ] \
+      || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -le 2 ] \
+      || [ "$SERVICE_LATEST_BLOCK_HASH" = "$ZERO_HASH" ] \
+      || [ "$SERVICE_STATE_ROOT" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FINALIZED_BLOCK_COUNT" -le 2 ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HEIGHT" -le 2 ] \
       || [ "$SERVICE_REGISTERED_MINER_COUNT" -ne 10 ] \
@@ -312,8 +369,8 @@ while [ "$attempt" -lt 60 ]; do
       STATUS_MISMATCH=true
       continue
     fi
-    if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
-      ALL_OPERATOR_MIN_HEIGHT="$SERVICE_HEIGHT"
+    if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
+      ALL_OPERATOR_MIN_HEIGHT="$SERVICE_LATEST_BLOCK_HEIGHT"
     fi
     if [ -z "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ]; then
       ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH="$SERVICE_FIRST_LIVE_BLOCK_HASH"
@@ -325,11 +382,12 @@ while [ "$attempt" -lt 60 ]; do
   done
   if [ "$CONVERGED_OPERATOR_COUNT" = "15" ] && [ "$STATUS_MISMATCH" = "false" ]; then
     COMMON_HEAD_MISMATCH=false
+    TARGET_HEAD_MISMATCH=false
     ALL_OPERATOR_COMMON_HEAD_HEIGHT="$ALL_OPERATOR_MIN_HEIGHT"
     ALL_OPERATOR_COMMON_HEAD_HASH=""
     for service in $EXPECTED_SERVICES; do
-      if BLOCK_RAW=$(compose exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$ALL_OPERATOR_COMMON_HEAD_HEIGHT" 2>/dev/null); then
-        BLOCK_STATUS=$(printf '%s\n' "$BLOCK_RAW" | tr -d '\r')
+      if BLOCK_RAW=$(read_service_block "$service" "$ALL_OPERATOR_COMMON_HEAD_HEIGHT"); then
+        BLOCK_STATUS="$BLOCK_RAW"
       else
         COMMON_HEAD_MISMATCH=true
         continue
@@ -345,7 +403,21 @@ while [ "$attempt" -lt 60 ]; do
         continue
       fi
     done
-    if [ "$COMMON_HEAD_MISMATCH" = "false" ]; then
+    for service in $EXPECTED_SERVICES; do
+      if BLOCK_RAW=$(read_service_block "$service" "$ALL_OPERATOR_TARGET_HEAD_HEIGHT"); then
+        BLOCK_STATUS="$BLOCK_RAW"
+      else
+        TARGET_HEAD_MISMATCH=true
+        continue
+      fi
+      SERVICE_TARGET_BLOCK_HASH=$(status_value block_hash "$BLOCK_STATUS")
+      SERVICE_TARGET_STATE_ROOT=$(status_value state_root "$BLOCK_STATUS")
+      SERVICE_TARGET_BLOCK_FINALIZED=$(status_value finalized "$BLOCK_STATUS")
+      [ "$SERVICE_TARGET_BLOCK_HASH" = "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || { TARGET_HEAD_MISMATCH=true; continue; }
+      [ "$SERVICE_TARGET_STATE_ROOT" = "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || { TARGET_HEAD_MISMATCH=true; continue; }
+      [ "$SERVICE_TARGET_BLOCK_FINALIZED" = "true" ] || { TARGET_HEAD_MISMATCH=true; continue; }
+    done
+    if [ "$COMMON_HEAD_MISMATCH" = "false" ] && [ "$TARGET_HEAD_MISMATCH" = "false" ]; then
       break
     fi
   fi
@@ -360,6 +432,10 @@ done
 [ "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" != "$ZERO_HASH" ] || fail "operator live block hash convergence was empty"
 [ -n "$ALL_OPERATOR_COMMON_HEAD_HASH" ] || fail "operator common head hash convergence was not observed"
 [ "$ALL_OPERATOR_COMMON_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator common head hash convergence was empty"
+[ -n "$ALL_OPERATOR_TARGET_HEAD_HASH" ] || fail "operator target latest head hash convergence was not observed"
+[ "$ALL_OPERATOR_TARGET_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator target latest head hash convergence was empty"
+[ -n "$ALL_OPERATOR_TARGET_STATE_ROOT" ] || fail "operator target latest state-root convergence was not observed"
+[ "$ALL_OPERATOR_TARGET_STATE_ROOT" != "$ZERO_HASH" ] || fail "operator target latest state-root convergence was empty"
 
 cargo test -p tensor_vm local_testnet --release
 
@@ -397,6 +473,10 @@ all_operator_live_block_convergence=true
 all_operator_common_head_height=${ALL_OPERATOR_COMMON_HEAD_HEIGHT}
 all_operator_common_head_hash=${ALL_OPERATOR_COMMON_HEAD_HASH}
 all_operator_common_head_convergence=true
+all_operator_target_head_height=${ALL_OPERATOR_TARGET_HEAD_HEIGHT}
+all_operator_target_head_hash=${ALL_OPERATOR_TARGET_HEAD_HASH}
+all_operator_target_state_root=${ALL_OPERATOR_TARGET_STATE_ROOT}
+all_operator_target_head_convergence=true
 all_operator_role_status=true
 all_operator_chain_counters=true
 public_evidence_full_spec=false

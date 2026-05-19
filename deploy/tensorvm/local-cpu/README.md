@@ -41,7 +41,8 @@ receipts, live tensor descriptor/row/chunk/opening fetches, and reward growth fr
 also runs `tvmd service status` in every operator container and
 fails unless all 15 node stores advance past the seed, report role-specific status, expose live chain
 counters, report the same first live finalized block hash, and return the same finalized common-head block
-hash through `tvmd service block`.
+hash through `tvmd service block`. It also pins miner-00's latest produced block height and fails unless
+every operator can return that exact finalized block hash and state root.
 
 ## Commands
 
@@ -71,7 +72,8 @@ public_evidence_full_spec=false
 independently_checkable=false
 ```
 
-The restart-continuity script captures all operator peer IDs, heights, block counts, and a finalized common
-head before restarting the requested services. After the restart and local-testnet check, it fails unless
-the restarted services keep their libp2p peer IDs, heights and block counts do not decrease, the
-pre-restart finalized common head is still present on every operator, and new finalized blocks are observed.
+The restart-continuity script captures all operator peer IDs, heights, block counts, state roots, and a
+finalized common head before restarting the requested services. After the restart and local-testnet check,
+it fails unless the restarted services keep their libp2p peer IDs, heights, block counts, and state roots
+advance, the pre-restart finalized common head and state root are still present on every operator, and new
+finalized blocks are observed.

@@ -982,6 +982,12 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             > initial_block_count
     );
     assert!(
+        stdout_value(&status, "latest_block_height")
+            .parse::<u64>()
+            .expect("service status latest block height must parse")
+            > 2
+    );
+    assert!(
         stdout_value(&status, "finalized_block_count")
             .parse::<u64>()
             .expect("service status finalized block count must parse")
@@ -1002,6 +1008,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(block.contains("command=service_block"));
     assert_eq!(stdout_value(&block, "height"), "3");
     assert_eq!(stdout_value(&block, "block_hash"), first_live_block_hash);
+    assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
     assert_eq!(stdout_value(&block, "finalized"), "true");
     assert!(
         stdout_value(&block, "latest_height")

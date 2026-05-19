@@ -257,6 +257,11 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let status = store
         .status()
         .map_err(|error| format!("failed to inspect node store {data_dir}: {error}"))?;
+    let latest_block_height = chain
+        .blocks
+        .last()
+        .map(|block| block.height)
+        .unwrap_or_default();
     let finalized_block_count = chain
         .blocks
         .iter()
@@ -287,7 +292,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_hash={}\nstate_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -321,8 +326,9 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     };
     let block_hash = block.hash();
     Ok(format!(
-        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nepoch={}\nlatest_height={}\nfinalized={}\nstatus_source=node_store",
+        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nstatus_source=node_store",
         hex(&block_hash),
+        hex(&block.state_root),
         block.epoch,
         chain.state.height,
         chain.is_block_finalized(&block_hash),

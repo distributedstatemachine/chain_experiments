@@ -84,10 +84,13 @@ The local bundle is useful and should remain the first operational target:
   through `tvmd service status`.
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
-  common-head block hash through `tvmd service block` before and after restart checks.
-- `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, and finalized common
-  heads around actual Compose restarts, and fails unless restarted services keep identity, avoid rollback,
-  preserve the pre-restart finalized common head, and continue finalizing blocks.
+  common-head block hash through `tvmd service block` before and after restart checks. It also pins
+  miner-00's latest produced block height and fails unless every operator catches up to the same finalized
+  block hash and state root.
+- `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, and
+  finalized common heads around actual Compose restarts, and fails unless restarted services keep identity,
+  advance durable state, preserve the pre-restart finalized common head and state root, and continue
+  finalizing blocks.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -162,18 +165,19 @@ Required fix:
 ### 4. Non-Bootstrap Operators Do Not Prove Chain Sync
 
 The checker validates that all operators are running and libp2p-ready, and now checks every node store for
-role status, live chain counters, the same first live finalized block hash, and the same finalized
-common-head block hash through `tvmd service block`. It still does not prove live state was propagated
-through the network or that every operator is executing a distinct role loop.
+role status, live chain counters, the same first live finalized block hash, the same finalized common-head
+block hash, and a pinned miner-00 latest produced block-height target/state root through
+`tvmd service block`. It still does not prove live state was propagated through the network or that every
+operator is executing a distinct role loop.
 
 Required fix:
 
 - Extend `tvmd service status` or the local node API to include real connected peer count and role-specific
   work counters sourced from role loops.
-- Move the convergence assertion from deterministic same-seed first-live/common-head equality to the
-  shared network event path.
-- The checker must eventually fail unless all 15 operators converge on the same latest finalized head within
-  a bounded time.
+- Move the convergence assertion from deterministic same-seed first-live/common-head and pinned-target
+  equality to the shared network event path.
+- The checker must eventually fail unless all 15 operators converge on the same network-derived latest
+  finalized head within a bounded time.
 
 ### 5. Restart Gate Needs Broader Continuity Assertions
 
@@ -185,10 +189,9 @@ Required fix:
 
 - Extend continuity evidence from the selected restart targets to every counted operator over a rolling
   restart matrix.
-- Add a store checksum or block-log root before and after restart, not only peer ID, height, block count,
-  latest hash, and finalized common-head preservation.
-- Keep checking that peer IDs are unchanged, height and block count do not decrease, the pre-restart
-  finalized common head is preserved, and blocks continue advancing after restart.
+- Extend state-root continuity into a true store checksum or block-log root before and after restart.
+- Keep checking that peer IDs are unchanged, height, block count, and state root advance, the pre-restart
+  finalized common head and state root are preserved, and blocks continue advancing after restart.
 
 ### 6. Live Primitive Coverage Needs Stronger Evidence
 
@@ -461,10 +464,11 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
-hash, and the same finalized common-head block hash through `tvmd service block`, plus named post-seed
-TensorOp and LinearTrainingStep receipt evidence. The restart-continuity script also captures pre/post peer
-IDs, heights, block counts, and finalized common heads for the selected restart gates. Latest-head
-convergence via the shared network event path still needs hard checker assertions.
+hash, the same finalized common-head block hash, and a pinned miner-00 latest produced block-height
+target/state root through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
+receipt evidence. The restart-continuity script also captures pre/post peer IDs, heights, block counts,
+state roots, and finalized common heads for the selected restart gates. Latest-head convergence via the
+shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -510,9 +514,9 @@ The runtime still needs to consume those profiles end to end.
 - Verify block production continues after restart.
 
 Status: partially complete. `check-restart-continuity.sh` covers selected miner, validator, and gateway
-restarts and proves stable libp2p peer IDs, nondecreasing height/block count, preservation of the
-pre-restart finalized common head on every operator, and continued finalization. It still needs a rolling
-all-operator restart matrix and store-checksum or block-log-root evidence.
+restarts and proves stable libp2p peer IDs, advancing height/block count/state-root evidence, preservation
+of the pre-restart finalized common head and state root on every operator, and continued finalization. It
+still needs a rolling all-operator restart matrix and true store-checksum or block-log-root evidence.
 
 ## Local Production-Ready Acceptance Gate
 
@@ -551,8 +555,8 @@ local evidence remains explicitly non-public
 
 Keep this incremental:
 
-1. Strengthen the checker from deterministic common-head convergence to latest-head convergence through
-   the shared network event path.
+1. Replace pinned latest produced block-height convergence with latest-head convergence through the shared
+   network event path.
 2. Split `chain.rs` into state, engine, validation, settlement, and proposer modules while preserving the
    `ChainEngine` facade.
 3. Add role-loop commands while keeping current tests green.
@@ -562,7 +566,7 @@ Keep this incremental:
 7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
 8. Expand restart continuity checks from `miner-00`, `miner-03`, and `validator-02` to a rolling
-   all-operator restart matrix with store-root evidence.
+   all-operator restart matrix with true store-root or block-log-root evidence.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.
