@@ -35,6 +35,7 @@ services:
       TENSORVM_RPC_LISTEN: 0.0.0.0:8545
       TENSORVM_IS_BOOTSTRAP: "true"
       TENSORVM_SEED_LOCAL_TESTNET: "true"
+      TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: "1000"
     ports:
       - "127.0.0.1:8545:8545"
       - "127.0.0.1:4001:4001"

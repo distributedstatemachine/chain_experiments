@@ -20,6 +20,7 @@ deterministic CPU tensor execution for every miner
 one libp2p node identity and data directory per operator
 real libp2p discovery, gossip, and request/response paths between containers
 block production, receipt submission, validation, attestation, settlement, rewards, and telemetry
+live synthetic CPU jobs that continue advancing blocks after the seeded chain is available
 local RPC, TensorVM explorer WebSocket data, faucet, and telemetry surfaces reachable from the host
 standalone browser explorer service reachable from the host
 ```
@@ -178,6 +179,11 @@ Validator containers must connect through libp2p and validate receipts using the
 paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
 protocol paths and persisted state.
 
+After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work. Each
+live block must come from the normal protocol path: a generated TensorWork job, miner receipts, validator
+attestations, epoch settlement, proposer selection, and block-finality votes. A local run that only serves
+the seeded two-block snapshot does not satisfy this spec.
+
 ## Local Services
 
 The local gateway exposed by `miner-00` must serve these routes from the host:
@@ -237,6 +243,8 @@ deployment:
 10 CPU-ready miners
 0 CUDA-required miners
 at least one finalized block after startup
+chain height and block count advance past the seeded two-block baseline
+synthetic post-startup jobs, receipts, and settled receipts are visible through explorer data
 at least one settled matmul TensorWork receipt
 at least one settled LinearTrainingStep receipt
 validator attestations for settled receipts

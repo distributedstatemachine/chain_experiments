@@ -75,6 +75,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("/explorer/ws?token=local-cpu-testnet-token"));
     assert!(compose.contains("condition: service_healthy"));
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
+    assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
     assert_eq!(
         compose
             .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
@@ -135,10 +136,13 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "rewarded_miners=9",
         "finality_rate_bps=10000",
         "data_availability_bps=10000",
-        "\"height\":2",
-        "\"block_count\":2",
+        "gateway chain head did not advance past seeded height 2",
+        "protocol did not generate synthetic jobs after seed",
+        "settled_receipt_count",
         "standalone_explorer_ready=true",
         "standalone_explorer_websocket_polling=true",
+        "live_block_production=true",
+        "live_synthetic_jobs=true",
         "data-ui=\"ratzilla-tui\"",
         "new WebSocket",
         "cargo test -p tensor_vm local_testnet --release",

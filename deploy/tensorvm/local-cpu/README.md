@@ -26,12 +26,16 @@ Every operator container initializes a durable node store, starts with a stable 
 distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
 libp2p readiness path, and starts `tvmd service serve`. Miner containers also run the CPU miner readiness
 command with `--device cpu`; validators run the validator readiness command. `miner-00` seeds the local
-CPU chain so the gateway exposes settled matmul and LinearTrainingStep work through `/chain/head`.
+CPU chain so the gateway exposes settled matmul and LinearTrainingStep work through `/chain/head`, then
+keeps producing live synthetic CPU jobs so blocks continue past the seeded baseline.
 
 The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
 `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.
 If `8080` is already in use, set `TENSORVM_LOCAL_CPU_EXPLORER_PORT` before running Compose and the check
 script.
+
+The check script waits for `/chain/head` and `/explorer/overview` to move past the seeded two-block
+snapshot, including new jobs, receipts, and settled receipts from live synthetic work.
 
 ## Commands
 

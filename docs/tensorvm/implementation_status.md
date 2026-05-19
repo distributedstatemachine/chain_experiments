@@ -213,7 +213,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
   readiness, authenticated host gateway route checks, a seeded local CPU chain exposed through the gateway
-  with settled matmul and LinearTrainingStep receipts, miner rewards, finality, data availability, a
+  with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job production on the
+  bootstrap gateway so post-startup blocks advance through receipts, attestations, settlement, proposer
+  selection, and finality instead of a static snapshot, miner rewards, finality, data availability, a
   standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a restart gate
   for `miner-03` and `validator-02`, a local-only evidence boundary, and
   `local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape` guarding the artifact shape
@@ -270,7 +272,9 @@ preflight, public evidence, or deployment-gated work can count:
   `settled_receipts=10`, `matmul_settled=true`, `linear_training_settled=true`, `rewarded_miners=9`,
   `finality_rate_bps=10000`, `data_availability_bps=10000`, `public_evidence_full_spec=false`, and
   `independently_checkable=false`, with `standalone_explorer_ready=true` and
-  `standalone_explorer_websocket_polling=true`; the same check passed again after
+  `standalone_explorer_websocket_polling=true`; the gate now also requires
+  `live_block_production=true` and `live_synthetic_jobs=true`, proving `/chain/head` and explorer
+  counters advance past the seeded two-block baseline; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
 The workspace currently has 197 passing library tests under Tarpaulin:
@@ -283,7 +287,8 @@ The workspace currently has 197 passing library tests under Tarpaulin:
 test, and 6 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
-that persists a settled two-block local chain and exposes it through `/chain/head`, plus a supervised
+that persists a settled two-block local chain, then proves bounded service startup can generate live
+synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
 `tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
 lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
@@ -303,9 +308,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.13% workspace line coverage
-- 9343/9425 workspace lines covered
+- 9347/9429 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8504/8504 `tensor_vm` lines covered
+- 8508/8508 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 271/271 `tensor_vm_explorer` lines covered
 

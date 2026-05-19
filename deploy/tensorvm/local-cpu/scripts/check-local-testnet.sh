@@ -36,10 +36,17 @@ unique_count() {
 
 require_command docker
 require_command grep
+require_command sed
 require_command sort
 require_command wc
 require_command cargo
 require_command curl
+
+json_number() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | sed -n "s/.*\"$key\":\([0-9][0-9]*\).*/\1/p"
+}
 
 cd "$REPO_ROOT"
 
@@ -131,9 +138,38 @@ printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' \
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' \
   || fail "standalone explorer page does not poll TensorVM over websocket"
 
-CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
-printf '%s\n' "$CHAIN_HEAD" | grep -q '"height":2' || fail "gateway chain head does not expose seeded height 2"
-printf '%s\n' "$CHAIN_HEAD" | grep -q '"block_count":2' || fail "gateway chain head does not expose 2 seeded blocks"
+LIVE_CHAIN_HEAD=""
+LIVE_HEIGHT=0
+LIVE_BLOCK_COUNT=0
+LIVE_OVERVIEW=""
+LIVE_JOB_COUNT=0
+LIVE_RECEIPT_COUNT=0
+LIVE_SETTLED_RECEIPT_COUNT=0
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+  LIVE_CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
+  LIVE_HEIGHT=$(json_number height "$LIVE_CHAIN_HEAD")
+  LIVE_BLOCK_COUNT=$(json_number block_count "$LIVE_CHAIN_HEAD")
+  LIVE_OVERVIEW=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
+  LIVE_JOB_COUNT=$(json_number job_count "$LIVE_OVERVIEW")
+  LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
+  LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
+  if [ "${LIVE_HEIGHT:-0}" -gt 2 ] \
+    && [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] \
+    && [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] \
+    && [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] \
+    && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ]; then
+    break
+  fi
+  attempt=$((attempt + 1))
+  sleep 1
+done
+
+[ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2"
+[ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks"
+[ "${LIVE_JOB_COUNT:-0}" -gt 2 ] || fail "protocol did not generate synthetic jobs after seed"
+[ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts"
+[ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts"
 
 cargo test -p tensor_vm local_testnet --release
 
@@ -155,6 +191,8 @@ finality_rate_bps=10000
 data_availability_bps=10000
 standalone_explorer_ready=true
 standalone_explorer_websocket_polling=true
+live_block_production=true
+live_synthetic_jobs=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS
