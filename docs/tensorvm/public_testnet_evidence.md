@@ -135,8 +135,9 @@ multicast, reserved IP hosts, missing or root-only HTTPS paths, HTTPS query stri
 Supporting artifact, auditor, and operator identity URIs may also use `ipfs://` or `ar://` identifiers
 with the same well-formed first-segment and optional path-segment rule and no query strings, fragments,
 backslashes, raw whitespace, or control characters.
-The service-health URL path must match the signed health path exactly and must not include a query string
-or fragment. Public service-content URLs use the same exact-path rule for their required content path.
+The service-health URL path must be concrete and non-root, must match the signed health path exactly, and
+must not include a query string or fragment. Public service-content URLs use the same concrete non-root
+exact-path rule for their required content path.
 Counted miner and validator operator and node-address sets must be disjoint; the same operator ID or node
 address cannot satisfy both role minima in a public-run bundle, and repeated node addresses cannot inflate a
 single role's independent participant count.
