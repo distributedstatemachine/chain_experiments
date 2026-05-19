@@ -85,6 +85,9 @@ The local bundle is useful and should remain the first operational target:
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
   common-head block hash through `tvmd service block` before and after restart checks.
+- `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, and finalized common
+  heads around actual Compose restarts, and fails unless restarted services keep identity, avoid rollback,
+  preserve the pre-restart finalized common head, and continue finalizing blocks.
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
@@ -169,25 +172,20 @@ Required fix:
 - The checker must eventually fail unless all 15 operators converge on the same latest finalized head within
   a bounded time.
 
-### 5. Restart Gate Needs Continuity Assertions
+### 5. Restart Gate Needs Broader Continuity Assertions
 
 The local spec requires restarted operators to reuse durable state and libp2p identity, rejoin the network,
-and avoid chain rollback. The current check does not record pre-restart and post-restart continuity.
+and avoid chain rollback. The current restart-continuity script now records pre-restart and post-restart
+continuity for selected restarts, including `miner-03`, `validator-02`, and `miner-00`.
 
 Required fix:
 
-- Capture before restart:
-  - peer IDs
-  - chain height
-  - finalized head
-  - block count
-  - volume-backed store checksum or latest block hash
-- Restart at least one miner and one validator.
-- Verify:
-  - peer IDs are unchanged
-  - height does not decrease
-  - finalized head is compatible with the previous head
-  - blocks continue advancing after restart
+- Extend continuity evidence from the selected restart targets to every counted operator over a rolling
+  restart matrix.
+- Add a store checksum or block-log root before and after restart, not only peer ID, height, block count,
+  latest hash, and finalized common-head preservation.
+- Keep checking that peer IDs are unchanged, height and block count do not decrease, the pre-restart
+  finalized common head is preserved, and blocks continue advancing after restart.
 
 ### 6. Live Primitive Coverage Needs Stronger Evidence
 
@@ -457,10 +455,12 @@ jobs, receipts, attestations, and votes.
 
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
-receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
-all 15 operator node stores reporting role status, live chain counters, the same first live finalized block
-hash, and the same finalized common-head block hash through `tvmd service block`. Latest-head convergence
-via the shared network event path still needs hard checker assertions.
+receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
+15 operator node stores reporting role status, live chain counters, the same first live finalized block
+hash, and the same finalized common-head block hash through `tvmd service block`. The restart-continuity
+script also captures pre/post peer IDs, heights, block counts, and finalized common heads for the selected
+restart gates. Latest-head convergence via the shared network event path still needs hard checker
+assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
@@ -505,6 +505,11 @@ The runtime still needs to consume those profiles end to end.
 - Verify catch-up from persisted block log and peer state.
 - Verify block production continues after restart.
 
+Status: partially complete. `check-restart-continuity.sh` covers selected miner, validator, and gateway
+restarts and proves stable libp2p peer IDs, nondecreasing height/block count, preservation of the
+pre-restart finalized common head on every operator, and continued finalization. It still needs a rolling
+all-operator restart matrix and store-checksum or block-log-root evidence.
+
 ## Local Production-Ready Acceptance Gate
 
 The local chain should not be called production-ready until this command sequence passes:
@@ -515,10 +520,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -554,7 +557,8 @@ Keep this incremental:
 6. Wire proposer/block production through network-visible state.
 7. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
    types after startup.
-8. Add restart continuity checks for `miner-00` and require every operator to report the same finalized head.
+8. Expand restart continuity checks from `miner-00`, `miner-03`, and `validator-02` to a rolling
+   all-operator restart matrix with store-root evidence.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

@@ -1,0 +1,195 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+BUNDLE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$BUNDLE_DIR/../../.." && pwd)
+COMPOSE_FILE="$BUNDLE_DIR/docker-compose.yml"
+CHECK_SCRIPT="$SCRIPT_DIR/check-local-testnet.sh"
+
+EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04"
+RESTART_SERVICES="${*:-miner-03 validator-02}"
+ZERO_HASH="0000000000000000000000000000000000000000000000000000000000000000"
+
+fail() {
+  echo "local CPU restart continuity check failed: $*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
+}
+
+status_value() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'
+}
+
+file_value() {
+  key="$1"
+  file="$2"
+  sed -n "s/^${key}=//p" "$file" | sed -n '1p'
+}
+
+service_is_expected() {
+  candidate="$1"
+  for service in $EXPECTED_SERVICES; do
+    [ "$candidate" = "$service" ] && return 0
+  done
+  return 1
+}
+
+read_service_status() {
+  service="$1"
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null); then
+      printf '%s\n' "$output" | tr -d '\r'
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
+}
+
+read_service_block() {
+  service="$1"
+  height="$2"
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null); then
+      printf '%s\n' "$output" | tr -d '\r'
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  return 1
+}
+
+capture_snapshot() {
+  phase="$1"
+  dir="$2"
+  min_height=""
+  common_hash=""
+  for service in $EXPECTED_SERVICES; do
+    STATUS=$(read_service_status "$service") \
+      || fail "could not read $phase service status for $service"
+    peer_id=$(status_value p2p_peer_id "$STATUS")
+    height=$(status_value height "$STATUS")
+    block_count=$(status_value block_count "$STATUS")
+    latest_block_hash=$(status_value latest_block_hash "$STATUS")
+    [ -n "$peer_id" ] || fail "$phase status for $service is missing p2p_peer_id"
+    [ -n "$height" ] || fail "$phase status for $service is missing height"
+    [ -n "$block_count" ] || fail "$phase status for $service is missing block_count"
+    [ -n "$latest_block_hash" ] || fail "$phase status for $service is missing latest_block_hash"
+    [ "$latest_block_hash" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty latest block hash"
+    if [ -z "$min_height" ] || [ "$height" -lt "$min_height" ]; then
+      min_height="$height"
+    fi
+    {
+      printf 'p2p_peer_id=%s\n' "$peer_id"
+      printf 'height=%s\n' "$height"
+      printf 'block_count=%s\n' "$block_count"
+      printf 'latest_block_hash=%s\n' "$latest_block_hash"
+    } > "$dir/${service}.status"
+  done
+
+  [ -n "$min_height" ] || fail "$phase common head height was not observed"
+  [ "$min_height" -gt 2 ] || fail "$phase common head height did not advance past the seed"
+  for service in $EXPECTED_SERVICES; do
+    BLOCK_STATUS=$(read_service_block "$service" "$min_height") \
+      || fail "could not read $phase common head block for $service"
+    block_hash=$(status_value block_hash "$BLOCK_STATUS")
+    finalized=$(status_value finalized "$BLOCK_STATUS")
+    [ -n "$block_hash" ] || fail "$phase common head block for $service is missing block_hash"
+    [ "$block_hash" != "$ZERO_HASH" ] || fail "$phase common head block for $service has an empty hash"
+    [ "$finalized" = "true" ] || fail "$phase common head block for $service is not finalized"
+    if [ -z "$common_hash" ]; then
+      common_hash="$block_hash"
+    elif [ "$block_hash" != "$common_hash" ]; then
+      fail "$phase common head block hash mismatch at height $min_height"
+    fi
+  done
+  {
+    printf 'common_head_height=%s\n' "$min_height"
+    printf 'common_head_hash=%s\n' "$common_hash"
+  } > "$dir/common.status"
+}
+
+cd "$REPO_ROOT"
+
+require_command docker
+require_command timeout
+
+[ -x "$CHECK_SCRIPT" ] || fail "check-local-testnet.sh is not executable"
+for service in $RESTART_SERVICES; do
+  service_is_expected "$service" || fail "unexpected restart service: $service"
+done
+
+TMP_DIR="${TMPDIR:-/tmp}/tensorvm-local-cpu-restart.$$"
+mkdir -p "$TMP_DIR/before" "$TMP_DIR/after"
+trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
+
+capture_snapshot before "$TMP_DIR/before"
+
+timeout 60s docker compose -f "$COMPOSE_FILE" restart $RESTART_SERVICES
+
+timeout 240s "$CHECK_SCRIPT"
+
+capture_snapshot after "$TMP_DIR/after"
+
+BEFORE_COMMON_HEIGHT=$(file_value common_head_height "$TMP_DIR/before/common.status")
+BEFORE_COMMON_HASH=$(file_value common_head_hash "$TMP_DIR/before/common.status")
+AFTER_COMMON_HEIGHT=$(file_value common_head_height "$TMP_DIR/after/common.status")
+AFTER_COMMON_HASH=$(file_value common_head_hash "$TMP_DIR/after/common.status")
+
+[ "$AFTER_COMMON_HEIGHT" -gt "$BEFORE_COMMON_HEIGHT" ] \
+  || fail "blocks did not continue after restart"
+[ "$AFTER_COMMON_HASH" != "$ZERO_HASH" ] \
+  || fail "after-restart common head hash is empty"
+
+for service in $EXPECTED_SERVICES; do
+  BLOCK_STATUS=$(read_service_block "$service" "$BEFORE_COMMON_HEIGHT") \
+    || fail "could not reread pre-restart common head for $service"
+  block_hash=$(status_value block_hash "$BLOCK_STATUS")
+  finalized=$(status_value finalized "$BLOCK_STATUS")
+  [ "$block_hash" = "$BEFORE_COMMON_HASH" ] \
+    || fail "$service does not preserve the pre-restart common head"
+  [ "$finalized" = "true" ] \
+    || fail "$service pre-restart common head is not finalized after restart"
+done
+
+for service in $RESTART_SERVICES; do
+  before_peer_id=$(file_value p2p_peer_id "$TMP_DIR/before/${service}.status")
+  after_peer_id=$(file_value p2p_peer_id "$TMP_DIR/after/${service}.status")
+  before_height=$(file_value height "$TMP_DIR/before/${service}.status")
+  after_height=$(file_value height "$TMP_DIR/after/${service}.status")
+  before_block_count=$(file_value block_count "$TMP_DIR/before/${service}.status")
+  after_block_count=$(file_value block_count "$TMP_DIR/after/${service}.status")
+  [ "$before_peer_id" = "$after_peer_id" ] \
+    || fail "$service libp2p peer ID changed across restart"
+  [ "$after_height" -ge "$before_height" ] \
+    || fail "$service height decreased across restart"
+  [ "$after_block_count" -ge "$before_block_count" ] \
+    || fail "$service block count decreased across restart"
+done
+
+RESTART_SERVICE_LIST=$(printf '%s\n' "$RESTART_SERVICES" | tr ' ' ',')
+
+cat <<STATUS
+local_cpu_restart_continuity_ready=true
+restart_services=${RESTART_SERVICE_LIST}
+before_common_head_height=${BEFORE_COMMON_HEIGHT}
+before_common_head_hash=${BEFORE_COMMON_HASH}
+after_common_head_height=${AFTER_COMMON_HEIGHT}
+after_common_head_hash=${AFTER_COMMON_HASH}
+restart_peer_ids_stable=true
+restart_heights_non_decreasing=true
+restart_block_counts_non_decreasing=true
+restart_previous_common_head_preserved=true
+restart_blocks_continue=true
+restart_common_head_convergence=true
+STATUS

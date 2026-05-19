@@ -19,6 +19,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "deploy/tensorvm/local-cpu/env/local-cpu.env.example",
         "deploy/tensorvm/local-cpu/scripts/entrypoint.sh",
         "deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh",
+        "deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh",
         ".dockerignore",
     ] {
         assert!(Path::new(&repo_path(path)).exists(), "missing {path}");
@@ -39,6 +40,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh",
     ))
     .expect("check script should be readable");
+    let restart_script = fs::read_to_string(repo_path(
+        "deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh",
+    ))
+    .expect("restart continuity script should be readable");
     let spec = fs::read_to_string(repo_path("docs/tensorvm/local_cpu_testnet_spec.md"))
         .expect("local CPU spec should be readable");
     let dockerignore =
@@ -176,6 +181,33 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         assert!(
             check_script.contains(required),
             "check script should contain {required}"
+        );
+    }
+
+    for required in [
+        "check-local-testnet.sh",
+        "docker compose",
+        "timeout 15s docker compose",
+        "tvmd service status",
+        "tvmd service block",
+        "timeout 60s docker compose",
+        "timeout 240s \"$CHECK_SCRIPT\"",
+        "local_cpu_restart_continuity_ready=true",
+        "restart_services=",
+        "before_common_head_height=",
+        "before_common_head_hash=",
+        "after_common_head_height=",
+        "after_common_head_hash=",
+        "restart_peer_ids_stable=true",
+        "restart_heights_non_decreasing=true",
+        "restart_block_counts_non_decreasing=true",
+        "restart_previous_common_head_preserved=true",
+        "restart_blocks_continue=true",
+        "restart_common_head_convergence=true",
+    ] {
+        assert!(
+            restart_script.contains(required),
+            "restart continuity script should contain {required}"
         );
     }
 }

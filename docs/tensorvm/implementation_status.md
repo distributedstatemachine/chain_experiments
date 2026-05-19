@@ -248,10 +248,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 cargo fmt --check --all
 cargo test --workspace --release
@@ -298,9 +296,10 @@ preflight, public evidence, or deployment-gated work can count:
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, and can return the same finalized common-head block hash at the bounded convergence height, plus
   `all_operator_role_status=true` and `all_operator_chain_counters=true`, proving each operator status
-  surface reports its role and live chain counters; the same check passed again after
-  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02` and after
-  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00`
+  surface reports its role and live chain counters; `check-restart-continuity.sh miner-03 validator-02`
+  and `check-restart-continuity.sh miner-00` additionally passed, proving restarted services kept stable
+  libp2p peer IDs, preserved the pre-restart finalized common head on every operator, did not decrease
+  height or block count, and continued finalizing blocks
 
 The workspace currently has 212 passing library tests under Tarpaulin:
 

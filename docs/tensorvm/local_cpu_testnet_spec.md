@@ -62,6 +62,7 @@ README.md
 env/local-cpu.env.example
 scripts/entrypoint.sh
 scripts/check-local-testnet.sh
+scripts/check-restart-continuity.sh
 ```
 
 `docker-compose.yml` may be generated from a template, but the rendered file that users run must be
@@ -227,10 +228,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -274,14 +273,14 @@ independently_checkable=false
 The Compose deployment must survive a local restart test before this spec is complete:
 
 ```bash
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 ```
 
-The second check must prove that the restarted operators reused their original durable state and libp2p
-identities, rejoined the local network, and did not cause chain-state rollback.
+The continuity script must capture pre-restart and post-restart peer IDs, heights, block counts, and a
+finalized common-head block. It must prove that restarted operators reused their original durable state and
+libp2p identities, rejoined the local network, did not decrease height or block count, preserved the
+pre-restart finalized common head on every operator, and continued producing finalized blocks.
 
 ## Completion Criteria
 

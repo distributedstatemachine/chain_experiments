@@ -52,10 +52,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
-docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-00
-deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh miner-00
 docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 ```
 
@@ -71,3 +69,8 @@ independently checkable public-testnet evidence and must continue to report:
 public_evidence_full_spec=false
 independently_checkable=false
 ```
+
+The restart-continuity script captures all operator peer IDs, heights, block counts, and a finalized common
+head before restarting the requested services. After the restart and local-testnet check, it fails unless
+the restarted services keep their libp2p peer IDs, heights and block counts do not decrease, the
+pre-restart finalized common head is still present on every operator, and new finalized blocks are observed.
