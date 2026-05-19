@@ -88,7 +88,8 @@ observation file should contain one
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` line per observed block;
 prefer `node-heartbeat-from-file` over manually copying first/last/count values when the raw heartbeat
 file is available. The final node heartbeat count and each public service's reachable and signed
-health-check counts must be at least the manifest's observed block count. Operator-attestation and
+health-check counts must be at least the manifest's observed block count, and a service's reachable count
+must not exceed its signed health-check count. Operator-attestation and
 service-content observation times must fall
 inside the signed run window, and every service-content URL must use the same HTTPS authority as the
 matching service-health URL for that endpoint ID. Finalized blocks must not exceed observed blocks, and

@@ -147,7 +147,8 @@ attestations must have observation timestamps inside the signed run window, matc
 records, and be at least as numerous as the `operator_identity_attestation_records` manifest count.
 Counted service-content records must have observation timestamps inside the signed run window.
 Every counted service health summary must likewise span the full observed block range and carry at least
-one reachable observation and one signed health check per observed block.
+one reachable observation and one signed health check per observed block. The reachable observation count
+must not exceed the signed health-check count.
 Finalized-block and available-receipt totals must not exceed their corresponding observed-block and
 checked-receipt denominators; capped percentage output does not make impossible counter sets satisfy the
 public gate. Signed overcounts or undercounts for block-history, finality-history, data-availability,
@@ -370,8 +371,9 @@ The `service-health-from-file` form derives the same signed `service=...` line f
 duplicate or non-contiguous block observations, and rejects unsupported or whitespace-padded records before
 deriving the signed first block, last block, reachable count, and signed health-check count.
 Bundle validation only counts a service as deployed when both reachable observations and signed health
-checks cover the manifest's observed block count. Its output can be inserted directly as a `service=...`
-line in the evidence manifest. The service-content command rejects non-public content URLs, malformed
+checks cover the manifest's observed block count and the reachable count does not exceed the signed
+health-check count. Its output can be inserted directly as a `service=...` line in the evidence manifest.
+The service-content command rejects non-public content URLs, malformed
 endpoint IDs, content URLs whose path does not exactly match the required service surface, content URLs
 with query strings or fragments, zero content roots, empty observation times, and content proofs smaller
 than 64 observed bytes.

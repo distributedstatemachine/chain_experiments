@@ -96,8 +96,9 @@ deployment gate.
   rejecting duplicate blocks, gaps, identity mismatches, unsupported lines, and whitespace-padded records,
   `service-health-from-file` derives signed
   service-health manifest lines from saved contiguous per-block observation files while rejecting duplicate
-  blocks, gaps, unsupported lines, and whitespace-padded records, service health/content evidence must use
-  matching HTTPS authorities for each endpoint ID, and the required post-run evidence-bundle shape is
+  blocks, gaps, unsupported lines, and whitespace-padded records, service-health evidence rejects
+  reachable counts above signed health-check counts, service health/content evidence must use matching
+  HTTPS authorities for each endpoint ID, and the required post-run evidence-bundle shape is
   documented in
   [`public_testnet_evidence.md`](public_testnet_evidence.md), but no complete external bundle is linked yet.
 - Public production libp2p run evidence, HTTP deployment, full durable database, and deployed browser web

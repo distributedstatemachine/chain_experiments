@@ -60,7 +60,8 @@ Run-window records can be derived from saved per-block observation files with
 `run_window_observation=<block>,<unix-seconds>` lines using `run-window-from-file`.
 Service-health records can likewise be derived from saved per-block observation files with
 `service_health_observation=<block>,reachable` or
-`service_health_observation=<block>,unreachable` lines using `service-health-from-file`.
+`service_health_observation=<block>,unreachable` lines using `service-health-from-file`; manually
+generated service-health records must not report more reachable observations than signed health checks.
 Node-heartbeat records can be derived from saved per-block
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` files with
 `node-heartbeat-from-file`.

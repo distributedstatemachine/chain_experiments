@@ -1911,7 +1911,8 @@ The `service-health` command emits the exact `service=...` manifest line for RPC
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path
 must match the signed health path. Counted service-health records must cover the manifest's full observed
-block count with both reachable observations and signed health checks.
+block count with both reachable observations and signed health checks, and the reachable count must not
+exceed the signed health-check count.
 The `service-health-from-file` command derives the same signed line from a saved line-oriented observation
 file using `service_health_observation=<block>,reachable` or
 `service_health_observation=<block>,unreachable` records. Blank lines and `#` comments are ignored;

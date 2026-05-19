@@ -534,6 +534,7 @@ impl PublicServiceEvidence {
             && self.last_seen_block >= self.first_seen_block
             && self.reachable_observation_count > 0
             && self.signed_health_check_count > 0
+            && self.reachable_observation_count <= self.signed_health_check_count
             && self.signed_health_check_valid()
     }
 
@@ -5099,6 +5100,25 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!sparse_rpc_health_signatures.has_deployed_rpc_service);
         assert!(!sparse_rpc_health_signatures.has_deployed_public_services);
         assert!(!sparse_rpc_health_signatures.public_criterion_met);
+        run.services = deployed_public_services(9);
+
+        run.services[0] = PublicServiceEvidence::new(
+            PublicServiceKind::Rpc,
+            PublicServiceEndpoint::new(
+                hash_bytes(b"test", &[b"rpc-service"]),
+                public_service_url(PublicServiceKind::Rpc),
+                "/health",
+            ),
+            0,
+            9,
+            11,
+            10,
+        );
+        assert!(!run.services[0].has_reachable_endpoint_proof());
+        let overreported_rpc_reachability = run.evaluate(&criteria, 6, true);
+        assert!(!overreported_rpc_reachability.has_deployed_rpc_service);
+        assert!(!overreported_rpc_reachability.has_deployed_public_services);
+        assert!(!overreported_rpc_reachability.public_criterion_met);
         run.services = deployed_public_services(9);
 
         run.network_runtime.request_response_observed = false;
