@@ -35,7 +35,9 @@ reusing one endpoint ID across multiple public service kinds does not satisfy la
 The parser is `parse_public_testnet_preflight_manifest`. Blank lines and `#` comments are ignored. Hash
 values are 64-character hex strings with an optional `0x` prefix. Boolean values are `true` or `false`.
 Field names must be exact with no leading or trailing whitespace around the key before `=`. Scalar
-manifest fields must appear exactly once; `service=...` is the only repeated field.
+manifest fields must appear exactly once; `service=...` is the only repeated field. Each
+`service=...` record must contain exactly eight comma-separated, nonempty fields; preflight service
+values are not trimmed, so leading or trailing whitespace in any service value is invalid.
 
 ```text
 version=tensor-vm-public-testnet-preflight-v1

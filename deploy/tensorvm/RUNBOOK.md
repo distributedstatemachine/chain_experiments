@@ -21,6 +21,8 @@ Before advertising a public run:
   starts. The stored peer ID must match any `/p2p/<peer-id>` suffix already present in the address.
 - Replace every placeholder in `env/public-testnet.env.example` and
   `manifests/public-testnet.preflight.example`.
+- Keep every `service=...` preflight line exact: eight comma-separated, nonempty values with no leading or
+  trailing whitespace in any service value.
 - Start services through `systemd/tensorvm.service` or an equivalent unit that invokes
   `tvmd service serve` with `--p2p-listen` and the seeded peer book.
 - Configure the reverse proxy from `nginx/tensorvm.conf` or an equivalent TLS proxy.

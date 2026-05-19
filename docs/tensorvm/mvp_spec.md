@@ -1699,6 +1699,8 @@ The preflight manifest must include a `cuda_ready_miner_count` equal to the plan
 from successful `tvmd miner start --device cuda:N` readiness checks on the planned public miner hosts.
 It must also include a `libp2p_ready_node_count` equal to `miner_count + validator_count`, derived from
 successful mandatory-libp2p node readiness checks on the planned public miners and validators.
+Each repeated preflight `service=...` plan must contain exactly eight comma-separated, nonempty,
+untrimmed values; leading or trailing whitespace in any service value is a manifest parse error.
 The external operator flow, daily evidence collection, post-run validation, and publication steps are
 recorded in `deploy/tensorvm/RUNBOOK.md`.
 
@@ -1877,9 +1879,10 @@ heartbeats must cover the manifest's full observed block count, counted operator
 node addresses, and counted miner and validator operator/address sets must be disjoint. The current evidence
 manifest has exactly one `manifest_signature` field, so
 `manifest_signature_count` must be `1`. Public evidence and preflight manifests must reject duplicate
-scalar fields and whitespace-padded field keys. Public evidence repeated-record fields must also reject
-whitespace-padded comma-separated values; only explicitly repeated record fields such as `node=`,
-`service=`, `auditor=`, `record_artifact=`, `operator=`, and `service_content=` may appear more than once.
+scalar fields and whitespace-padded field keys. Public evidence repeated-record fields and preflight
+`service=...` records must also reject whitespace-padded comma-separated values; only explicitly repeated
+record fields such as `node=`, `service=`, `auditor=`, `record_artifact=`, `operator=`, and
+`service_content=` may appear more than once.
 For `record_artifact=`, the independently checkable public evidence gate still requires exactly one valid
 line for each required supporting-record kind and rejects extra artifact locators.
 The `auditor-record` command emits the exact `auditor=...` manifest line for an external audit artifact

@@ -1283,19 +1283,16 @@ impl PublicTestnetPreflightManifestBuilder {
 }
 
 fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePlan> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != 8 {
-        return Err(TvmError::InvalidReceipt("malformed preflight service plan"));
-    }
+    let fields = exact_manifest_record_fields(value, 8, "malformed preflight service plan")?;
     Ok(PublicDeploymentServicePlan {
-        kind: parse_service_kind(fields[0].trim())?,
-        endpoint_id: parse_hash_hex(fields[1].trim())?,
+        kind: parse_service_kind(fields[0])?,
+        endpoint_id: parse_hash_hex(fields[1])?,
         public_url: fields[2].to_owned(),
         health_path: fields[3].to_owned(),
         content_url: fields[4].to_owned(),
         content_path: fields[5].to_owned(),
-        auth_enabled: parse_manifest_bool(fields[6].trim())?,
-        rate_limit_enabled: parse_manifest_bool(fields[7].trim())?,
+        auth_enabled: parse_manifest_bool(fields[6])?,
+        rate_limit_enabled: parse_manifest_bool(fields[7])?,
     })
 }
 
@@ -6284,26 +6281,13 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "https://rpc.tensorvm.net/health,/health",
             "https://rpc.tensorvm.net/health ,/health",
         );
-        let health_url_with_space_report =
-            parse_public_testnet_preflight_manifest(&health_url_with_space)
-                .unwrap()
-                .evaluate(ChainParams::default().block_time_seconds);
-        assert!(!health_url_with_space_report.has_rpc_service_plan);
-        assert!(!health_url_with_space_report.has_public_service_plan);
-        assert!(!health_url_with_space_report.can_start_public_run);
+        assert!(parse_public_testnet_preflight_manifest(&health_url_with_space).is_err());
 
         let content_url_with_space = manifest.replace(
             "https://rpc.tensorvm.net/chain/head,/chain/head",
             " https://rpc.tensorvm.net/chain/head,/chain/head",
         );
-        let content_url_with_space_report =
-            parse_public_testnet_preflight_manifest(&content_url_with_space)
-                .unwrap()
-                .evaluate(ChainParams::default().block_time_seconds);
-        assert!(!content_url_with_space_report.has_rpc_service_plan);
-        assert!(!content_url_with_space_report.has_public_service_content_plan);
-        assert!(!content_url_with_space_report.has_public_service_plan);
-        assert!(!content_url_with_space_report.can_start_public_run);
+        assert!(parse_public_testnet_preflight_manifest(&content_url_with_space).is_err());
 
         let health_query = manifest.replace(
             "https://rpc.tensorvm.net/health,/health",
@@ -6434,6 +6418,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             manifest.replace("miner_count=", " miner_count="),
             manifest.replace("miner_count=", "miner_count ="),
             manifest.replace("service=rpc", "service=archive"),
+            manifest.replace("service=rpc,", "service=rpc ,"),
+            manifest.replace(",true,true", ", true,true"),
             manifest.replace(
                 "service=rpc,",
                 "service=rpc,too,few,fields\n# removed original service=",
