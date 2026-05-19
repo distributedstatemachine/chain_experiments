@@ -7,13 +7,13 @@ use crate::jobs::PrimitiveType;
 use crate::jobs::{LinearTrainingStepReceipt, TensorOpReceipt};
 use crate::types::{Address, Hash};
 use crate::verify::ValidatorAttestation;
-use std::collections::{BTreeMap, BTreeSet};
 
 mod accounts;
 mod blocks;
 mod challenges;
 mod commands;
 mod engine;
+mod genesis;
 mod models;
 mod operators;
 mod proposer;
@@ -41,27 +41,7 @@ impl LocalChain {
     }
 
     pub fn with_params(params: ChainParams, finalized_randomness: Hash) -> Self {
-        Self {
-            params,
-            state: ChainState {
-                height: 0,
-                epoch: 0,
-                finalized_randomness,
-                accounts: BTreeMap::new(),
-                miners: BTreeMap::new(),
-                validators: BTreeMap::new(),
-                jobs: BTreeMap::new(),
-                receipts: BTreeMap::new(),
-                attestations: BTreeMap::new(),
-                block_votes: BTreeMap::new(),
-                finalized_blocks: BTreeSet::new(),
-                data_unavailable_receipts: BTreeSet::new(),
-                settled_receipts: BTreeSet::new(),
-                model_states: BTreeMap::new(),
-                rewards: RewardState::default(),
-            },
-            blocks: Vec::new(),
-        }
+        genesis::with_params(params, finalized_randomness)
     }
 
     pub fn register_miner(&mut self, address: Address, stake: u64) -> Result<()> {

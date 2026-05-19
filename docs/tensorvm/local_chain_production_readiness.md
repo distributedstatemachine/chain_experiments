@@ -514,13 +514,13 @@ lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now l
 lives behind `chain::blocks`, and chain parameters/state/domain view types now live behind `chain::state`
 while preserving the profile-neutral chain API. Attestation, validation-seed, quorum, and block-finality
 checks now live behind `chain::validation`, and account creation/transfer/reward-claim logic now lives
-behind `chain::accounts`. Miner/validator registration and hardware-profile checks now live behind
-`chain::operators`, job/receipt admission now lives behind `chain::receipts`, and model registration plus
-transition checks now live behind `chain::models`. Challenge outcome and slashing mutation now lives behind
-`chain::challenges`, profile-neutral command/event facade types now live behind `chain::engine`,
-`ChainEngine` command routing now lives behind `chain::commands`, and transaction application now lives
-behind `chain::transactions`. `chain.rs` is now mostly a profile-neutral facade over the smaller chain
-modules plus constructor glue.
+behind `chain::accounts`. Genesis construction now lives behind `chain::genesis`. Miner/validator
+registration and hardware-profile checks now live behind `chain::operators`, job/receipt admission now
+lives behind `chain::receipts`, and model registration plus transition checks now live behind
+`chain::models`. Challenge outcome and slashing mutation now lives behind `chain::challenges`,
+profile-neutral command/event facade types now live behind `chain::engine`, `ChainEngine` command routing
+now lives behind `chain::commands`, and transaction application now lives behind `chain::transactions`.
+`chain.rs` is now mostly a profile-neutral facade over the smaller chain modules.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

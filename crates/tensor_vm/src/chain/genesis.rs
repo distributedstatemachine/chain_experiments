@@ -1,0 +1,27 @@
+use super::state::{ChainParams, ChainState, LocalChain, RewardState};
+use crate::types::Hash;
+use std::collections::{BTreeMap, BTreeSet};
+
+pub fn with_params(params: ChainParams, finalized_randomness: Hash) -> LocalChain {
+    LocalChain {
+        params,
+        state: ChainState {
+            height: 0,
+            epoch: 0,
+            finalized_randomness,
+            accounts: BTreeMap::new(),
+            miners: BTreeMap::new(),
+            validators: BTreeMap::new(),
+            jobs: BTreeMap::new(),
+            receipts: BTreeMap::new(),
+            attestations: BTreeMap::new(),
+            block_votes: BTreeMap::new(),
+            finalized_blocks: BTreeSet::new(),
+            data_unavailable_receipts: BTreeSet::new(),
+            settled_receipts: BTreeSet::new(),
+            model_states: BTreeMap::new(),
+            rewards: RewardState::default(),
+        },
+        blocks: Vec::new(),
+    }
+}
