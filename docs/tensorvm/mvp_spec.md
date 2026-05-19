@@ -191,27 +191,28 @@ scientific workloads
 
 ---
 
-### 4.5 Gate 0: CPU Multi-Participant Local Testnet
+### 4.5 Gate 0: First Executable Gate - CPU Multi-Participant Local Testnet
 
-Gate 0 is the first non-skippable MVP acceptance gate and the first gate in the MVP acceptance sequence:
-a local CPU multi-participant testnet. Before any other local acceptance claim, CUDA acceleration,
-production deployment, public-run evidence, or adversarial public-testnet claim can count, the
-default-feature CPU reference path must run a local TensorVM testnet with multiple independently
-instantiated miners and validators. This gate must use canonical CPU semantics and the mandatory libp2p
-node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking shims, in-memory
-propagation substitutes, or single-participant shortcuts.
+Gate 0 is the first non-skippable MVP acceptance gate, the first executable gate in the MVP acceptance
+sequence, and the first command that may produce acceptance evidence in every new or resumed MVP
+implementation iteration: a local CPU multi-participant testnet. Before any other local acceptance claim,
+CUDA acceleration, production deployment, public-run evidence, or adversarial public-testnet claim can
+count, the default-feature CPU reference path must run a local TensorVM testnet with multiple
+independently instantiated miners and validators. This gate must use canonical CPU semantics and the
+mandatory libp2p node runtime; it cannot be satisfied by CUDA kernels, simulations, local-only networking
+shims, in-memory propagation substitutes, or single-participant shortcuts.
 
 For this gate, CPU means the default reference backend without `cuda-kernels` or GPU acceleration.
 Multi-participant means more than one independently instantiated local participant with separate node
 state, libp2p identity, endpoint, and role; single-process helper assertions do not count unless they
-stand up the same participant shape. Local testnet means a local-only harness is allowed, but protocol
-messages must flow through the mandatory libp2p node paths rather than mocks or direct in-memory
-propagation.
+stand up the same participant shape with distinct local node identities, endpoints, and role-specific
+state. Local testnet means a local-only harness is allowed, but protocol messages must flow through the
+mandatory libp2p node paths rather than mocks or direct in-memory propagation.
 
 Gate 0 is also the first executable gate for every new or resumed MVP implementation iteration. Context
-gathering may happen before it, but the first command that produces acceptance evidence for the iteration
-must be the CPU local multi-participant testnet command below. No later gate, implementation slice, or
-completion claim counts until this command passes against the current codebase.
+gathering may happen before it, but the first acceptance command for the iteration must be the CPU local
+multi-participant testnet command below. No later gate, implementation slice, or completion claim counts
+until this command passes against the current codebase.
 
 Required Gate 0 command from the repository root:
 
