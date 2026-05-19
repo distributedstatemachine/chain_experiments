@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod accounts;
 mod blocks;
+mod operators;
 mod proposer;
 mod roots;
 mod settlement;
@@ -116,13 +117,7 @@ impl LocalChain {
     }
 
     pub fn register_miner(&mut self, address: Address, stake: u64) -> Result<()> {
-        self.register_miner_with_profile_and_operator(
-            address,
-            stake,
-            address,
-            HardwareClass::Cpu,
-            0,
-        )
+        operators::register_miner(self, address, stake)
     }
 
     pub fn register_miner_with_operator(
@@ -131,13 +126,7 @@ impl LocalChain {
         stake: u64,
         operator_id: Hash,
     ) -> Result<()> {
-        self.register_miner_with_profile_and_operator(
-            address,
-            stake,
-            operator_id,
-            HardwareClass::Cpu,
-            0,
-        )
+        operators::register_miner_with_operator(self, address, stake, operator_id)
     }
 
     pub fn register_miner_with_profile(
@@ -147,10 +136,10 @@ impl LocalChain {
         hardware_class: HardwareClass,
         gpu_utilization_bps: u64,
     ) -> Result<()> {
-        self.register_miner_with_profile_and_operator(
+        operators::register_miner_with_profile(
+            self,
             address,
             stake,
-            address,
             hardware_class,
             gpu_utilization_bps,
         )
@@ -164,56 +153,18 @@ impl LocalChain {
         hardware_class: HardwareClass,
         gpu_utilization_bps: u64,
     ) -> Result<()> {
-        if stake < self.params.miner_min_stake {
-            return Err(TvmError::InsufficientStake);
-        }
-        if gpu_utilization_bps > 10_000 {
-            return Err(TvmError::InvalidReceipt("gpu utilization exceeds 100%"));
-        }
-        if !hardware_class.is_gpu() && gpu_utilization_bps != 0 {
-            return Err(TvmError::InvalidReceipt(
-                "non-gpu miner cannot report gpu utilization",
-            ));
-        }
-        if self.state.miners.contains_key(&address) {
-            return Err(TvmError::InvalidReceipt("miner already registered"));
-        }
-        accounts::ensure(self, address);
-        self.state.miners.insert(
+        operators::register_miner_with_profile_and_operator(
+            self,
             address,
-            MinerState {
-                address,
-                operator_id,
-                stake,
-                reputation: 0,
-                settled_tensor_work: 0,
-                pending_tensor_work: 0,
-                hardware_class,
-                gpu_utilization_bps,
-            },
-        );
-        Ok(())
+            stake,
+            operator_id,
+            hardware_class,
+            gpu_utilization_bps,
+        )
     }
 
     pub fn register_validator(&mut self, address: Address, stake: u64) -> Result<()> {
-        if stake < self.params.validator_min_stake {
-            return Err(TvmError::InsufficientStake);
-        }
-        if self.state.validators.contains_key(&address) {
-            return Err(TvmError::InvalidReceipt("validator already registered"));
-        }
-        accounts::ensure(self, address);
-        self.state.validators.insert(
-            address,
-            ValidatorState {
-                address,
-                stake,
-                reputation: 0,
-                valid_attestations: 0,
-                missed_assignments: 0,
-            },
-        );
-        Ok(())
+        operators::register_validator(self, address, stake)
     }
 
     pub fn credit_account(&mut self, address: Address, amount: u64) {
