@@ -71,6 +71,13 @@ json_positive_field_count() {
   printf '%s\n' "$document" | grep -o "\"$key\":[1-9][0-9]*" | wc -l | tr -d ' '
 }
 
+json_string_field_count() {
+  key="$1"
+  value="$2"
+  document="$3"
+  printf '%s\n' "$document" | grep -o "\"$key\":\"$value\"" | wc -l | tr -d ' '
+}
+
 cd "$REPO_ROOT"
 
 compose config --quiet
@@ -188,6 +195,8 @@ LIVE_SETTLED_RECEIPT_COUNT=0
 LIVE_TOTAL_REWARD_BALANCE=0
 LIVE_RECEIPTS=""
 LIVE_ATTESTED_RECEIPT_COUNT=0
+LIVE_TENSOR_OP_RECEIPT_COUNT=0
+LIVE_LINEAR_TRAINING_RECEIPT_COUNT=0
 attempt=0
 while [ "$attempt" -lt 30 ]; do
   LIVE_CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
@@ -202,6 +211,8 @@ while [ "$attempt" -lt 30 ]; do
   LIVE_TOTAL_REWARD_BALANCE=$(json_number total_reward_balance "$LIVE_OVERVIEW")
   LIVE_RECEIPTS=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/500")
   LIVE_ATTESTED_RECEIPT_COUNT=$(json_positive_field_count attestation_count "$LIVE_RECEIPTS")
+  LIVE_TENSOR_OP_RECEIPT_COUNT=$(json_string_field_count primitive_type tensor_op "$LIVE_RECEIPTS")
+  LIVE_LINEAR_TRAINING_RECEIPT_COUNT=$(json_string_field_count primitive_type linear_training_step "$LIVE_RECEIPTS")
   if [ "${LIVE_HEIGHT:-0}" -gt 2 ] \
     && [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] \
     && [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] \
@@ -210,6 +221,8 @@ while [ "$attempt" -lt 30 ]; do
     && [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] \
     && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] \
     && [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] \
+    && [ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] \
+    && [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] \
     && [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ]; then
     break
   fi
@@ -225,6 +238,8 @@ done
 [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts"
 [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts"
 [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "live receipt details did not include validator attestations"
+[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts"
+[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
 LIVE_TENSOR=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
@@ -371,6 +386,8 @@ live_synthetic_jobs=true
 live_linear_training_jobs=true
 live_attestations=true
 live_receipt_attestations=true
+live_tensor_op_receipts=true
+live_linear_training_receipts=true
 live_tensor_fetch=true
 live_rewards=true
 all_operator_status_count=15

@@ -250,6 +250,7 @@ chain height and block count advance past the seeded two-block baseline
 synthetic post-startup jobs, receipts, and settled receipts are visible through explorer data
 at least one settled matmul TensorWork receipt
 at least one settled LinearTrainingStep receipt
+post-seed receipt details name TensorOp and LinearTrainingStep primitive types
 validator attestations for settled receipts
 miner and validator rewards credited from settled TensorWork
 tensor data available through the local tensor-server path

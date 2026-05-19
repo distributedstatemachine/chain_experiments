@@ -88,6 +88,9 @@ The local bundle is useful and should remain the first operational target:
 - `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, and finalized common
   heads around actual Compose restarts, and fails unless restarted services keep identity, avoid rollback,
   preserve the pre-restart finalized common head, and continue finalizing blocks.
+- The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
+  `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
+  receipt type instead of only by aggregate model-count growth.
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
@@ -190,16 +193,17 @@ Required fix:
 ### 6. Live Primitive Coverage Needs Stronger Evidence
 
 The seed covers both TensorOp and LinearTrainingStep. Live post-startup production now uses
-`SyntheticLocalJobSource` for both matmul and LinearTrainingStep jobs, and the checker can require
-`model_count` to advance past the seeded baseline as proof that a live training step settled.
+`SyntheticLocalJobSource` for both matmul and LinearTrainingStep jobs, and the checker requires
+`model_count` to advance past the seeded baseline plus receipt details to name more than the seeded count
+of both primitive types.
 
 Required fix:
 
 - Keep the deterministic local `JobSource` emitting both:
   - TensorOp matmul jobs
   - LinearTrainingStep jobs
-- Add per-block or per-receipt checker evidence that names both live post-startup primitive types, not
-  just aggregate model-count advancement.
+- Extend this from per-receipt primitive evidence to per-block primitive evidence once block views expose
+  included receipt IDs by block.
 
 ### 7. The Checker Does Not Prove All Local-Spec Acceptance Items
 
@@ -457,10 +461,10 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
-hash, and the same finalized common-head block hash through `tvmd service block`. The restart-continuity
-script also captures pre/post peer IDs, heights, block counts, and finalized common heads for the selected
-restart gates. Latest-head convergence via the shared network event path still needs hard checker
-assertions.
+hash, and the same finalized common-head block hash through `tvmd service block`, plus named post-seed
+TensorOp and LinearTrainingStep receipt evidence. The restart-continuity script also captures pre/post peer
+IDs, heights, block counts, and finalized common heads for the selected restart gates. Latest-head
+convergence via the shared network event path still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

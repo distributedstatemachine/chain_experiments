@@ -36,8 +36,9 @@ script.
 
 The check script waits for `/chain/head` and `/explorer/overview` to move past the seeded two-block
 snapshot, including new jobs, receipts, settled receipts, model-count advancement, validator-attestation
-growth, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, and
-reward growth from live synthetic work. It also runs `tvmd service status` in every operator container and
+growth, per-receipt validator-attestation details, named post-seed TensorOp and LinearTrainingStep
+receipts, live tensor descriptor/row/chunk/opening fetches, and reward growth from live synthetic work. It
+also runs `tvmd service status` in every operator container and
 fails unless all 15 node stores advance past the seed, report role-specific status, expose live chain
 counters, report the same first live finalized block hash, and return the same finalized common-head block
 hash through `tvmd service block`.

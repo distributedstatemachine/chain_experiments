@@ -285,10 +285,12 @@ preflight, public evidence, or deployment-gated work can count:
   with `standalone_explorer_ready=true` and
   `standalone_explorer_websocket_polling=true`; the gate now also requires
   `live_block_production=true`, `live_synthetic_jobs=true`, `live_linear_training_jobs=true`,
-  `live_attestations=true`, `live_receipt_attestations=true`, `live_tensor_fetch=true`, and
-  `live_rewards=true`, proving `/chain/head` and explorer counters advance past the seeded two-block
-  baseline, at least one live LinearTrainingStep advances model state after startup, validators add
-  attestations, `/explorer/receipts` exposes per-receipt validator attestation details for live receipts,
+  `live_attestations=true`, `live_receipt_attestations=true`, `live_tensor_op_receipts=true`,
+  `live_linear_training_receipts=true`, `live_tensor_fetch=true`, and `live_rewards=true`, proving
+  `/chain/head` and explorer counters advance past the seeded two-block baseline, at least one live
+  LinearTrainingStep advances model state after startup, validators add attestations, `/explorer/receipts`
+  exposes per-receipt validator attestation details plus named post-seed TensorOp and LinearTrainingStep
+  primitive receipts for live work,
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
   settled live work credits new rewards; the gate also runs `tvmd service status` and
   `tvmd service block` inside all 15 operator containers and requires

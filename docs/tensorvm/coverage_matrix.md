@@ -53,8 +53,9 @@ routes with the local auth token, checks the standalone explorer service on port
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup
 height, block, job, receipt, settled-receipt, model-count, attestation-count, and reward-balance
 advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
-rewards after the seed, requires live receipt details to expose validator attestation counts, fetches a live
-tensor descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
+rewards after the seed, requires live receipt details to expose validator attestation counts and more than
+the seeded count of both `tensor_op` and `linear_training_step` primitive receipts, fetches a live tensor
+descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
 common-head block hash through `tvmd service block`, and uses `check-restart-continuity.sh` to prove
 `miner-03`, `validator-02`, and `miner-00` keep their libp2p peer IDs, preserve the pre-restart finalized
