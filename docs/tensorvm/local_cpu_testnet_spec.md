@@ -1,0 +1,270 @@
+# TensorVM Local CPU Testnet Spec
+
+This is the first focused implementation target for TensorVM: a full local testnet that runs on CPU and
+can be brought up entirely with Docker Compose. It is intentionally narrower than the public-testnet MVP
+scope in [`mvp_spec.md`](mvp_spec.md): no CUDA, no public endpoints, no 7-day external operator evidence,
+and no systemd/nginx production deployment.
+
+The local CPU testnet is still a real protocol deployment. It must use the canonical CPU backend, durable
+per-operator state, and the mandatory rust-libp2p runtime. It must not use simulations, direct in-memory
+propagation, local-only networking shims, or single-participant shortcuts.
+
+## Goal
+
+From a clean checkout, one Docker Compose command should start a complete local TensorVM testnet with:
+
+```text
+10 miner operators
+5 validator operators
+deterministic CPU tensor execution for every miner
+one libp2p node identity and data directory per operator
+real libp2p discovery, gossip, and request/response paths between containers
+block production, receipt submission, validation, attestation, settlement, rewards, and telemetry
+local RPC, explorer, faucet, and telemetry surfaces reachable from the host
+```
+
+The default operator shape is 10 miners and 5 validators because it matches the public-testnet minimum
+shape without requiring public infrastructure. Smaller smoke-test profiles may exist, but they do not
+satisfy this spec.
+
+## Non-Goals
+
+This spec does not require:
+
+```text
+CUDA kernels or GPU devices
+public DNS, public TLS, or nginx
+systemd deployment
+independent external operators
+7-day public-run evidence
+public-testnet reward claims
+mainnet security claims
+```
+
+The local run may produce useful engineering evidence, but it is not public-testnet evidence.
+
+## Required Artifacts
+
+The implementation must add a checked local deployment bundle under:
+
+```text
+deploy/tensorvm/local-cpu/
+```
+
+The bundle must include:
+
+```text
+docker-compose.yml
+Dockerfile
+README.md
+env/local-cpu.env.example
+scripts/entrypoint.sh
+scripts/check-local-testnet.sh
+```
+
+`docker-compose.yml` may be generated from a template, but the rendered file that users run must be
+checked in and reviewable. `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+must pass from the repository root.
+
+## Docker Image
+
+The local CPU image must build the TensorVM daemon with default features only:
+
+```bash
+cargo build -p tensor_vm --release
+```
+
+The image must not build with `--features cuda-kernels`, require NVIDIA container runtime support, mount
+GPU devices, or set CUDA-specific environment variables. Any miner container that reports readiness under
+this spec must report the CPU backend, not a CUDA backend.
+
+The image must contain the `tvmd` binary and any local entrypoint scripts required to initialize state,
+seed bootstrap peers, start libp2p, and run the assigned miner or validator role.
+
+## Operator Topology
+
+The default Compose deployment must define all 15 counted operators explicitly or through a checked,
+deterministic rendered configuration:
+
+```text
+miner-00
+miner-01
+miner-02
+miner-03
+miner-04
+miner-05
+miner-06
+miner-07
+miner-08
+miner-09
+validator-00
+validator-01
+validator-02
+validator-03
+validator-04
+```
+
+Each operator service must have:
+
+```text
+a stable operator ID
+a stable local wallet/key identity
+a stable libp2p peer identity
+a unique data volume
+a unique internal RPC listen address or port
+a unique internal libp2p listen multiaddr
+a role of exactly miner or validator
+```
+
+`miner-00` may also act as the local bootstrap and host-facing gateway, but it still counts as a miner
+operator and must run the same miner role as the other miner operators. The other 14 operators must seed
+their peer books from `miner-00` by using its libp2p peer ID and Docker DNS address.
+
+Checked deterministic development keys are acceptable for this local-only bundle if they are clearly
+marked as non-secret and unusable for public deployments.
+
+## Networking
+
+The Compose file must create one private bridge network, for example:
+
+```text
+tensorvm-local
+```
+
+All operator-to-operator protocol traffic must use Docker-network libp2p multiaddrs. Host networking is
+not required. The default host-published ports should be limited to the gateway surfaces exposed by
+`miner-00`:
+
+```text
+8545/tcp  local HTTP RPC, explorer, faucet, and telemetry
+4001/tcp  optional host-visible libp2p bootstrap port
+```
+
+Every counted operator must run the mandatory libp2p control plane with TensorVM's configured gossip
+topics and request/response protocols. A container is not ready unless its readiness output includes:
+
+```text
+p2p_runtime=libp2p
+node_store_ready=true
+libp2p_ready=true
+```
+
+## Runtime Flow
+
+Each operator container must perform the same high-level startup sequence:
+
+```text
+initialize or load its durable node store
+load its stable wallet and libp2p identity
+seed the bootstrap peer book, except for miner-00
+start the mandatory libp2p control plane
+start its role process as miner or validator
+report readiness only after the role process and libp2p runtime are live
+```
+
+Miner containers must start with:
+
+```text
+device=cpu
+```
+
+Validator containers must connect through libp2p and validate receipts using the canonical verifier
+paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
+protocol paths and persisted state.
+
+## Local Services
+
+The local gateway exposed by `miner-00` must serve these routes from the host:
+
+```text
+GET /health
+GET /rpc/health
+GET /chain/head
+GET /jobs/current
+GET /explorer/health
+GET /explorer
+GET /faucet/health
+GET /faucet/page
+GET /telemetry/health
+GET /telemetry/dashboard
+```
+
+The gateway does not need public TLS for this spec. Local HTTP is enough.
+
+## Acceptance Gates
+
+Gate L0 is still the first executable gate for implementation work:
+
+```bash
+cargo test -p tensor_vm local_testnet --release
+```
+
+After Gate L0 passes, the Docker Compose gate for this spec is:
+
+```bash
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
+```
+
+`check-local-testnet.sh` must fail unless it observes all of the following from the running Compose
+deployment:
+
+```text
+10 ready miner operators
+5 ready validator operators
+15 distinct operator IDs
+15 distinct libp2p peer IDs
+15 distinct durable data directories or volumes
+15 libp2p-ready nodes
+10 CPU-ready miners
+0 CUDA-required miners
+at least one finalized block after startup
+at least one settled matmul TensorWork receipt
+at least one settled LinearTrainingStep receipt
+validator attestations for settled receipts
+miner and validator rewards credited from settled TensorWork
+tensor data available through the local tensor-server path
+gateway health, chain head, explorer, faucet, and telemetry routes reachable from the host
+```
+
+The check must also verify that the run reports itself as local-only:
+
+```text
+public_evidence_full_spec=false
+independently_checkable=false
+```
+
+## Restart Gate
+
+The Compose deployment must survive a local restart test before this spec is complete:
+
+```bash
+docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02
+deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh
+```
+
+The second check must prove that the restarted operators reused their original durable state and libp2p
+identities, rejoined the local network, and did not cause chain-state rollback.
+
+## Completion Criteria
+
+This spec is complete only when:
+
+```text
+Gate L0 passes
+the checked Compose config is valid
+the default Compose deployment starts all 15 operators
+the default Compose deployment passes the functional check script
+the restart gate passes
+the local run uses CPU only
+every counted operator uses mandatory libp2p
+the run produces block, receipt, attestation, settlement, reward, data-availability, and telemetry evidence
+docs/tensorvm/implementation_status.md records the successful commands and observed counts
+docs/tensorvm/coverage_matrix.md maps the local CPU Compose gates to tests or check scripts
+```
+
+Until all criteria above pass, the local CPU testnet is incomplete. Even after completion, it remains a
+local engineering milestone and does not satisfy the public 7-day testnet gate.
