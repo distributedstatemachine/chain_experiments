@@ -2443,8 +2443,13 @@ dependencies = [
  "futures",
  "libp2p",
  "serde",
+ "tensor_vm_explorer",
  "tokio",
 ]
+
+[[package]]
+name = "tensor_vm_explorer"
+version = "0.1.0"
 
 [[package]]
 name = "thiserror"

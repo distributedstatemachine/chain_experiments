@@ -279,6 +279,35 @@ services:
     volumes:
       - validator-04-data:/var/lib/tensorvm
 
+  explorer:
+    image: tensorvm-local-cpu:latest
+    entrypoint: ["/usr/local/bin/tensorvm-explorer"]
+    hostname: explorer
+    environment:
+      TENSORVM_EXPLORER_LISTEN: 0.0.0.0:8080
+      TENSORVM_EXPLORER_WS_URL: "ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token"
+    networks:
+      - tensorvm-local
+    depends_on:
+      miner-00:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/tensorvm-explorer",
+          "healthcheck",
+          "--addr",
+          "127.0.0.1:8080",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
 networks:
   tensorvm-local:
     driver: bridge

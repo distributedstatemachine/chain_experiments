@@ -39,7 +39,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   verifier metadata/commitment mismatch rejection, RPC route validation, HTTP parsing/socket error responses,
   faucet exhaustion, malformed P2P payloads, and malformed peer-book records
 - Full line coverage for TensorVM Merkle helpers, tensor server access, type/signature helpers, validator
-  root-availability handling, tensor primitives, TensorVM wrappers, CLI parsing, runtime backends, explorer,
+  root-availability handling, tensor primitives, TensorVM wrappers, CLI parsing, runtime backends,
   faucet, miner, scheduler, storage, watcher, and local testnet/public-evidence modules
 - Deterministic job scheduler, operator-separated miner replication assignment with fallback when
   diversity is insufficient, and validator assignment
@@ -61,9 +61,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
-  health endpoints, explorer/telemetry/faucet RPC endpoints, browser-facing explorer/telemetry/faucet HTML
-  pages, mutable transaction submission, job lookup, HTTP response formatting, generic HTTP request
-  reading, socketed stdlib HTTP serving, `tvmd service init/peer add/readiness/serve` launch
+  health endpoints, explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
+  telemetry/faucet RPC endpoints, browser-facing explorer/telemetry/faucet HTML pages, mutable
+  transaction submission, job lookup, HTTP response formatting, generic HTTP request reading, socketed
+  stdlib HTTP serving, `tvmd service init/peer add/readiness/serve` launch
   configuration for a `NodeStore`-backed service process with mandatory rust-libp2p listen configuration,
   and gateway auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator commands, with local stake,
@@ -81,7 +82,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   full-chain state snapshots for restart, and snapshot/block-log/state mismatch detection
 - Watcher tooling that scans chain evidence for invalid receipts, data withholding, validator misconduct,
   missing quorum, missing redundant agreement, and conflicting learning-state transitions
-- Faucet, explorer summaries, full local telemetry success metrics, local testnet bootstrap, and
+- Faucet, explorer WebSocket summaries, full local telemetry success metrics, local testnet bootstrap, and
   public-testnet evidence reporting that separates local readiness from external 7-day run proof
 - Typed public-testnet run evidence evaluation for disjoint distinct miner/validator operators, one-to-one
   matching between live operator IDs and live node addresses for counted public participants,
@@ -213,8 +214,18 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
   readiness, authenticated host gateway route checks, a seeded local CPU chain exposed through the gateway
   with settled matmul and LinearTrainingStep receipts, miner rewards, finality, data availability, a
-  restart gate for `miner-03` and `validator-02`, a local-only evidence boundary, and
+  standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a restart gate
+  for `miner-03` and `validator-02`, a local-only evidence boundary, and
   `local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape` guarding the artifact shape
+
+## Implemented In `crates/tensor_vm_explorer`
+
+- Standalone `tensorvm-explorer` binary that serves the browser explorer from `TENSORVM_EXPLORER_LISTEN`
+  and publishes the TensorVM WebSocket URL configured by `TENSORVM_EXPLORER_WS_URL`
+- Explorer UI shell and JSON view models for overview metrics, latest blocks, account lookup, miners,
+  validators, receipts, and jobs
+- Local CPU Compose integration on `127.0.0.1:8080`, configured to poll `miner-00` through
+  `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token`
 
 ## Verified Gates
 
@@ -237,6 +248,10 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
+The May 19, 2026 Compose verification on this host used
+`TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080` for `up --wait` and both check-script runs because host port
+`8080` was already allocated; the Compose default remains `8080`.
+
 Gate 0 is the first non-skippable CPU local multi-participant testnet required before CUDA, public
 preflight, public evidence, or deployment-gated work can count:
 
@@ -254,13 +269,15 @@ preflight, public evidence, or deployment-gated work can count:
   `libp2p_ready_node_count=15`, `cpu_ready_miner_count=10`, `cuda_required_miner_count=0`,
   `settled_receipts=10`, `matmul_settled=true`, `linear_training_settled=true`, `rewarded_miners=9`,
   `finality_rate_bps=10000`, `data_availability_bps=10000`, `public_evidence_full_spec=false`, and
-  `independently_checkable=false`; the same check passed again after
+  `independently_checkable=false`, with `standalone_explorer_ready=true` and
+  `standalone_explorer_websocket_polling=true`; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 192 passing library tests under Tarpaulin:
+The workspace currently has 197 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 178 in `tensor_vm`
+- 182 in `tensor_vm`
+- 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 6 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
@@ -285,10 +302,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.07% workspace line coverage
-- 8720/8802 workspace lines covered
+- 99.11% workspace line coverage
+- 9151/9233 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8152/8152 `tensor_vm` lines covered
+- 8504/8504 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 
@@ -329,8 +346,8 @@ These spec items require real deployment or non-reference infrastructure and are
   shared-address, benchmarking, multicast, reserved, malformed service URLs, root-only service URLs, and
   service URLs with query strings or fragments
 - deployed browser explorer, faucet, and telemetry web services; current implementation exposes node RPC
-  endpoints and local browser-facing HTML pages for explorer summaries, telemetry snapshots, and local
-  faucet claims
+  endpoints, a local standalone WebSocket explorer, and local browser-facing HTML pages for telemetry and
+  local faucet claims
 
 The current crate is a complete deterministic reference core and local test harness, not a production
 network release.

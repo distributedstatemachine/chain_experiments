@@ -20,7 +20,8 @@ deterministic CPU tensor execution for every miner
 one libp2p node identity and data directory per operator
 real libp2p discovery, gossip, and request/response paths between containers
 block production, receipt submission, validation, attestation, settlement, rewards, and telemetry
-local RPC, explorer, faucet, and telemetry surfaces reachable from the host
+local RPC, TensorVM explorer WebSocket data, faucet, and telemetry surfaces reachable from the host
+standalone browser explorer service reachable from the host
 ```
 
 The default operator shape is 10 miners and 5 validators because it matches the public-testnet minimum
@@ -78,8 +79,9 @@ The image must not build with `--features cuda-kernels`, require NVIDIA containe
 GPU devices, or set CUDA-specific environment variables. Any miner container that reports readiness under
 this spec must report the CPU backend, not a CUDA backend.
 
-The image must contain the `tvmd` binary and any local entrypoint scripts required to initialize state,
-seed bootstrap peers, start libp2p, and run the assigned miner or validator role.
+The image must contain the `tvmd` and `tensorvm-explorer` binaries and any local entrypoint scripts
+required to initialize state, seed bootstrap peers, start libp2p, run the assigned miner or validator
+role, and serve the browser explorer.
 
 ## Operator Topology
 
@@ -133,12 +135,16 @@ tensorvm-local
 
 All operator-to-operator protocol traffic must use Docker-network libp2p multiaddrs. Host networking is
 not required. The default host-published ports should be limited to the gateway surfaces exposed by
-`miner-00`:
+`miner-00` plus the standalone explorer:
 
 ```text
-8545/tcp  local HTTP RPC, explorer, faucet, and telemetry
+8545/tcp  local HTTP RPC, TensorVM explorer WebSocket data, faucet, and telemetry
 4001/tcp  optional host-visible libp2p bootstrap port
+8080/tcp  standalone browser explorer
 ```
+
+The default standalone explorer host port is `8080`, but the Compose bundle may support a local override
+when that host port is already in use.
 
 Every counted operator must run the mandatory libp2p control plane with TensorVM's configured gossip
 topics and request/response protocols. A container is not ready unless its readiness output includes:
@@ -183,13 +189,21 @@ GET /chain/head
 GET /jobs/current
 GET /explorer/health
 GET /explorer
+GET /explorer/overview
+GET /explorer/miners
+GET /explorer/validators
+GET /explorer/jobs
+GET /explorer/receipts/latest/:limit
+WS  /explorer/ws
 GET /faucet/health
 GET /faucet/page
 GET /telemetry/health
 GET /telemetry/dashboard
 ```
 
-The gateway does not need public TLS for this spec. Local HTTP is enough.
+The explorer UI must not depend on a checked static chain dump. The TensorVM node must expose
+`/explorer/ws`, and the standalone explorer must poll that WebSocket for the data it renders. The gateway
+does not need public TLS for this spec. Local HTTP/WebSocket is enough.
 
 ## Acceptance Gates
 
@@ -228,6 +242,8 @@ validator attestations for settled receipts
 miner and validator rewards credited from settled TensorWork
 tensor data available through the local tensor-server path
 gateway health, chain head, explorer, faucet, and telemetry routes reachable from the host
+standalone explorer route reachable from the host
+standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
 ```
 
 The check must also verify that the run reports itself as local-only:
@@ -262,6 +278,7 @@ the restart gate passes
 the local run uses CPU only
 every counted operator uses mandatory libp2p
 the run produces block, receipt, attestation, settlement, reward, data-availability, and telemetry evidence
+the standalone explorer is started by Docker Compose and polls live TensorVM node data over `/explorer/ws`
 docs/tensorvm/implementation_status.md records the successful commands and observed counts
 docs/tensorvm/coverage_matrix.md maps the local CPU Compose gates to tests or check scripts
 ```

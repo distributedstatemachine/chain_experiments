@@ -1,6 +1,6 @@
+use crate::ExplorerSummary;
 use crate::chain::{BlockVote, ChainParams, JobState, LocalChain, TensorBlock, Transaction};
 use crate::error::{Result, TvmError};
-use crate::explorer::ExplorerSummary;
 use crate::faucet::Faucet;
 use crate::hash::hex;
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec};
@@ -3709,7 +3709,19 @@ impl LocalTestnet {
     }
 
     pub fn explorer_summary(&self) -> ExplorerSummary {
-        ExplorerSummary::from_chain(&self.chain)
+        ExplorerSummary {
+            height: self.chain.state.height,
+            epoch: self.chain.state.epoch,
+            block_count: self.chain.blocks.len(),
+            miner_count: self.chain.state.miners.len(),
+            validator_count: self.chain.state.validators.len(),
+            job_count: self.chain.state.jobs.len(),
+            receipt_count: self.chain.state.receipts.len(),
+            settled_receipt_count: self.chain.state.settled_receipts.len(),
+            finalized_block_count: self.chain.state.finalized_blocks.len(),
+            treasury_balance: self.chain.state.rewards.treasury,
+            total_reward_balance: self.chain.state.rewards.balances.values().sum(),
+        }
     }
 
     pub fn public_testnet_evidence(

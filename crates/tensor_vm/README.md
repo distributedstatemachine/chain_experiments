@@ -23,8 +23,9 @@ The crate implements the deterministic local/testnet core:
 - durable libp2p peer-book storage for bootstrap peer IDs and multiaddrs
 - mandatory libp2p networking for consensus propagation and bounded tensor/program fetches
 - restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
-- explorer, telemetry, and local faucet RPC endpoints
-- local browser-facing explorer, telemetry, and faucet HTML pages
+- explorer data RPC endpoints and a browser WebSocket endpoint at `/explorer/ws`
+- local browser-facing explorer, telemetry, and faucet HTML pages; the standalone explorer UI lives in
+  [`../tensor_vm_explorer`](../tensor_vm_explorer/README.md)
 - executable reference `tvmd` miner/validator CLI validation and readiness reports using libp2p multiaddrs
 - `tvmd service init/serve` launch configuration for a NodeStore-backed RPC/explorer/faucet/telemetry process
   with mandatory libp2p listen configuration

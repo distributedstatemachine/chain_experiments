@@ -6,6 +6,7 @@ BUNDLE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$BUNDLE_DIR/../../.." && pwd)
 COMPOSE_FILE="$BUNDLE_DIR/docker-compose.yml"
 RPC_PORT="${TENSORVM_LOCAL_CPU_RPC_PORT:-8545}"
+EXPLORER_PORT="${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}"
 AUTH_TOKEN="${TENSORVM_AUTH_TOKEN:-local-cpu-testnet-token}"
 
 EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04"
@@ -51,6 +52,8 @@ for service in $EXPECTED_SERVICES; do
   contains_line "$CONFIG_SERVICES" "$service" || fail "compose config is missing $service"
   contains_line "$RUNNING_SERVICES" "$service" || fail "$service is not running"
 done
+contains_line "$CONFIG_SERVICES" "explorer" || fail "compose config is missing standalone explorer"
+contains_line "$RUNNING_SERVICES" "explorer" || fail "standalone explorer is not running"
 
 TMP_DIR="${TMPDIR:-/tmp}/tensorvm-local-cpu-check.$$"
 mkdir -p "$TMP_DIR"
@@ -115,6 +118,17 @@ for path in /health /rpc/health /chain/head /jobs/current /explorer/health /expl
     || fail "gateway route is not reachable: $path"
 done
 
+EXPLORER_HEALTH=$(curl -fsS "http://127.0.0.1:${EXPLORER_PORT}/health")
+printf '%s\n' "$EXPLORER_HEALTH" | grep -q '"tensorvm_explorer_ready":true' \
+  || fail "standalone explorer health is not ready"
+printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' \
+  || fail "standalone explorer does not publish the TensorVM websocket URL"
+EXPLORER_PAGE=$(curl -fsS "http://127.0.0.1:${EXPLORER_PORT}/")
+printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' \
+  || fail "standalone explorer page is not reachable"
+printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' \
+  || fail "standalone explorer page does not poll TensorVM over websocket"
+
 CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
 printf '%s\n' "$CHAIN_HEAD" | grep -q '"height":2' || fail "gateway chain head does not expose seeded height 2"
 printf '%s\n' "$CHAIN_HEAD" | grep -q '"block_count":2' || fail "gateway chain head does not expose 2 seeded blocks"
@@ -137,6 +151,8 @@ linear_training_settled=true
 rewarded_miners=9
 finality_rate_bps=10000
 data_availability_bps=10000
+standalone_explorer_ready=true
+standalone_explorer_websocket_polling=true
 public_evidence_full_spec=false
 independently_checkable=false
 STATUS

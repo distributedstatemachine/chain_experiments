@@ -49,8 +49,14 @@ pub const NODE_RPC_ROUTES: &[&str] = &[
     "GET /explorer",
     "GET /explorer/health",
     "GET /explorer/summary",
+    "GET /explorer/overview",
+    "GET /explorer/miners",
+    "GET /explorer/validators",
+    "GET /explorer/jobs",
     "GET /explorer/account/:address",
     "GET /explorer/blocks/latest/:limit",
+    "GET /explorer/receipts/latest/:limit",
+    "WS /explorer/ws",
     "GET /telemetry",
     "GET /telemetry/health",
     "GET /telemetry/dashboard",
@@ -128,6 +134,12 @@ mod tests {
         assert!(NODE_RPC_ROUTES.contains(&"POST /attestation"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /explorer"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/health"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/overview"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/miners"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/validators"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/jobs"));
+        assert!(NODE_RPC_ROUTES.contains(&"GET /explorer/receipts/latest/:limit"));
+        assert!(NODE_RPC_ROUTES.contains(&"WS /explorer/ws"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry/health"));
         assert!(NODE_RPC_ROUTES.contains(&"GET /telemetry/dashboard"));

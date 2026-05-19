@@ -2061,6 +2061,10 @@ chain/
       Cargo.toml
       README.md
       src/
+    tensor_vm_explorer/
+      Cargo.toml
+      README.md
+      src/
   deploy/
     tensorvm/
       README.md
@@ -2085,6 +2089,7 @@ Workspace requirements:
 ```text
 the repository root must be a Cargo workspace
 TensorVM implementation code must live under crates/tensor_vm/
+TensorVM explorer UI code must live under crates/tensor_vm_explorer/
 non-TensorVM protocol experiments must live under crates/experiments/
 each crate must have its own README
 the root README must describe the workspace and link to crate-level READMEs
@@ -2102,7 +2107,6 @@ chain
 challenge
 cli
 error
-explorer
 faucet
 jobs
 merkle
@@ -2142,6 +2146,7 @@ cross-machine determinism tests
 invalid-output test harness
 restartable node storage
 libp2p P2P runtime, P2P codec, RPC codec, and RPC socket tests
+TensorVM node explorer WebSocket endpoint and standalone explorer crate
 ```
 
 Required local verification commands before sharing changes:

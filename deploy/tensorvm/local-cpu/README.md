@@ -6,11 +6,12 @@ only, CPU only, and uses one container per counted operator.
 
 ## Services
 
-The default topology defines 10 miners and 5 validators:
+The default topology defines 10 miners, 5 validators, and a standalone explorer UI:
 
 ```text
 miner-00 ... miner-09
 validator-00 ... validator-04
+explorer
 ```
 
 `miner-00` is also the local bootstrap and host-facing gateway. It publishes:
@@ -18,6 +19,7 @@ validator-00 ... validator-04
 ```text
 127.0.0.1:8545 -> local RPC, explorer, faucet, and telemetry HTTP routes
 127.0.0.1:4001 -> optional host-visible libp2p bootstrap port
+127.0.0.1:8080 -> standalone TensorVM explorer
 ```
 
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
@@ -25,6 +27,11 @@ distinct data volume, derives a stable libp2p identity seed from that operator I
 libp2p readiness path, and starts `tvmd service serve`. Miner containers also run the CPU miner readiness
 command with `--device cpu`; validators run the validator readiness command. `miner-00` seeds the local
 CPU chain so the gateway exposes settled matmul and LinearTrainingStep work through `/chain/head`.
+
+The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
+`ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.
+If `8080` is already in use, set `TENSORVM_LOCAL_CPU_EXPLORER_PORT` before running Compose and the check
+script.
 
 ## Commands
 

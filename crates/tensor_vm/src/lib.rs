@@ -10,7 +10,6 @@ pub mod chain;
 pub mod challenge;
 pub mod cli;
 pub mod error;
-pub mod explorer;
 pub mod faucet;
 pub mod field;
 pub mod hash;
@@ -78,6 +77,10 @@ pub use study::{
 };
 pub use tensor::{DType, Layout, Tensor, TensorDescriptor, TensorOpening};
 pub use tensor_server::TensorServer;
+pub use tensor_vm_explorer::{
+    ExplorerAccount, ExplorerBlock, ExplorerJob, ExplorerMiner, ExplorerOverview, ExplorerReceipt,
+    ExplorerSummary, ExplorerValidator,
+};
 pub use testnet::{
     LocalTestnet, PublicDeploymentServicePlan, PublicEvidenceAuditorRecord,
     PublicEvidencePublication, PublicEvidenceSupportingArtifact, PublicNetworkRuntimeEvidence,

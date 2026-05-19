@@ -1,8 +1,8 @@
-use crate::chain::{JobState, LocalChain, Transaction};
+use crate::chain::{HardwareClass, JobState, LocalChain, Transaction};
 use crate::error::{Result, TvmError};
-use crate::explorer::{ExplorerSummary, account_page, latest_blocks};
 use crate::faucet::Faucet;
 use crate::hash::hex;
+use crate::jobs::PrimitiveType;
 use crate::telemetry::TelemetrySnapshot;
 use crate::tensor::{DEFAULT_CHUNK_SIZE, Tensor};
 use crate::txpool::{TxPool, parse_transaction_envelope};
@@ -11,6 +11,11 @@ use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
+use tensor_vm_explorer::{
+    ExplorerAccount, ExplorerBlock, ExplorerJob, ExplorerMiner, ExplorerOverview, ExplorerReceipt,
+    ExplorerSummary, ExplorerValidator, account_json, blocks_json, explorer_shell_html, jobs_json,
+    miners_json, receipts_json, validators_json,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RpcRequest {
@@ -82,17 +87,28 @@ impl RpcGateway {
         if request.body.len() > self.policy.max_body_bytes {
             return RpcNode::response(413, "request body too large");
         }
+        if let Some(response) = self.authorize_request(client_id, auth_token) {
+            return response;
+        }
+        self.node.handle_mut(request)
+    }
+
+    fn authorize_request(
+        &mut self,
+        client_id: &str,
+        auth_token: Option<&str>,
+    ) -> Option<RpcResponse> {
         if let Some(required) = &self.policy.auth_token
             && auth_token != Some(required.as_str())
         {
-            return RpcNode::response(401, "unauthorized");
+            return Some(RpcNode::response(401, "unauthorized"));
         }
         let count = self.request_counts.entry(client_id.to_owned()).or_default();
         if *count >= self.policy.max_requests_per_client {
-            return RpcNode::response(429, "rate limit exceeded");
+            return Some(RpcNode::response(429, "rate limit exceeded"));
         }
         *count += 1;
-        self.node.handle_mut(request)
+        None
     }
 
     pub fn request_count(&self, client_id: &str) -> u64 {
@@ -120,18 +136,50 @@ impl RpcHttpServer {
     pub fn serve_next(&mut self) -> std::io::Result<()> {
         let (mut stream, peer_addr) = self.listener.accept()?;
         stream.set_read_timeout(Some(self.read_timeout))?;
-        let response = match read_http_request(&mut stream, self.gateway.policy.max_body_bytes)? {
+        match read_http_request(&mut stream, self.gateway.policy.max_body_bytes)? {
             ParsedHttpRequest::Request {
                 request,
                 auth_token,
-            } => self
-                .gateway
-                .handle(&peer_addr.to_string(), auth_token.as_deref(), &request),
-            ParsedHttpRequest::BadRequest => RpcNode::response(400, "bad http request"),
-            ParsedHttpRequest::TooLarge => RpcNode::response(413, "request body too large"),
-        };
-        stream.write_all(http_response_text(&response).as_bytes())?;
-        stream.flush()
+            } => {
+                let response =
+                    self.gateway
+                        .handle(&peer_addr.to_string(), auth_token.as_deref(), &request);
+                stream.write_all(http_response_text(&response).as_bytes())?;
+                stream.flush()
+            }
+            ParsedHttpRequest::WebSocketUpgrade {
+                path,
+                auth_token,
+                websocket_key,
+            } => {
+                if path != "/explorer/ws" {
+                    stream.write_all(
+                        http_response_text(&RpcNode::response(404, "websocket route not found"))
+                            .as_bytes(),
+                    )?;
+                    return stream.flush();
+                }
+                if let Some(response) = self
+                    .gateway
+                    .authorize_request(&peer_addr.to_string(), auth_token.as_deref())
+                {
+                    stream.write_all(http_response_text(&response).as_bytes())?;
+                    return stream.flush();
+                }
+                write_websocket_handshake(&mut stream, &websocket_key)?;
+                self.gateway.node.serve_explorer_websocket_once(&mut stream)
+            }
+            ParsedHttpRequest::BadRequest => {
+                let response = RpcNode::response(400, "bad http request");
+                stream.write_all(http_response_text(&response).as_bytes())?;
+                stream.flush()
+            }
+            ParsedHttpRequest::TooLarge => {
+                let response = RpcNode::response(413, "request body too large");
+                stream.write_all(http_response_text(&response).as_bytes())?;
+                stream.flush()
+            }
+        }
     }
 
     pub fn serve_n(&mut self, max_requests: usize) -> std::io::Result<()> {
@@ -183,10 +231,16 @@ impl RpcNode {
             }
             ("GET", "/jobs/current") => self.jobs_current(),
             ("GET", "/explorer/health") => self.health("explorer"),
-            ("GET", "/explorer") => self.ok(explorer_dashboard_html(&self.chain)),
-            ("GET", "/explorer/summary") => {
-                self.ok(ExplorerSummary::from_chain(&self.chain).to_json())
+            ("GET", "/explorer") => self.ok(explorer_shell_html("/explorer/ws")),
+            ("GET", "/explorer/summary") => self.ok(explorer_summary(&self.chain).to_json()),
+            ("GET", "/explorer/overview") => {
+                self.ok(explorer_overview(&self.chain, 10, 20, 20).to_json())
             }
+            ("GET", "/explorer/miners") => self.ok(miners_json(&explorer_miners(&self.chain))),
+            ("GET", "/explorer/validators") => {
+                self.ok(validators_json(&explorer_validators(&self.chain)))
+            }
+            ("GET", "/explorer/jobs") => self.ok(jobs_json(&explorer_jobs(&self.chain, 50))),
             ("GET", "/telemetry/health") => self.health("telemetry"),
             ("GET", "/telemetry") => self.ok(TelemetrySnapshot::from_chain(&self.chain).to_json()),
             ("GET", "/telemetry/dashboard") => self.ok(telemetry_dashboard_html(
@@ -239,6 +293,9 @@ impl RpcNode {
             ("GET", ["validators", address]) => self.validator(address),
             ("GET", ["explorer", "account", address]) => self.explorer_account(address),
             ("GET", ["explorer", "blocks", "latest", limit]) => self.explorer_latest_blocks(limit),
+            ("GET", ["explorer", "receipts", "latest", limit]) => {
+                self.explorer_latest_receipts(limit)
+            }
             ("GET", ["tensor", tensor_id, "descriptor"]) => self.tensor_descriptor(tensor_id),
             ("GET", ["tensor", tensor_id, "chunk", chunk_index]) => {
                 self.tensor_chunk(tensor_id, chunk_index)
@@ -288,15 +345,21 @@ impl RpcNode {
         let Ok(address) = parse_hash(address) else {
             return self.bad_request("invalid account address");
         };
-        self.ok(account_page(&self.chain, &address))
+        self.ok(account_json(&explorer_account(&self.chain, &address)))
     }
 
     fn explorer_latest_blocks(&self, limit: &str) -> RpcResponse {
         let Ok(limit) = limit.parse::<usize>() else {
             return self.bad_request("invalid block limit");
         };
-        let blocks = latest_blocks(&self.chain, limit);
-        self.ok(format!("{{\"blocks\":[{}]}}", blocks.join(",")))
+        self.ok(blocks_json(&explorer_blocks(&self.chain, limit)))
+    }
+
+    fn explorer_latest_receipts(&self, limit: &str) -> RpcResponse {
+        let Ok(limit) = limit.parse::<usize>() else {
+            return self.bad_request("invalid receipt limit");
+        };
+        self.ok(receipts_json(&explorer_receipts(&self.chain, limit)))
     }
 
     fn faucet_status(&self) -> RpcResponse {
@@ -544,6 +607,61 @@ impl RpcNode {
             body: format!("{{\"error\":\"{message}\"}}"),
         }
     }
+
+    fn serve_explorer_websocket_once(&self, stream: &mut TcpStream) -> std::io::Result<()> {
+        let command = match read_websocket_text_frame(stream)? {
+            Some(command) => command,
+            None => {
+                write_websocket_close(stream)?;
+                return stream.flush();
+            }
+        };
+        let body = self.explorer_websocket_response(&command);
+        write_websocket_text(stream, &body)?;
+        write_websocket_close(stream)?;
+        stream.flush()
+    }
+
+    fn explorer_websocket_response(&self, command: &str) -> String {
+        let command = command.trim();
+        if command.contains("\"type\":\"account\"") || command.contains("\"type\": \"account\"") {
+            let Some(address) = json_string_field(command, "address") else {
+                return "{\"type\":\"error\",\"error\":\"missing account address\"}".to_owned();
+            };
+            let Ok(address) = parse_hash(&address) else {
+                return "{\"type\":\"error\",\"error\":\"invalid account address\"}".to_owned();
+            };
+            return account_json(&explorer_account(&self.chain, &address));
+        }
+        if command == "summary" || command.contains("\"type\":\"summary\"") {
+            return format!(
+                "{{\"type\":\"summary\",\"summary\":{}}}",
+                explorer_summary(&self.chain).to_json()
+            );
+        }
+        if command == "miners" || command.contains("\"type\":\"miners\"") {
+            return miners_json(&explorer_miners(&self.chain));
+        }
+        if command == "validators" || command.contains("\"type\":\"validators\"") {
+            return validators_json(&explorer_validators(&self.chain));
+        }
+        if command == "jobs" || command.contains("\"type\":\"jobs\"") {
+            let limit = json_usize_field(command, "job_limit").unwrap_or(50);
+            return jobs_json(&explorer_jobs(&self.chain, limit));
+        }
+        if command == "receipts" || command.contains("\"type\":\"receipts\"") {
+            let limit = json_usize_field(command, "receipt_limit").unwrap_or(50);
+            return receipts_json(&explorer_receipts(&self.chain, limit));
+        }
+        if command == "blocks" || command.contains("\"type\":\"blocks\"") {
+            let limit = json_usize_field(command, "block_limit").unwrap_or(25);
+            return blocks_json(&explorer_blocks(&self.chain, limit));
+        }
+        let block_limit = json_usize_field(command, "block_limit").unwrap_or(12);
+        let receipt_limit = json_usize_field(command, "receipt_limit").unwrap_or(20);
+        let job_limit = json_usize_field(command, "job_limit").unwrap_or(20);
+        explorer_overview(&self.chain, block_limit, receipt_limit, job_limit).to_json()
+    }
 }
 
 pub fn http_response_text(response: &RpcResponse) -> String {
@@ -577,6 +695,11 @@ enum ParsedHttpRequest {
     Request {
         request: RpcRequest,
         auth_token: Option<String>,
+    },
+    WebSocketUpgrade {
+        path: String,
+        auth_token: Option<String>,
+        websocket_key: String,
     },
     BadRequest,
     TooLarge,
@@ -624,13 +747,15 @@ fn try_parse_http_request(bytes: &[u8], max_body_bytes: usize) -> Option<ParsedH
         Some(method) => method.to_owned(),
         None => return Some(ParsedHttpRequest::BadRequest),
     };
-    let path = match first_parts.next() {
-        Some(path) => path.to_owned(),
+    let (path, query_auth_token) = match first_parts.next() {
+        Some(path) => split_path_and_auth_token(path),
         None => return Some(ParsedHttpRequest::BadRequest),
     };
 
     let mut content_length = 0_usize;
-    let mut auth_token = None;
+    let mut auth_token = query_auth_token;
+    let mut websocket_key = None;
+    let mut websocket_upgrade = false;
     for line in lines {
         let Some((name, value)) = line.split_once(':') else {
             continue;
@@ -652,10 +777,25 @@ fn try_parse_http_request(bytes: &[u8], max_body_bytes: usize) -> Option<ParsedH
             );
         } else if name.eq_ignore_ascii_case("x-tensorchain-auth") {
             auth_token = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("sec-websocket-key") {
+            websocket_key = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("upgrade") && value.eq_ignore_ascii_case("websocket") {
+            websocket_upgrade = true;
         }
     }
     if content_length > max_body_bytes {
         return Some(ParsedHttpRequest::TooLarge);
+    }
+
+    if websocket_upgrade {
+        let Some(websocket_key) = websocket_key else {
+            return Some(ParsedHttpRequest::BadRequest);
+        };
+        return Some(ParsedHttpRequest::WebSocketUpgrade {
+            path,
+            auth_token,
+            websocket_key,
+        });
     }
 
     let body_start = header_end + 4;
@@ -672,6 +812,17 @@ fn try_parse_http_request(bytes: &[u8], max_body_bytes: usize) -> Option<ParsedH
         },
         auth_token,
     })
+}
+
+fn split_path_and_auth_token(path: &str) -> (String, Option<String>) {
+    let Some((path_only, query)) = path.split_once('?') else {
+        return (path.to_owned(), None);
+    };
+    let token = query.split('&').find_map(|pair| {
+        let (name, value) = pair.split_once('=')?;
+        (name == "token").then(|| percent_decode(value))
+    });
+    (path_only.to_owned(), token)
 }
 
 fn find_header_end(bytes: &[u8]) -> Option<usize> {
@@ -714,32 +865,430 @@ fn json_u64_array(values: &[u64]) -> String {
     format!("[{}]", parts.join(","))
 }
 
-fn explorer_dashboard_html(chain: &LocalChain) -> String {
-    let summary = ExplorerSummary::from_chain(chain);
-    let block_items = latest_blocks(chain, 10)
-        .into_iter()
-        .map(|block| format!("<li><code>{block}</code></li>"))
-        .collect::<Vec<_>>()
-        .join("");
-    html_document(
-        "TensorVM Explorer",
-        format!(
-            "<section><h1>TensorVM Explorer</h1><dl>{}</dl></section><section><h2>Latest Blocks</h2><ol>{}</ol></section>",
-            metric_rows(&[
-                ("Height", summary.height.to_string()),
-                ("Epoch", summary.epoch.to_string()),
-                ("Blocks", summary.block_count.to_string()),
-                ("Miners", summary.miner_count.to_string()),
-                ("Validators", summary.validator_count.to_string()),
-                ("Receipts", summary.receipt_count.to_string()),
-                (
-                    "Settled Receipts",
-                    summary.settled_receipt_count.to_string()
-                ),
-            ]),
-            block_items
-        ),
-    )
+fn explorer_summary(chain: &LocalChain) -> ExplorerSummary {
+    ExplorerSummary {
+        height: chain.state.height,
+        epoch: chain.state.epoch,
+        block_count: chain.blocks.len(),
+        miner_count: chain.state.miners.len(),
+        validator_count: chain.state.validators.len(),
+        job_count: chain.state.jobs.len(),
+        receipt_count: chain.state.receipts.len(),
+        settled_receipt_count: chain.state.settled_receipts.len(),
+        finalized_block_count: chain.state.finalized_blocks.len(),
+        treasury_balance: chain.state.rewards.treasury,
+        total_reward_balance: chain.state.rewards.balances.values().sum(),
+    }
+}
+
+fn explorer_account(chain: &LocalChain, address: &Address) -> ExplorerAccount {
+    let miner = chain.state.miners.get(address);
+    let validator = chain.state.validators.get(address);
+    let balance = chain
+        .state
+        .accounts
+        .get(address)
+        .map(|account| account.balance)
+        .unwrap_or_default();
+    ExplorerAccount {
+        address: hex(address),
+        is_miner: miner.is_some(),
+        is_validator: validator.is_some(),
+        balance,
+        reward_balance: chain.state.rewards.balance(address),
+        stake: miner
+            .map(|miner| miner.stake)
+            .or_else(|| validator.map(|validator| validator.stake))
+            .unwrap_or_default(),
+        reputation: miner
+            .map(|miner| miner.reputation)
+            .or_else(|| validator.map(|validator| validator.reputation))
+            .unwrap_or_default(),
+        settled_tensor_work: miner
+            .map(|miner| miner.settled_tensor_work)
+            .unwrap_or_default(),
+        pending_tensor_work: miner
+            .map(|miner| miner.pending_tensor_work)
+            .unwrap_or_default(),
+    }
+}
+
+fn explorer_blocks(chain: &LocalChain, limit: usize) -> Vec<ExplorerBlock> {
+    chain
+        .blocks
+        .iter()
+        .rev()
+        .take(limit)
+        .map(|block| ExplorerBlock {
+            height: block.height,
+            epoch: block.epoch,
+            hash: hex(&block.hash()),
+            proposer: hex(&block.proposer),
+            state_root: hex(&block.state_root),
+            timestamp: block.timestamp,
+        })
+        .collect()
+}
+
+fn explorer_miners(chain: &LocalChain) -> Vec<ExplorerMiner> {
+    chain
+        .state
+        .miners
+        .values()
+        .map(|miner| ExplorerMiner {
+            address: hex(&miner.address),
+            operator_id: hex(&miner.operator_id),
+            stake: miner.stake,
+            reputation: miner.reputation,
+            settled_tensor_work: miner.settled_tensor_work,
+            pending_tensor_work: miner.pending_tensor_work,
+            hardware_class: hardware_class_label(miner.hardware_class).to_owned(),
+            gpu_utilization_bps: miner.gpu_utilization_bps,
+            reward_balance: chain.state.rewards.balance(&miner.address),
+        })
+        .collect()
+}
+
+fn explorer_validators(chain: &LocalChain) -> Vec<ExplorerValidator> {
+    chain
+        .state
+        .validators
+        .values()
+        .map(|validator| ExplorerValidator {
+            address: hex(&validator.address),
+            stake: validator.stake,
+            reputation: validator.reputation,
+            valid_attestations: validator.valid_attestations,
+            missed_assignments: validator.missed_assignments,
+            reward_balance: chain.state.rewards.balance(&validator.address),
+        })
+        .collect()
+}
+
+fn explorer_receipts(chain: &LocalChain, limit: usize) -> Vec<ExplorerReceipt> {
+    chain
+        .state
+        .receipts
+        .iter()
+        .rev()
+        .take(limit)
+        .map(|(receipt_id, receipt)| ExplorerReceipt {
+            receipt_id: hex(receipt_id),
+            job_id: hex(&receipt.job_id()),
+            primitive_type: primitive_label(receipt.primitive_type()).to_owned(),
+            miner: hex(&receipt.miner()),
+            tensor_work_units: receipt.tensor_work_units(),
+            settled: chain.state.settled_receipts.contains(receipt_id),
+        })
+        .collect()
+}
+
+fn explorer_jobs(chain: &LocalChain, limit: usize) -> Vec<ExplorerJob> {
+    chain
+        .state
+        .jobs
+        .values()
+        .rev()
+        .take(limit)
+        .map(|job| match job {
+            JobState::TensorOp(job) => ExplorerJob {
+                job_id: hex(&job.job_id),
+                primitive_type: "tensor_op".to_owned(),
+                deadline_block: job.deadline_block,
+                detail: format!("matmul {}x{}x{}", job.m, job.k, job.n),
+            },
+            JobState::LinearTrainingStep(job) => ExplorerJob {
+                job_id: hex(&job.job_id),
+                primitive_type: "linear_training_step".to_owned(),
+                deadline_block: job.deadline_block,
+                detail: format!("model step {} input {:?}", job.step, job.input_shape),
+            },
+        })
+        .collect()
+}
+
+fn explorer_overview(
+    chain: &LocalChain,
+    block_limit: usize,
+    receipt_limit: usize,
+    job_limit: usize,
+) -> ExplorerOverview {
+    ExplorerOverview {
+        summary: explorer_summary(chain),
+        blocks: explorer_blocks(chain, block_limit),
+        miners: explorer_miners(chain),
+        validators: explorer_validators(chain),
+        receipts: explorer_receipts(chain, receipt_limit),
+        jobs: explorer_jobs(chain, job_limit),
+    }
+}
+
+fn primitive_label(primitive: PrimitiveType) -> &'static str {
+    match primitive {
+        PrimitiveType::TensorOp => "tensor_op",
+        PrimitiveType::LinearTrainingStep => "linear_training_step",
+    }
+}
+
+fn hardware_class_label(hardware_class: HardwareClass) -> &'static str {
+    match hardware_class {
+        HardwareClass::Cpu => "cpu",
+        HardwareClass::ConsumerGpu => "consumer_gpu",
+        HardwareClass::DatacenterGpu => "datacenter_gpu",
+        HardwareClass::Other => "other",
+    }
+}
+
+fn write_websocket_handshake(stream: &mut TcpStream, websocket_key: &str) -> std::io::Result<()> {
+    let accept = websocket_accept_key(websocket_key);
+    let response = format!(
+        "HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: Upgrade\r\nsec-websocket-accept: {accept}\r\n\r\n"
+    );
+    stream.write_all(response.as_bytes())?;
+    stream.flush()
+}
+
+fn read_websocket_text_frame(stream: &mut TcpStream) -> std::io::Result<Option<String>> {
+    let mut header = [0_u8; 2];
+    stream.read_exact(&mut header)?;
+    let opcode = header[0] & 0x0f;
+    let masked = header[1] & 0x80 != 0;
+    let mut length = u64::from(header[1] & 0x7f);
+    if length == 126 {
+        let mut extended = [0_u8; 2];
+        stream.read_exact(&mut extended)?;
+        length = u64::from(u16::from_be_bytes(extended));
+    } else if length == 127 {
+        let mut extended = [0_u8; 8];
+        stream.read_exact(&mut extended)?;
+        length = u64::from_be_bytes(extended);
+    }
+    if length > 64 * 1024 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "websocket frame too large",
+        ));
+    }
+    let mut mask = [0_u8; 4];
+    if masked {
+        stream.read_exact(&mut mask)?;
+    }
+    let mut payload = vec![0_u8; length as usize];
+    stream.read_exact(&mut payload)?;
+    if masked {
+        for (index, byte) in payload.iter_mut().enumerate() {
+            *byte ^= mask[index % 4];
+        }
+    }
+    match opcode {
+        0x1 => String::from_utf8(payload).map(Some).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "websocket text is not utf-8",
+            )
+        }),
+        0x8 => Ok(None),
+        _ => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "unsupported websocket opcode",
+        )),
+    }
+}
+
+fn write_websocket_text(stream: &mut TcpStream, body: &str) -> std::io::Result<()> {
+    write_websocket_frame(stream, 0x1, body.as_bytes())
+}
+
+fn write_websocket_close(stream: &mut TcpStream) -> std::io::Result<()> {
+    write_websocket_frame(stream, 0x8, &[])
+}
+
+fn write_websocket_frame(
+    stream: &mut TcpStream,
+    opcode: u8,
+    payload: &[u8],
+) -> std::io::Result<()> {
+    let mut header = vec![0x80 | opcode];
+    if payload.len() < 126 {
+        header.push(payload.len() as u8);
+    } else if payload.len() <= u16::MAX as usize {
+        header.push(126);
+        header.extend_from_slice(&(payload.len() as u16).to_be_bytes());
+    } else {
+        header.push(127);
+        header.extend_from_slice(&(payload.len() as u64).to_be_bytes());
+    }
+    stream.write_all(&header)?;
+    stream.write_all(payload)
+}
+
+fn websocket_accept_key(websocket_key: &str) -> String {
+    let mut input = websocket_key.trim().as_bytes().to_vec();
+    input.extend_from_slice(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    base64_encode(&sha1_digest(&input))
+}
+
+fn base64_encode(input: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in input.chunks(3) {
+        let a = chunk[0];
+        let b = *chunk.get(1).unwrap_or(&0);
+        let c = *chunk.get(2).unwrap_or(&0);
+        out.push(TABLE[(a >> 2) as usize] as char);
+        out.push(TABLE[(((a & 0x03) << 4) | (b >> 4)) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(TABLE[(((b & 0x0f) << 2) | (c >> 6)) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(TABLE[(c & 0x3f) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
+}
+
+fn sha1_digest(input: &[u8]) -> [u8; 20] {
+    let mut h0 = 0x67452301_u32;
+    let mut h1 = 0xefcdab89_u32;
+    let mut h2 = 0x98badcfe_u32;
+    let mut h3 = 0x10325476_u32;
+    let mut h4 = 0xc3d2e1f0_u32;
+    let bit_len = (input.len() as u64).wrapping_mul(8);
+    let mut message = input.to_vec();
+    message.push(0x80);
+    while message.len() % 64 != 56 {
+        message.push(0);
+    }
+    message.extend_from_slice(&bit_len.to_be_bytes());
+    for chunk in message.chunks_exact(64) {
+        let mut w = [0_u32; 80];
+        for (index, word) in w.iter_mut().take(16).enumerate() {
+            let offset = index * 4;
+            *word = u32::from_be_bytes([
+                chunk[offset],
+                chunk[offset + 1],
+                chunk[offset + 2],
+                chunk[offset + 3],
+            ]);
+        }
+        for i in 16..80 {
+            w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1);
+        }
+        let mut a = h0;
+        let mut b = h1;
+        let mut c = h2;
+        let mut d = h3;
+        let mut e = h4;
+        for (i, word) in w.iter().enumerate() {
+            let (f, k) = match i {
+                0..=19 => ((b & c) | ((!b) & d), 0x5a827999),
+                20..=39 => (b ^ c ^ d, 0x6ed9eba1),
+                40..=59 => ((b & c) | (b & d) | (c & d), 0x8f1bbcdc),
+                _ => (b ^ c ^ d, 0xca62c1d6),
+            };
+            let temp = a
+                .rotate_left(5)
+                .wrapping_add(f)
+                .wrapping_add(e)
+                .wrapping_add(k)
+                .wrapping_add(*word);
+            e = d;
+            d = c;
+            c = b.rotate_left(30);
+            b = a;
+            a = temp;
+        }
+        h0 = h0.wrapping_add(a);
+        h1 = h1.wrapping_add(b);
+        h2 = h2.wrapping_add(c);
+        h3 = h3.wrapping_add(d);
+        h4 = h4.wrapping_add(e);
+    }
+    let mut out = [0_u8; 20];
+    for (chunk, value) in out.chunks_exact_mut(4).zip([h0, h1, h2, h3, h4]) {
+        chunk.copy_from_slice(&value.to_be_bytes());
+    }
+    out
+}
+
+fn json_string_field(input: &str, field: &str) -> Option<String> {
+    let key = format!("\"{field}\"");
+    let after_key = input.split(&key).nth(1)?;
+    let after_colon = after_key.split_once(':')?.1.trim_start();
+    let value = after_colon.strip_prefix('"')?;
+    let mut out = String::new();
+    let mut escaped = false;
+    for c in value.chars() {
+        if escaped {
+            out.push(match c {
+                '"' => '"',
+                '\\' => '\\',
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                other => other,
+            });
+            escaped = false;
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == '"' {
+            return Some(out);
+        } else {
+            out.push(c);
+        }
+    }
+    None
+}
+
+fn json_usize_field(input: &str, field: &str) -> Option<usize> {
+    let key = format!("\"{field}\"");
+    let after_key = input.split(&key).nth(1)?;
+    let digits = after_key.split_once(':')?.1.trim_start().chars();
+    let mut value = String::new();
+    for c in digits {
+        if c.is_ascii_digit() {
+            value.push(c);
+        } else {
+            break;
+        }
+    }
+    value.parse().ok()
+}
+
+fn percent_decode(value: &str) -> String {
+    let mut out = Vec::with_capacity(value.len());
+    let bytes = value.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%'
+            && index + 2 < bytes.len()
+            && let (Some(high), Some(low)) =
+                (hex_nibble(bytes[index + 1]), hex_nibble(bytes[index + 2]))
+        {
+            out.push((high << 4) | low);
+            index += 3;
+        } else if bytes[index] == b'+' {
+            out.push(b' ');
+            index += 1;
+        } else {
+            out.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn hex_nibble(value: u8) -> Option<u8> {
+    match value {
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        b'A'..=b'F' => Some(value - b'A' + 10),
+        _ => None,
+    }
 }
 
 fn telemetry_dashboard_html(snapshot: &TelemetrySnapshot) -> String {
@@ -842,8 +1391,8 @@ fn job_json(job: &JobState) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{JobState, LocalChain};
-    use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob};
+    use crate::chain::{HardwareClass, JobState, LocalChain};
+    use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob, TensorOpReceipt};
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
 
@@ -989,6 +1538,17 @@ mod tests {
         });
         assert_eq!(summary.status, 200);
         assert!(summary.body.contains("\"miner_count\":1"));
+        assert!(summary.body.contains("\"job_count\":0"));
+
+        let overview = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/overview".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(overview.status, 200);
+        assert!(overview.body.contains("\"type\":\"overview\""));
+        assert!(overview.body.contains("\"blocks\""));
+        assert!(overview.body.contains("\"miners\""));
 
         let account = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
@@ -1006,6 +1566,44 @@ mod tests {
         assert_eq!(blocks.status, 200);
         assert!(blocks.body.contains("\"blocks\""));
 
+        let miners = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/miners".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(miners.status, 200);
+        assert!(miners.body.contains("\"hardware_class\":\"cpu\""));
+
+        let validators = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/validators".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(validators.status, 200);
+        assert!(validators.body.contains("\"validators\""));
+
+        let receipts = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/receipts/latest/5".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(receipts.status, 200);
+        assert!(receipts.body.contains("\"receipts\""));
+        let bad_receipts = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/receipts/latest/nope".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(bad_receipts.status, 400);
+
+        let jobs = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/explorer/jobs".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(jobs.status, 200);
+        assert!(jobs.body.contains("\"jobs\""));
+
         let explorer_page = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
             path: "/explorer".to_owned(),
@@ -1014,6 +1612,7 @@ mod tests {
         assert_eq!(explorer_page.status, 200);
         assert!(explorer_page.body.starts_with("<!doctype html>"));
         assert!(explorer_page.body.contains("TensorVM Explorer"));
+        assert!(explorer_page.body.contains("new WebSocket"));
 
         let explorer_health = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
@@ -1460,6 +2059,38 @@ mod tests {
             }) if token == "local"
         ));
         assert!(matches!(
+            try_parse_http_request(
+                b"GET /explorer/ws?token=local HTTP/1.1\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+                16,
+            ),
+            Some(ParsedHttpRequest::WebSocketUpgrade {
+                path,
+                auth_token: Some(token),
+                websocket_key,
+            }) if path == "/explorer/ws" && token == "local" && websocket_key == "dGhlIHNhbXBsZSBub25jZQ=="
+        ));
+        assert_eq!(
+            websocket_accept_key("dGhlIHNhbXBsZSBub25jZQ=="),
+            "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+        );
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let mut chain = LocalChain::new(beacon);
+        let miner = address(b"ws-miner");
+        chain.register_miner(miner, 100).unwrap();
+        chain.produce_block(miner, 1);
+        let rpc = RpcNode::new(chain);
+        let overview = rpc.explorer_websocket_response(
+            "{\"type\":\"overview\",\"block_limit\":1,\"receipt_limit\":1,\"job_limit\":1}",
+        );
+        assert!(overview.contains("\"type\":\"overview\""));
+        assert!(overview.contains("\"block_count\":1"));
+        let account = rpc.explorer_websocket_response(&format!(
+            "{{\"type\":\"account\",\"address\":\"{}\"}}",
+            hex(&miner)
+        ));
+        assert!(account.contains("\"type\":\"account\""));
+        assert!(account.contains("\"is_miner\":true"));
+        assert!(matches!(
             try_parse_http_request(b"GET /\xff HTTP/1.1\r\n\r\n", 16),
             Some(ParsedHttpRequest::BadRequest)
         ));
@@ -1488,6 +2119,101 @@ mod tests {
                 .is_none()
         );
         assert!(try_parse_http_request(b"GET /chain/head HTTP/1.1\r\n", 16).is_none());
+        assert!(matches!(
+            try_parse_http_request(
+                b"GET /explorer/ws HTTP/1.1\r\nupgrade: websocket\r\n\r\n",
+                16,
+            ),
+            Some(ParsedHttpRequest::BadRequest)
+        ));
+    }
+
+    #[test]
+    fn explorer_websocket_views_cover_chain_collections_and_bad_commands() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let mut chain = LocalChain::new(beacon);
+        let cpu_miner = address(b"ws-cpu-miner");
+        let consumer_gpu_miner = address(b"ws-consumer-gpu-miner");
+        let datacenter_gpu_miner = address(b"ws-datacenter-gpu-miner");
+        let other_miner = address(b"ws-other-miner");
+        let validator = address(b"ws-validator");
+        chain.register_miner(cpu_miner, 100).unwrap();
+        chain
+            .register_miner_with_profile(consumer_gpu_miner, 100, HardwareClass::ConsumerGpu, 9_000)
+            .unwrap();
+        chain
+            .register_miner_with_profile(
+                datacenter_gpu_miner,
+                100,
+                HardwareClass::DatacenterGpu,
+                8_000,
+            )
+            .unwrap();
+        chain
+            .register_miner_with_profile(other_miner, 100, HardwareClass::Other, 0)
+            .unwrap();
+        chain.register_validator(validator, 10_000).unwrap();
+        let matmul_job = MatmulJob::synthetic(0, 0, 2, 2, 2, &beacon, 10);
+        let (receipt, _a, _b, _c) =
+            TensorOpReceipt::from_job(&matmul_job, cpu_miner, 1, 5).unwrap();
+        let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
+        let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(b"test", &[b"ws-linear-model"]),
+            step: 3,
+            batch_seed: hash_bytes(b"test", &[b"ws-linear-batch"]),
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![3, 2],
+            weight_shape: vec![2, 2],
+            target_shape: vec![3, 2],
+            lr: 1,
+            deadline_block: 20,
+        });
+        chain.submit_job(JobState::TensorOp(matmul_job));
+        chain.submit_job(JobState::LinearTrainingStep(linear_job));
+        chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
+        chain.state.settled_receipts.insert(receipt.receipt_id);
+        chain.produce_block(cpu_miner, 1000);
+        let rpc = RpcNode::new(chain);
+
+        let miners = rpc.explorer_websocket_response("miners");
+        assert!(miners.contains("\"hardware_class\":\"cpu\""));
+        assert!(miners.contains("\"hardware_class\":\"consumer_gpu\""));
+        assert!(miners.contains("\"hardware_class\":\"datacenter_gpu\""));
+        assert!(miners.contains("\"hardware_class\":\"other\""));
+        let validators = rpc.explorer_websocket_response("{\"type\":\"validators\"}");
+        assert!(validators.contains("\"valid_attestations\""));
+        let jobs = rpc.explorer_websocket_response("{\"type\":\"jobs\",\"job_limit\":2}");
+        assert!(jobs.contains("\"primitive_type\":\"tensor_op\""));
+        assert!(jobs.contains("\"primitive_type\":\"linear_training_step\""));
+        let receipts =
+            rpc.explorer_websocket_response("{\"type\":\"receipts\",\"receipt_limit\":1}");
+        assert!(receipts.contains("\"primitive_type\":\"tensor_op\""));
+        assert!(receipts.contains("\"settled\":true"));
+        let blocks = rpc.explorer_websocket_response("{\"type\":\"blocks\",\"block_limit\":1}");
+        assert!(blocks.contains("\"blocks\""));
+        let summary = rpc.explorer_websocket_response("summary");
+        assert!(summary.contains("\"type\":\"summary\""));
+        let missing_account = rpc.explorer_websocket_response("{\"type\":\"account\"}");
+        assert!(missing_account.contains("missing account address"));
+        let invalid_account =
+            rpc.explorer_websocket_response("{\"type\":\"account\",\"address\":\"bad\"}");
+        assert!(invalid_account.contains("invalid account address"));
+
+        assert_eq!(primitive_label(PrimitiveType::TensorOp), "tensor_op");
+        assert_eq!(
+            primitive_label(PrimitiveType::LinearTrainingStep),
+            "linear_training_step"
+        );
+        assert_eq!(hardware_class_label(HardwareClass::Cpu), "cpu");
+        assert_eq!(
+            hardware_class_label(HardwareClass::ConsumerGpu),
+            "consumer_gpu"
+        );
+        assert_eq!(
+            hardware_class_label(HardwareClass::DatacenterGpu),
+            "datacenter_gpu"
+        );
+        assert_eq!(hardware_class_label(HardwareClass::Other), "other");
     }
 
     #[test]
@@ -1639,5 +2365,224 @@ mod tests {
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         assert!(response.contains("\"height\":0"));
+    }
+
+    #[test]
+    fn rpc_http_server_serves_explorer_websocket_poll() {
+        use std::io::ErrorKind;
+        use std::io::{Read, Write};
+        use std::net::{Shutdown, TcpStream};
+
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let mut chain = LocalChain::new(beacon);
+        let miner = address(b"ws-http-miner");
+        chain.register_miner(miner, 100).unwrap();
+        chain.produce_block(miner, 1);
+        let gateway = RpcGateway::new(RpcNode::new(chain), RpcPolicy::default());
+        let mut server = match RpcHttpServer::bind("127.0.0.1:0", gateway) {
+            Ok(server) => server,
+            Err(error) if error.kind() == ErrorKind::PermissionDenied => return,
+            Err(error) => panic!("failed to bind RPC HTTP server: {error}"),
+        };
+        let addr = server.local_addr().unwrap();
+        let server_thread = std::thread::spawn(move || server.serve_next().unwrap());
+
+        let mut client = TcpStream::connect(addr).unwrap();
+        client.write_all(b"GET /explorer/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nconnection: Upgrade\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n").unwrap();
+        let mut handshake = Vec::new();
+        let mut byte = [0_u8; 1];
+        while !handshake.ends_with(b"\r\n\r\n") {
+            client.read_exact(&mut byte).unwrap();
+            handshake.push(byte[0]);
+        }
+        client
+            .write_all(&masked_websocket_text_frame(
+                "{\"type\":\"overview\",\"block_limit\":1}",
+            ))
+            .unwrap();
+        client.shutdown(Shutdown::Write).unwrap();
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+        server_thread.join().unwrap();
+        let mut full_response = handshake;
+        full_response.extend_from_slice(&response);
+        let response = String::from_utf8_lossy(&full_response);
+
+        assert!(response.contains("101 Switching Protocols"));
+        assert!(response.contains("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+        assert!(response.contains("\"type\":\"overview\""));
+        assert!(response.contains("\"block_count\":1"));
+    }
+
+    #[test]
+    fn rpc_http_server_rejects_bad_websocket_routes_and_auth() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let bad_route = serve_one_http_request(
+            RpcGateway::new(RpcNode::new(LocalChain::new(beacon)), RpcPolicy::default()),
+            b"GET /wrong/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+        );
+        assert!(bad_route.starts_with("HTTP/1.1 404 Not Found"));
+
+        let unauthorized = serve_one_http_request(
+            RpcGateway::new(
+                RpcNode::new(LocalChain::new(beacon)),
+                RpcPolicy {
+                    auth_token: Some("secret".to_owned()),
+                    max_body_bytes: 1024,
+                    max_requests_per_client: 10,
+                },
+            ),
+            b"GET /explorer/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+        );
+        assert!(unauthorized.starts_with("HTTP/1.1 401 Unauthorized"));
+    }
+
+    #[test]
+    fn websocket_frame_helpers_cover_close_errors_and_extended_lengths() {
+        use std::io::{Read, Write};
+        use std::net::{Shutdown, TcpListener, TcpStream};
+
+        assert_eq!(
+            read_single_websocket_frame(&[0x81, 126, 0, 126])
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::UnexpectedEof
+        );
+        let mut extended_16 = vec![0x81, 126];
+        extended_16.extend_from_slice(&(126_u16).to_be_bytes());
+        extended_16.extend(std::iter::repeat_n(b'a', 126));
+        assert_eq!(
+            read_single_websocket_frame(&extended_16).unwrap(),
+            Some("a".repeat(126))
+        );
+        let mut extended_64 = vec![0x81, 127];
+        extended_64.extend_from_slice(&(3_u64).to_be_bytes());
+        extended_64.extend_from_slice(b"hey");
+        assert_eq!(
+            read_single_websocket_frame(&extended_64).unwrap(),
+            Some("hey".to_owned())
+        );
+        let mut too_large = vec![0x81, 127];
+        too_large.extend_from_slice(&((64_u64 * 1024) + 1).to_be_bytes());
+        assert_eq!(
+            read_single_websocket_frame(&too_large).unwrap_err().kind(),
+            std::io::ErrorKind::InvalidData
+        );
+        assert_eq!(
+            read_single_websocket_frame(&[0x81, 1, 0xff])
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::InvalidData
+        );
+        assert_eq!(
+            read_single_websocket_frame(&[0x82, 0]).unwrap_err().kind(),
+            std::io::ErrorKind::InvalidData
+        );
+        assert_eq!(read_single_websocket_frame(&[0x88, 0]).unwrap(), None);
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let writer = std::thread::spawn(move || {
+            let (mut server, _) = listener.accept().unwrap();
+            let small_payload = [b'a'; 126];
+            let large_payload = vec![b'b'; 65_536];
+            write_websocket_frame(&mut server, 0x1, &small_payload).unwrap();
+            write_websocket_frame(&mut server, 0x1, &large_payload).unwrap();
+        });
+        let mut client = TcpStream::connect(addr).unwrap();
+        let mut raw = Vec::new();
+        client.read_to_end(&mut raw).unwrap();
+        writer.join().unwrap();
+        assert_eq!(raw[1], 126);
+        assert_eq!(u16::from_be_bytes([raw[2], raw[3]]), 126);
+        let second = 4 + 126;
+        assert_eq!(raw[second + 1], 127);
+        assert_eq!(
+            u64::from_be_bytes(raw[second + 2..second + 10].try_into().unwrap()),
+            65_536
+        );
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let rpc = RpcNode::new(LocalChain::new(hash_bytes(b"test", &[b"beacon"])));
+        let server_thread = std::thread::spawn(move || {
+            let (mut server, _) = listener.accept().unwrap();
+            rpc.serve_explorer_websocket_once(&mut server).unwrap();
+        });
+        let mut client = TcpStream::connect(addr).unwrap();
+        client.write_all(&[0x88, 0]).unwrap();
+        client.shutdown(Shutdown::Write).unwrap();
+        let mut close_response = Vec::new();
+        client.read_to_end(&mut close_response).unwrap();
+        server_thread.join().unwrap();
+        assert_eq!(close_response, vec![0x88, 0]);
+
+        assert_eq!(base64_encode(b"f"), "Zg==");
+        assert_eq!(base64_encode(b"fo"), "Zm8=");
+        assert_eq!(base64_encode(b"foo"), "Zm9v");
+    }
+
+    #[test]
+    fn websocket_json_and_query_helpers_handle_escaping_and_decoding() {
+        let escaped =
+            json_string_field("{\"address\":\"a\\\"b\\\\c\\n\\r\\t\\x\"}", "address").unwrap();
+        assert_eq!(escaped, "a\"b\\c\n\r\tx");
+        assert!(json_string_field("{\"address\":\"unterminated", "address").is_none());
+        assert_eq!(
+            json_usize_field("{\"limit\":123,\"next\":1}", "limit"),
+            Some(123)
+        );
+        assert!(json_usize_field("{\"limit\":nope}", "limit").is_none());
+        let (path, token) = split_path_and_auth_token("/explorer/ws?x=1&token=a%20b+z%2f%ZZ");
+        assert_eq!(path, "/explorer/ws");
+        assert_eq!(token.as_deref(), Some("a b z/%ZZ"));
+    }
+
+    fn serve_one_http_request(gateway: RpcGateway, request: &[u8]) -> String {
+        use std::io::ErrorKind;
+        use std::io::{Read, Write};
+        use std::net::{Shutdown, TcpStream};
+
+        let mut server = match RpcHttpServer::bind("127.0.0.1:0", gateway) {
+            Ok(server) => server,
+            Err(error) if error.kind() == ErrorKind::PermissionDenied => {
+                return String::new();
+            }
+            Err(error) => panic!("failed to bind RPC HTTP server: {error}"),
+        };
+        let addr = server.local_addr().unwrap();
+        let server_thread = std::thread::spawn(move || server.serve_next().unwrap());
+        let mut client = TcpStream::connect(addr).unwrap();
+        client.write_all(request).unwrap();
+        client.shutdown(Shutdown::Write).unwrap();
+        let mut response = String::new();
+        client.read_to_string(&mut response).unwrap();
+        server_thread.join().unwrap();
+        response
+    }
+
+    fn read_single_websocket_frame(frame: &[u8]) -> std::io::Result<Option<String>> {
+        use std::io::Write;
+        use std::net::{Shutdown, TcpListener, TcpStream};
+
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let addr = listener.local_addr()?;
+        let mut client = TcpStream::connect(addr)?;
+        let (mut server, _) = listener.accept()?;
+        client.write_all(frame)?;
+        client.shutdown(Shutdown::Write)?;
+        read_websocket_text_frame(&mut server)
+    }
+
+    fn masked_websocket_text_frame(text: &str) -> Vec<u8> {
+        let mask = [1_u8, 2, 3, 4];
+        let bytes = text.as_bytes();
+        assert!(bytes.len() < 126);
+        let mut frame = vec![0x81, 0x80 | bytes.len() as u8];
+        frame.extend_from_slice(&mask);
+        for (index, byte) in bytes.iter().enumerate() {
+            frame.push(byte ^ mask[index % 4]);
+        }
+        frame
     }
 }

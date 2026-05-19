@@ -68,6 +68,11 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("tensorvm-local"));
     assert!(compose.contains("127.0.0.1:8545:8545"));
     assert!(compose.contains("127.0.0.1:4001:4001"));
+    assert!(compose.contains("  explorer:"));
+    assert!(compose.contains("127.0.0.1:${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}:8080"));
+    assert!(compose.contains("/usr/local/bin/tensorvm-explorer"));
+    assert!(compose.contains("TENSORVM_EXPLORER_WS_URL"));
+    assert!(compose.contains("/explorer/ws?token=local-cpu-testnet-token"));
     assert!(compose.contains("condition: service_healthy"));
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
     assert_eq!(
@@ -84,6 +89,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert_eq!(operator_ids.len(), 15);
 
     assert!(dockerfile.contains("cargo build -p tensor_vm --release"));
+    assert!(dockerfile.contains("cargo build -p tensor_vm_explorer --release"));
+    assert!(dockerfile.contains("target/release/tensorvm-explorer"));
     assert!(dockerignore.lines().any(|line| line == "target"));
     assert!(dockerignore.lines().any(|line| line == ".git"));
     assert!(!dockerfile.contains("--features cuda-kernels"));
@@ -130,6 +137,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "data_availability_bps=10000",
         "\"height\":2",
         "\"block_count\":2",
+        "standalone_explorer_ready=true",
+        "standalone_explorer_websocket_polling=true",
+        "new WebSocket",
         "cargo test -p tensor_vm local_testnet --release",
         "public_evidence_full_spec=false",
         "independently_checkable=false",

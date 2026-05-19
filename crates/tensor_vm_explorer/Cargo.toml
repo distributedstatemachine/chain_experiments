@@ -1,0 +1,10 @@
+[package]
+name = "tensor_vm_explorer"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "tensorvm-explorer"
+path = "src/main.rs"
+
+[dependencies]

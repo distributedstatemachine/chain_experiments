@@ -48,8 +48,10 @@ The checked run starts 10 miner containers and 5 validator containers, verifies 
 requires 10 CPU-ready miners and zero CUDA-required miners, verifies the seeded local CPU chain has 10
 settled receipts, settled matmul work, settled LinearTrainingStep work, 9 rewarded miners, full finality
 and data availability, checks that the host gateway exposes the seeded chain head, checks the host gateway
-routes with the local auth token, reruns Gate 0 from the checker, verifies the local-only evidence
-boundary, and passes after restarting `miner-03` and `validator-02`.
+routes with the local auth token, checks the standalone explorer service on port 8080, verifies the
+explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, reruns Gate 0 from the
+checker, verifies the local-only evidence boundary, and passes after restarting `miner-03` and
+`validator-02`.
 
 ## Acceptance Criteria
 
@@ -148,7 +150,8 @@ boundary, and passes after restarting `miner-03` and `validator-02`.
   `tvmd service readiness` startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` startup of the same runtime, durable bootstrap peer-book persistence
   with peer-ID-preserving dial multiaddrs, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
-  explorer/telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
+  explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
+  telemetry/faucet RPC endpoints, local browser-facing explorer/telemetry/faucet HTML pages,
   `tvmd service init/peer add/readiness/serve` launch validation with required libp2p listen multiaddrs, checked deployable
   systemd/env/nginx templates, a documented mandatory-libp2p networking choice, and a restartable reference
   `NodeStore` data
