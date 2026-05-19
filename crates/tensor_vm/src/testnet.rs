@@ -1207,7 +1207,7 @@ struct PublicTestnetPreflightManifestBuilder {
 
 impl PublicTestnetPreflightManifestBuilder {
     fn set(&mut self, key: &str, value: &str) -> Result<()> {
-        let scalar = value.trim();
+        let scalar = exact_manifest_scalar(value)?;
         match key {
             "version" => {
                 if scalar != PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION {
@@ -1298,7 +1298,7 @@ fn parse_preflight_service_plan(value: &str) -> Result<PublicDeploymentServicePl
 
 impl PublicEvidenceManifestBuilder {
     fn set(&mut self, key: &str, value: &str) -> Result<()> {
-        let scalar = value.trim();
+        let scalar = exact_manifest_scalar(value)?;
         match key {
             "version" => {
                 if scalar != PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION {
@@ -1309,7 +1309,7 @@ impl PublicEvidenceManifestBuilder {
                 self.version_seen = true;
             }
             "bundle_id" => self.bundle_id = Some(parse_hash_hex(scalar)?),
-            "public_uri" => self.public_uri = Some(value.to_owned()),
+            "public_uri" => self.public_uri = Some(scalar.to_owned()),
             "manifest_signer" => self.manifest_signer = Some(parse_hash_hex(scalar)?),
             "manifest_signature" => self.manifest_signature = Some(parse_hash_hex(scalar)?),
             "manifest_signature_count" => {
@@ -1647,6 +1647,13 @@ fn exact_manifest_record_fields<'a>(
         return Err(TvmError::InvalidReceipt(error));
     }
     Ok(fields)
+}
+
+fn exact_manifest_scalar(value: &str) -> Result<&str> {
+    if value.trim() != value {
+        return Err(TvmError::InvalidReceipt("malformed manifest scalar value"));
+    }
+    Ok(value)
 }
 
 fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
@@ -5818,13 +5825,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "public_uri=https://tensorvm.net/tensorvm/public-evidence.json",
             "public_uri=https://tensorvm.net/tensorvm/public-evidence.json ",
         );
-        let trailing_public_uri_report =
-            parse_public_testnet_evidence_manifest(&trailing_public_uri)
-                .unwrap()
-                .evaluate(&criteria, 6);
-        assert!(!trailing_public_uri_report.has_published_evidence_bundle);
-        assert!(!trailing_public_uri_report.independently_checkable);
-        assert!(!trailing_public_uri_report.full_spec_evidence_met);
+        assert!(parse_public_testnet_evidence_manifest(&trailing_public_uri).is_err());
 
         let auditor_uri = manifest_auditor_uri();
         let auditor_uri_with_space = manifest.replace(
@@ -5985,6 +5986,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             format!("{manifest}\nobserved_blocks=10"),
             manifest.replace("bundle_id=", " bundle_id="),
             manifest.replace("bundle_id=", "bundle_id ="),
+            manifest.replace("observed_blocks=10", "observed_blocks=10 "),
+            manifest.replace("libp2p_runtime_used=true", "libp2p_runtime_used= true"),
             manifest.replace("manifest_signature_count=1", "manifest_signature_count=abc"),
             manifest.replace("dos_controls_enabled=true", "dos_controls_enabled=maybe"),
             manifest.replace("node=miner", "node=archive"),
@@ -6417,6 +6420,11 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             format!("{manifest}\nminer_count=10"),
             manifest.replace("miner_count=", " miner_count="),
             manifest.replace("miner_count=", "miner_count ="),
+            manifest.replace("miner_count=10", "miner_count=10 "),
+            manifest.replace(
+                "cuda_kernels_available=true",
+                "cuda_kernels_available= true",
+            ),
             manifest.replace("service=rpc", "service=archive"),
             manifest.replace("service=rpc,", "service=rpc ,"),
             manifest.replace(",true,true", ", true,true"),
