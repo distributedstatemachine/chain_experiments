@@ -182,6 +182,7 @@ impl PublicTestnetPreflightPlan {
             && has_faucet_service_plan
             && has_telemetry_service_plan
             && has_public_service_content_plan
+            && self.has_exact_ready_service_plans()
             && self.has_distinct_ready_service_endpoint_ids();
         let local_shape_ready = has_required_miners
             && has_required_validators
@@ -245,6 +246,17 @@ impl PublicTestnetPreflightPlan {
             }
         }
         true
+    }
+
+    fn has_exact_ready_service_plans(&self) -> bool {
+        self.services.len() == public_service_kinds().len()
+            && public_service_kinds().iter().all(|kind| {
+                self.services
+                    .iter()
+                    .filter(|service| service.kind == *kind && service.is_ready_for_public_run())
+                    .count()
+                    == 1
+            })
     }
 }
 
@@ -6142,6 +6154,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert!(!duplicate_service_endpoint_report.has_public_service_plan);
         assert!(!duplicate_service_endpoint_report.deployment_plan_ready);
         assert!(!duplicate_service_endpoint_report.can_start_public_run);
+
+        let duplicate_rpc_service_plan = format!(
+            "{manifest}service=rpc,{},https://rpc-backup.tensorvm.net/health,/health,https://rpc-backup.tensorvm.net/chain/head,/chain/head,true,true\n",
+            manifest_hash(b"test", b"rpc-backup-service")
+        );
+        let duplicate_rpc_service_plan_report =
+            parse_public_testnet_preflight_manifest(&duplicate_rpc_service_plan)
+                .unwrap()
+                .evaluate(ChainParams::default().block_time_seconds);
+        assert!(duplicate_rpc_service_plan_report.has_rpc_service_plan);
+        assert!(duplicate_rpc_service_plan_report.has_public_service_content_plan);
+        assert!(!duplicate_rpc_service_plan_report.has_public_service_plan);
+        assert!(!duplicate_rpc_service_plan_report.deployment_plan_ready);
+        assert!(!duplicate_rpc_service_plan_report.can_start_public_run);
 
         let mut missing_service_plan = plan.clone();
         missing_service_plan

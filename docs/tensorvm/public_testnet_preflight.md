@@ -18,7 +18,7 @@ The local preflight report checks:
   planned miner
 - production libp2p runtime plan with one libp2p-ready node per planned miner and validator, plus
   discovery, gossip, request/response, and DoS controls
-- public HTTPS RPC, explorer, faucet, and telemetry service plans
+- exactly one public HTTPS RPC, explorer, faucet, and telemetry service plan
 - distinct service endpoint identifiers, health paths, content paths, auth, and rate limiting
 
 Public HTTPS service hosts must be externally reachable names or addresses with well-formed authorities,
@@ -27,8 +27,9 @@ userinfo, whitespace, invalid DNS host labels, single-label DNS hosts, invalid p
 IPv6 authorities, localhost, `.local`, `.localhost`, `.test`, `.example`, `.invalid`, RFC example
 domains, loopback, unspecified, private, and link-local IP addresses, including bracketed IPv6 loopback
 literals. Direct IP literals from documentation, shared-address, benchmarking, multicast, or reserved
-ranges are also rejected. RPC, explorer, faucet, and telemetry plans must use distinct endpoint IDs;
-reusing one endpoint ID across multiple public service kinds does not satisfy launch readiness.
+ranges are also rejected. RPC, explorer, faucet, and telemetry plans must use distinct endpoint IDs, and
+launch readiness requires exactly one ready service plan for each of those four surfaces; missing,
+duplicate, or extra service plans do not satisfy launch readiness.
 
 ## Manifest Format
 
@@ -38,7 +39,8 @@ Field names must be exact with no leading or trailing whitespace around the key 
 manifest fields must appear exactly once, and scalar values are parsed exactly with no leading or trailing
 whitespace; `service=...` is the only repeated field. Each `service=...` record must contain exactly eight
 comma-separated, nonempty fields; preflight service values are not trimmed, so leading or trailing
-whitespace in any service value is invalid.
+whitespace in any service value is invalid. Deployment readiness requires exactly one ready `service=...`
+record for each RPC, explorer, faucet, and telemetry surface.
 
 ```text
 version=tensor-vm-public-testnet-preflight-v1
@@ -76,7 +78,8 @@ non-root path without a query string or fragment:
 `/chain/head`, `/explorer`, `/faucet/page`, or `/telemetry/dashboard`. The content URL authority must
 match the health URL authority so a preflight manifest cannot combine health checks from one deployed
 service with content evidence from another host. Endpoint IDs must be distinct across the RPC, explorer,
-faucet, and telemetry service plans.
+faucet, and telemetry service plans, and extra duplicate service plans are rejected by the public service
+plan gate.
 
 The CLI reads a manifest file and reports launch readiness:
 

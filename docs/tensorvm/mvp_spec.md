@@ -1701,6 +1701,9 @@ It must also include a `libp2p_ready_node_count` equal to `miner_count + validat
 successful mandatory-libp2p node readiness checks on the planned public miners and validators.
 Each repeated preflight `service=...` plan must contain exactly eight comma-separated, nonempty,
 untrimmed values; leading or trailing whitespace in any service value is a manifest parse error.
+Public preflight deployment readiness requires exactly one ready `service=...` plan for each RPC, explorer,
+faucet, and telemetry surface. Missing, duplicate, or extra service plans do not satisfy the public service
+plan gate.
 The external operator flow, daily evidence collection, post-run validation, and publication steps are
 recorded in `deploy/tensorvm/RUNBOOK.md`.
 
