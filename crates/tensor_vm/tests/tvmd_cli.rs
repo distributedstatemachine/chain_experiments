@@ -142,6 +142,14 @@ fn json_number_field(body: &str, key: &str) -> u64 {
     digits.parse().expect("JSON numeric field must parse")
 }
 
+fn json_string_field(body: &str, key: &str) -> String {
+    let marker = format!("\"{key}\":\"");
+    body.split_once(&marker)
+        .and_then(|(_, tail)| tail.split_once('"'))
+        .map(|(value, _)| value.to_owned())
+        .expect("JSON string field must exist")
+}
+
 fn json_positive_field_count(body: &str, key: &str) -> usize {
     let marker = format!("\"{key}\":");
     body.match_indices(&marker)
@@ -859,7 +867,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "4",
+            "9",
         ])
         .env("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS", "25")
         .current_dir(workspace_root())
@@ -890,6 +898,26 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(receipts_body.contains("\"validator_attestations\""));
     assert!(json_positive_field_count(receipts_body, "attestation_count") > 10);
 
+    let latest_tensor = authenticated_get_request(rpc_port, "/tensor/latest");
+    assert!(latest_tensor.contains("HTTP/1.1 200 OK"));
+    let latest_tensor_body = response_body(&latest_tensor);
+    let tensor_id = json_string_field(latest_tensor_body, "tensor_id");
+    assert!(json_number_field(latest_tensor_body, "tensor_count") > 0);
+
+    let descriptor =
+        authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/descriptor"));
+    assert!(descriptor.contains("HTTP/1.1 200 OK"));
+    assert!(response_body(&descriptor).contains("\"root\""));
+    let row = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/row/0"));
+    assert!(row.contains("HTTP/1.1 200 OK"));
+    assert!(response_body(&row).contains("\"row\""));
+    let chunk = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/chunk/0"));
+    assert!(chunk.contains("HTTP/1.1 200 OK"));
+    assert!(response_body(&chunk).contains("\"bytes\""));
+    let opening = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/opening/0"));
+    assert!(opening.contains("HTTP/1.1 200 OK"));
+    assert!(response_body(&opening).contains("\"proof_len\""));
+
     let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
     assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
@@ -907,7 +935,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
     assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("served_requests=4"));
+    assert!(stdout.contains("served_requests=9"));
     assert!(
         stdout_value(&stdout, "produced_blocks")
             .parse::<usize>()

@@ -3,6 +3,7 @@ use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
 use crate::jobs::PrimitiveType;
+use crate::localnet::produce_synthetic_cpu_round_with_tensors;
 use crate::telemetry::TelemetrySnapshot;
 use crate::tensor::{DEFAULT_CHUNK_SIZE, Tensor};
 use crate::txpool::{TxPool, parse_transaction_envelope};
@@ -223,6 +224,16 @@ impl RpcNode {
         id
     }
 
+    pub fn produce_synthetic_cpu_round(&mut self) -> Result<Option<u64>> {
+        let Some(round) = produce_synthetic_cpu_round_with_tensors(&mut self.chain)? else {
+            return Ok(None);
+        };
+        for tensor in round.tensors {
+            self.insert_tensor(tensor);
+        }
+        Ok(Some(round.height))
+    }
+
     pub fn handle(&self, request: &RpcRequest) -> RpcResponse {
         match (request.method.as_str(), request.path.as_str()) {
             ("GET", "/health") => self.health("all"),
@@ -314,6 +325,7 @@ impl RpcNode {
             ("GET", ["tensor", tensor_id, "opening", chunk_index]) => {
                 self.tensor_opening(tensor_id, chunk_index)
             }
+            ("GET", ["tensor", "latest"]) => self.tensor_latest(),
             ("GET", ["jobs", job_id]) => self.job(job_id),
             _ => self.not_found("route not found"),
         }
@@ -568,6 +580,18 @@ impl RpcNode {
             )),
             Err(_) => self.not_found("opening not found"),
         }
+    }
+
+    fn tensor_latest(&self) -> RpcResponse {
+        let Some((tensor_id, tensor)) = self.tensors.iter().next_back() else {
+            return self.not_found("tensor not found");
+        };
+        self.ok(format!(
+            "{{\"tensor_id\":\"{}\",\"tensor_count\":{},\"root\":\"{}\"}}",
+            hex(tensor_id),
+            self.tensors.len(),
+            hex(&tensor.commitment_root())
+        ))
     }
 
     fn lookup_tensor(&self, tensor_id: &str) -> Option<&Tensor> {
@@ -1413,10 +1437,11 @@ fn job_json(job: &JobState) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{HardwareClass, JobState, LocalChain};
+    use crate::chain::{ChainParams, HardwareClass, JobState, LocalChain};
     use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob, TensorOpReceipt};
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
+    use crate::verify::FreivaldsParams;
 
     #[test]
     fn node_rpc_serves_head_and_blocks() {
@@ -2316,11 +2341,19 @@ mod tests {
     fn tensor_rpc_serves_descriptor_rows_chunks_and_openings() {
         let chain = LocalChain::new(hash_bytes(b"test", &[b"beacon"]));
         let mut rpc = RpcNode::new(chain);
+        let empty_latest = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/tensor/latest".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(empty_latest.status, 404);
+
         let tensor =
             Tensor::from_vec(vec![2, 3], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
         let tensor_id = rpc.insert_tensor(tensor);
 
         for path in [
+            "/tensor/latest".to_owned(),
             format!("/tensor/{}/descriptor", hex(&tensor_id)),
             format!("/tensor/{}/row/1", hex(&tensor_id)),
             format!("/tensor/{}/chunk/0", hex(&tensor_id)),
@@ -2333,6 +2366,52 @@ mod tests {
             });
             assert_eq!(response.status, 200);
         }
+    }
+
+    #[test]
+    fn rpc_node_synthetic_round_retains_live_tensors_for_rpc_fetch() {
+        let mut empty_rpc = RpcNode::new(LocalChain::new(hash_bytes(
+            b"test",
+            &[b"rpc-empty-synthetic"],
+        )));
+        assert_eq!(empty_rpc.produce_synthetic_cpu_round().unwrap(), None);
+
+        let params = ChainParams {
+            replication_factor: 2,
+            agreement_quorum: 2,
+            freivalds: FreivaldsParams {
+                validators_per_job: 2,
+                minimum_validators: 2,
+                ..FreivaldsParams::default()
+            },
+            ..ChainParams::default()
+        };
+        let mut chain =
+            LocalChain::with_params(params, hash_bytes(b"test", &[b"rpc-live-tensors"]));
+        for index in 0..2 {
+            chain
+                .register_miner(
+                    address(format!("rpc-live-tensor-miner-{index}").as_bytes()),
+                    chain.params.miner_min_stake,
+                )
+                .unwrap();
+            chain
+                .register_validator(
+                    address(format!("rpc-live-tensor-validator-{index}").as_bytes()),
+                    chain.params.validator_min_stake,
+                )
+                .unwrap();
+        }
+        let mut rpc = RpcNode::new(chain);
+
+        assert_eq!(rpc.produce_synthetic_cpu_round().unwrap(), Some(1));
+        let latest = rpc.handle(&RpcRequest {
+            method: "GET".to_owned(),
+            path: "/tensor/latest".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(latest.status, 200);
+        assert!(latest.body.contains("\"tensor_count\":3"));
     }
 
     #[test]

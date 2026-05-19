@@ -53,6 +53,12 @@ json_number() {
   printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\([0-9][0-9]*\).*/\1/p" | sed -n '1p'
 }
 
+json_string() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\"\([^\"]*\)\".*/\1/p" | sed -n '1p'
+}
+
 json_positive_field_count() {
   key="$1"
   document="$2"
@@ -204,6 +210,19 @@ done
 [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "live receipt details did not include validator attestations"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
+LIVE_TENSOR=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
+LIVE_TENSOR_ID=$(json_string tensor_id "$LIVE_TENSOR")
+[ -n "$LIVE_TENSOR_ID" ] || fail "live tensor route did not report a tensor id"
+[ "$(json_number tensor_count "$LIVE_TENSOR")" -gt 0 ] || fail "live tensor route did not report retained tensors"
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor" | grep -q '"root":"' \
+  || fail "live tensor descriptor was not fetchable"
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' \
+  || fail "live tensor row was not fetchable"
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' \
+  || fail "live tensor chunk was not fetchable"
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
+  || fail "live tensor opening was not fetchable"
+
 cargo test -p tensor_vm local_testnet --release
 
 cat <<'STATUS'
@@ -229,6 +248,7 @@ live_synthetic_jobs=true
 live_linear_training_jobs=true
 live_attestations=true
 live_receipt_attestations=true
+live_tensor_fetch=true
 live_rewards=true
 public_evidence_full_spec=false
 independently_checkable=false

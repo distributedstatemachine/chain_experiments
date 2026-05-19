@@ -148,6 +148,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "live_linear_training_jobs=true",
         "live_attestations=true",
         "live_receipt_attestations=true",
+        "live_tensor_fetch=true",
         "live_rewards=true",
         "data-ui=\"ratzilla-tui\"",
         "new WebSocket",

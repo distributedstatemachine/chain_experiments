@@ -12,7 +12,7 @@ use tensor_vm::{
         validate_public_testnet_preflight_manifest,
     },
     hash::hex,
-    parse_cli_args, produce_synthetic_cpu_round, spawn_libp2p_service,
+    parse_cli_args, spawn_libp2p_service,
     testnet::{LocalTestnet, PublicTestnetCriteria, TestnetConfig},
     types::hash_bytes,
 };
@@ -316,7 +316,10 @@ fn serve_service(
                 Err(error) => return Err(format!("service request failed: {error}")),
             }
             if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
-                if produce_synthetic_cpu_round(&mut server.gateway_mut().node.chain)
+                if server
+                    .gateway_mut()
+                    .node
+                    .produce_synthetic_cpu_round()
                     .map_err(|error| format!("synthetic CPU round failed: {error}"))?
                     .is_some()
                 {

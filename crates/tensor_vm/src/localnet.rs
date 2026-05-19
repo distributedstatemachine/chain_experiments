@@ -7,7 +7,19 @@ use crate::scheduler::{JobScheduler, JobSource, SyntheticLocalJobSource};
 use crate::tensor::Tensor;
 use crate::validator::{MatmulVerificationInput, ValidatorNode};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntheticCpuRoundResult {
+    pub height: u64,
+    pub tensors: Vec<Tensor>,
+}
+
 pub fn produce_synthetic_cpu_round(chain: &mut Chain) -> Result<Option<u64>> {
+    Ok(produce_synthetic_cpu_round_with_tensors(chain)?.map(|round| round.height))
+}
+
+pub fn produce_synthetic_cpu_round_with_tensors(
+    chain: &mut Chain,
+) -> Result<Option<SyntheticCpuRoundResult>> {
     let mut job_source = SyntheticLocalJobSource::default();
     produce_synthetic_cpu_round_from_source(chain, &mut job_source)
 }
@@ -15,7 +27,7 @@ pub fn produce_synthetic_cpu_round(chain: &mut Chain) -> Result<Option<u64>> {
 fn produce_synthetic_cpu_round_from_source(
     chain: &mut Chain,
     job_source: &mut impl JobSource,
-) -> Result<Option<u64>> {
+) -> Result<Option<SyntheticCpuRoundResult>> {
     if chain.state.miners.is_empty() || chain.state.validators.is_empty() {
         return Ok(None);
     }
@@ -33,7 +45,7 @@ fn produce_synthetic_matmul_round(
     chain: &mut Chain,
     scheduler: &JobScheduler,
     job: MatmulJob,
-) -> Result<Option<u64>> {
+) -> Result<Option<SyntheticCpuRoundResult>> {
     let beacon = chain.state.finalized_randomness;
     chain.submit_job(JobState::TensorOp(job.clone()));
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
@@ -68,7 +80,7 @@ fn produce_synthetic_matmul_round(
             chain.submit_attestation(attestation)?;
         }
     }
-    let Some(canonical_receipt) = receipts.first().map(|(receipt, _, _, _)| receipt) else {
+    let Some((canonical_receipt, canonical_a, canonical_b, canonical_c)) = receipts.first() else {
         return Ok(None);
     };
     if !chain.has_attestation_quorum(&canonical_receipt.receipt_id)
@@ -89,14 +101,21 @@ fn produce_synthetic_matmul_round(
         .unwrap_or(0);
     let block = chain.produce_block(proposer, timestamp);
     finalize_local_cpu_block(chain, &block)?;
-    Ok(Some(chain.state.height))
+    Ok(Some(SyntheticCpuRoundResult {
+        height: chain.state.height,
+        tensors: vec![
+            canonical_a.clone(),
+            canonical_b.clone(),
+            canonical_c.clone(),
+        ],
+    }))
 }
 
 fn produce_synthetic_linear_training_round(
     chain: &mut Chain,
     scheduler: &JobScheduler,
     job: LinearTrainingStepJob,
-) -> Result<Option<u64>> {
+) -> Result<Option<SyntheticCpuRoundResult>> {
     let beacon = chain.state.finalized_randomness;
     let weights = SyntheticLocalJobSource::linear_training_weights();
     register_synthetic_linear_model(chain, &job, &weights);
@@ -136,7 +155,7 @@ fn produce_synthetic_linear_training_round(
             chain.submit_attestation(attestation)?;
         }
     }
-    let Some(canonical_receipt) = receipts.first().map(|(receipt, _)| receipt) else {
+    let Some((canonical_receipt, canonical_output)) = receipts.first() else {
         return Ok(None);
     };
     if !chain.has_attestation_quorum(&canonical_receipt.receipt_id)
@@ -163,7 +182,17 @@ fn produce_synthetic_linear_training_round(
         .unwrap_or(0);
     let block = chain.produce_block(proposer, timestamp);
     finalize_local_cpu_block(chain, &block)?;
-    Ok(Some(chain.state.height))
+    Ok(Some(SyntheticCpuRoundResult {
+        height: chain.state.height,
+        tensors: vec![
+            canonical_output.x.clone(),
+            canonical_output.target.clone(),
+            canonical_output.y.clone(),
+            canonical_output.dy.clone(),
+            canonical_output.grad_w.clone(),
+            canonical_output.weight_after.clone(),
+        ],
+    }))
 }
 
 fn register_synthetic_linear_model(

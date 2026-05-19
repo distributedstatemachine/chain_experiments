@@ -283,17 +283,18 @@ preflight, public evidence, or deployment-gated work can count:
   with `standalone_explorer_ready=true` and
   `standalone_explorer_websocket_polling=true`; the gate now also requires
   `live_block_production=true`, `live_synthetic_jobs=true`, `live_linear_training_jobs=true`,
-  `live_attestations=true`, `live_receipt_attestations=true`, and `live_rewards=true`, proving
-  `/chain/head` and explorer counters advance past the seeded two-block baseline, at least one live
-  LinearTrainingStep advances model state after startup, validators add attestations, `/explorer/receipts`
-  exposes per-receipt validator attestation details for live receipts, and settled live work credits new
-  rewards; the same check passed again after
+  `live_attestations=true`, `live_receipt_attestations=true`, `live_tensor_fetch=true`, and
+  `live_rewards=true`, proving `/chain/head` and explorer counters advance past the seeded two-block
+  baseline, at least one live LinearTrainingStep advances model state after startup, validators add
+  attestations, `/explorer/receipts` exposes per-receipt validator attestation details for live receipts,
+  `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
+  settled live work credits new rewards; the same check passed again after
   `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml restart miner-03 validator-02`
 
-The workspace currently has 211 passing library tests under Tarpaulin:
+The workspace currently has 212 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 196 in `tensor_vm`
+- 197 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 2 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -321,9 +322,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.16% workspace line coverage
-- 9636/9718 workspace lines covered
+- 9665/9747 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 8791/8791 `tensor_vm` lines covered
+- 8820/8820 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
