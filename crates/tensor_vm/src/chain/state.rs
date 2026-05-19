@@ -1,0 +1,352 @@
+use crate::jobs::{
+    LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
+};
+use crate::types::{Address, Hash, Signature, hash_bytes, sign, verify_signature};
+use crate::verify::{FreivaldsParams, ValidatorAttestation};
+use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ChainParams {
+    pub block_time_seconds: u64,
+    pub epoch_length: u64,
+    pub receipt_submission_window: u64,
+    pub verification_window: u64,
+    pub reward_settlement_delay_epochs: u64,
+    pub challenge_window_epochs: u64,
+    pub replication_factor: usize,
+    pub agreement_quorum: usize,
+    pub finality_stake_numerator: u64,
+    pub finality_stake_denominator: u64,
+    pub miner_reward_bps: u64,
+    pub validator_reward_bps: u64,
+    pub proposer_reward_bps: u64,
+    pub treasury_reward_bps: u64,
+    pub miner_min_stake: u64,
+    pub validator_min_stake: u64,
+    pub freivalds: FreivaldsParams,
+}
+
+impl Default for ChainParams {
+    fn default() -> Self {
+        Self {
+            block_time_seconds: 6,
+            epoch_length: 100,
+            receipt_submission_window: 20,
+            verification_window: 40,
+            reward_settlement_delay_epochs: 1,
+            challenge_window_epochs: 1,
+            replication_factor: 5,
+            agreement_quorum: 3,
+            finality_stake_numerator: 2,
+            finality_stake_denominator: 3,
+            miner_reward_bps: 7_000,
+            validator_reward_bps: 2_000,
+            proposer_reward_bps: 500,
+            treasury_reward_bps: 500,
+            miner_min_stake: 100,
+            validator_min_stake: 10_000,
+            freivalds: FreivaldsParams::default(),
+        }
+    }
+}
+
+impl ChainParams {
+    pub fn tensor_retention_window_blocks(&self) -> u64 {
+        self.reward_settlement_delay_epochs
+            .saturating_add(self.challenge_window_epochs)
+            .saturating_mul(self.epoch_length.max(1))
+    }
+
+    pub fn tensor_retention_deadline(&self, submitted_at_block: u64) -> u64 {
+        submitted_at_block.saturating_add(self.tensor_retention_window_blocks())
+    }
+
+    pub fn reward_allocation(&self, total_emission: u64) -> RewardAllocation {
+        let miner_reward_pool = reward_share(total_emission, self.miner_reward_bps);
+        let validator_reward_pool = reward_share(total_emission, self.validator_reward_bps);
+        let proposer_reward = reward_share(total_emission, self.proposer_reward_bps);
+        let explicit_treasury = reward_share(total_emission, self.treasury_reward_bps);
+        let allocated = miner_reward_pool
+            .saturating_add(validator_reward_pool)
+            .saturating_add(proposer_reward)
+            .saturating_add(explicit_treasury);
+        RewardAllocation {
+            miner_reward_pool,
+            validator_reward_pool,
+            proposer_reward,
+            treasury_reward: explicit_treasury
+                .saturating_add(total_emission.saturating_sub(allocated)),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RewardAllocation {
+    pub miner_reward_pool: u64,
+    pub validator_reward_pool: u64,
+    pub proposer_reward: u64,
+    pub treasury_reward: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum HardwareClass {
+    Cpu,
+    ConsumerGpu,
+    DatacenterGpu,
+    Other,
+}
+
+impl HardwareClass {
+    pub fn is_gpu(self) -> bool {
+        matches!(self, Self::ConsumerGpu | Self::DatacenterGpu)
+    }
+
+    pub fn tag(self) -> u8 {
+        match self {
+            Self::Cpu => 1,
+            Self::ConsumerGpu => 2,
+            Self::DatacenterGpu => 3,
+            Self::Other => 4,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MinerState {
+    pub address: Address,
+    pub operator_id: Hash,
+    pub stake: u64,
+    pub reputation: i64,
+    pub settled_tensor_work: u64,
+    pub pending_tensor_work: u64,
+    pub hardware_class: HardwareClass,
+    pub gpu_utilization_bps: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValidatorState {
+    pub address: Address,
+    pub stake: u64,
+    pub reputation: i64,
+    pub valid_attestations: u64,
+    pub missed_assignments: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct AccountState {
+    pub address: Address,
+    pub balance: u64,
+    pub nonce: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct RewardState {
+    pub balances: BTreeMap<Address, u64>,
+    pub treasury: u64,
+}
+
+impl RewardState {
+    pub fn credit(&mut self, address: Address, amount: u64) {
+        *self.balances.entry(address).or_default() += amount;
+    }
+
+    pub fn balance(&self, address: &Address) -> u64 {
+        self.balances.get(address).copied().unwrap_or(0)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum JobState {
+    TensorOp(MatmulJob),
+    LinearTrainingStep(LinearTrainingStepJob),
+}
+
+impl JobState {
+    pub fn job_id(&self) -> Hash {
+        match self {
+            Self::TensorOp(job) => job.job_id,
+            Self::LinearTrainingStep(job) => job.job_id,
+        }
+    }
+
+    pub fn deadline_block(&self) -> u64 {
+        match self {
+            Self::TensorOp(job) => job.deadline_block,
+            Self::LinearTrainingStep(job) => job.deadline_block,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ReceiptState {
+    TensorOp(TensorOpReceipt),
+    LinearTrainingStep(LinearTrainingStepReceipt),
+}
+
+impl ReceiptState {
+    pub fn receipt_id(&self) -> Hash {
+        match self {
+            Self::TensorOp(receipt) => receipt.receipt_id,
+            Self::LinearTrainingStep(receipt) => receipt.receipt_id,
+        }
+    }
+
+    pub fn job_id(&self) -> Hash {
+        match self {
+            Self::TensorOp(receipt) => receipt.job_id,
+            Self::LinearTrainingStep(receipt) => receipt.job_id,
+        }
+    }
+
+    pub fn miner(&self) -> Address {
+        match self {
+            Self::TensorOp(receipt) => receipt.miner,
+            Self::LinearTrainingStep(receipt) => receipt.miner,
+        }
+    }
+
+    pub fn primitive_type(&self) -> PrimitiveType {
+        match self {
+            Self::TensorOp(_) => PrimitiveType::TensorOp,
+            Self::LinearTrainingStep(_) => PrimitiveType::LinearTrainingStep,
+        }
+    }
+
+    pub fn tensor_work_units(&self) -> u64 {
+        match self {
+            Self::TensorOp(receipt) => receipt.tensor_work_units,
+            Self::LinearTrainingStep(receipt) => receipt.tensor_work_units,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModelState {
+    pub model_id: Hash,
+    pub architecture_hash: Hash,
+    pub weight_root: Hash,
+    pub optimizer_state_root: Option<Hash>,
+    pub step: u64,
+    pub config_hash: Hash,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Transaction {
+    RegisterMiner(Address),
+    RegisterValidator(Address),
+    SubmitTensorOpReceipt(Hash),
+    SubmitLinearTrainingStepReceipt(Hash),
+    SubmitAttestation(Hash),
+    Transfer { to: Address, amount: u64 },
+    ClaimReward(Address),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TensorBlock {
+    pub height: u64,
+    pub parent_hash: Hash,
+    pub epoch: u64,
+    pub proposer: Address,
+    pub job_root: Hash,
+    pub receipt_root: Hash,
+    pub attestation_root: Hash,
+    pub state_root: Hash,
+    pub reward_root: Hash,
+    pub randomness: Hash,
+    pub timestamp: u64,
+    pub proposer_signature: Signature,
+    pub validator_signature_aggregate: Signature,
+}
+
+impl TensorBlock {
+    pub fn hash(&self) -> Hash {
+        hash_bytes(
+            b"tensor-vm-block-v1",
+            &[
+                &self.height.to_le_bytes(),
+                &self.parent_hash,
+                &self.epoch.to_le_bytes(),
+                &self.proposer,
+                &self.job_root,
+                &self.receipt_root,
+                &self.attestation_root,
+                &self.state_root,
+                &self.reward_root,
+                &self.randomness,
+                &self.timestamp.to_le_bytes(),
+            ],
+        )
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BlockVote {
+    pub validator: Address,
+    pub block_hash: Hash,
+    pub block_height: u64,
+    pub stake: u64,
+    pub signature: Signature,
+}
+
+impl BlockVote {
+    pub fn new(validator: Address, stake: u64, block: &TensorBlock) -> Self {
+        let block_hash = block.hash();
+        let message = Self::message_hash(&block_hash, block.height, stake);
+        Self {
+            validator,
+            block_hash,
+            block_height: block.height,
+            stake,
+            signature: sign(&validator, &message),
+        }
+    }
+
+    pub fn verify_signature(&self) -> bool {
+        verify_signature(
+            &self.validator,
+            &Self::message_hash(&self.block_hash, self.block_height, self.stake),
+            &self.signature,
+        )
+    }
+
+    fn message_hash(block_hash: &Hash, block_height: u64, stake: u64) -> Hash {
+        hash_bytes(
+            b"tensor-vm-block-vote-v1",
+            &[
+                block_hash,
+                &block_height.to_le_bytes(),
+                &stake.to_le_bytes(),
+            ],
+        )
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ChainState {
+    pub height: u64,
+    pub epoch: u64,
+    pub finalized_randomness: Hash,
+    pub accounts: BTreeMap<Address, AccountState>,
+    pub miners: BTreeMap<Address, MinerState>,
+    pub validators: BTreeMap<Address, ValidatorState>,
+    pub jobs: BTreeMap<Hash, JobState>,
+    pub receipts: BTreeMap<Hash, ReceiptState>,
+    pub attestations: BTreeMap<Hash, Vec<ValidatorAttestation>>,
+    pub block_votes: BTreeMap<Hash, Vec<BlockVote>>,
+    pub finalized_blocks: BTreeSet<Hash>,
+    pub data_unavailable_receipts: BTreeSet<Hash>,
+    pub settled_receipts: BTreeSet<Hash>,
+    pub model_states: BTreeMap<Hash, ModelState>,
+    pub rewards: RewardState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LocalChain {
+    pub params: ChainParams,
+    pub state: ChainState,
+    pub blocks: Vec<TensorBlock>,
+}
+
+fn reward_share(total_emission: u64, basis_points: u64) -> u64 {
+    total_emission.saturating_mul(basis_points) / 10_000
+}

@@ -510,9 +510,10 @@ Fully applying blocks from the shared network event path still needs hard checke
 
 Status: started. `Chain`, `ChainEngine`, `ChainCommand`, and `ChainEvent` exist. Proposer selection now
 lives behind `chain::proposer`, epoch settlement/redundant-agreement logic now lives behind
-`chain::settlement`, deterministic content/state roots now live behind `chain::roots`, and block assembly
-now lives behind `chain::blocks` while preserving the profile-neutral chain API. Validation and state views
-still need to move out of the remaining large `chain.rs` implementation.
+`chain::settlement`, deterministic content/state roots now live behind `chain::roots`, block assembly now
+lives behind `chain::blocks`, and chain parameters/state/domain view types now live behind `chain::state`
+while preserving the profile-neutral chain API. Validation still needs to move out of the remaining large
+`chain.rs` implementation.
 
 ### Phase 3: Add Role Loops Without Changing Consensus Semantics
 

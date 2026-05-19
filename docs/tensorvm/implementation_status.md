@@ -34,6 +34,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations
 - Settled prior-epoch TensorWork proposer selection through the internal `chain::proposer` boundary,
   pending-work exclusion, and zero-work fallback
+- Chain parameters, chain state, block/vote, job/receipt, account, miner, validator, reward, model, and
+  transaction domain types through the internal `chain::state` boundary
 - Profile-neutral `ChainEngine`, file-backed `ChainStore`, and shared `ChainProfile`/`NodeConfig`
   boundaries so local CPU, public testnet, and future mainnet profiles build the same transition engine
 - Receipt-bound validation seeds derived from finalized randomness
