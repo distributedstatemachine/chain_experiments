@@ -27,7 +27,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Duplicate registration, duplicate receipt, and duplicate validator-attestation rejection
 - Account, miner, validator, job, receipt, attestation, reward, and model-state registries
 - Miner hardware-class profiles with bounded reported GPU utilization for telemetry
-- Content roots for jobs, receipts, attestations, rewards, and full chain state
+- Content roots for jobs, receipts, attestations, rewards, and full chain state through the internal
+  `chain::roots` boundary
 - Receipt settlement in the internal `chain::settlement` boundary, 70/20/5/5 reward allocation,
   proposer/treasury rewards, reward accounting without repeated payout, and no-quorum rejection
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations

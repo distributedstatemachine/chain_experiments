@@ -1,0 +1,251 @@
+use super::{
+    AccountState, BlockVote, JobState, MinerState, ModelState, ReceiptState, RewardState,
+    ValidatorState,
+};
+use crate::jobs::PrimitiveType;
+use crate::types::{Address, Hash, hash_bytes};
+use crate::verify::{ValidatorAttestation, VerificationResult};
+use std::collections::{BTreeMap, BTreeSet};
+
+pub(super) fn reward_root(rewards: &RewardState) -> Hash {
+    let mut encoded = Vec::new();
+    for (address, balance) in &rewards.balances {
+        encoded.extend_from_slice(address);
+        encoded.extend_from_slice(&balance.to_le_bytes());
+    }
+    encoded.extend_from_slice(&rewards.treasury.to_le_bytes());
+    hash_bytes(b"tensor-vm-reward-root-v1", &[&encoded])
+}
+
+pub(super) fn block_finality_root(
+    votes: &BTreeMap<Hash, Vec<BlockVote>>,
+    finalized: &BTreeSet<Hash>,
+) -> Hash {
+    let mut encoded = Vec::new();
+    for (block_hash, votes) in votes {
+        encoded.extend_from_slice(block_hash);
+        encoded.extend_from_slice(&(votes.len() as u64).to_le_bytes());
+        for vote in votes {
+            encoded.extend_from_slice(&vote.validator);
+            encoded.extend_from_slice(&vote.block_hash);
+            encoded.extend_from_slice(&vote.block_height.to_le_bytes());
+            encoded.extend_from_slice(&vote.stake.to_le_bytes());
+            encoded.extend_from_slice(&vote.signature);
+        }
+    }
+    encoded.extend_from_slice(&(finalized.len() as u64).to_le_bytes());
+    for block_hash in finalized {
+        encoded.extend_from_slice(block_hash);
+    }
+    hash_bytes(b"tensor-vm-block-finality-root-v1", &[&encoded])
+}
+
+pub(super) fn account_root(accounts: &BTreeMap<Address, AccountState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (address, account) in accounts {
+        encoded.extend_from_slice(address);
+        encoded.extend_from_slice(&account.balance.to_le_bytes());
+        encoded.extend_from_slice(&account.nonce.to_le_bytes());
+    }
+    hash_bytes(b"tensor-vm-account-root-v1", &[&encoded])
+}
+
+pub(super) fn miner_root(miners: &BTreeMap<Address, MinerState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (address, miner) in miners {
+        encoded.extend_from_slice(address);
+        encoded.extend_from_slice(&miner.address);
+        encoded.extend_from_slice(&miner.operator_id);
+        encoded.extend_from_slice(&miner.stake.to_le_bytes());
+        encoded.extend_from_slice(&miner.reputation.to_le_bytes());
+        encoded.extend_from_slice(&miner.settled_tensor_work.to_le_bytes());
+        encoded.extend_from_slice(&miner.pending_tensor_work.to_le_bytes());
+        encoded.push(miner.hardware_class.tag());
+        encoded.extend_from_slice(&miner.gpu_utilization_bps.to_le_bytes());
+    }
+    hash_bytes(b"tensor-vm-miner-root-v1", &[&encoded])
+}
+
+pub(super) fn validator_root(validators: &BTreeMap<Address, ValidatorState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (address, validator) in validators {
+        encoded.extend_from_slice(address);
+        encoded.extend_from_slice(&validator.address);
+        encoded.extend_from_slice(&validator.stake.to_le_bytes());
+        encoded.extend_from_slice(&validator.reputation.to_le_bytes());
+        encoded.extend_from_slice(&validator.valid_attestations.to_le_bytes());
+        encoded.extend_from_slice(&validator.missed_assignments.to_le_bytes());
+    }
+    hash_bytes(b"tensor-vm-validator-root-v1", &[&encoded])
+}
+
+pub(super) fn job_root(jobs: &BTreeMap<Hash, JobState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (job_id, job) in jobs {
+        encoded.extend_from_slice(job_id);
+        match job {
+            JobState::TensorOp(job) => {
+                encoded.push(1);
+                encoded.extend_from_slice(&job.job_id);
+                encoded.extend_from_slice(&job.epoch.to_le_bytes());
+                encode_usize(&mut encoded, job.m);
+                encode_usize(&mut encoded, job.k);
+                encode_usize(&mut encoded, job.n);
+                encoded.push(dtype_code(job.dtype));
+                encoded.extend_from_slice(&job.modulus.unwrap_or_default().to_le_bytes());
+                encoded.extend_from_slice(&job.seed_a);
+                encoded.extend_from_slice(&job.seed_b);
+                encoded.extend_from_slice(&job.deadline_block.to_le_bytes());
+                encoded.extend_from_slice(&job.reward_weight.to_le_bytes());
+            }
+            JobState::LinearTrainingStep(job) => {
+                encoded.push(2);
+                encoded.extend_from_slice(&job.job_id);
+                encoded.extend_from_slice(&job.model_id);
+                encoded.extend_from_slice(&job.step.to_le_bytes());
+                encoded.extend_from_slice(&job.batch_seed);
+                encoded.extend_from_slice(&job.weight_root_before);
+                encode_usizes(&mut encoded, &job.input_shape);
+                encode_usizes(&mut encoded, &job.weight_shape);
+                encode_usizes(&mut encoded, &job.target_shape);
+                encoded.extend_from_slice(&job.lr.to_le_bytes());
+                encoded.push(dtype_code(job.dtype));
+                encoded.extend_from_slice(&job.deadline_block.to_le_bytes());
+                encoded.extend_from_slice(&job.reward_weight.to_le_bytes());
+            }
+        }
+    }
+    hash_bytes(b"tensor-vm-job-root-v1", &[&encoded])
+}
+
+pub(super) fn receipt_root(receipts: &BTreeMap<Hash, ReceiptState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (receipt_id, receipt) in receipts {
+        encoded.extend_from_slice(receipt_id);
+        match receipt {
+            ReceiptState::TensorOp(receipt) => {
+                encoded.push(1);
+                encoded.extend_from_slice(&receipt.receipt_id);
+                encoded.extend_from_slice(&receipt.job_id);
+                encoded.extend_from_slice(&receipt.miner);
+                encoded.extend_from_slice(&receipt.program_hash);
+                encode_hashes(&mut encoded, &receipt.input_roots);
+                encode_hashes(&mut encoded, &receipt.output_roots);
+                encoded.extend_from_slice(&receipt.trace_root);
+                encoded.extend_from_slice(&receipt.tensor_work_units.to_le_bytes());
+                encoded.extend_from_slice(&receipt.execution_time_ms.to_le_bytes());
+                encoded.extend_from_slice(&receipt.submitted_at_block.to_le_bytes());
+                encoded.extend_from_slice(&receipt.signature);
+            }
+            ReceiptState::LinearTrainingStep(receipt) => {
+                encoded.push(2);
+                encoded.extend_from_slice(&receipt.receipt_id);
+                encoded.extend_from_slice(&receipt.job_id);
+                encoded.extend_from_slice(&receipt.miner);
+                encoded.extend_from_slice(&receipt.model_id);
+                encoded.extend_from_slice(&receipt.step.to_le_bytes());
+                encoded.extend_from_slice(&receipt.weight_root_before);
+                encoded.extend_from_slice(&receipt.batch_root);
+                encoded.extend_from_slice(&receipt.y_root);
+                encoded.extend_from_slice(&receipt.loss_commitment);
+                encoded.extend_from_slice(&receipt.grad_w_root);
+                encoded.extend_from_slice(&receipt.weight_root_after);
+                encoded.extend_from_slice(&receipt.trace_root);
+                encoded.extend_from_slice(&receipt.tensor_work_units.to_le_bytes());
+                encoded.extend_from_slice(&receipt.execution_time_ms.to_le_bytes());
+                encoded.extend_from_slice(&receipt.submitted_at_block.to_le_bytes());
+                encoded.extend_from_slice(&receipt.signature);
+            }
+        }
+    }
+    hash_bytes(b"tensor-vm-receipt-root-v1", &[&encoded])
+}
+
+pub(super) fn attestation_root(attestations: &BTreeMap<Hash, Vec<ValidatorAttestation>>) -> Hash {
+    let mut encoded = Vec::new();
+    for (receipt_id, attestations) in attestations {
+        encoded.extend_from_slice(receipt_id);
+        encoded.extend_from_slice(&(attestations.len() as u64).to_le_bytes());
+        for attestation in attestations {
+            encoded.extend_from_slice(&attestation.validator);
+            encoded.extend_from_slice(&attestation.receipt_id);
+            encoded.extend_from_slice(&attestation.job_id);
+            encoded.push(primitive_type_code(attestation.primitive_type));
+            encoded.push(verification_result_code(attestation.result));
+            encoded.push(attestation.data_availability_passed as u8);
+            encoded.extend_from_slice(&attestation.checks_root);
+            encoded.extend_from_slice(&attestation.stake.to_le_bytes());
+            encoded.extend_from_slice(&attestation.signature);
+        }
+    }
+    hash_bytes(b"tensor-vm-attestation-root-v1", &[&encoded])
+}
+
+pub(super) fn settled_receipt_root(receipts: &BTreeSet<Hash>) -> Hash {
+    hash_set_root(b"tensor-vm-settled-receipt-root-v1", receipts)
+}
+
+pub(super) fn hash_set_root(domain: &[u8], items: &BTreeSet<Hash>) -> Hash {
+    let mut encoded = Vec::new();
+    for item in items {
+        encoded.extend_from_slice(item);
+    }
+    hash_bytes(domain, &[&encoded])
+}
+
+pub(super) fn model_state_root(models: &BTreeMap<Hash, ModelState>) -> Hash {
+    let mut encoded = Vec::new();
+    for (model_id, model) in models {
+        encoded.extend_from_slice(model_id);
+        encoded.extend_from_slice(&model.model_id);
+        encoded.extend_from_slice(&model.architecture_hash);
+        encoded.extend_from_slice(&model.weight_root);
+        match model.optimizer_state_root {
+            Some(root) => {
+                encoded.push(1);
+                encoded.extend_from_slice(&root);
+            }
+            None => encoded.push(0),
+        }
+        encoded.extend_from_slice(&model.step.to_le_bytes());
+        encoded.extend_from_slice(&model.config_hash);
+    }
+    hash_bytes(b"tensor-vm-model-state-root-v1", &[&encoded])
+}
+
+fn encode_hashes(out: &mut Vec<u8>, hashes: &[Hash]) {
+    out.extend_from_slice(&(hashes.len() as u64).to_le_bytes());
+    for hash in hashes {
+        out.extend_from_slice(hash);
+    }
+}
+
+fn encode_usizes(out: &mut Vec<u8>, values: &[usize]) {
+    out.extend_from_slice(&(values.len() as u64).to_le_bytes());
+    for value in values {
+        encode_usize(out, *value);
+    }
+}
+
+fn encode_usize(out: &mut Vec<u8>, value: usize) {
+    out.extend_from_slice(&(value as u64).to_le_bytes());
+}
+
+fn dtype_code(dtype: crate::tensor::DType) -> u8 {
+    dtype.tag()
+}
+
+fn primitive_type_code(primitive_type: PrimitiveType) -> u8 {
+    match primitive_type {
+        PrimitiveType::TensorOp => 1,
+        PrimitiveType::LinearTrainingStep => 2,
+    }
+}
+
+fn verification_result_code(result: VerificationResult) -> u8 {
+    match result {
+        VerificationResult::Valid => 1,
+        VerificationResult::Invalid => 2,
+        VerificationResult::Unavailable => 3,
+    }
+}
