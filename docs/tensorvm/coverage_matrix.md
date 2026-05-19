@@ -86,7 +86,8 @@ deployment gate.
   single-label DNS multiaddrs, `network-observation-from-service-log` derives signed observation records
   from captured `tvmd service serve` logs while still requiring public listen multiaddrs, process-level
   network-runtime observation roots can be summarized and artifact-bound from external-addressed records or
-  saved raw-record files with full signed network-observation line validation before aggregation, and
+  saved raw-record files with exact unpadded root-list parsing and full signed network-observation line
+  validation before aggregation, and
   file-derived block/finality/data-availability/invalid-work/reward supporting record summaries validate
   typed raw-record fields, including reward-settlement participant IDs, before exact-line hashing while
   rejecting whitespace-padded records and empty fields,

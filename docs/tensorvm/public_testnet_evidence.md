@@ -484,7 +484,7 @@ invalid work, and reward settlement.
 The `record-summary-from-roots` and `record-artifact-from-roots` variants derive a deterministic aggregate
 root and record count from unique provided supporting-record roots before signing the summary fields or
 artifact locator; duplicate roots are rejected so a summary count cannot be padded by repeating the same raw
-record root.
+record root. Empty or whitespace-padded comma-separated root entries are also rejected.
 The `record-summary-from-file` and `record-artifact-from-file` variants derive those same fields from a
 saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic raw-record files use
 `record_root=<hex>` lines, and network-runtime files can contain the exact signed

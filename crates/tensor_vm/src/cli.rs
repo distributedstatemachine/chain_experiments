@@ -2760,10 +2760,14 @@ fn parse_hash_list_argument(value: &str) -> Result<Vec<Hash>> {
     if value.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("empty hash list argument"));
     }
-    value
-        .split(',')
-        .map(|part| parse_hash_argument(part.trim()))
-        .collect()
+    let mut hashes = Vec::new();
+    for part in value.split(',') {
+        if part.is_empty() || part.trim() != part {
+            return Err(TvmError::InvalidReceipt("invalid hash list argument"));
+        }
+        hashes.push(parse_hash_argument(part)?);
+    }
+    Ok(hashes)
 }
 
 fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
@@ -6830,6 +6834,42 @@ p2p_idle_timeout_seconds=60
                 &manifest_address(b"public-evidence-publisher"),
                 "--record-roots",
                 "",
+            ])
+            .is_err()
+        );
+        let root_a = manifest_hash(b"network-observation-a");
+        let root_b = manifest_hash(b"network-observation-b");
+        let padded_roots = format!("{root_a}, {root_b}");
+        assert!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-summary-from-roots",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &manifest_hash(b"public-evidence-bundle"),
+                "--manifest-signer",
+                &manifest_address(b"public-evidence-publisher"),
+                "--record-roots",
+                &padded_roots,
+            ])
+            .is_err()
+        );
+        let empty_root_entry = format!("{root_a},,{root_b}");
+        assert!(
+            parse_cli_parts(&[
+                "public-evidence",
+                "record-artifact-from-roots",
+                "--kind",
+                "network-runtime",
+                "--bundle-id",
+                &manifest_hash(b"public-evidence-bundle"),
+                "--manifest-signer",
+                &manifest_address(b"public-evidence-publisher"),
+                "--artifact-uri",
+                "https://evidence.tensorvm.net/network-runtime.json",
+                "--record-roots",
+                &empty_root_entry,
             ])
             .is_err()
         );

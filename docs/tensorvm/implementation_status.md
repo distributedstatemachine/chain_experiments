@@ -182,7 +182,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd public-evidence record-artifact-from-roots ...` generation that signs artifact locators from the
   same derived aggregate root and count as summary generation, `tvmd public-evidence
   record-summary-from-roots ...` deterministic root aggregation for post-run supporting records with
-  duplicate-root rejection, plus `tvmd public-evidence record-summary-from-file ...` and
+  duplicate-root and whitespace-padded root-list rejection, plus `tvmd public-evidence record-summary-from-file ...` and
   `tvmd public-evidence record-artifact-from-file ...` generation from saved raw-record files containing
   `record_root=...` lines, fully verified signed `network_runtime_observation=...` lines, or typed
   `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
@@ -246,9 +246,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.04% workspace line coverage
-- 8469/8551 workspace lines covered
+- 8473/8555 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7901/7901 `tensor_vm` lines covered
+- 7905/7905 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

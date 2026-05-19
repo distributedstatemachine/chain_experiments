@@ -1976,8 +1976,9 @@ The `record-artifact-from-roots` command derives the same aggregate root and cou
 `record-summary-from-roots` before signing the artifact locator, so the summary line and artifact locator
 can be generated from the same raw record-root list.
 The `record-summary-from-roots` command deterministically aggregates unique comma-separated
-supporting-record roots, rejects duplicate roots that would pad the derived count, and emits the same signed
-manifest summary fields so operators do not need an out-of-band root-signing tool for post-run bundles.
+supporting-record roots, rejects duplicate roots that would pad the derived count, rejects empty or
+whitespace-padded root entries, and emits the same signed manifest summary fields so operators do not need
+an out-of-band root-signing tool for post-run bundles.
 The `record-summary-from-file` and `record-artifact-from-file` commands derive the same aggregate root and
 count from a saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic
 supporting-record root files use `record_root=<hex>` lines, and network-runtime files may contain the

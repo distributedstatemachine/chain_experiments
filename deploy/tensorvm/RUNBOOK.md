@@ -129,12 +129,14 @@ block_history_record=<block>,<block-root-hex>
 finality_history_record=<block>,<block-root-hex>,finalized|unfinalized
 data_availability_measurement=<receipt-root-hex>,available|unavailable,<block>
 invalid_work_rejection=<receipt-root-hex>,rejected,<block>
-reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>
+reward_settlement=<receipt-root-hex>,<miner-id-hex>,<validator-id-hex>,<block>
 ```
 
 `record-summary-from-file` and `record-artifact-from-file` validate each typed line against the selected
 record kind, then hash the exact line with that kind before aggregation. Do not trim or pad those lines;
 whitespace-padded record lines and empty fields are rejected.
+If `record-summary-from-roots` or `record-artifact-from-roots` is used directly, every comma-separated root
+entry must also be exact, nonempty, and free of leading or trailing whitespace.
 
 ## Daily Checks
 
