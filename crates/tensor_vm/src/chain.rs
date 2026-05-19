@@ -13,6 +13,7 @@ mod accounts;
 mod blocks;
 mod challenges;
 mod commands;
+mod engine;
 mod models;
 mod operators;
 mod proposer;
@@ -23,6 +24,7 @@ mod state;
 mod transactions;
 mod validation;
 
+pub use engine::{ChainCommand, ChainEngine, ChainEvent};
 use roots::{
     account_root, attestation_root, block_finality_root, hash_set_root, job_root, miner_root,
     model_state_root, receipt_root, reward_root, settled_receipt_root, validator_root,
@@ -36,63 +38,6 @@ pub use state::{
 };
 
 pub type Chain = LocalChain;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ChainCommand {
-    RegisterMiner {
-        address: Address,
-        stake: u64,
-    },
-    RegisterValidator {
-        address: Address,
-        stake: u64,
-    },
-    SubmitJob(JobState),
-    SubmitReceipt(ReceiptState),
-    SubmitAttestation(ValidatorAttestation),
-    SubmitBlockVote(BlockVote),
-    SettleEpoch {
-        miner_reward_pool: u64,
-        validator_reward_pool: u64,
-    },
-    ProduceBlock {
-        proposer: Address,
-        timestamp: u64,
-    },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ChainEvent {
-    MinerRegistered(Address),
-    ValidatorRegistered(Address),
-    JobAccepted(Hash),
-    ReceiptAccepted(Hash),
-    AttestationAccepted {
-        receipt_id: Hash,
-        validator: Address,
-    },
-    BlockVoteAccepted {
-        block_hash: Hash,
-        validator: Address,
-    },
-    ReceiptSettled(Hash),
-    RewardCredited {
-        address: Address,
-        amount: u64,
-    },
-    BlockProduced {
-        height: u64,
-        hash: Hash,
-    },
-    BlockFinalized(Hash),
-}
-
-pub trait ChainEngine {
-    fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>>;
-    fn view(&self) -> &ChainState;
-    fn params(&self) -> &ChainParams;
-    fn blocks(&self) -> &[TensorBlock];
-}
 
 impl LocalChain {
     pub fn new(finalized_randomness: Hash) -> Self {

@@ -46,6 +46,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   boundary
 - Challenge outcome application and miner/validator slashing through the internal `chain::challenges`
   boundary
+- Profile-neutral `ChainCommand`, `ChainEvent`, and `ChainEngine` facade types through the internal
+  `chain::engine` boundary
 - `ChainEngine` command dispatch, event emission, and view accessors through the internal
   `chain::commands` boundary
 - Transaction application through the internal `chain::transactions` boundary
