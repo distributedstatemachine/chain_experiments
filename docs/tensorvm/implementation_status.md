@@ -241,9 +241,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.03% workspace line coverage
-- 8397/8479 workspace lines covered
+- 8398/8480 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 7829/7829 `tensor_vm` lines covered
+- 7830/7830 `tensor_vm` lines covered
 
 The CUDA feature gate was also checked locally on an NVIDIA B200 with CUDA 12.8:
 

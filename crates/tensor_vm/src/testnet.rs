@@ -2152,14 +2152,16 @@ fn content_addressed_uri_has_identifier(uri: &str, scheme: &str) -> bool {
     let Some(rest) = uri.strip_prefix(scheme) else {
         return false;
     };
-    let (identifier, path) = rest
-        .split_once('/')
-        .map_or((rest, ""), |(identifier, path)| (identifier, path));
-    content_addressed_identifier_is_well_formed(identifier)
-        && (path.is_empty()
-            || path
-                .split('/')
-                .all(content_addressed_path_segment_is_well_formed))
+    match rest.split_once('/') {
+        Some((identifier, path)) => {
+            content_addressed_identifier_is_well_formed(identifier)
+                && !path.is_empty()
+                && path
+                    .split('/')
+                    .all(content_addressed_path_segment_is_well_formed)
+        }
+        None => content_addressed_identifier_is_well_formed(rest),
+    }
 }
 
 fn content_addressed_identifier_is_well_formed(identifier: &str) -> bool {
@@ -5341,6 +5343,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "ipfs://../manifest.json",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/../manifest.json",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/./manifest.json",
+            "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/",
             "ipfs:///manifest.json",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3//manifest.json",
             " ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3",
@@ -5349,6 +5352,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad space.json",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad%20path.json",
             "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3\\raw.json",
+            "ar://abc_DEF-123/",
             "ar:///",
         ] {
             assert!(!public_evidence_uri_is_external(uri));
