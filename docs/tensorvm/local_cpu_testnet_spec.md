@@ -181,15 +181,18 @@ Validator containers must connect through libp2p and validate receipts using the
 paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
 protocol paths and persisted state. The readiness file and `tvmd service status` output must expose the
 actual long-running role command so the checker can reject operators that fall back to a generic service
-entrypoint. The status output must also expose role-loop counters, the runtime-observed libp2p connected
-peer count, job, receipt, attestation, and block gossip counters, and the bounded observed block-hash set
-so the first gate proves every operator is connected and receiving live consensus announcements for the
-convergence target, not merely configured.
+entrypoint. The status output must also expose role-loop counters, local-producer mode, network-applied
+block counters for non-producers, the runtime-observed libp2p connected peer count, job, receipt,
+attestation, and block gossip counters, the latest observed block height/hash, and the bounded observed
+block-hash set so the first gate proves every operator is connected and receiving live consensus
+announcements for the convergence target, not merely configured.
 
-After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work. Each
-live block must come from the normal protocol path: a generated TensorWork job, miner receipts, validator
-attestations, epoch settlement, proposer selection, and block-finality votes. A local run that only serves
-the seeded two-block snapshot does not satisfy this spec.
+After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work, and
+non-producer operators must only apply live blocks after a p2p block-header announcement can be replayed
+and verified against the shared chain path. Each live block must come from the normal protocol path: a
+generated TensorWork job, miner receipts, validator attestations, epoch settlement, proposer selection, and
+block-finality votes. A local run that only serves the seeded two-block snapshot does not satisfy this
+spec.
 
 ## Local Services
 
@@ -268,6 +271,8 @@ standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
 all 15 operator node stores advanced past the seed, reported role status and live chain counters, and
 reported the same first live finalized block hash plus the same finalized common-head block hash at the
 bounded convergence height
+only miner-00 reported local timed production, and every other counted operator reported
+network-applied block progress from p2p block-header replay
 all 15 operator node stores returned the finalized local-head checkpoint hash and state root after that
 checkpoint was observed through p2p block gossip
 all 15 operators observed that checkpoint block hash through libp2p block gossip

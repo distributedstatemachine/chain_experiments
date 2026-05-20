@@ -17,6 +17,7 @@ BOOTSTRAP_ADDRESS="${TENSORVM_BOOTSTRAP_ADDRESS:-/dns4/miner-00/tcp/4001}"
 IS_BOOTSTRAP="${TENSORVM_IS_BOOTSTRAP:-false}"
 IDENTITY_SEED="${TENSORVM_LIBP2P_IDENTITY_SEED:-$OPERATOR_ID}"
 SEED_LOCAL_TESTNET="${TENSORVM_SEED_LOCAL_TESTNET:-false}"
+LOCAL_CPU_ROLE_PRODUCER="${TENSORVM_LOCAL_CPU_ROLE_PRODUCER:-false}"
 READY_FILE="$DATA_DIR/local-cpu-ready"
 INIT_OUT="/tmp/tensorvm-service-init.out"
 
@@ -67,6 +68,7 @@ tvmd service readiness \
   echo "operator_id=$OPERATOR_ID"
   echo "role=$ROLE"
   echo "runtime_command=${ROLE}_run"
+  echo "local_cpu_role_producer=$LOCAL_CPU_ROLE_PRODUCER"
   echo "node_multiaddr=$NODE_MULTIADDR"
   cat "$DATA_DIR/role-start.out"
   if [ -f "$DATA_DIR/local-testnet-seed.out" ]; then

@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum P2pMessage {
     NewBlock(Hash),
+    NewBlockHeader {
+        height: u64,
+        block_hash: Hash,
+    },
     NewJob(Hash),
     NewReceipt(Hash),
     NewAttestation(Hash),

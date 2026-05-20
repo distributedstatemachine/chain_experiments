@@ -7,13 +7,15 @@ use std::{
 };
 use tensor_vm::{
     CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord,
-    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService, ValidatorAttestation,
+    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
+    ValidatorAttestation,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
     hash::hex,
+    localnet::produce_synthetic_cpu_round_with_tensors,
     parse_cli_args, spawn_libp2p_service,
     testnet::{LocalTestnet, PublicTestnetCriteria, TestnetConfig},
     types::{Hash, hash_bytes},
@@ -355,7 +357,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -364,14 +366,17 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_runtime_command"),
         role_runtime_status_field(data_dir, "role_loop_ready"),
         role_runtime_status_field(data_dir, "role_loop_role"),
+        role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
         role_runtime_status_field(data_dir, "role_produced_blocks"),
+        role_runtime_status_field(data_dir, "role_network_applied_blocks"),
         role_runtime_status_field(data_dir, "role_latest_height"),
         role_runtime_status_field(data_dir, "role_p2p_connected_peers"),
         role_runtime_status_field(data_dir, "role_p2p_observed_blocks"),
         role_runtime_status_field(data_dir, "role_p2p_observed_jobs"),
         role_runtime_status_field(data_dir, "role_p2p_observed_receipts"),
         role_runtime_status_field(data_dir, "role_p2p_observed_attestations"),
+        role_runtime_status_field(data_dir, "role_p2p_latest_observed_block_height"),
         role_runtime_status_field(data_dir, "role_p2p_latest_observed_block_hash"),
         role_runtime_status_field(data_dir, "role_p2p_observed_block_hashes"),
         ready_file_field(data_dir, "node_multiaddr"),
@@ -541,10 +546,19 @@ fn serve_service_with_runtime(
     let mut served_requests = 0usize;
     let block_interval = local_cpu_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
+    let local_producer = local_cpu_role_producer();
     let mut produced_blocks = 0usize;
+    let mut network_applied_blocks = 0usize;
     write_role_runtime_status(
         &config,
-        &role_runtime_status_snapshot(&server, &p2p_service, served_requests, produced_blocks),
+        &role_runtime_status_snapshot(
+            &server,
+            &p2p_service,
+            served_requests,
+            produced_blocks,
+            network_applied_blocks,
+            local_producer,
+        ),
     )?;
     if block_interval.is_some() {
         server.set_nonblocking(true).map_err(|error| {
@@ -569,6 +583,8 @@ fn serve_service_with_runtime(
                             &p2p_service,
                             served_requests,
                             produced_blocks,
+                            network_applied_blocks,
+                            local_producer,
                         ),
                     )?;
                 }
@@ -576,36 +592,35 @@ fn serve_service_with_runtime(
                 Err(error) => return Err(format!("service request failed: {error}")),
             }
             if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
-                let announcement_checkpoint =
-                    chain_announcement_checkpoint(&server.gateway().node.chain);
-                if server
-                    .gateway_mut()
-                    .node
-                    .produce_synthetic_cpu_round()
-                    .map_err(|error| format!("synthetic CPU round failed: {error}"))?
-                    .is_some()
-                {
-                    publish_new_chain_announcements(
-                        &p2p_service,
-                        &announcement_checkpoint,
-                        &server.gateway().node.chain,
-                    )?;
-                    if let Some(block_hash) = server
-                        .gateway()
-                        .node
-                        .chain
-                        .blocks
-                        .last()
-                        .map(|block| block.hash())
-                    {
-                        p2p_service
-                            .publish_gossip(P2pMessage::NewBlock(block_hash))
-                            .map_err(|error| format!("failed to publish block gossip: {error}"))?;
+                if local_producer {
+                    if produce_and_publish_synthetic_round(&mut server, &p2p_service)?.is_some() {
+                        store
+                            .persist_chain(&server.gateway().node.chain)
+                            .map_err(|error| {
+                                format!("failed to persist produced block: {error}")
+                            })?;
+                        produced_blocks = produced_blocks.saturating_add(1);
+                        write_role_runtime_status(
+                            &config,
+                            &role_runtime_status_snapshot(
+                                &server,
+                                &p2p_service,
+                                served_requests,
+                                produced_blocks,
+                                network_applied_blocks,
+                                local_producer,
+                            ),
+                        )?;
                     }
+                } else if let applied_blocks @ 1.. =
+                    catch_up_to_observed_block(&mut server, &p2p_service)?
+                {
                     store
                         .persist_chain(&server.gateway().node.chain)
-                        .map_err(|error| format!("failed to persist produced block: {error}"))?;
-                    produced_blocks = produced_blocks.saturating_add(1);
+                        .map_err(|error| {
+                            format!("failed to persist network-applied block: {error}")
+                        })?;
+                    network_applied_blocks = network_applied_blocks.saturating_add(applied_blocks);
                     write_role_runtime_status(
                         &config,
                         &role_runtime_status_snapshot(
@@ -613,6 +628,8 @@ fn serve_service_with_runtime(
                             &p2p_service,
                             served_requests,
                             produced_blocks,
+                            network_applied_blocks,
+                            local_producer,
                         ),
                     )?;
                 }
@@ -634,12 +651,14 @@ fn serve_service_with_runtime(
                     &p2p_service,
                     served_requests,
                     produced_blocks,
+                    network_applied_blocks,
+                    local_producer,
                 ),
             )?;
         }
     }
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}",
+        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}",
         config.runtime_command,
         config.role,
         config.listen,
@@ -649,6 +668,7 @@ fn serve_service_with_runtime(
         p2p_service.observed_job_gossip_count(),
         p2p_service.observed_receipt_gossip_count(),
         p2p_service.observed_attestation_gossip_count(),
+        p2p_service.latest_observed_block_height(),
         hex(&p2p_service.latest_observed_block_hash()),
         hex_hash_list(&p2p_service.observed_block_hashes()),
         config.data_dir
@@ -658,12 +678,15 @@ fn serve_service_with_runtime(
 struct RoleRuntimeStatusSnapshot {
     served_requests: usize,
     produced_blocks: usize,
+    network_applied_blocks: usize,
+    local_producer: bool,
     latest_height: u64,
     p2p_connected_peers: usize,
     p2p_observed_blocks: usize,
     p2p_observed_jobs: usize,
     p2p_observed_receipts: usize,
     p2p_observed_attestations: usize,
+    p2p_latest_observed_block_height: u64,
     p2p_latest_observed_block_hash: [u8; 32],
     p2p_observed_block_hashes: Vec<[u8; 32]>,
 }
@@ -673,16 +696,21 @@ fn role_runtime_status_snapshot(
     p2p_service: &TensorVmLibp2pService,
     served_requests: usize,
     produced_blocks: usize,
+    network_applied_blocks: usize,
+    local_producer: bool,
 ) -> RoleRuntimeStatusSnapshot {
     RoleRuntimeStatusSnapshot {
         served_requests,
         produced_blocks,
+        network_applied_blocks,
+        local_producer,
         latest_height: server.gateway().node.chain.state.height,
         p2p_connected_peers: p2p_service.connected_peer_count(),
         p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
         p2p_observed_jobs: p2p_service.observed_job_gossip_count(),
         p2p_observed_receipts: p2p_service.observed_receipt_gossip_count(),
         p2p_observed_attestations: p2p_service.observed_attestation_gossip_count(),
+        p2p_latest_observed_block_height: p2p_service.latest_observed_block_height(),
         p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
         p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
     }
@@ -694,17 +722,20 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = Path::new(config.data_dir).join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_served_requests={}\nrole_produced_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role,
+        snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
+        snapshot.network_applied_blocks,
         snapshot.latest_height,
         snapshot.p2p_connected_peers,
         snapshot.p2p_observed_blocks,
         snapshot.p2p_observed_jobs,
         snapshot.p2p_observed_receipts,
         snapshot.p2p_observed_attestations,
+        snapshot.p2p_latest_observed_block_height,
         hex(&snapshot.p2p_latest_observed_block_hash),
         hex_hash_list(&snapshot.p2p_observed_block_hashes)
     );
@@ -714,6 +745,135 @@ fn write_role_runtime_status(
             path.display()
         )
     })
+}
+
+struct NetworkCatchup {
+    chain: LocalChain,
+    tensors: Vec<Tensor>,
+    applied_blocks: usize,
+}
+
+fn catch_up_to_observed_block(
+    server: &mut RpcHttpServer,
+    p2p_service: &TensorVmLibp2pService,
+) -> std::result::Result<usize, String> {
+    let target_height = p2p_service.latest_observed_block_height();
+    let target_hash = p2p_service.latest_observed_block_hash();
+    if target_height == 0
+        || target_hash == [0; 32]
+        || chain_contains_block_hash(&server.gateway().node.chain, &target_hash)
+    {
+        return Ok(0);
+    }
+    let Some(catchup) = replay_synthetic_rounds_to_observed_block(
+        &server.gateway().node.chain,
+        target_height,
+        target_hash,
+    )?
+    else {
+        return Ok(0);
+    };
+    let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
+    server.gateway_mut().node.chain = catchup.chain;
+    for tensor in catchup.tensors {
+        server.gateway_mut().node.insert_tensor(tensor);
+    }
+    publish_new_chain_announcements(
+        p2p_service,
+        &announcement_checkpoint,
+        &server.gateway().node.chain,
+    )?;
+    if let Some(block) = block_at_height(&server.gateway().node.chain, target_height) {
+        publish_block_announcement(p2p_service, block.height, block.hash())?;
+    }
+    Ok(catchup.applied_blocks)
+}
+
+fn replay_synthetic_rounds_to_observed_block(
+    chain: &LocalChain,
+    target_height: u64,
+    target_hash: Hash,
+) -> std::result::Result<Option<NetworkCatchup>, String> {
+    let latest_height = chain
+        .blocks
+        .last()
+        .map(|block| block.height)
+        .unwrap_or_default();
+    if target_height <= latest_height {
+        return Ok(None);
+    }
+    let mut candidate = chain.clone();
+    let mut tensors = Vec::new();
+    let mut applied_blocks = 0usize;
+    let max_replay_blocks = target_height.saturating_sub(latest_height).min(128) as usize;
+    for _ in 0..max_replay_blocks {
+        let Some(round) = produce_synthetic_cpu_round_with_tensors(&mut candidate)
+            .map_err(|error| format!("synthetic CPU catch-up failed: {error}"))?
+        else {
+            break;
+        };
+        tensors.extend(round.tensors);
+        applied_blocks = applied_blocks.saturating_add(1);
+        if block_at_height(&candidate, target_height).is_some() {
+            break;
+        }
+    }
+    let Some(block) = block_at_height(&candidate, target_height) else {
+        return Ok(None);
+    };
+    if block.hash() != target_hash {
+        return Ok(None);
+    }
+    Ok(Some(NetworkCatchup {
+        chain: candidate,
+        tensors,
+        applied_blocks,
+    }))
+}
+
+fn produce_and_publish_synthetic_round(
+    server: &mut RpcHttpServer,
+    p2p_service: &TensorVmLibp2pService,
+) -> std::result::Result<Option<Hash>, String> {
+    let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
+    if server
+        .gateway_mut()
+        .node
+        .produce_synthetic_cpu_round()
+        .map_err(|error| format!("synthetic CPU round failed: {error}"))?
+        .is_none()
+    {
+        return Ok(None);
+    }
+    publish_new_chain_announcements(
+        p2p_service,
+        &announcement_checkpoint,
+        &server.gateway().node.chain,
+    )?;
+    let Some(block) = server.gateway().node.chain.blocks.last() else {
+        return Ok(None);
+    };
+    let block_hash = block.hash();
+    publish_block_announcement(p2p_service, block.height, block_hash)?;
+    Ok(Some(block_hash))
+}
+
+fn publish_block_announcement(
+    p2p_service: &TensorVmLibp2pService,
+    height: u64,
+    block_hash: Hash,
+) -> std::result::Result<(), String> {
+    p2p_service
+        .publish_gossip(P2pMessage::NewBlockHeader { height, block_hash })
+        .map_err(|error| format!("failed to publish block gossip: {error}"))
+}
+
+fn block_at_height(chain: &LocalChain, height: u64) -> Option<&tensor_vm::chain::TensorBlock> {
+    chain.blocks.iter().find(|block| block.height == height)
+}
+
+fn chain_contains_block_hash(chain: &LocalChain, block_hash: &Hash) -> bool {
+    chain.blocks.iter().any(|block| block.hash() == *block_hash)
 }
 
 struct ChainAnnouncementCheckpoint {
@@ -797,6 +957,13 @@ fn local_cpu_block_interval() -> Option<Duration> {
         .and_then(|value| value.parse::<u64>().ok())
         .filter(|millis| *millis > 0)
         .map(Duration::from_millis)
+}
+
+fn local_cpu_role_producer() -> bool {
+    match std::env::var("TENSORVM_LOCAL_CPU_ROLE_PRODUCER") {
+        Ok(value) => matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"),
+        Err(_) => std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS").is_ok(),
+    }
 }
 
 fn local_cpu_seed_beacon() -> [u8; 32] {
@@ -909,5 +1076,43 @@ mod tests {
         assert_eq!(store.load_chain().unwrap(), chain);
 
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+    }
+
+    #[test]
+    fn network_catchup_replays_only_matching_observed_heads() {
+        let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        testnet.run_linear_training_round(&scheduler);
+        let seed_chain = testnet.chain.clone();
+
+        let mut announced_chain = seed_chain.clone();
+        produce_synthetic_cpu_round_with_tensors(&mut announced_chain)
+            .unwrap()
+            .expect("local synthetic round must advance");
+        let announced_block = announced_chain
+            .blocks
+            .last()
+            .expect("announced chain must contain a head block");
+        let catchup = replay_synthetic_rounds_to_observed_block(
+            &seed_chain,
+            announced_block.height,
+            announced_block.hash(),
+        )
+        .unwrap()
+        .expect("matching observed head must replay");
+
+        assert_eq!(catchup.applied_blocks, 1);
+        assert_eq!(catchup.chain.blocks, announced_chain.blocks);
+        assert!(!catchup.tensors.is_empty());
+        assert!(
+            replay_synthetic_rounds_to_observed_block(
+                &seed_chain,
+                announced_block.height,
+                hash_bytes(b"test", &[b"wrong-network-head"]),
+            )
+            .unwrap()
+            .is_none()
+        );
     }
 }

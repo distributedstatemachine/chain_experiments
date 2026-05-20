@@ -46,10 +46,11 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
 requires 10 CPU-ready miners and zero CUDA-required miners, requires miners to run `tvmd miner run` and
-validators to run `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters
-plus observed job/receipt/attestation/block gossip counters for every counted operator, verifies the seeded
-local CPU chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive
-rewarded miners, full finality and data availability,
+validators to run `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters,
+one local timed producer, network-applied block counters for every non-producer, plus observed
+job/receipt/attestation/block gossip counters for every counted operator, verifies the seeded local CPU
+chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
+miners, full finality and data availability,
 checks that the host gateway exposes the seeded chain head, checks the host gateway routes with the local
 auth token, checks the standalone explorer service on port 8080, verifies the
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup
@@ -59,9 +60,9 @@ rewards after the seed, requires live receipt details to expose validator attest
 the seeded count of both `tensor_op` and `linear_training_step` primitive receipts, fetches a live tensor
 descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
-common-head block hash through `tvmd service block`, selects a finalized head checkpoint from miner-00's
-p2p-observed block-gossip set and requires every operator to return the matching finalized block hash and
-state root while reporting a nonempty block-log root, and uses
+common-head block hash through `tvmd service block`, selects miner-00's latest finalized p2p-observed head
+from the block-gossip set and requires every operator to return the matching finalized block hash and state
+root while reporting a nonempty block-log root, and uses
 `check-rolling-restart-continuity.sh` to run the restart-continuity gate one service at a time across every
 counted operator, proving each restarted service keeps its libp2p peer ID, preserves the pre-restart
 finalized common head and state root, advances height/block-count/state-root/block-log-root evidence, and
@@ -173,9 +174,10 @@ continues finalizing blocks after restart.
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
-  runtime command, live role-loop counters, real libp2p connected-peer counts, live chain counters,
-  advancement past the shared seed, the same first live finalized block hash, and the same finalized
-  common-head block hash through `tvmd service block`. The restart-continuity gate captures
+  runtime command, live role-loop counters, local-producer mode, network-applied block counters for
+  non-producers, real libp2p connected-peer counts, live chain counters, advancement past the shared seed,
+  the same first live finalized block hash, and the same finalized common-head block hash through
+  `tvmd service block`. The restart-continuity gate captures
   pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while
   service init validates full node-store consistency and repairs torn snapshot/block-log state from
   `chain.state`.

@@ -8,7 +8,7 @@ use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -149,6 +149,7 @@ pub struct TensorVmLibp2pService {
     observed_job_gossip_count: Arc<AtomicUsize>,
     observed_receipt_gossip_count: Arc<AtomicUsize>,
     observed_attestation_gossip_count: Arc<AtomicUsize>,
+    latest_observed_block_height: Arc<AtomicU64>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
     observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
     publish_tx: mpsc::Sender<P2pMessage>,
@@ -186,6 +187,10 @@ impl TensorVmLibp2pService {
     pub fn observed_attestation_gossip_count(&self) -> usize {
         self.observed_attestation_gossip_count
             .load(Ordering::Relaxed)
+    }
+
+    pub fn latest_observed_block_height(&self) -> u64 {
+        self.latest_observed_block_height.load(Ordering::Relaxed)
     }
 
     pub fn latest_observed_block_hash(&self) -> Hash {
@@ -298,6 +303,8 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_observed_receipt_gossip_count = Arc::clone(&observed_receipt_gossip_count);
     let observed_attestation_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_attestation_gossip_count = Arc::clone(&observed_attestation_gossip_count);
+    let latest_observed_block_height = Arc::new(AtomicU64::new(0));
+    let worker_latest_observed_block_height = Arc::clone(&latest_observed_block_height);
     let latest_observed_block_hash = Arc::new(Mutex::new([0; 32]));
     let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
     let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
@@ -338,6 +345,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 observed_receipt_gossip_count: worker_observed_receipt_gossip_count.as_ref(),
                 observed_attestation_gossip_count: worker_observed_attestation_gossip_count
                     .as_ref(),
+                latest_observed_block_height: worker_latest_observed_block_height.as_ref(),
                 latest_observed_block_hash: worker_latest_observed_block_hash.as_ref(),
                 observed_block_hashes: worker_observed_block_hashes.as_ref(),
             };
@@ -378,6 +386,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             observed_job_gossip_count,
             observed_receipt_gossip_count,
             observed_attestation_gossip_count,
+            latest_observed_block_height,
             latest_observed_block_hash,
             observed_block_hashes,
             publish_tx,
@@ -397,6 +406,7 @@ struct ServiceEventMetrics<'a> {
     observed_job_gossip_count: &'a AtomicUsize,
     observed_receipt_gossip_count: &'a AtomicUsize,
     observed_attestation_gossip_count: &'a AtomicUsize,
+    latest_observed_block_height: &'a AtomicU64,
     latest_observed_block_hash: &'a Mutex<Hash>,
     observed_block_hashes: &'a Mutex<VecDeque<Hash>>,
 }
@@ -428,15 +438,31 @@ fn handle_swarm_event(
             libp2p::gossipsub::Event::Message { message, .. },
         )) => {
             if let Ok(message) = decode_message(&message.data) {
-                if let P2pMessage::NewBlock(block_hash) = &message {
+                if let Some((height, block_hash)) = block_announcement(&message) {
                     metrics
                         .observed_block_gossip_count
                         .fetch_add(1, Ordering::Relaxed);
-                    if let Ok(mut latest_block_hash) = metrics.latest_observed_block_hash.lock() {
-                        *latest_block_hash = *block_hash;
+                    let update_latest_block_hash = if height > 0 {
+                        let current_height =
+                            metrics.latest_observed_block_height.load(Ordering::Relaxed);
+                        if height >= current_height {
+                            metrics
+                                .latest_observed_block_height
+                                .store(height, Ordering::Relaxed);
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        metrics.latest_observed_block_height.load(Ordering::Relaxed) == 0
+                    };
+                    if update_latest_block_hash
+                        && let Ok(mut latest_block_hash) = metrics.latest_observed_block_hash.lock()
+                    {
+                        *latest_block_hash = block_hash;
                     }
                     if let Ok(mut block_hashes) = metrics.observed_block_hashes.lock() {
-                        remember_observed_block_hash(&mut block_hashes, *block_hash);
+                        remember_observed_block_hash(&mut block_hashes, block_hash);
                     }
                 }
                 if matches!(&message, P2pMessage::NewJob(_)) {
@@ -467,6 +493,14 @@ fn remember_observed_block_hash(block_hashes: &mut VecDeque<Hash>, block_hash: H
     block_hashes.push_back(block_hash);
     while block_hashes.len() > OBSERVED_BLOCK_HASH_LIMIT {
         block_hashes.pop_front();
+    }
+}
+
+fn block_announcement(message: &P2pMessage) -> Option<(u64, Hash)> {
+    match message {
+        P2pMessage::NewBlock(block_hash) => Some((0, *block_hash)),
+        P2pMessage::NewBlockHeader { height, block_hash } => Some((*height, *block_hash)),
+        _ => None,
     }
 }
 
@@ -526,7 +560,7 @@ fn build_libp2p_behaviour(
 
 pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
     match message {
-        P2pMessage::NewBlock(_) => Some(GossipTopic::Blocks),
+        P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. } => Some(GossipTopic::Blocks),
         P2pMessage::NewJob(_) => Some(GossipTopic::Jobs),
         P2pMessage::NewReceipt(_) => Some(GossipTopic::Receipts),
         P2pMessage::NewAttestation(_) => Some(GossipTopic::Attestations),
@@ -554,6 +588,7 @@ pub fn request_response_protocol_for_message(
             Some(RequestResponseProtocol::Program)
         }
         P2pMessage::NewBlock(_)
+        | P2pMessage::NewBlockHeader { .. }
         | P2pMessage::NewJob(_)
         | P2pMessage::NewReceipt(_)
         | P2pMessage::NewAttestation(_)
@@ -587,6 +622,11 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
         P2pMessage::NewBlock(hash) => {
             out.push(1);
             write_hash(&mut out, hash);
+        }
+        P2pMessage::NewBlockHeader { height, block_hash } => {
+            out.push(12);
+            write_u64(&mut out, *height);
+            write_hash(&mut out, block_hash);
         }
         P2pMessage::NewJob(hash) => {
             out.push(2);
@@ -664,6 +704,10 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
     let tag = reader.read_u8()?;
     let message = match tag {
         1 => P2pMessage::NewBlock(reader.read_hash()?),
+        12 => P2pMessage::NewBlockHeader {
+            height: reader.read_u64()?,
+            block_hash: reader.read_hash()?,
+        },
         2 => P2pMessage::NewJob(reader.read_hash()?),
         3 => P2pMessage::NewReceipt(reader.read_hash()?),
         4 => P2pMessage::NewAttestation(reader.read_hash()?),
@@ -994,6 +1038,10 @@ mod tests {
         let peer = address(b"peer");
         let messages = vec![
             P2pMessage::NewBlock(h),
+            P2pMessage::NewBlockHeader {
+                height: 3,
+                block_hash: h,
+            },
             P2pMessage::NewJob(h),
             P2pMessage::NewReceipt(h),
             P2pMessage::NewAttestation(h),
@@ -1046,6 +1094,13 @@ mod tests {
             Some(GossipTopic::Blocks)
         );
         assert_eq!(
+            gossip_topic_for_message(&P2pMessage::NewBlockHeader {
+                height: 3,
+                block_hash: h
+            }),
+            Some(GossipTopic::Blocks)
+        );
+        assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewJob(h)),
             Some(GossipTopic::Jobs)
         );
@@ -1085,6 +1140,13 @@ mod tests {
         );
         assert_eq!(
             request_response_protocol_for_message(&P2pMessage::NewBlock(h)),
+            None
+        );
+        assert_eq!(
+            request_response_protocol_for_message(&P2pMessage::NewBlockHeader {
+                height: 3,
+                block_hash: h
+            }),
             None
         );
         assert_eq!(
@@ -1257,6 +1319,14 @@ mod tests {
 
         let block_hash = hash_bytes(b"test", &[b"libp2p-service-observed-block"]);
         wait_for_observed_block(&service_a, &service_b, block_hash);
+        let block_header_hash = hash_bytes(b"test", &[b"libp2p-service-observed-block-header"]);
+        wait_for_observed_block_header(&service_a, &service_b, 7, block_header_hash);
+        wait_for_stale_block_announcements_to_preserve_latest_header(
+            &service_a,
+            &service_b,
+            7,
+            block_header_hash,
+        );
         wait_for_observed_consensus_gossip(&service_a, &service_b);
     }
 
@@ -1341,6 +1411,10 @@ mod tests {
 
             let gossip_messages = [
                 P2pMessage::NewBlock(hash_bytes(b"test", &[b"gate-0-libp2p-block"])),
+                P2pMessage::NewBlockHeader {
+                    height: 3,
+                    block_hash: hash_bytes(b"test", &[b"gate-0-libp2p-block-header"]),
+                },
                 P2pMessage::NewJob(hash_bytes(b"test", &[b"gate-0-libp2p-job"])),
                 P2pMessage::NewReceipt(hash_bytes(b"test", &[b"gate-0-libp2p-receipt"])),
                 P2pMessage::NewAttestation(hash_bytes(b"test", &[b"gate-0-libp2p-attestation"])),
@@ -1456,6 +1530,73 @@ mod tests {
 
         assert!(observer.observed_block_gossip_count() > 0);
         assert_eq!(observer.latest_observed_block_hash(), block_hash);
+        assert!(observer.observed_block_hashes().contains(&block_hash));
+    }
+
+    fn wait_for_observed_block_header(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        height: u64,
+        block_hash: Hash,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline
+            && (observer.latest_observed_block_height() != height
+                || observer.latest_observed_block_hash() != block_hash)
+        {
+            publisher
+                .publish_gossip(P2pMessage::NewBlockHeader { height, block_hash })
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert!(observer.observed_block_gossip_count() > 1);
+        assert_eq!(observer.latest_observed_block_height(), height);
+        assert_eq!(observer.latest_observed_block_hash(), block_hash);
+        assert!(observer.observed_block_hashes().contains(&block_hash));
+    }
+
+    fn wait_for_stale_block_announcements_to_preserve_latest_header(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        latest_height: u64,
+        latest_hash: Hash,
+    ) {
+        let stale_header_hash = hash_bytes(b"test", &[b"stale-block-header"]);
+        wait_for_observed_hash(
+            publisher,
+            observer,
+            P2pMessage::NewBlockHeader {
+                height: latest_height - 1,
+                block_hash: stale_header_hash,
+            },
+            stale_header_hash,
+        );
+        assert_eq!(observer.latest_observed_block_height(), latest_height);
+        assert_eq!(observer.latest_observed_block_hash(), latest_hash);
+
+        let legacy_block_hash = hash_bytes(b"test", &[b"legacy-block-without-height"]);
+        wait_for_observed_hash(
+            publisher,
+            observer,
+            P2pMessage::NewBlock(legacy_block_hash),
+            legacy_block_hash,
+        );
+        assert_eq!(observer.latest_observed_block_height(), latest_height);
+        assert_eq!(observer.latest_observed_block_hash(), latest_hash);
+    }
+
+    fn wait_for_observed_hash(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        message: P2pMessage,
+        block_hash: Hash,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline && !observer.observed_block_hashes().contains(&block_hash) {
+            publisher.publish_gossip(message.clone()).unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
         assert!(observer.observed_block_hashes().contains(&block_hash));
     }
 

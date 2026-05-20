@@ -90,8 +90,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("condition: service_healthy"));
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
     assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
+    assert!(compose.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\""));
     assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
+    assert!(env_file.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER=false"));
     assert!(env_file.contains(
         "TENSORVM_BOOTSTRAP_PEER_ID=12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
     ));
@@ -129,6 +131,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "tvmd local-testnet seed",
         "local-testnet-seed.out",
         "runtime_command=${ROLE}_run",
+        "local_cpu_role_producer=",
         "tvmd miner run",
         "tvmd validator run",
         "public_evidence_full_spec=false",
@@ -178,6 +181,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "tvmd service status",
         "all_operator_status_count=15",
         "CANDIDATE_NETWORK_HEAD_HEIGHT",
+        "role_local_producer",
+        "role_network_applied_blocks",
+        "role_p2p_latest_observed_block_height",
         "all_operator_min_height=",
         "latest_block_height",
         "block_log_root",
@@ -198,6 +204,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_role_status=true",
         "all_operator_role_runtime_commands=true",
         "all_operator_role_runtime_counters=true",
+        "single_local_producer=true",
+        "all_non_producer_network_applied_blocks=true",
         "all_operator_p2p_connected_peers=true",
         "all_operator_p2p_block_gossip=true",
         "all_operator_p2p_job_gossip=true",

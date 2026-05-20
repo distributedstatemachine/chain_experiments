@@ -151,6 +151,8 @@ for service in $EXPECTED_SERVICES; do
   operator_id=$(compose exec -T "$service" printenv TENSORVM_OPERATOR_ID)
   compose exec -T "$service" grep -q "p2p_identity_seed=$operator_id" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service libp2p identity seed does not match its operator ID"
+  compose exec -T "$service" grep -q "^local_cpu_role_producer=" /var/lib/tensorvm/local-cpu-ready \
+    || fail "$service readiness file does not report local CPU producer mode"
   compose exec -T "$service" grep "^p2p_peer_id=" /var/lib/tensorvm/local-cpu-ready >> "$TMP_DIR/p2p_peer_ids"
   compose exec -T "$service" printenv TENSORVM_OPERATOR_ID >> "$TMP_DIR/operator_ids"
   compose exec -T "$service" printenv TENSORVM_NODE_MULTIADDR >> "$TMP_DIR/node_multiaddrs"
@@ -304,8 +306,8 @@ while [ "$attempt" -lt 30 ]; do
   TARGET_STATUS_RAW=$(read_service_status miner-00) \
     || fail "could not read miner-00 network-observed service status"
   TARGET_STATUS="$TARGET_STATUS_RAW"
-  CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
-  CANDIDATE_NETWORK_HEAD_HASH=$(status_value latest_block_hash "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value role_p2p_latest_observed_block_height "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_hash "$TARGET_STATUS")
   CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_hashes "$TARGET_STATUS")
   if [ -n "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HEIGHT" -gt 2 ] \
@@ -384,13 +386,16 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_RUNTIME_COMMAND=$(status_value role_runtime_command "$STATUS")
     SERVICE_ROLE_LOOP_READY=$(status_value role_loop_ready "$STATUS")
     SERVICE_ROLE_LOOP_ROLE=$(status_value role_loop_role "$STATUS")
+    SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
+    SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
     SERVICE_ROLE_LATEST_HEIGHT=$(status_value role_latest_height "$STATUS")
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_JOBS=$(status_value role_p2p_observed_jobs "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_RECEIPTS=$(status_value role_p2p_observed_receipts "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS=$(status_value role_p2p_observed_attestations "$STATUS")
+    SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT=$(status_value role_p2p_latest_observed_block_height "$STATUS")
     SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH=$(status_value role_p2p_latest_observed_block_hash "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES=$(status_value role_p2p_observed_block_hashes "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -412,7 +417,11 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_READY" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_ROLE" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LATEST_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_CONNECTED_PEERS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
@@ -424,6 +433,8 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" ] || { STATUS_MISMATCH=true; continue; }
@@ -440,6 +451,17 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_RUNTIME_COMMAND" = "$SERVICE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOOP_READY" = "true" ] || { STATUS_MISMATCH=true; continue; }
+    case "$service" in
+      miner-00)
+        [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "true" ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        ;;
+      *)
+        [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "false" ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        ;;
+    esac
     if [ "$SERVICE_HEIGHT" -le 2 ] \
       || [ "$SERVICE_BLOCK_COUNT" -le 2 ] \
       || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -le 2 ] \
@@ -453,13 +475,13 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_JOB_COUNT" -le 2 ] \
       || [ "$SERVICE_RECEIPT_COUNT" -le 10 ] \
       || [ "$SERVICE_ATTESTATION_COUNT" -le "$SEED_ATTESTATION_COUNT" ] \
-      || [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -le 0 ] \
       || [ "$SERVICE_ROLE_LATEST_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
       STATUS_MISMATCH=true
@@ -586,6 +608,8 @@ all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
+single_local_producer=true
+all_non_producer_network_applied_blocks=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
 all_operator_p2p_job_gossip=true
