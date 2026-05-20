@@ -122,8 +122,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   reports
 - Role-specific long-running `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` command
   surfaces that validate the role config, start the mandatory libp2p-backed service runtime, write live
-  role-loop counters, and report role runtime readiness plus local-producer mode, network-applied block
-  counters, and observed job/receipt/attestation/block gossip counters through `tvmd service status`
+  role-loop counters from a single runtime state object, and report role runtime readiness plus
+  local-producer mode, network-applied block counters, and observed job/receipt/attestation/block gossip
+  counters through `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires

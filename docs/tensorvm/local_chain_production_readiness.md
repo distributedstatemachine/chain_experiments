@@ -585,11 +585,14 @@ duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` 
 checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
-observations for every counted operator. CPU miner execution and validator verification now live behind
-role-owned library components used by the local producer, but the long-running commands still delegate to
-the shared service runtime internally. Runtime role policy now prevents miner and validator roles from
-becoming local block producers even if they inherit local block-interval configuration; process-level
-miner/validator/proposer ownership still needs to be split further.
+observations for every counted operator. The service runtime now keeps served-request counts,
+produced-block counts, network-applied block counts, aggregate network-event counters, and pending
+out-of-order network payloads in one runtime state object instead of scattering them through the loop. CPU
+miner execution and validator verification now live behind role-owned library components used by the local
+producer, but the long-running commands still delegate to the shared service runtime internally. Runtime
+role policy now prevents miner and validator roles from becoming local block producers even if they inherit
+local block-interval configuration; process-level miner/validator/proposer ownership still needs to be split
+further.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
