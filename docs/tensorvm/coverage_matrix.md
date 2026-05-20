@@ -47,8 +47,9 @@ The checked run starts 10 miner containers and 5 validator containers, verifies 
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
 requires 10 CPU-ready miners and zero CUDA-required miners, requires miners to run `tvmd miner run` and
 validators to run `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters
-for every counted operator, verifies the seeded local CPU chain has 10 settled receipts, settled matmul
-work, settled LinearTrainingStep work, positive rewarded miners, full finality and data availability,
+plus observed job/receipt/attestation/block gossip counters for every counted operator, verifies the seeded
+local CPU chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive
+rewarded miners, full finality and data availability,
 checks that the host gateway exposes the seeded chain head, checks the host gateway routes with the local
 auth token, checks the standalone explorer service on port 8080, verifies the
 explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, waits for live post-startup

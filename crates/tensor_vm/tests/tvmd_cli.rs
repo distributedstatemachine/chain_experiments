@@ -1089,6 +1089,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
         assert!(stdout.contains("p2p_observed_block_gossip_count="));
+        assert!(stdout.contains("p2p_observed_job_gossip_count="));
+        assert!(stdout.contains("p2p_observed_receipt_gossip_count="));
+        assert!(stdout.contains("p2p_observed_attestation_gossip_count="));
         assert!(stdout.contains("p2p_latest_observed_block_hash="));
         assert!(stdout.contains("p2p_observed_block_hashes="));
         assert!(stdout.contains("served_requests=1"));
@@ -1100,6 +1103,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_p2p_connected_peers="));
         assert!(status.contains("role_p2p_observed_blocks="));
+        assert!(status.contains("role_p2p_observed_jobs="));
+        assert!(status.contains("role_p2p_observed_receipts="));
+        assert!(status.contains("role_p2p_observed_attestations="));
         assert!(status.contains("role_p2p_latest_observed_block_hash="));
         assert!(status.contains("role_p2p_observed_block_hashes="));
 

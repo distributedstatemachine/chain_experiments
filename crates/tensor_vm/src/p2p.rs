@@ -146,6 +146,9 @@ pub struct TensorVmLibp2pService {
     info: TensorVmLibp2pServiceInfo,
     connected_peer_count: Arc<AtomicUsize>,
     observed_block_gossip_count: Arc<AtomicUsize>,
+    observed_job_gossip_count: Arc<AtomicUsize>,
+    observed_receipt_gossip_count: Arc<AtomicUsize>,
+    observed_attestation_gossip_count: Arc<AtomicUsize>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
     observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
     publish_tx: mpsc::Sender<P2pMessage>,
@@ -170,6 +173,19 @@ impl TensorVmLibp2pService {
 
     pub fn observed_block_gossip_count(&self) -> usize {
         self.observed_block_gossip_count.load(Ordering::Relaxed)
+    }
+
+    pub fn observed_job_gossip_count(&self) -> usize {
+        self.observed_job_gossip_count.load(Ordering::Relaxed)
+    }
+
+    pub fn observed_receipt_gossip_count(&self) -> usize {
+        self.observed_receipt_gossip_count.load(Ordering::Relaxed)
+    }
+
+    pub fn observed_attestation_gossip_count(&self) -> usize {
+        self.observed_attestation_gossip_count
+            .load(Ordering::Relaxed)
     }
 
     pub fn latest_observed_block_hash(&self) -> Hash {
@@ -276,6 +292,12 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_connected_peer_count = Arc::clone(&connected_peer_count);
     let observed_block_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_block_gossip_count = Arc::clone(&observed_block_gossip_count);
+    let observed_job_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_job_gossip_count = Arc::clone(&observed_job_gossip_count);
+    let observed_receipt_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_receipt_gossip_count = Arc::clone(&observed_receipt_gossip_count);
+    let observed_attestation_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_attestation_gossip_count = Arc::clone(&observed_attestation_gossip_count);
     let latest_observed_block_hash = Arc::new(Mutex::new([0; 32]));
     let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
     let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
@@ -309,6 +331,16 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 .collect::<Vec<_>>();
             let mut next_bootstrap_dial = Instant::now() + Duration::from_millis(250);
             let mut peer_connections = HashMap::new();
+            let event_metrics = ServiceEventMetrics {
+                connected_peer_count: worker_connected_peer_count.as_ref(),
+                observed_block_gossip_count: worker_observed_block_gossip_count.as_ref(),
+                observed_job_gossip_count: worker_observed_job_gossip_count.as_ref(),
+                observed_receipt_gossip_count: worker_observed_receipt_gossip_count.as_ref(),
+                observed_attestation_gossip_count: worker_observed_attestation_gossip_count
+                    .as_ref(),
+                latest_observed_block_hash: worker_latest_observed_block_hash.as_ref(),
+                observed_block_hashes: worker_observed_block_hashes.as_ref(),
+            };
 
             while !worker_stop.load(Ordering::Relaxed) {
                 while let Ok(message) = publish_rx.try_recv() {
@@ -320,14 +352,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                     tokio::time::timeout(Duration::from_millis(100), node.swarm.select_next_some())
                         .await
                 {
-                    handle_swarm_event(
-                        event,
-                        &mut peer_connections,
-                        &worker_connected_peer_count,
-                        &worker_observed_block_gossip_count,
-                        &worker_latest_observed_block_hash,
-                        &worker_observed_block_hashes,
-                    );
+                    handle_swarm_event(event, &mut peer_connections, &event_metrics);
                 }
                 if !bootstrap_multiaddrs.is_empty()
                     && peer_connections.is_empty()
@@ -350,6 +375,9 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             info,
             connected_peer_count,
             observed_block_gossip_count,
+            observed_job_gossip_count,
+            observed_receipt_gossip_count,
+            observed_attestation_gossip_count,
             latest_observed_block_hash,
             observed_block_hashes,
             publish_tx,
@@ -363,18 +391,27 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     }
 }
 
+struct ServiceEventMetrics<'a> {
+    connected_peer_count: &'a AtomicUsize,
+    observed_block_gossip_count: &'a AtomicUsize,
+    observed_job_gossip_count: &'a AtomicUsize,
+    observed_receipt_gossip_count: &'a AtomicUsize,
+    observed_attestation_gossip_count: &'a AtomicUsize,
+    latest_observed_block_hash: &'a Mutex<Hash>,
+    observed_block_hashes: &'a Mutex<VecDeque<Hash>>,
+}
+
 fn handle_swarm_event(
     event: SwarmEvent<TensorVmNetworkBehaviourEvent>,
     peer_connections: &mut HashMap<PeerId, usize>,
-    connected_peer_count: &AtomicUsize,
-    observed_block_gossip_count: &AtomicUsize,
-    latest_observed_block_hash: &Mutex<Hash>,
-    observed_block_hashes: &Mutex<VecDeque<Hash>>,
+    metrics: &ServiceEventMetrics<'_>,
 ) {
     match event {
         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
             *peer_connections.entry(peer_id).or_default() += 1;
-            connected_peer_count.store(peer_connections.len(), Ordering::Relaxed);
+            metrics
+                .connected_peer_count
+                .store(peer_connections.len(), Ordering::Relaxed);
         }
         SwarmEvent::ConnectionClosed { peer_id, .. } => {
             if let Some(connection_count) = peer_connections.get_mut(&peer_id) {
@@ -383,18 +420,39 @@ fn handle_swarm_event(
                     peer_connections.remove(&peer_id);
                 }
             }
-            connected_peer_count.store(peer_connections.len(), Ordering::Relaxed);
+            metrics
+                .connected_peer_count
+                .store(peer_connections.len(), Ordering::Relaxed);
         }
         SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
             libp2p::gossipsub::Event::Message { message, .. },
         )) => {
-            if let Ok(P2pMessage::NewBlock(block_hash)) = decode_message(&message.data) {
-                observed_block_gossip_count.fetch_add(1, Ordering::Relaxed);
-                if let Ok(mut latest_block_hash) = latest_observed_block_hash.lock() {
-                    *latest_block_hash = block_hash;
+            if let Ok(message) = decode_message(&message.data) {
+                if let P2pMessage::NewBlock(block_hash) = &message {
+                    metrics
+                        .observed_block_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
+                    if let Ok(mut latest_block_hash) = metrics.latest_observed_block_hash.lock() {
+                        *latest_block_hash = *block_hash;
+                    }
+                    if let Ok(mut block_hashes) = metrics.observed_block_hashes.lock() {
+                        remember_observed_block_hash(&mut block_hashes, *block_hash);
+                    }
                 }
-                if let Ok(mut block_hashes) = observed_block_hashes.lock() {
-                    remember_observed_block_hash(&mut block_hashes, block_hash);
+                if matches!(&message, P2pMessage::NewJob(_)) {
+                    metrics
+                        .observed_job_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+                if matches!(&message, P2pMessage::NewReceipt(_)) {
+                    metrics
+                        .observed_receipt_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
+                }
+                if matches!(&message, P2pMessage::NewAttestation(_)) {
+                    metrics
+                        .observed_attestation_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
                 }
             }
         }
@@ -1199,6 +1257,7 @@ mod tests {
 
         let block_hash = hash_bytes(b"test", &[b"libp2p-service-observed-block"]);
         wait_for_observed_block(&service_a, &service_b, block_hash);
+        wait_for_observed_consensus_gossip(&service_a, &service_b);
     }
 
     #[test]
@@ -1398,6 +1457,36 @@ mod tests {
         assert!(observer.observed_block_gossip_count() > 0);
         assert_eq!(observer.latest_observed_block_hash(), block_hash);
         assert!(observer.observed_block_hashes().contains(&block_hash));
+    }
+
+    fn wait_for_observed_consensus_gossip(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+    ) {
+        let job_hash = hash_bytes(b"test", &[b"libp2p-service-observed-job"]);
+        let receipt_hash = hash_bytes(b"test", &[b"libp2p-service-observed-receipt"]);
+        let attestation_hash = hash_bytes(b"test", &[b"libp2p-service-observed-attestation"]);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline
+            && (observer.observed_job_gossip_count() == 0
+                || observer.observed_receipt_gossip_count() == 0
+                || observer.observed_attestation_gossip_count() == 0)
+        {
+            publisher
+                .publish_gossip(P2pMessage::NewJob(job_hash))
+                .unwrap();
+            publisher
+                .publish_gossip(P2pMessage::NewReceipt(receipt_hash))
+                .unwrap();
+            publisher
+                .publish_gossip(P2pMessage::NewAttestation(attestation_hash))
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert!(observer.observed_job_gossip_count() > 0);
+        assert!(observer.observed_receipt_gossip_count() > 0);
+        assert!(observer.observed_attestation_gossip_count() > 0);
     }
 
     async fn wait_for_listen_addr(node: &mut TensorVmLibp2pNode) -> Multiaddr {

@@ -86,10 +86,10 @@ The local bundle is useful and should remain the first operational target:
   through `tvmd service status`.
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
-  common-head block hash through `tvmd service block` before and after restart checks. It also selects a
-  finalized head checkpoint from miner-00's p2p-observed block-gossip set, finds that checkpoint in
-  miner-00's local block log, then fails unless every operator catches up to that same finalized block hash
-  and state root, with a nonempty block-log root reported from every node store.
+  common-head block hash through `tvmd service block` before and after restart checks. It also selects
+  miner-00's finalized local head only after that exact head appears in miner-00's p2p-observed
+  block-gossip set, then fails unless every operator catches up to that same finalized block hash and
+  state root, with a nonempty block-log root reported from every node store.
 - `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, block-log
   roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
   keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
@@ -105,10 +105,12 @@ The local bundle is useful and should remain the first operational target:
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_produced_blocks`, `role_latest_height`, `role_p2p_connected_peers`,
+  `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
-  loop with produced-block progress, at least one real libp2p connection, at least one block announcement
-  observed through Gossipsub, and an observed network announcement for the selected p2p-observed head hash.
+  loop with produced-block progress, at least one real libp2p connection, job/receipt/attestation/block
+  announcements observed through Gossipsub, and an observed network announcement for the selected
+  finalized local head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -185,7 +187,8 @@ Required fix:
 
 The checker validates that all operators are running and libp2p-ready, and now checks every node store for
 role status, live chain counters, the same first live finalized block hash, the same finalized common-head
-block hash, and a p2p-observed latest-head checkpoint/state root through `tvmd service block`. It still
+block hash, and a finalized local-head checkpoint/state root that has also been observed through p2p block
+gossip via `tvmd service block`. It still
 does not prove live state was fully applied from the shared network event loop or that every
 operator is executing a distinct role loop.
 
@@ -200,9 +203,10 @@ Required fix:
 
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
 command, role-loop readiness, role, produced-block, latest-height, real libp2p connected-peer counters,
-and runtime-observed block-gossip counters from the long-running command. Local block production now
-publishes `NewBlock` announcements over Gossipsub, and the checker requires every counted operator to
-observe and serve the selected network-observed head block hash through libp2p. Full state application
+and runtime-observed job, receipt, attestation, and block gossip counters from the long-running command.
+Local block production now publishes `NewJob`, `NewReceipt`, `NewAttestation`, and `NewBlock`
+announcements over Gossipsub, and the checker requires every counted operator to observe those message
+classes plus serve the selected network-observed head block hash through libp2p. Full state application
 from the shared node event loop still needs to replace the remaining local-store catch-up proof.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
@@ -494,10 +498,11 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the same first live finalized block
-hash, the same finalized common-head block hash, and a p2p-observed latest-head checkpoint/state root
-through `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real
-libp2p connected-peer counts, selected-head block-gossip observations from every role runtime, and
-nonempty block-log roots from every node store. The restart-continuity script also captures
+hash, the same finalized common-head block hash, and a finalized local-head checkpoint/state root that was
+also observed through p2p block gossip via `tvmd service block`, plus named post-seed TensorOp and
+LinearTrainingStep receipt evidence, real
+libp2p connected-peer counts, job/receipt/attestation/block gossip observations from every role runtime,
+and nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
 selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
 Fully applying blocks from the shared network event path still needs hard checker assertions.
@@ -533,9 +538,9 @@ smaller chain modules and the existing test module.
 Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
 Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
 `runtime_command=validator_run` through ready files and `tvmd service status`. The status path also exposes
-live role-loop counters, real libp2p connected-peer counts, and target-head block-gossip observations for
-every counted operator. The commands still delegate to the service runtime internally, and proposer/node
-run ownership still needs to be split out.
+live role-loop counters, real libp2p connected-peer counts, job/receipt/attestation/block gossip
+observations, and target-head block-gossip observations for every counted operator. The commands still
+delegate to the service runtime internally, and proposer/node run ownership still needs to be split out.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

@@ -115,24 +115,6 @@ read_service_block() {
   return 1
 }
 
-find_service_block_by_hash() {
-  service="$1"
-  target_hash="$2"
-  max_height="$3"
-  height="$max_height"
-  while [ "$height" -gt 2 ]; do
-    if block_raw=$(read_service_block "$service" "$height"); then
-      block_hash=$(status_value block_hash "$block_raw")
-      if [ "$block_hash" = "$target_hash" ]; then
-        printf '%s\n' "$block_raw"
-        return 0
-      fi
-    fi
-    height=$((height - 1))
-  done
-  return 1
-}
-
 cd "$REPO_ROOT"
 
 compose config --quiet
@@ -322,22 +304,23 @@ while [ "$attempt" -lt 30 ]; do
   TARGET_STATUS_RAW=$(read_service_status miner-00) \
     || fail "could not read miner-00 network-observed service status"
   TARGET_STATUS="$TARGET_STATUS_RAW"
-  CANDIDATE_NETWORK_MAX_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
-  CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_hash "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value latest_block_height "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HASH=$(status_value latest_block_hash "$TARGET_STATUS")
   CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_hashes "$TARGET_STATUS")
-  if [ -n "$CANDIDATE_NETWORK_MAX_HEIGHT" ] \
-    && [ "$CANDIDATE_NETWORK_MAX_HEIGHT" -gt 2 ] \
+  if [ -n "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
+    && [ "$CANDIDATE_NETWORK_HEAD_HEIGHT" -gt 2 ] \
     && [ -n "$CANDIDATE_NETWORK_HEAD_HASH" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "unknown" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] \
     && csv_contains_value "$CANDIDATE_NETWORK_HASHES" "$CANDIDATE_NETWORK_HEAD_HASH"; then
-    if NETWORK_BLOCK_RAW=$(find_service_block_by_hash miner-00 "$CANDIDATE_NETWORK_HEAD_HASH" "$CANDIDATE_NETWORK_MAX_HEIGHT"); then
+    if NETWORK_BLOCK_RAW=$(read_service_block miner-00 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then
       NETWORK_BLOCK_STATUS="$NETWORK_BLOCK_RAW"
       NETWORK_BLOCK_HEIGHT=$(status_value height "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_HASH=$(status_value block_hash "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_STATE_ROOT=$(status_value state_root "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_FINALIZED=$(status_value finalized "$NETWORK_BLOCK_STATUS")
       if [ -n "$NETWORK_BLOCK_HEIGHT" ] \
+        && [ "$NETWORK_BLOCK_HEIGHT" = "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
         && [ "$NETWORK_BLOCK_HEIGHT" -gt 2 ] \
         && [ "$NETWORK_BLOCK_HASH" = "$CANDIDATE_NETWORK_HEAD_HASH" ] \
         && [ -n "$NETWORK_BLOCK_STATE_ROOT" ] \
@@ -405,6 +388,9 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_LATEST_HEIGHT=$(status_value role_latest_height "$STATUS")
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_JOBS=$(status_value role_p2p_observed_jobs "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_RECEIPTS=$(status_value role_p2p_observed_receipts "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS=$(status_value role_p2p_observed_attestations "$STATUS")
     SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH=$(status_value role_p2p_latest_observed_block_hash "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES=$(status_value role_p2p_observed_block_hashes "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -432,6 +418,12 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_JOBS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" ] || { STATUS_MISMATCH=true; continue; }
@@ -465,6 +457,9 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_ROLE_LATEST_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
       STATUS_MISMATCH=true
@@ -593,6 +588,9 @@ all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
+all_operator_p2p_job_gossip=true
+all_operator_p2p_receipt_gossip=true
+all_operator_p2p_attestation_gossip=true
 all_operator_p2p_target_head_observed=true
 all_operator_p2p_latest_head_observed=true
 all_operator_chain_counters=true

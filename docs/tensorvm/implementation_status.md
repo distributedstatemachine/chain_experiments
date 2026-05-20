@@ -87,9 +87,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
   `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
-  disconnect, local block-announcement publishing over Gossipsub, runtime-observed block-gossip counters
-  and bounded observed block-hash sets exposed through role status, and durable libp2p bootstrap peer-book
-  storage with checksum validation and `/p2p/<peer-id>` dial multiaddr loading
+  disconnect, local job/receipt/attestation/block announcement publishing over Gossipsub,
+  runtime-observed consensus-gossip counters and bounded observed block-hash sets exposed through role
+  status, and durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>`
+  dial multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
@@ -103,7 +104,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   wallet, device, mandatory libp2p node-endpoint validation, and structured readiness reports
 - Role-specific long-running `tvmd miner run` and `tvmd validator run` command surfaces that validate the
   role config, start the mandatory libp2p-backed service runtime, write live role-loop counters, and
-  report role runtime readiness plus observed block-gossip counters through `tvmd service status`
+  report role runtime readiness plus observed job/receipt/attestation/block gossip counters through
+  `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -326,16 +328,18 @@ preflight, public evidence, or deployment-gated work can count:
   `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
-  catch up to a finalized head checkpoint selected from miner-00's p2p-observed block-gossip set and
-  found in miner-00's local block log with matching finalized block hash and state root via
+  catch up to miner-00's finalized local-head checkpoint after that head appears in p2p block gossip with
+  matching finalized block hash and state root via
   `all_operator_network_head_convergence=true`, plus p2p observation of that same network head hash,
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
   `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
+  `all_operator_p2p_job_gossip=true`, `all_operator_p2p_receipt_gossip=true`,
+  `all_operator_p2p_attestation_gossip=true`,
   `all_operator_p2p_target_head_observed=true`, `all_operator_p2p_latest_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
-  command, live role-loop counters, real libp2p connected-peer count, observed block gossip for the target
-  convergence head, live chain counters, and durable block-log root;
+  command, live role-loop counters, real libp2p connected-peer count, observed consensus gossip including
+  block gossip for the target convergence head, live chain counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
@@ -375,9 +379,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.19% workspace line coverage
-- 10044/10126 workspace lines covered
+- 10082/10164 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9199/9199 `tensor_vm` lines covered
+- 9237/9237 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
