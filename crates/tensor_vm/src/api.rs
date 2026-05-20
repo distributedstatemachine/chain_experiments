@@ -94,6 +94,10 @@ pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator status",
 ];
 
+pub const PROPOSER_CLI_COMMANDS: &[&str] = &[
+    "tvmd proposer run --wallet <key> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
+];
+
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
     "tvmd service init --data-dir <path>",
     "tvmd service peer add --data-dir <path> --peer-id <peer-id> --address <libp2p-multiaddr>",
@@ -172,6 +176,11 @@ mod tests {
             VALIDATOR_CLI_COMMANDS
                 .iter()
                 .any(|command| command.contains("validator run"))
+        );
+        assert!(
+            PROPOSER_CLI_COMMANDS
+                .iter()
+                .any(|command| command.contains("proposer run"))
         );
         assert!(
             SERVICE_CLI_COMMANDS

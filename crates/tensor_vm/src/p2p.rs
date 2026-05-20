@@ -152,6 +152,7 @@ pub struct TensorVmLibp2pService {
     latest_observed_block_height: Arc<AtomicU64>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
     observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
+    observed_message_rx: Mutex<mpsc::Receiver<P2pMessage>>,
     publish_tx: mpsc::Sender<P2pMessage>,
     stop: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
@@ -205,6 +206,18 @@ impl TensorVmLibp2pService {
             .lock()
             .map(|hashes| hashes.iter().copied().collect())
             .unwrap_or_default()
+    }
+
+    pub fn drain_observed_messages(&self) -> Vec<P2pMessage> {
+        let receiver = self
+            .observed_message_rx
+            .lock()
+            .expect("observed message receiver mutex poisoned");
+        let mut messages = Vec::new();
+        while let Ok(message) = receiver.try_recv() {
+            messages.push(message);
+        }
+        messages
     }
 
     pub fn publish_gossip(&self, message: P2pMessage) -> TvmResult<()> {
@@ -310,6 +323,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
     let worker_observed_block_hashes = Arc::clone(&observed_block_hashes);
     let (publish_tx, publish_rx) = mpsc::channel();
+    let (observed_message_tx, observed_message_rx) = mpsc::channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -348,6 +362,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 latest_observed_block_height: worker_latest_observed_block_height.as_ref(),
                 latest_observed_block_hash: worker_latest_observed_block_hash.as_ref(),
                 observed_block_hashes: worker_observed_block_hashes.as_ref(),
+                observed_message_tx: &observed_message_tx,
             };
 
             while !worker_stop.load(Ordering::Relaxed) {
@@ -389,6 +404,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             latest_observed_block_height,
             latest_observed_block_hash,
             observed_block_hashes,
+            observed_message_rx: Mutex::new(observed_message_rx),
             publish_tx,
             stop,
             worker: Some(worker),
@@ -409,6 +425,7 @@ struct ServiceEventMetrics<'a> {
     latest_observed_block_height: &'a AtomicU64,
     latest_observed_block_hash: &'a Mutex<Hash>,
     observed_block_hashes: &'a Mutex<VecDeque<Hash>>,
+    observed_message_tx: &'a mpsc::Sender<P2pMessage>,
 }
 
 fn handle_swarm_event(
@@ -438,6 +455,7 @@ fn handle_swarm_event(
             libp2p::gossipsub::Event::Message { message, .. },
         )) => {
             if let Ok(message) = decode_message(&message.data) {
+                let _ = metrics.observed_message_tx.send(message.clone());
                 if let Some((height, block_hash)) = block_announcement(&message) {
                     metrics
                         .observed_block_gossip_count
@@ -1328,6 +1346,33 @@ mod tests {
             block_header_hash,
         );
         wait_for_observed_consensus_gossip(&service_a, &service_b);
+        let observed_messages = service_b.drain_observed_messages();
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewBlock(_)))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewBlockHeader { height: 7, .. }))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewJob(_)))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewReceipt(_)))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewAttestation(_)))
+        );
+        assert!(service_b.drain_observed_messages().is_empty());
     }
 
     #[test]

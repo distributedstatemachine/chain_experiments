@@ -109,15 +109,17 @@ The local bundle is useful and should remain the first operational target:
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
+  decoded `role_network_*_ingested` event counters, `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
   `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_height`,
   `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
   loop, only `miner-00` reports timed produced-block progress, every other counted operator reports
-  network-applied block progress, at least one real libp2p connection, job/receipt/attestation/block
-  announcements observed through Gossipsub, and an observed network announcement for the selected finalized
-  p2p-observed head hash.
+  network-applied block progress from decoded block-header events, every non-producer has ingested decoded
+  block-header/job/receipt/attestation events with zero invalid network events, at least one real libp2p
+  connection, job/receipt/attestation/block announcements observed through Gossipsub, and an observed
+  network announcement for the selected finalized p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -210,11 +212,12 @@ Required fix:
 
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
-latest-height, real libp2p connected-peer counters, and runtime-observed job, receipt, attestation, and
-block gossip counters from the long-running command. Local block production now publishes `NewJob`,
-`NewReceipt`, `NewAttestation`, and height-bearing `NewBlockHeader` announcements over Gossipsub. Only
-`miner-00` is allowed to produce timed local blocks; other counted operators replay and persist a live
-round only after the announced block height/hash validates against the shared deterministic chain path.
+decoded network-event ingestion counters, latest-height, real libp2p connected-peer counters, and
+runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
+block production now publishes `NewJob`, `NewReceipt`, `NewAttestation`, and height-bearing
+`NewBlockHeader` announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the
+runtime loop, and non-producers now apply live block catch-up from drained `NewBlockHeader` events instead
+of reading only aggregate latest-head metrics. Only `miner-00` is allowed to produce timed local blocks.
 Full payload application from the shared node event loop still needs to replace the remaining deterministic
 replay proof for jobs, receipts, and attestations.
 

@@ -88,10 +88,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
   `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
   disconnect, local job/receipt/attestation announcements and height-bearing block-header announcement
-  publishing over Gossipsub, runtime-observed consensus-gossip counters, latest observed block heights,
-  bounded observed block-hash sets, and network-applied block counters exposed through role status, and
-  durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>` dial multiaddr
-  loading
+  publishing over Gossipsub, decoded inbound message queues consumed by the role runtime,
+  runtime-observed consensus-gossip counters, latest observed block heights, bounded observed block-hash
+  sets, network-event ingestion counters, and network-applied block counters exposed through role status,
+  and durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>` dial
+  multiaddr loading
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface
@@ -336,12 +337,15 @@ preflight, public evidence, or deployment-gated work can count:
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_role_runtime_counters=true`,
   `single_local_producer=true`, `all_non_producer_network_applied_blocks=true`,
+  `all_non_producer_network_event_ingestion=true`,
+  `all_non_producer_network_payload_announcements=true`,
   `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
   `all_operator_p2p_job_gossip=true`, `all_operator_p2p_receipt_gossip=true`,
   `all_operator_p2p_attestation_gossip=true`,
   `all_operator_p2p_target_head_observed=true`, `all_operator_p2p_latest_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
-  command, live role-loop counters, one local timed producer, network-applied block progress on every
+  command, live role-loop counters, one local timed producer, network-applied block progress from decoded
+  block-header events on every non-producer, decoded job/receipt/attestation event ingestion on every
   non-producer, real libp2p connected-peer count, observed consensus gossip including block gossip for the
   target convergence head, live chain counters, and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
@@ -357,7 +361,7 @@ The workspace currently has 220 passing library tests under Tarpaulin:
 - 205 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
-`cargo test --workspace --release` also runs 4 `tvmd` binary unit tests, 1 local CPU Compose integration
+`cargo test --workspace --release` also runs 5 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
@@ -383,9 +387,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.20% workspace line coverage
-- 10192/10274 workspace lines covered
+- 10203/10285 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9347/9347 `tensor_vm` lines covered
+- 9358/9358 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

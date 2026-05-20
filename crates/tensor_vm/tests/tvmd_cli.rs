@@ -1107,6 +1107,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("p2p_observed_block_hashes="));
         assert!(stdout.contains("served_requests=1"));
         assert!(stdout.contains("network_applied_blocks=0"));
+        assert!(stdout.contains("network_events_ingested=0"));
+        assert!(stdout.contains("network_invalid_events=0"));
 
         let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
         assert!(status.contains(&format!("role_runtime_command={role}_run")));
@@ -1115,6 +1117,14 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));
+        assert!(status.contains("role_network_events_ingested=0"));
+        assert!(status.contains("role_network_block_events_ingested=0"));
+        assert!(status.contains("role_network_block_headers_ingested=0"));
+        assert!(status.contains("role_network_job_events_ingested=0"));
+        assert!(status.contains("role_network_receipt_events_ingested=0"));
+        assert!(status.contains("role_network_attestation_events_ingested=0"));
+        assert!(status.contains("role_network_peer_events_ingested=0"));
+        assert!(status.contains("role_network_invalid_events=0"));
         assert!(status.contains("role_p2p_connected_peers="));
         assert!(status.contains("role_p2p_observed_blocks="));
         assert!(status.contains("role_p2p_observed_jobs="));
