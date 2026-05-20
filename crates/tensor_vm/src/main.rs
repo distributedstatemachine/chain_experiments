@@ -478,7 +478,7 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "miner_run",
-        role: "miner",
+        role: RuntimeRole::Miner,
     })?;
     let device = config.device.unwrap_or("unknown");
     Ok(format!(
@@ -496,7 +496,7 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "validator_run",
-        role: "validator",
+        role: RuntimeRole::Validator,
     })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -513,7 +513,7 @@ fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<St
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "proposer_run",
-        role: "proposer",
+        role: RuntimeRole::Proposer,
     })?;
     Ok(format!(
         "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -537,8 +537,31 @@ fn serve_service(
         auth_token,
         max_requests,
         runtime_command: "service_serve",
-        role: "service",
+        role: RuntimeRole::Service,
     })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RuntimeRole {
+    Service,
+    Miner,
+    Validator,
+    Proposer,
+}
+
+impl RuntimeRole {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Service => "service",
+            Self::Miner => "miner",
+            Self::Validator => "validator",
+            Self::Proposer => "proposer",
+        }
+    }
+
+    fn can_produce_local_blocks(self) -> bool {
+        matches!(self, Self::Service | Self::Proposer)
+    }
 }
 
 struct ServiceRuntimeConfig<'a> {
@@ -549,7 +572,7 @@ struct ServiceRuntimeConfig<'a> {
     auth_token: &'a str,
     max_requests: usize,
     runtime_command: &'a str,
-    role: &'a str,
+    role: RuntimeRole,
 }
 
 fn serve_service_with_runtime(
@@ -602,7 +625,7 @@ fn serve_service_with_runtime(
     let mut served_requests = 0usize;
     let block_interval = local_cpu_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
-    let local_producer = local_cpu_role_producer();
+    let local_producer = config.role.can_produce_local_blocks() && local_cpu_role_producer();
     let mut produced_blocks = 0usize;
     let mut network_applied_blocks = 0usize;
     let mut network_event_ingest = NetworkEventIngest::default();
@@ -728,7 +751,7 @@ fn serve_service_with_runtime(
     Ok(format!(
         "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
-        config.role,
+        config.role.label(),
         config.listen,
         config.p2p_listen,
         p2p_service.connected_peer_count(),
@@ -809,7 +832,7 @@ fn write_role_runtime_status(
     let contents = format!(
         "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
-        config.role,
+        config.role.label(),
         snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
@@ -1666,6 +1689,19 @@ mod tests {
         assert_eq!(cumulative.peers, 1);
         assert_eq!(cumulative.invalid_events, 1);
         assert_eq!(cumulative.applied_blocks, 3);
+    }
+
+    #[test]
+    fn runtime_role_policy_blocks_miner_and_validator_local_production() {
+        assert!(RuntimeRole::Service.can_produce_local_blocks());
+        assert!(RuntimeRole::Proposer.can_produce_local_blocks());
+        assert!(!RuntimeRole::Miner.can_produce_local_blocks());
+        assert!(!RuntimeRole::Validator.can_produce_local_blocks());
+
+        assert_eq!(RuntimeRole::Service.label(), "service");
+        assert_eq!(RuntimeRole::Miner.label(), "miner");
+        assert_eq!(RuntimeRole::Validator.label(), "validator");
+        assert_eq!(RuntimeRole::Proposer.label(), "proposer");
     }
 
     fn test_rpc_server(chain: LocalChain) -> RpcHttpServer {

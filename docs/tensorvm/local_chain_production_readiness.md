@@ -571,8 +571,9 @@ exposes live role-loop counters, local-producer mode, network-applied block coun
 connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
 observations for every counted operator. CPU miner execution and validator verification now live behind
 role-owned library components used by the local producer, but the long-running commands still delegate to
-the shared service runtime internally, so process-level miner/validator/proposer ownership needs to be
-split further.
+the shared service runtime internally. Runtime role policy now prevents miner and validator roles from
+becoming local block producers even if they inherit local block-interval configuration; process-level
+miner/validator/proposer ownership still needs to be split further.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

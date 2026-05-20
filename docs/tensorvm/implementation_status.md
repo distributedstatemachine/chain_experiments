@@ -258,7 +258,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
   readiness, role-specific `tvmd proposer run`, `tvmd miner run`, and `tvmd validator run` entrypoints
-  checked through `runtime_command` status, authenticated host gateway route checks, a seeded local CPU chain exposed
+  checked through `runtime_command` status, runtime policy that prevents miner and validator roles from
+  becoming local block producers, authenticated host gateway route checks, a seeded local CPU chain exposed
   through the gateway with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job
   production on the bootstrap gateway with typed job, receipt, and attestation payloads gossiped, decoded,
   and applied through `ChainCommand::SubmitJob`, `ChainCommand::SubmitReceipt`, and
@@ -372,7 +373,7 @@ The workspace currently has 234 passing library tests under Tarpaulin:
 - 219 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
-`cargo test --workspace --release` also runs 8 `tvmd` binary unit tests, 1 local CPU Compose integration
+`cargo test --workspace --release` also runs 9 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
