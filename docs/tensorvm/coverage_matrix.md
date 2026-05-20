@@ -48,8 +48,9 @@ The checked run starts 10 miner containers and 5 validator containers, verifies 
 requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` to run
 `tvmd proposer run`, the other miners to run `tvmd miner run`, and validators to run
 `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
-producer, decoded network-event ingestion and network-applied block counters for every non-producer, plus observed
-job/receipt/attestation/block gossip counters for every counted operator, verifies the seeded local CPU
+producer, decoded network-event ingestion, decoded job-payload application, and network-applied block
+counters for every non-producer, plus observed job/receipt/attestation/block gossip counters for every
+counted operator, verifies the seeded local CPU
 chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
 miners, full finality and data availability,
 checks that the host gateway exposes the seeded chain head, checks the host gateway routes with the local
@@ -175,8 +176,8 @@ continues finalizing blocks after restart.
   `NodeStore` data
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
-  runtime command, live role-loop counters, local-producer mode, decoded network-event ingestion and
-  network-applied block counters for non-producers, real libp2p connected-peer counts, live chain counters,
+  runtime command, live role-loop counters, local-producer mode, decoded network-event ingestion, decoded
+  job-payload application, and network-applied block counters for non-producers, real libp2p connected-peer counts, live chain counters,
   advancement past the shared seed, the same first live finalized block hash, and the same finalized
   common-head block hash through `tvmd service block`. The restart-continuity gate captures
   pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while

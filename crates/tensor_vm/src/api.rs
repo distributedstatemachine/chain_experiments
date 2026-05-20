@@ -9,6 +9,10 @@ pub enum P2pMessage {
         block_hash: Hash,
     },
     NewJob(Hash),
+    NewJobPayload {
+        job_id: Hash,
+        payload: Vec<u8>,
+    },
     NewReceipt(Hash),
     NewAttestation(Hash),
     RequestTensorChunk {

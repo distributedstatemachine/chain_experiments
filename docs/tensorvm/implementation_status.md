@@ -257,7 +257,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   readiness, role-specific `tvmd proposer run`, `tvmd miner run`, and `tvmd validator run` entrypoints
   checked through `runtime_command` status, authenticated host gateway route checks, a seeded local CPU chain exposed
   through the gateway with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job
-  production on the bootstrap gateway so post-startup blocks advance through receipts, attestations,
+  production on the bootstrap gateway with typed job payloads gossiped, decoded, and applied through
+  `ChainCommand::SubmitJob` on non-producers, so post-startup blocks advance through receipts, attestations,
   settlement, proposer selection, and finality instead of a static snapshot, miner rewards, finality, data
   availability, a standalone explorer service that polls the TensorVM `/explorer/ws` WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
@@ -340,6 +341,7 @@ preflight, public evidence, or deployment-gated work can count:
   `single_local_producer=true`, `all_non_producer_network_applied_blocks=true`,
   `all_non_producer_network_event_ingestion=true`,
   `all_non_producer_network_payload_announcements=true`,
+  `all_non_producer_network_job_payload_application=true`,
   `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
   `all_operator_p2p_job_gossip=true`, `all_operator_p2p_receipt_gossip=true`,
   `all_operator_p2p_attestation_gossip=true`,
@@ -356,13 +358,13 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 221 passing library tests under Tarpaulin:
+The workspace currently has 226 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 209 in `tensor_vm`
+- 211 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
-`cargo test --workspace --release` also runs 5 `tvmd` binary unit tests, 1 local CPU Compose integration
+`cargo test --workspace --release` also runs 7 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
@@ -387,10 +389,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.20% workspace line coverage
-- 10210/10292 workspace lines covered
+- 99.21% workspace line coverage
+- 10310/10392 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9365/9365 `tensor_vm` lines covered
+- 9465/9465 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

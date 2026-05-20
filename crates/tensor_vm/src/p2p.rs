@@ -1,5 +1,8 @@
 use crate::api::P2pMessage;
+use crate::chain::JobState;
 use crate::error::{Result as TvmResult, TvmError};
+use crate::jobs::{LinearTrainingStepJob, MatmulJob};
+use crate::tensor::DType;
 use crate::types::{Hash, hash_bytes};
 use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
@@ -17,6 +20,7 @@ use std::time::{Duration, Instant};
 pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
 const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
+const MAX_JOB_SHAPE_DIMS: usize = 16;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -483,7 +487,10 @@ fn handle_swarm_event(
                         remember_observed_block_hash(&mut block_hashes, block_hash);
                     }
                 }
-                if matches!(&message, P2pMessage::NewJob(_)) {
+                if matches!(
+                    &message,
+                    P2pMessage::NewJob(_) | P2pMessage::NewJobPayload { .. }
+                ) {
                     metrics
                         .observed_job_gossip_count
                         .fetch_add(1, Ordering::Relaxed);
@@ -579,7 +586,7 @@ fn build_libp2p_behaviour(
 pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
     match message {
         P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. } => Some(GossipTopic::Blocks),
-        P2pMessage::NewJob(_) => Some(GossipTopic::Jobs),
+        P2pMessage::NewJob(_) | P2pMessage::NewJobPayload { .. } => Some(GossipTopic::Jobs),
         P2pMessage::NewReceipt(_) => Some(GossipTopic::Receipts),
         P2pMessage::NewAttestation(_) => Some(GossipTopic::Attestations),
         P2pMessage::PeerInfo { .. } => Some(GossipTopic::Peers),
@@ -608,6 +615,7 @@ pub fn request_response_protocol_for_message(
         P2pMessage::NewBlock(_)
         | P2pMessage::NewBlockHeader { .. }
         | P2pMessage::NewJob(_)
+        | P2pMessage::NewJobPayload { .. }
         | P2pMessage::NewReceipt(_)
         | P2pMessage::NewAttestation(_)
         | P2pMessage::PeerInfo { .. } => None,
@@ -649,6 +657,11 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
         P2pMessage::NewJob(hash) => {
             out.push(2);
             write_hash(&mut out, hash);
+        }
+        P2pMessage::NewJobPayload { job_id, payload } => {
+            out.push(13);
+            write_hash(&mut out, job_id);
+            write_bytes(&mut out, payload);
         }
         P2pMessage::NewReceipt(hash) => {
             out.push(3);
@@ -727,6 +740,10 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
             block_hash: reader.read_hash()?,
         },
         2 => P2pMessage::NewJob(reader.read_hash()?),
+        13 => P2pMessage::NewJobPayload {
+            job_id: reader.read_hash()?,
+            payload: reader.read_bytes()?,
+        },
         3 => P2pMessage::NewReceipt(reader.read_hash()?),
         4 => P2pMessage::NewAttestation(reader.read_hash()?),
         5 => P2pMessage::RequestTensorChunk {
@@ -770,6 +787,80 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         return Err(TvmError::InvalidReceipt("trailing p2p bytes"));
     }
     Ok(message)
+}
+
+pub fn encode_job_payload(job: &JobState) -> Vec<u8> {
+    let mut out = Vec::new();
+    match job {
+        JobState::TensorOp(job) => {
+            out.push(1);
+            write_hash(&mut out, &job.job_id);
+            write_u64(&mut out, job.epoch);
+            write_u64(&mut out, job.m as u64);
+            write_u64(&mut out, job.k as u64);
+            write_u64(&mut out, job.n as u64);
+            out.push(job.dtype.tag());
+            write_optional_u64(&mut out, job.modulus);
+            write_hash(&mut out, &job.seed_a);
+            write_hash(&mut out, &job.seed_b);
+            write_u64(&mut out, job.deadline_block);
+            write_u64(&mut out, job.reward_weight);
+        }
+        JobState::LinearTrainingStep(job) => {
+            out.push(2);
+            write_hash(&mut out, &job.job_id);
+            write_hash(&mut out, &job.model_id);
+            write_u64(&mut out, job.step);
+            write_hash(&mut out, &job.batch_seed);
+            write_hash(&mut out, &job.weight_root_before);
+            write_usize_vec(&mut out, &job.input_shape);
+            write_usize_vec(&mut out, &job.weight_shape);
+            write_usize_vec(&mut out, &job.target_shape);
+            write_u64(&mut out, job.lr);
+            out.push(job.dtype.tag());
+            write_u64(&mut out, job.deadline_block);
+            write_u64(&mut out, job.reward_weight);
+        }
+    }
+    out
+}
+
+pub fn decode_job_payload(input: &[u8]) -> TvmResult<JobState> {
+    let mut reader = Reader::new(input);
+    let job = match reader.read_u8()? {
+        1 => JobState::TensorOp(MatmulJob {
+            job_id: reader.read_hash()?,
+            epoch: reader.read_u64()?,
+            m: read_usize(&mut reader)?,
+            k: read_usize(&mut reader)?,
+            n: read_usize(&mut reader)?,
+            dtype: dtype_from_tag(reader.read_u8()?)?,
+            modulus: read_optional_u64(&mut reader)?,
+            seed_a: reader.read_hash()?,
+            seed_b: reader.read_hash()?,
+            deadline_block: reader.read_u64()?,
+            reward_weight: reader.read_u64()?,
+        }),
+        2 => JobState::LinearTrainingStep(LinearTrainingStepJob {
+            job_id: reader.read_hash()?,
+            model_id: reader.read_hash()?,
+            step: reader.read_u64()?,
+            batch_seed: reader.read_hash()?,
+            weight_root_before: reader.read_hash()?,
+            input_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
+            weight_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
+            target_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
+            lr: reader.read_u64()?,
+            dtype: dtype_from_tag(reader.read_u8()?)?,
+            deadline_block: reader.read_u64()?,
+            reward_weight: reader.read_u64()?,
+        }),
+        _ => return Err(TvmError::InvalidReceipt("unknown job payload tag")),
+    };
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt("trailing job payload bytes"));
+    }
+    Ok(job)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -979,6 +1070,23 @@ fn write_u64(out: &mut Vec<u8>, value: u64) {
     out.extend_from_slice(&value.to_le_bytes());
 }
 
+fn write_optional_u64(out: &mut Vec<u8>, value: Option<u64>) {
+    match value {
+        Some(value) => {
+            out.push(1);
+            write_u64(out, value);
+        }
+        None => out.push(0),
+    }
+}
+
+fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
+    write_u64(out, values.len() as u64);
+    for value in values {
+        write_u64(out, *value as u64);
+    }
+}
+
 fn write_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     write_u64(out, bytes.len() as u64);
     out.extend_from_slice(bytes);
@@ -1043,9 +1151,47 @@ impl<'a> Reader<'a> {
     }
 }
 
+fn read_optional_u64(reader: &mut Reader<'_>) -> TvmResult<Option<u64>> {
+    match reader.read_u8()? {
+        0 => Ok(None),
+        1 => Ok(Some(reader.read_u64()?)),
+        _ => Err(TvmError::InvalidReceipt("invalid optional u64 tag")),
+    }
+}
+
+fn read_usize(reader: &mut Reader<'_>) -> TvmResult<usize> {
+    usize::try_from(reader.read_u64()?).map_err(|_| TvmError::InvalidReceipt("usize overflow"))
+}
+
+fn read_usize_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<usize>> {
+    let len = read_usize(reader)?;
+    if len > max_len {
+        return Err(TvmError::InvalidReceipt("shape vector too large"));
+    }
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(read_usize(reader)?);
+    }
+    Ok(values)
+}
+
+fn dtype_from_tag(tag: u8) -> TvmResult<DType> {
+    match tag {
+        1 => Ok(DType::Int32),
+        2 => Ok(DType::Int64),
+        3 => Ok(DType::Fixed32),
+        4 => Ok(DType::FieldElement),
+        _ => Err(TvmError::InvalidReceipt("unknown dtype tag")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chain::JobState;
+    use crate::jobs::{LinearTrainingStepSpec, MatmulJob};
+    use crate::scheduler::SyntheticLocalJobSource;
+    use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
     use futures::FutureExt;
     use libp2p::swarm::SwarmEvent;
@@ -1054,6 +1200,7 @@ mod tests {
     fn p2p_messages_roundtrip() {
         let h = hash_bytes(b"test", &[b"h"]);
         let peer = address(b"peer");
+        let job = JobState::TensorOp(MatmulJob::synthetic(0, 1, 2, 3, 4, &h, 10));
         let messages = vec![
             P2pMessage::NewBlock(h),
             P2pMessage::NewBlockHeader {
@@ -1061,6 +1208,10 @@ mod tests {
                 block_hash: h,
             },
             P2pMessage::NewJob(h),
+            P2pMessage::NewJobPayload {
+                job_id: job.job_id(),
+                payload: encode_job_payload(&job),
+            },
             P2pMessage::NewReceipt(h),
             P2pMessage::NewAttestation(h),
             P2pMessage::RequestTensorChunk {
@@ -1095,6 +1246,79 @@ mod tests {
     }
 
     #[test]
+    fn job_payloads_roundtrip_and_reject_bad_shape_payloads() {
+        let beacon = hash_bytes(b"test", &[b"job-payload"]);
+        let tensor_job = JobState::TensorOp(MatmulJob::synthetic(3, 4, 5, 6, 7, &beacon, 20));
+        assert_eq!(
+            decode_job_payload(&encode_job_payload(&tensor_job)).unwrap(),
+            tensor_job
+        );
+
+        let weights =
+            Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let linear_job = JobState::LinearTrainingStep(
+            crate::jobs::LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+                model_id: hash_bytes(b"test", &[b"model"]),
+                step: 2,
+                batch_seed: hash_bytes(b"test", &[b"batch"]),
+                weight_root_before: weights.commitment_root(),
+                input_shape: vec![4, 3],
+                weight_shape: vec![3, 2],
+                target_shape: vec![4, 2],
+                lr: 2,
+                deadline_block: 30,
+            }),
+        );
+        assert_eq!(
+            decode_job_payload(&encode_job_payload(&linear_job)).unwrap(),
+            linear_job
+        );
+
+        let mut oversized_shape = Vec::new();
+        oversized_shape.push(2);
+        write_hash(&mut oversized_shape, &hash_bytes(b"test", &[b"bad-job"]));
+        write_hash(&mut oversized_shape, &hash_bytes(b"test", &[b"bad-model"]));
+        write_u64(&mut oversized_shape, 0);
+        write_hash(&mut oversized_shape, &hash_bytes(b"test", &[b"bad-batch"]));
+        write_hash(
+            &mut oversized_shape,
+            &SyntheticLocalJobSource::linear_training_weights().commitment_root(),
+        );
+        write_u64(&mut oversized_shape, (MAX_JOB_SHAPE_DIMS + 1) as u64);
+        assert!(decode_job_payload(&oversized_shape).is_err());
+    }
+
+    #[test]
+    fn job_payload_decoder_covers_optional_dtype_and_malformed_edges() {
+        let beacon = hash_bytes(b"test", &[b"job-payload-edges"]);
+        let base_job = MatmulJob::synthetic(4, 5, 2, 3, 4, &beacon, 40);
+
+        for dtype in [DType::Int32, DType::Int64, DType::Fixed32] {
+            let mut job = base_job.clone();
+            job.dtype = dtype;
+            job.modulus = None;
+            let job = JobState::TensorOp(job);
+            assert_eq!(decode_job_payload(&encode_job_payload(&job)).unwrap(), job);
+        }
+
+        let mut unknown_job_tag = encode_job_payload(&JobState::TensorOp(base_job.clone()));
+        unknown_job_tag[0] = 99;
+        assert!(decode_job_payload(&unknown_job_tag).is_err());
+
+        let mut trailing_payload = encode_job_payload(&JobState::TensorOp(base_job.clone()));
+        trailing_payload.push(0);
+        assert!(decode_job_payload(&trailing_payload).is_err());
+
+        let mut bad_optional = encode_job_payload(&JobState::TensorOp(base_job.clone()));
+        bad_optional[66] = 9;
+        assert!(decode_job_payload(&bad_optional).is_err());
+
+        let mut bad_dtype = encode_job_payload(&JobState::TensorOp(base_job));
+        bad_dtype[65] = 99;
+        assert!(decode_job_payload(&bad_dtype).is_err());
+    }
+
+    #[test]
     fn libp2p_mapping_separates_gossip_and_request_response() {
         let h = hash_bytes(b"test", &[b"h"]);
         let recommendation = recommended_network_stack();
@@ -1120,6 +1344,13 @@ mod tests {
         );
         assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewJob(h)),
+            Some(GossipTopic::Jobs)
+        );
+        assert_eq!(
+            gossip_topic_for_message(&P2pMessage::NewJobPayload {
+                job_id: h,
+                payload: vec![1, 2, 3],
+            }),
             Some(GossipTopic::Jobs)
         );
         assert_eq!(

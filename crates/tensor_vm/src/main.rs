@@ -6,14 +6,15 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord,
-    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
-    ValidatorAttestation,
+    ChainCommand, ChainEngine, CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig,
+    LocalChain, NodeStore, PeerRecord, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
+    TensorVmLibp2pService, ValidatorAttestation,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
+    decode_job_payload, encode_job_payload,
     hash::hex,
     localnet::produce_synthetic_cpu_round_with_tensors,
     parse_cli_args, spawn_libp2p_service,
@@ -380,7 +381,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -397,6 +398,8 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_network_block_events_ingested"),
         role_runtime_status_field(data_dir, "role_network_block_headers_ingested"),
         role_runtime_status_field(data_dir, "role_network_job_events_ingested"),
+        role_runtime_status_field(data_dir, "role_network_job_payloads_ingested"),
+        role_runtime_status_field(data_dir, "role_network_job_payloads_applied"),
         role_runtime_status_field(data_dir, "role_network_receipt_events_ingested"),
         role_runtime_status_field(data_dir, "role_network_attestation_events_ingested"),
         role_runtime_status_field(data_dir, "role_network_peer_events_ingested"),
@@ -647,11 +650,11 @@ fn serve_service_with_runtime(
                 network_applied_blocks =
                     network_applied_blocks.saturating_add(ingested.applied_blocks);
                 network_event_ingest.accumulate(ingested);
-                if ingested.applied_blocks > 0 {
+                if ingested.applied_blocks > 0 || ingested.job_payloads_applied > 0 {
                     store
                         .persist_chain(&server.gateway().node.chain)
                         .map_err(|error| {
-                            format!("failed to persist network-applied block: {error}")
+                            format!("failed to persist network-applied state: {error}")
                         })?;
                 }
                 write_role_runtime_status(
@@ -714,7 +717,7 @@ fn serve_service_with_runtime(
         }
     }
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_receipt_events_ingested={}\nnetwork_attestation_events_ingested={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_attestation_events_ingested={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
         config.role,
         config.listen,
@@ -732,6 +735,8 @@ fn serve_service_with_runtime(
         network_event_ingest.block_announcements,
         network_event_ingest.block_headers,
         network_event_ingest.jobs,
+        network_event_ingest.job_payloads,
+        network_event_ingest.job_payloads_applied,
         network_event_ingest.receipts,
         network_event_ingest.attestations,
         network_event_ingest.peers,
@@ -789,7 +794,7 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = Path::new(config.data_dir).join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role,
         snapshot.local_producer,
@@ -800,6 +805,8 @@ fn write_role_runtime_status(
         snapshot.network_events.block_announcements,
         snapshot.network_events.block_headers,
         snapshot.network_events.jobs,
+        snapshot.network_events.job_payloads,
+        snapshot.network_events.job_payloads_applied,
         snapshot.network_events.receipts,
         snapshot.network_events.attestations,
         snapshot.network_events.peers,
@@ -828,6 +835,8 @@ struct NetworkEventIngest {
     block_announcements: usize,
     block_headers: usize,
     jobs: usize,
+    job_payloads: usize,
+    job_payloads_applied: usize,
     receipts: usize,
     attestations: usize,
     peers: usize,
@@ -847,6 +856,10 @@ impl NetworkEventIngest {
             .saturating_add(other.block_announcements);
         self.block_headers = self.block_headers.saturating_add(other.block_headers);
         self.jobs = self.jobs.saturating_add(other.jobs);
+        self.job_payloads = self.job_payloads.saturating_add(other.job_payloads);
+        self.job_payloads_applied = self
+            .job_payloads_applied
+            .saturating_add(other.job_payloads_applied);
         self.receipts = self.receipts.saturating_add(other.receipts);
         self.attestations = self.attestations.saturating_add(other.attestations);
         self.peers = self.peers.saturating_add(other.peers);
@@ -867,7 +880,7 @@ fn ingest_network_events(
     local_producer: bool,
 ) -> std::result::Result<NetworkEventIngest, String> {
     let mut ingested = NetworkEventIngest::default();
-    for message in p2p_service.drain_observed_messages() {
+    for message in network_ingest_order(p2p_service.drain_observed_messages()) {
         ingested.events = ingested.events.saturating_add(1);
         match message {
             P2pMessage::NewBlock(block_hash) => {
@@ -901,6 +914,19 @@ fn ingest_network_events(
                     ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                 }
             }
+            P2pMessage::NewJobPayload { job_id, payload } => {
+                ingested.jobs = ingested.jobs.saturating_add(1);
+                ingested.job_payloads = ingested.job_payloads.saturating_add(1);
+                match apply_network_job_payload(server, job_id, &payload) {
+                    Ok(()) => {
+                        ingested.job_payloads_applied =
+                            ingested.job_payloads_applied.saturating_add(1);
+                    }
+                    Err(()) => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
             P2pMessage::NewReceipt(receipt_id) => {
                 ingested.receipts = ingested.receipts.saturating_add(1);
                 if receipt_id == [0; 32] {
@@ -930,6 +956,47 @@ fn ingest_network_events(
         }
     }
     Ok(ingested)
+}
+
+fn network_ingest_order(messages: Vec<P2pMessage>) -> Vec<P2pMessage> {
+    let (mut block_messages, mut other_messages): (Vec<_>, Vec<_>) =
+        messages.into_iter().partition(is_block_announcement);
+    block_messages.append(&mut other_messages);
+    block_messages
+}
+
+fn is_block_announcement(message: &P2pMessage) -> bool {
+    matches!(
+        message,
+        P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. }
+    )
+}
+
+fn apply_network_job_payload(
+    server: &mut RpcHttpServer,
+    job_id: Hash,
+    payload: &[u8],
+) -> std::result::Result<(), ()> {
+    if job_id == [0; 32] {
+        return Err(());
+    }
+    let job = decode_job_payload(payload).map_err(|_| ())?;
+    if job.job_id() != job_id {
+        return Err(());
+    }
+    if let Some(existing) = server.gateway().node.chain.state.jobs.get(&job_id) {
+        if existing == &job {
+            return Ok(());
+        }
+        return Err(());
+    }
+    server
+        .gateway_mut()
+        .node
+        .chain
+        .apply_command(ChainCommand::SubmitJob(job))
+        .map_err(|_| ())?;
+    Ok(())
 }
 
 fn catch_up_to_announced_block(
@@ -982,6 +1049,7 @@ fn replay_synthetic_rounds_to_observed_block(
         return Ok(None);
     }
     let mut candidate = chain.clone();
+    prune_future_synthetic_jobs_for_replay(&mut candidate, latest_height);
     let mut tensors = Vec::new();
     let mut applied_blocks = 0usize;
     let max_replay_blocks = target_height.saturating_sub(latest_height).min(128) as usize;
@@ -1008,6 +1076,24 @@ fn replay_synthetic_rounds_to_observed_block(
         tensors,
         applied_blocks,
     }))
+}
+
+fn prune_future_synthetic_jobs_for_replay(chain: &mut LocalChain, latest_height: u64) {
+    let receipt_window = chain.params.receipt_submission_window;
+    chain.state.jobs.retain(|_, job| {
+        synthetic_job_submission_height(job, receipt_window)
+            .map(|height| height <= latest_height)
+            .unwrap_or(true)
+    });
+}
+
+fn synthetic_job_submission_height(job: &tensor_vm::JobState, receipt_window: u64) -> Option<u64> {
+    match job {
+        tensor_vm::JobState::TensorOp(job) => job.deadline_block.checked_sub(receipt_window),
+        tensor_vm::JobState::LinearTrainingStep(job) => {
+            job.deadline_block.checked_sub(receipt_window)
+        }
+    }
 }
 
 fn produce_and_publish_synthetic_round(
@@ -1074,10 +1160,16 @@ fn publish_new_chain_announcements(
     before: &ChainAnnouncementCheckpoint,
     chain: &LocalChain,
 ) -> std::result::Result<(), String> {
-    for job_id in chain.state.jobs.keys().copied() {
-        if !before.jobs.contains(&job_id) {
+    for (job_id, job) in &chain.state.jobs {
+        if !before.jobs.contains(job_id) {
             p2p_service
-                .publish_gossip(P2pMessage::NewJob(job_id))
+                .publish_gossip(P2pMessage::NewJobPayload {
+                    job_id: *job_id,
+                    payload: encode_job_payload(job),
+                })
+                .map_err(|error| format!("failed to publish job payload gossip: {error}"))?;
+            p2p_service
+                .publish_gossip(P2pMessage::NewJob(*job_id))
                 .map_err(|error| format!("failed to publish job gossip: {error}"))?;
         }
     }
@@ -1296,12 +1388,61 @@ mod tests {
     }
 
     #[test]
+    fn network_catchup_replays_after_future_job_payloads_were_applied() {
+        let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        testnet.run_linear_training_round(&scheduler);
+        let seed_chain = testnet.chain.clone();
+
+        let mut announced_chain = seed_chain.clone();
+        produce_synthetic_cpu_round_with_tensors(&mut announced_chain)
+            .unwrap()
+            .expect("first local synthetic round must advance");
+        produce_synthetic_cpu_round_with_tensors(&mut announced_chain)
+            .unwrap()
+            .expect("second local synthetic round must advance");
+
+        let mut polluted_chain = seed_chain.clone();
+        for job in announced_chain
+            .state
+            .jobs
+            .iter()
+            .filter(|(job_id, _)| !seed_chain.state.jobs.contains_key(*job_id))
+            .map(|(_, job)| job.clone())
+        {
+            polluted_chain
+                .apply_command(ChainCommand::SubmitJob(job))
+                .unwrap();
+        }
+        assert!(polluted_chain.state.jobs.len() > seed_chain.state.jobs.len());
+
+        let announced_block = announced_chain
+            .blocks
+            .last()
+            .expect("announced chain must contain a head block");
+        let catchup = replay_synthetic_rounds_to_observed_block(
+            &polluted_chain,
+            announced_block.height,
+            announced_block.hash(),
+        )
+        .unwrap()
+        .expect("matching observed head must replay after pruning future payloads");
+
+        assert_eq!(catchup.applied_blocks, 2);
+        assert_eq!(catchup.chain.blocks, announced_chain.blocks);
+        assert_eq!(catchup.chain.state.jobs, announced_chain.state.jobs);
+    }
+
+    #[test]
     fn network_event_ingest_accumulates_runtime_counters() {
         let mut cumulative = NetworkEventIngest {
             events: 2,
             block_announcements: 1,
             block_headers: 1,
             jobs: 1,
+            job_payloads: 1,
+            job_payloads_applied: 1,
             receipts: 0,
             attestations: 0,
             peers: 0,
@@ -1313,6 +1454,8 @@ mod tests {
             block_announcements: 1,
             block_headers: 0,
             jobs: 0,
+            job_payloads: 2,
+            job_payloads_applied: 2,
             receipts: 1,
             attestations: 1,
             peers: 1,
@@ -1325,10 +1468,38 @@ mod tests {
         assert_eq!(cumulative.block_announcements, 2);
         assert_eq!(cumulative.block_headers, 1);
         assert_eq!(cumulative.jobs, 1);
+        assert_eq!(cumulative.job_payloads, 3);
+        assert_eq!(cumulative.job_payloads_applied, 3);
         assert_eq!(cumulative.receipts, 1);
         assert_eq!(cumulative.attestations, 1);
         assert_eq!(cumulative.peers, 1);
         assert_eq!(cumulative.invalid_events, 1);
         assert_eq!(cumulative.applied_blocks, 3);
+    }
+
+    #[test]
+    fn network_ingest_orders_block_announcements_before_payloads() {
+        let block_hash = hash_bytes(b"test", &[b"announced-block"]);
+        let job_id = hash_bytes(b"test", &[b"announced-job"]);
+        let receipt_id = hash_bytes(b"test", &[b"announced-receipt"]);
+        let messages = network_ingest_order(vec![
+            P2pMessage::NewJobPayload {
+                job_id,
+                payload: vec![1, 2, 3],
+            },
+            P2pMessage::NewReceipt(receipt_id),
+            P2pMessage::NewBlockHeader {
+                height: 3,
+                block_hash,
+            },
+            P2pMessage::NewJob(job_id),
+            P2pMessage::NewBlock(block_hash),
+        ]);
+
+        assert!(matches!(messages[0], P2pMessage::NewBlockHeader { .. }));
+        assert!(matches!(messages[1], P2pMessage::NewBlock(_)));
+        assert!(matches!(messages[2], P2pMessage::NewJobPayload { .. }));
+        assert!(matches!(messages[3], P2pMessage::NewReceipt(_)));
+        assert!(matches!(messages[4], P2pMessage::NewJob(_)));
     }
 }

@@ -1121,6 +1121,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_network_block_events_ingested=0"));
         assert!(status.contains("role_network_block_headers_ingested=0"));
         assert!(status.contains("role_network_job_events_ingested=0"));
+        assert!(status.contains("role_network_job_payloads_ingested=0"));
+        assert!(status.contains("role_network_job_payloads_applied=0"));
         assert!(status.contains("role_network_receipt_events_ingested=0"));
         assert!(status.contains("role_network_attestation_events_ingested=0"));
         assert!(status.contains("role_network_peer_events_ingested=0"));

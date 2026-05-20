@@ -109,7 +109,8 @@ The local bundle is useful and should remain the first operational target:
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
-  decoded `role_network_*_ingested` event counters, `role_network_invalid_events`,
+  decoded `role_network_*_ingested` event counters, job-payload apply counters,
+  `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
   `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_height`,
@@ -117,9 +118,10 @@ The local bundle is useful and should remain the first operational target:
   `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
   loop, only `miner-00` reports timed produced-block progress, every other counted operator reports
   network-applied block progress from decoded block-header events, every non-producer has ingested decoded
-  block-header/job/receipt/attestation events with zero invalid network events, at least one real libp2p
-  connection, job/receipt/attestation/block announcements observed through Gossipsub, and an observed
-  network announcement for the selected finalized p2p-observed head hash.
+  block-header/job/receipt/attestation events with zero invalid network events, every non-producer has
+  accepted at least one decoded job payload through the chain engine, at least one real libp2p connection,
+  job/receipt/attestation/block announcements observed through Gossipsub, and an observed network
+  announcement for the selected finalized p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -214,12 +216,16 @@ Status: started for role-loop and network counters. `tvmd service status` now ex
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
 decoded network-event ingestion counters, latest-height, real libp2p connected-peer counters, and
 runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
-block production now publishes `NewJob`, `NewReceipt`, `NewAttestation`, and height-bearing
-`NewBlockHeader` announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the
-runtime loop, and non-producers now apply live block catch-up from drained `NewBlockHeader` events instead
-of reading only aggregate latest-head metrics. Only `miner-00` is allowed to produce timed local blocks.
-Full payload application from the shared node event loop still needs to replace the remaining deterministic
-replay proof for jobs, receipts, and attestations.
+block production now publishes typed `NewJobPayload` messages, legacy `NewJob` hash announcements,
+`NewReceipt`, `NewAttestation`, and height-bearing `NewBlockHeader` announcements over Gossipsub. The
+libp2p worker queues decoded inbound messages for the runtime loop; non-producers validate and apply job
+payloads through `ChainCommand::SubmitJob`, then apply live block catch-up from drained `NewBlockHeader`
+events instead of reading only aggregate latest-head metrics. Only `miner-00` is allowed to produce timed
+local blocks. The role loop processes block announcements ahead of payload-only messages and local
+synthetic replay prunes future pre-applied synthetic jobs before matching an observed head, so decoded job
+payloads cannot poison deterministic local catch-up. Receipt and attestation payload application from the
+shared node event loop still needs to replace the remaining deterministic replay proof for receipts and
+attestations.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -510,14 +516,16 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the single local producer, network
-applied block progress on every non-producer, the same first live finalized block hash, the same finalized
-common-head block hash, and a finalized local-head checkpoint/state root that was also observed through p2p
-block gossip via `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt
-evidence, real libp2p connected-peer counts, job/receipt/attestation/block gossip observations from every
-role runtime, and nonempty block-log roots from every node store. The restart-continuity script also captures
+applied block progress on every non-producer, accepted job-payload application through the shared chain
+engine on every non-producer, the same first live finalized block hash, the same finalized common-head block
+hash, and a finalized local-head checkpoint/state root that was also observed through p2p block gossip via
+`tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
+connected-peer counts, job/receipt/attestation/block gossip observations from every role runtime, and
+nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
 selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
-Fully applying blocks from the shared network event path still needs hard checker assertions.
+Fully applying receipt/attestation payloads and blocks from the shared network event path still needs hard
+checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

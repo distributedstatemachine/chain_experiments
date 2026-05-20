@@ -401,6 +401,8 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_NETWORK_BLOCK_EVENTS=$(status_value role_network_block_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_BLOCK_HEADERS=$(status_value role_network_block_headers_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_EVENTS=$(status_value role_network_job_events_ingested "$STATUS")
+    SERVICE_ROLE_NETWORK_JOB_PAYLOADS=$(status_value role_network_job_payloads_ingested "$STATUS")
+    SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED=$(status_value role_network_job_payloads_applied "$STATUS")
     SERVICE_ROLE_NETWORK_RECEIPT_EVENTS=$(status_value role_network_receipt_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_ATTESTATION_EVENTS=$(status_value role_network_attestation_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_PEER_EVENTS=$(status_value role_network_peer_events_ingested "$STATUS")
@@ -446,6 +448,10 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_JOB_EVENTS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_RECEIPT_EVENTS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_RECEIPT_EVENTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_ATTESTATION_EVENTS" ] || { STATUS_MISMATCH=true; continue; }
@@ -501,6 +507,8 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_NETWORK_BLOCK_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_RECEIPT_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_ATTESTATION_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
@@ -656,6 +664,7 @@ local_proposer_runtime=true
 all_non_producer_network_applied_blocks=true
 all_non_producer_network_event_ingestion=true
 all_non_producer_network_payload_announcements=true
+all_non_producer_network_job_payload_application=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
 all_operator_p2p_job_gossip=true
