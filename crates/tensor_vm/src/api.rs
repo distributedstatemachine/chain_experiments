@@ -14,7 +14,15 @@ pub enum P2pMessage {
         payload: Vec<u8>,
     },
     NewReceipt(Hash),
+    NewReceiptPayload {
+        receipt_id: Hash,
+        payload: Vec<u8>,
+    },
     NewAttestation(Hash),
+    NewAttestationPayload {
+        attestation_id: Hash,
+        payload: Vec<u8>,
+    },
     RequestTensorChunk {
         tensor_id: Hash,
         chunk_index: u64,

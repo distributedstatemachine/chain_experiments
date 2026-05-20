@@ -1,9 +1,12 @@
 use crate::api::P2pMessage;
-use crate::chain::JobState;
+use crate::chain::{JobState, ReceiptState};
 use crate::error::{Result as TvmResult, TvmError};
-use crate::jobs::{LinearTrainingStepJob, MatmulJob};
+use crate::jobs::{
+    LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
+};
 use crate::tensor::DType;
 use crate::types::{Hash, hash_bytes};
+use crate::verify::{ValidatorAttestation, VerificationResult};
 use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
@@ -21,6 +24,7 @@ pub const LIBP2P_PROTOCOL_PREFIX: &str = "/tensorchain/1";
 const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
 const MAX_JOB_SHAPE_DIMS: usize = 16;
+const MAX_RECEIPT_HASHES: usize = 16;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -495,12 +499,18 @@ fn handle_swarm_event(
                         .observed_job_gossip_count
                         .fetch_add(1, Ordering::Relaxed);
                 }
-                if matches!(&message, P2pMessage::NewReceipt(_)) {
+                if matches!(
+                    &message,
+                    P2pMessage::NewReceipt(_) | P2pMessage::NewReceiptPayload { .. }
+                ) {
                     metrics
                         .observed_receipt_gossip_count
                         .fetch_add(1, Ordering::Relaxed);
                 }
-                if matches!(&message, P2pMessage::NewAttestation(_)) {
+                if matches!(
+                    &message,
+                    P2pMessage::NewAttestation(_) | P2pMessage::NewAttestationPayload { .. }
+                ) {
                     metrics
                         .observed_attestation_gossip_count
                         .fetch_add(1, Ordering::Relaxed);
@@ -587,8 +597,12 @@ pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
     match message {
         P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. } => Some(GossipTopic::Blocks),
         P2pMessage::NewJob(_) | P2pMessage::NewJobPayload { .. } => Some(GossipTopic::Jobs),
-        P2pMessage::NewReceipt(_) => Some(GossipTopic::Receipts),
-        P2pMessage::NewAttestation(_) => Some(GossipTopic::Attestations),
+        P2pMessage::NewReceipt(_) | P2pMessage::NewReceiptPayload { .. } => {
+            Some(GossipTopic::Receipts)
+        }
+        P2pMessage::NewAttestation(_) | P2pMessage::NewAttestationPayload { .. } => {
+            Some(GossipTopic::Attestations)
+        }
         P2pMessage::PeerInfo { .. } => Some(GossipTopic::Peers),
         P2pMessage::RequestTensorChunk { .. }
         | P2pMessage::TensorChunkResponse { .. }
@@ -617,7 +631,9 @@ pub fn request_response_protocol_for_message(
         | P2pMessage::NewJob(_)
         | P2pMessage::NewJobPayload { .. }
         | P2pMessage::NewReceipt(_)
+        | P2pMessage::NewReceiptPayload { .. }
         | P2pMessage::NewAttestation(_)
+        | P2pMessage::NewAttestationPayload { .. }
         | P2pMessage::PeerInfo { .. } => None,
     }
 }
@@ -667,9 +683,25 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
             out.push(3);
             write_hash(&mut out, hash);
         }
+        P2pMessage::NewReceiptPayload {
+            receipt_id,
+            payload,
+        } => {
+            out.push(14);
+            write_hash(&mut out, receipt_id);
+            write_bytes(&mut out, payload);
+        }
         P2pMessage::NewAttestation(hash) => {
             out.push(4);
             write_hash(&mut out, hash);
+        }
+        P2pMessage::NewAttestationPayload {
+            attestation_id,
+            payload,
+        } => {
+            out.push(15);
+            write_hash(&mut out, attestation_id);
+            write_bytes(&mut out, payload);
         }
         P2pMessage::RequestTensorChunk {
             tensor_id,
@@ -745,7 +777,15 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
             payload: reader.read_bytes()?,
         },
         3 => P2pMessage::NewReceipt(reader.read_hash()?),
+        14 => P2pMessage::NewReceiptPayload {
+            receipt_id: reader.read_hash()?,
+            payload: reader.read_bytes()?,
+        },
         4 => P2pMessage::NewAttestation(reader.read_hash()?),
+        15 => P2pMessage::NewAttestationPayload {
+            attestation_id: reader.read_hash()?,
+            payload: reader.read_bytes()?,
+        },
         5 => P2pMessage::RequestTensorChunk {
             tensor_id: reader.read_hash()?,
             chunk_index: reader.read_u64()?,
@@ -861,6 +901,123 @@ pub fn decode_job_payload(input: &[u8]) -> TvmResult<JobState> {
         return Err(TvmError::InvalidReceipt("trailing job payload bytes"));
     }
     Ok(job)
+}
+
+pub fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
+    let mut out = Vec::new();
+    match receipt {
+        ReceiptState::TensorOp(receipt) => {
+            out.push(1);
+            write_hash(&mut out, &receipt.receipt_id);
+            write_hash(&mut out, &receipt.job_id);
+            write_hash(&mut out, &receipt.miner);
+            write_hash(&mut out, &receipt.program_hash);
+            write_hash_vec(&mut out, &receipt.input_roots);
+            write_hash_vec(&mut out, &receipt.output_roots);
+            write_hash(&mut out, &receipt.trace_root);
+            write_u64(&mut out, receipt.tensor_work_units);
+            write_u64(&mut out, receipt.execution_time_ms);
+            write_u64(&mut out, receipt.submitted_at_block);
+            write_hash(&mut out, &receipt.signature);
+        }
+        ReceiptState::LinearTrainingStep(receipt) => {
+            out.push(2);
+            write_hash(&mut out, &receipt.receipt_id);
+            write_hash(&mut out, &receipt.job_id);
+            write_hash(&mut out, &receipt.miner);
+            write_hash(&mut out, &receipt.model_id);
+            write_u64(&mut out, receipt.step);
+            write_hash(&mut out, &receipt.weight_root_before);
+            write_hash(&mut out, &receipt.batch_root);
+            write_hash(&mut out, &receipt.y_root);
+            write_hash(&mut out, &receipt.loss_commitment);
+            write_hash(&mut out, &receipt.grad_w_root);
+            write_hash(&mut out, &receipt.weight_root_after);
+            write_hash(&mut out, &receipt.trace_root);
+            write_u64(&mut out, receipt.tensor_work_units);
+            write_u64(&mut out, receipt.execution_time_ms);
+            write_u64(&mut out, receipt.submitted_at_block);
+            write_hash(&mut out, &receipt.signature);
+        }
+    }
+    out
+}
+
+pub fn decode_receipt_payload(input: &[u8]) -> TvmResult<ReceiptState> {
+    let mut reader = Reader::new(input);
+    let receipt = match reader.read_u8()? {
+        1 => ReceiptState::TensorOp(TensorOpReceipt {
+            receipt_id: reader.read_hash()?,
+            job_id: reader.read_hash()?,
+            miner: reader.read_hash()?,
+            program_hash: reader.read_hash()?,
+            input_roots: read_hash_vec(&mut reader, MAX_RECEIPT_HASHES)?,
+            output_roots: read_hash_vec(&mut reader, MAX_RECEIPT_HASHES)?,
+            trace_root: reader.read_hash()?,
+            tensor_work_units: reader.read_u64()?,
+            execution_time_ms: reader.read_u64()?,
+            submitted_at_block: reader.read_u64()?,
+            signature: reader.read_hash()?,
+        }),
+        2 => ReceiptState::LinearTrainingStep(LinearTrainingStepReceipt {
+            receipt_id: reader.read_hash()?,
+            job_id: reader.read_hash()?,
+            miner: reader.read_hash()?,
+            model_id: reader.read_hash()?,
+            step: reader.read_u64()?,
+            weight_root_before: reader.read_hash()?,
+            batch_root: reader.read_hash()?,
+            y_root: reader.read_hash()?,
+            loss_commitment: reader.read_hash()?,
+            grad_w_root: reader.read_hash()?,
+            weight_root_after: reader.read_hash()?,
+            trace_root: reader.read_hash()?,
+            tensor_work_units: reader.read_u64()?,
+            execution_time_ms: reader.read_u64()?,
+            submitted_at_block: reader.read_u64()?,
+            signature: reader.read_hash()?,
+        }),
+        _ => return Err(TvmError::InvalidReceipt("unknown receipt payload tag")),
+    };
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt("trailing receipt payload bytes"));
+    }
+    Ok(receipt)
+}
+
+pub fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8> {
+    let mut out = Vec::new();
+    write_hash(&mut out, &attestation.validator);
+    write_hash(&mut out, &attestation.receipt_id);
+    write_hash(&mut out, &attestation.job_id);
+    out.push(primitive_type_tag(attestation.primitive_type));
+    out.push(verification_result_tag(attestation.result));
+    write_hash(&mut out, &attestation.checks_root);
+    out.push(u8::from(attestation.data_availability_passed));
+    write_u64(&mut out, attestation.stake);
+    write_hash(&mut out, &attestation.signature);
+    out
+}
+
+pub fn decode_attestation_payload(input: &[u8]) -> TvmResult<ValidatorAttestation> {
+    let mut reader = Reader::new(input);
+    let attestation = ValidatorAttestation {
+        validator: reader.read_hash()?,
+        receipt_id: reader.read_hash()?,
+        job_id: reader.read_hash()?,
+        primitive_type: primitive_type_from_tag(reader.read_u8()?)?,
+        result: verification_result_from_tag(reader.read_u8()?)?,
+        checks_root: reader.read_hash()?,
+        data_availability_passed: read_bool(&mut reader)?,
+        stake: reader.read_u64()?,
+        signature: reader.read_hash()?,
+    };
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt(
+            "trailing attestation payload bytes",
+        ));
+    }
+    Ok(attestation)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1087,6 +1244,13 @@ fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
     }
 }
 
+fn write_hash_vec(out: &mut Vec<u8>, values: &[Hash]) {
+    write_u64(out, values.len() as u64);
+    for value in values {
+        write_hash(out, value);
+    }
+}
+
 fn write_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     write_u64(out, bytes.len() as u64);
     out.extend_from_slice(bytes);
@@ -1175,6 +1339,26 @@ fn read_usize_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<usiz
     Ok(values)
 }
 
+fn read_hash_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<Hash>> {
+    let len = read_usize(reader)?;
+    if len > max_len {
+        return Err(TvmError::InvalidReceipt("hash vector too large"));
+    }
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(reader.read_hash()?);
+    }
+    Ok(values)
+}
+
+fn read_bool(reader: &mut Reader<'_>) -> TvmResult<bool> {
+    match reader.read_u8()? {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(TvmError::InvalidReceipt("invalid bool tag")),
+    }
+}
+
 fn dtype_from_tag(tag: u8) -> TvmResult<DType> {
     match tag {
         1 => Ok(DType::Int32),
@@ -1185,14 +1369,47 @@ fn dtype_from_tag(tag: u8) -> TvmResult<DType> {
     }
 }
 
+fn primitive_type_tag(primitive_type: PrimitiveType) -> u8 {
+    match primitive_type {
+        PrimitiveType::TensorOp => 1,
+        PrimitiveType::LinearTrainingStep => 2,
+    }
+}
+
+fn primitive_type_from_tag(tag: u8) -> TvmResult<PrimitiveType> {
+    match tag {
+        1 => Ok(PrimitiveType::TensorOp),
+        2 => Ok(PrimitiveType::LinearTrainingStep),
+        _ => Err(TvmError::InvalidReceipt("unknown primitive type tag")),
+    }
+}
+
+fn verification_result_tag(result: VerificationResult) -> u8 {
+    match result {
+        VerificationResult::Valid => 1,
+        VerificationResult::Invalid => 2,
+        VerificationResult::Unavailable => 3,
+    }
+}
+
+fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
+    match tag {
+        1 => Ok(VerificationResult::Valid),
+        2 => Ok(VerificationResult::Invalid),
+        3 => Ok(VerificationResult::Unavailable),
+        _ => Err(TvmError::InvalidReceipt("unknown verification result tag")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::JobState;
+    use crate::chain::{JobState, ReceiptState};
     use crate::jobs::{LinearTrainingStepSpec, MatmulJob};
     use crate::scheduler::SyntheticLocalJobSource;
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
+    use crate::verify::{AttestationStatement, ValidatorAttestation, VerificationResult};
     use futures::FutureExt;
     use libp2p::swarm::SwarmEvent;
 
@@ -1201,6 +1418,36 @@ mod tests {
         let h = hash_bytes(b"test", &[b"h"]);
         let peer = address(b"peer");
         let job = JobState::TensorOp(MatmulJob::synthetic(0, 1, 2, 3, 4, &h, 10));
+        let miner = address(b"payload-miner");
+        let receipt = ReceiptState::TensorOp(
+            TensorOpReceipt::from_job(
+                match &job {
+                    JobState::TensorOp(job) => job,
+                    JobState::LinearTrainingStep(_) => unreachable!(),
+                },
+                miner,
+                3,
+                4,
+            )
+            .unwrap()
+            .0,
+        );
+        let attestation = ValidatorAttestation::new(
+            address(b"payload-validator"),
+            10,
+            AttestationStatement {
+                receipt_id: receipt.receipt_id(),
+                job_id: receipt.job_id(),
+                primitive_type: receipt.primitive_type(),
+                result: VerificationResult::Valid,
+                checks_root: h,
+                data_availability_passed: true,
+            },
+        );
+        let attestation_id = hash_bytes(
+            b"test-attestation-announcement",
+            &[&attestation.validator, &attestation.receipt_id],
+        );
         let messages = vec![
             P2pMessage::NewBlock(h),
             P2pMessage::NewBlockHeader {
@@ -1213,7 +1460,15 @@ mod tests {
                 payload: encode_job_payload(&job),
             },
             P2pMessage::NewReceipt(h),
+            P2pMessage::NewReceiptPayload {
+                receipt_id: receipt.receipt_id(),
+                payload: encode_receipt_payload(&receipt),
+            },
             P2pMessage::NewAttestation(h),
+            P2pMessage::NewAttestationPayload {
+                attestation_id,
+                payload: encode_attestation_payload(&attestation),
+            },
             P2pMessage::RequestTensorChunk {
                 tensor_id: h,
                 chunk_index: 7,
@@ -1319,6 +1574,130 @@ mod tests {
     }
 
     #[test]
+    fn receipt_payloads_roundtrip_and_reject_malformed_edges() {
+        let beacon = hash_bytes(b"test", &[b"receipt-payload"]);
+        let tensor_job = MatmulJob::synthetic(3, 4, 2, 3, 4, &beacon, 20);
+        let tensor_receipt = ReceiptState::TensorOp(
+            TensorOpReceipt::from_job(&tensor_job, address(b"tensor-miner"), 5, 6)
+                .unwrap()
+                .0,
+        );
+        assert_eq!(
+            decode_receipt_payload(&encode_receipt_payload(&tensor_receipt)).unwrap(),
+            tensor_receipt
+        );
+
+        let weights = SyntheticLocalJobSource::linear_training_weights();
+        let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
+            model_id: hash_bytes(b"test", &[b"receipt-model"]),
+            step: 3,
+            batch_seed: hash_bytes(b"test", &[b"receipt-batch"]),
+            weight_root_before: weights.commitment_root(),
+            input_shape: vec![4, 3],
+            weight_shape: vec![3, 2],
+            target_shape: vec![4, 2],
+            lr: 2,
+            deadline_block: 30,
+        });
+        let linear_receipt = ReceiptState::LinearTrainingStep(
+            LinearTrainingStepReceipt::from_job(
+                &linear_job,
+                address(b"linear-miner"),
+                &weights,
+                7,
+                8,
+            )
+            .unwrap()
+            .0,
+        );
+        assert_eq!(
+            decode_receipt_payload(&encode_receipt_payload(&linear_receipt)).unwrap(),
+            linear_receipt
+        );
+
+        let mut unknown_receipt_tag = encode_receipt_payload(&tensor_receipt);
+        unknown_receipt_tag[0] = 99;
+        assert!(decode_receipt_payload(&unknown_receipt_tag).is_err());
+
+        let mut trailing_payload = encode_receipt_payload(&tensor_receipt);
+        trailing_payload.push(0);
+        assert!(decode_receipt_payload(&trailing_payload).is_err());
+
+        let mut oversized_hashes = Vec::new();
+        oversized_hashes.push(1);
+        write_hash(
+            &mut oversized_hashes,
+            &hash_bytes(b"test", &[b"bad-receipt"]),
+        );
+        write_hash(&mut oversized_hashes, &tensor_job.job_id);
+        write_hash(&mut oversized_hashes, &address(b"bad-miner"));
+        write_hash(&mut oversized_hashes, &tensor_job.program_hash());
+        write_u64(&mut oversized_hashes, (MAX_RECEIPT_HASHES + 1) as u64);
+        assert!(decode_receipt_payload(&oversized_hashes).is_err());
+    }
+
+    #[test]
+    fn attestation_payloads_roundtrip_and_reject_malformed_edges() {
+        let validator = address(b"payload-validator");
+        let receipt_id = hash_bytes(b"test", &[b"attested-receipt"]);
+        let job_id = hash_bytes(b"test", &[b"attested-job"]);
+        for (primitive_type, result) in [
+            (PrimitiveType::TensorOp, VerificationResult::Valid),
+            (
+                PrimitiveType::LinearTrainingStep,
+                VerificationResult::Invalid,
+            ),
+            (PrimitiveType::TensorOp, VerificationResult::Unavailable),
+        ] {
+            let attestation = ValidatorAttestation::new(
+                validator,
+                11,
+                AttestationStatement {
+                    receipt_id,
+                    job_id,
+                    primitive_type,
+                    result,
+                    checks_root: hash_bytes(b"test", &[&[verification_result_tag(result)]]),
+                    data_availability_passed: result != VerificationResult::Unavailable,
+                },
+            );
+            assert_eq!(
+                decode_attestation_payload(&encode_attestation_payload(&attestation)).unwrap(),
+                attestation
+            );
+        }
+
+        let attestation = ValidatorAttestation::new(
+            validator,
+            11,
+            AttestationStatement {
+                receipt_id,
+                job_id,
+                primitive_type: PrimitiveType::TensorOp,
+                result: VerificationResult::Valid,
+                checks_root: hash_bytes(b"test", &[b"checks"]),
+                data_availability_passed: true,
+            },
+        );
+
+        let mut bad_primitive = encode_attestation_payload(&attestation);
+        bad_primitive[96] = 99;
+        assert!(decode_attestation_payload(&bad_primitive).is_err());
+
+        let mut bad_result = encode_attestation_payload(&attestation);
+        bad_result[97] = 99;
+        assert!(decode_attestation_payload(&bad_result).is_err());
+
+        let mut bad_bool = encode_attestation_payload(&attestation);
+        bad_bool[130] = 99;
+        assert!(decode_attestation_payload(&bad_bool).is_err());
+
+        let mut trailing_payload = encode_attestation_payload(&attestation);
+        trailing_payload.push(0);
+        assert!(decode_attestation_payload(&trailing_payload).is_err());
+    }
+
+    #[test]
     fn libp2p_mapping_separates_gossip_and_request_response() {
         let h = hash_bytes(b"test", &[b"h"]);
         let recommendation = recommended_network_stack();
@@ -1358,7 +1737,21 @@ mod tests {
             Some(GossipTopic::Receipts)
         );
         assert_eq!(
+            gossip_topic_for_message(&P2pMessage::NewReceiptPayload {
+                receipt_id: h,
+                payload: vec![1, 2, 3],
+            }),
+            Some(GossipTopic::Receipts)
+        );
+        assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewAttestation(h)),
+            Some(GossipTopic::Attestations)
+        );
+        assert_eq!(
+            gossip_topic_for_message(&P2pMessage::NewAttestationPayload {
+                attestation_id: h,
+                payload: vec![1, 2, 3],
+            }),
             Some(GossipTopic::Attestations)
         );
         assert_eq!(
@@ -1395,6 +1788,20 @@ mod tests {
             request_response_protocol_for_message(&P2pMessage::NewBlockHeader {
                 height: 3,
                 block_hash: h
+            }),
+            None
+        );
+        assert_eq!(
+            request_response_protocol_for_message(&P2pMessage::NewReceiptPayload {
+                receipt_id: h,
+                payload: vec![1, 2, 3],
+            }),
+            None
+        );
+        assert_eq!(
+            request_response_protocol_for_message(&P2pMessage::NewAttestationPayload {
+                attestation_id: h,
+                payload: vec![1, 2, 3],
             }),
             None
         );

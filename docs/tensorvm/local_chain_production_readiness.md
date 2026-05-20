@@ -109,7 +109,7 @@ The local bundle is useful and should remain the first operational target:
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
-  decoded `role_network_*_ingested` event counters, job-payload apply counters,
+  decoded `role_network_*_ingested` event counters, job, receipt, and attestation payload apply counters,
   `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
   `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
@@ -119,8 +119,8 @@ The local bundle is useful and should remain the first operational target:
   loop, only `miner-00` reports timed produced-block progress, every other counted operator reports
   network-applied block progress from decoded block-header events, every non-producer has ingested decoded
   block-header/job/receipt/attestation events with zero invalid network events, every non-producer has
-  accepted at least one decoded job payload through the chain engine, at least one real libp2p connection,
-  job/receipt/attestation/block announcements observed through Gossipsub, and an observed network
+  accepted decoded job, receipt, and attestation payloads through the chain engine, at least one real libp2p
+  connection, job/receipt/attestation/block announcements observed through Gossipsub, and an observed network
   announcement for the selected finalized p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
@@ -198,10 +198,11 @@ Required fix:
 
 The checker validates that all operators are running and libp2p-ready, and now checks every node store for
 role status, live chain counters, the same first live finalized block hash, the same finalized common-head
-block hash, non-producer network-applied block counters, and a finalized local-head checkpoint/state root
-that has also been observed through p2p block gossip via `tvmd service block`. It still does not prove
-live jobs, receipts, and attestations were fully fetched as payloads from the shared network event loop or
-that every operator is executing a distinct role loop.
+block hash, non-producer network-applied block counters, decoded job/receipt/attestation payload
+application counters, and a finalized local-head checkpoint/state root that has also been observed through
+p2p block gossip via `tvmd service block`. It still does not prove every block is assembled from
+network-derived role-owned miner and validator work instead of deterministic local replay, or that every
+operator is executing a distinct fully independent production loop.
 
 Required fix:
 
@@ -214,18 +215,20 @@ Required fix:
 
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
-decoded network-event ingestion counters, latest-height, real libp2p connected-peer counters, and
-runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
-block production now publishes typed `NewJobPayload` messages, legacy `NewJob` hash announcements,
-`NewReceipt`, `NewAttestation`, and height-bearing `NewBlockHeader` announcements over Gossipsub. The
-libp2p worker queues decoded inbound messages for the runtime loop; non-producers validate and apply job
-payloads through `ChainCommand::SubmitJob`, then apply live block catch-up from drained `NewBlockHeader`
-events instead of reading only aggregate latest-head metrics. Only `miner-00` is allowed to produce timed
-local blocks. The role loop processes block announcements ahead of payload-only messages and local
-synthetic replay prunes future pre-applied synthetic jobs before matching an observed head, so decoded job
-payloads cannot poison deterministic local catch-up. Receipt and attestation payload application from the
-shared node event loop still needs to replace the remaining deterministic replay proof for receipts and
-attestations.
+decoded network-event ingestion counters, decoded job/receipt/attestation payload application counters,
+latest-height, real libp2p connected-peer counters, and runtime-observed job, receipt, attestation, and
+block gossip counters from the long-running command. Local block production now publishes typed
+`NewJobPayload`, `NewReceiptPayload`, and `NewAttestationPayload` messages, legacy `NewJob`,
+`NewReceipt`, and `NewAttestation` hash announcements, and height-bearing `NewBlockHeader`
+announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the runtime loop;
+non-producers validate and apply job payloads through `ChainCommand::SubmitJob`, receipt payloads through
+`ChainCommand::SubmitReceipt`, and attestation payloads through `ChainCommand::SubmitAttestation`, then
+apply live block catch-up from drained `NewBlockHeader` events instead of reading only aggregate
+latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes
+block announcements ahead of payload-only messages and local synthetic replay prunes future pre-applied
+synthetic jobs before matching an observed head, so decoded payloads cannot poison deterministic local
+catch-up. The remaining gap is replacing deterministic replay with role-owned miner, validator, and
+proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -516,16 +519,17 @@ Status: partially complete. The document exists and the checker gates live post-
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
 15 operator node stores reporting role status, live chain counters, the single local producer, network
-applied block progress on every non-producer, accepted job-payload application through the shared chain
-engine on every non-producer, the same first live finalized block hash, the same finalized common-head block
-hash, and a finalized local-head checkpoint/state root that was also observed through p2p block gossip via
-`tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
+applied block progress on every non-producer, accepted job, receipt, and attestation payload application
+through the shared chain engine on every non-producer, the same first live finalized block hash, the same
+finalized common-head block hash, and a finalized local-head checkpoint/state root that was also observed
+through p2p block gossip via `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
+receipt evidence, real libp2p
 connected-peer counts, job/receipt/attestation/block gossip observations from every role runtime, and
 nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
 selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
-Fully applying receipt/attestation payloads and blocks from the shared network event path still needs hard
-checker assertions.
+Fully assembling blocks from shared network-derived state and role-owned miner/validator/proposer loops
+still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 

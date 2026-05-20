@@ -184,10 +184,10 @@ protocol paths and persisted state. The readiness file and `tvmd service status`
 actual long-running role command so the checker can reject operators that fall back to a generic service
 entrypoint. The status output must also expose role-loop counters, local-producer mode, network-applied
 block counters for non-producers, the runtime-observed libp2p connected peer count, job, receipt,
-attestation, and block gossip counters, decoded network-event ingestion counters, decoded job-payload
-application counters, the latest observed block height/hash, and the bounded observed block-hash set so the
-first gate proves every operator is connected and receiving live consensus announcements for the convergence
-target, not merely configured.
+attestation, and block gossip counters, decoded network-event ingestion counters, decoded job, receipt, and
+attestation payload application counters, the latest observed block height/hash, and the bounded observed
+block-hash set so the first gate proves every operator is connected and receiving live consensus
+announcements for the convergence target, not merely configured.
 
 After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work, and
 non-producer operators must only apply live blocks after a p2p block-header announcement can be replayed
@@ -278,7 +278,7 @@ only miner-00 reported local timed production, and every other counted operator 
 network-applied block progress from p2p block-header replay
 every non-producer reported decoded network-event ingestion for block headers, jobs, receipts, and
 attestations, with zero invalid network events
-every non-producer reported decoded job-payload application through the chain engine
+every non-producer reported decoded job, receipt, and attestation payload application through the chain engine
 all 15 operator node stores returned the finalized local-head checkpoint hash and state root after that
 checkpoint was observed through p2p block gossip
 all 15 operators observed that checkpoint block hash through libp2p block gossip

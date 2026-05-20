@@ -8,13 +8,14 @@ use std::{
 use tensor_vm::{
     ChainCommand, ChainEngine, CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig,
     LocalChain, NodeStore, PeerRecord, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
-    TensorVmLibp2pService, ValidatorAttestation,
+    TensorVmLibp2pService, TvmError, ValidatorAttestation,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
-    decode_job_payload, encode_job_payload,
+    decode_attestation_payload, decode_job_payload, decode_receipt_payload,
+    encode_attestation_payload, encode_job_payload, encode_receipt_payload,
     hash::hex,
     localnet::produce_synthetic_cpu_round_with_tensors,
     parse_cli_args, spawn_libp2p_service,
@@ -381,7 +382,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -401,7 +402,11 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_network_job_payloads_ingested"),
         role_runtime_status_field(data_dir, "role_network_job_payloads_applied"),
         role_runtime_status_field(data_dir, "role_network_receipt_events_ingested"),
+        role_runtime_status_field(data_dir, "role_network_receipt_payloads_ingested"),
+        role_runtime_status_field(data_dir, "role_network_receipt_payloads_applied"),
         role_runtime_status_field(data_dir, "role_network_attestation_events_ingested"),
+        role_runtime_status_field(data_dir, "role_network_attestation_payloads_ingested"),
+        role_runtime_status_field(data_dir, "role_network_attestation_payloads_applied"),
         role_runtime_status_field(data_dir, "role_network_peer_events_ingested"),
         role_runtime_status_field(data_dir, "role_network_invalid_events"),
         role_runtime_status_field(data_dir, "role_latest_height"),
@@ -650,7 +655,11 @@ fn serve_service_with_runtime(
                 network_applied_blocks =
                     network_applied_blocks.saturating_add(ingested.applied_blocks);
                 network_event_ingest.accumulate(ingested);
-                if ingested.applied_blocks > 0 || ingested.job_payloads_applied > 0 {
+                if ingested.applied_blocks > 0
+                    || ingested.job_payloads_applied > 0
+                    || ingested.receipt_payloads_applied > 0
+                    || ingested.attestation_payloads_applied > 0
+                {
                     store
                         .persist_chain(&server.gateway().node.chain)
                         .map_err(|error| {
@@ -717,7 +726,7 @@ fn serve_service_with_runtime(
         }
     }
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_attestation_events_ingested={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
         config.role,
         config.listen,
@@ -738,7 +747,11 @@ fn serve_service_with_runtime(
         network_event_ingest.job_payloads,
         network_event_ingest.job_payloads_applied,
         network_event_ingest.receipts,
+        network_event_ingest.receipt_payloads,
+        network_event_ingest.receipt_payloads_applied,
         network_event_ingest.attestations,
+        network_event_ingest.attestation_payloads,
+        network_event_ingest.attestation_payloads_applied,
         network_event_ingest.peers,
         network_event_ingest.invalid_events
     ))
@@ -794,7 +807,7 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = Path::new(config.data_dir).join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_attestation_events_ingested={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role,
         snapshot.local_producer,
@@ -808,7 +821,11 @@ fn write_role_runtime_status(
         snapshot.network_events.job_payloads,
         snapshot.network_events.job_payloads_applied,
         snapshot.network_events.receipts,
+        snapshot.network_events.receipt_payloads,
+        snapshot.network_events.receipt_payloads_applied,
         snapshot.network_events.attestations,
+        snapshot.network_events.attestation_payloads,
+        snapshot.network_events.attestation_payloads_applied,
         snapshot.network_events.peers,
         snapshot.network_events.invalid_events,
         snapshot.latest_height,
@@ -838,7 +855,11 @@ struct NetworkEventIngest {
     job_payloads: usize,
     job_payloads_applied: usize,
     receipts: usize,
+    receipt_payloads: usize,
+    receipt_payloads_applied: usize,
     attestations: usize,
+    attestation_payloads: usize,
+    attestation_payloads_applied: usize,
     peers: usize,
     invalid_events: usize,
     applied_blocks: usize,
@@ -861,7 +882,17 @@ impl NetworkEventIngest {
             .job_payloads_applied
             .saturating_add(other.job_payloads_applied);
         self.receipts = self.receipts.saturating_add(other.receipts);
+        self.receipt_payloads = self.receipt_payloads.saturating_add(other.receipt_payloads);
+        self.receipt_payloads_applied = self
+            .receipt_payloads_applied
+            .saturating_add(other.receipt_payloads_applied);
         self.attestations = self.attestations.saturating_add(other.attestations);
+        self.attestation_payloads = self
+            .attestation_payloads
+            .saturating_add(other.attestation_payloads);
+        self.attestation_payloads_applied = self
+            .attestation_payloads_applied
+            .saturating_add(other.attestation_payloads_applied);
         self.peers = self.peers.saturating_add(other.peers);
         self.invalid_events = self.invalid_events.saturating_add(other.invalid_events);
         self.applied_blocks = self.applied_blocks.saturating_add(other.applied_blocks);
@@ -933,10 +964,44 @@ fn ingest_network_events(
                     ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                 }
             }
+            P2pMessage::NewReceiptPayload {
+                receipt_id,
+                payload,
+            } => {
+                ingested.receipts = ingested.receipts.saturating_add(1);
+                ingested.receipt_payloads = ingested.receipt_payloads.saturating_add(1);
+                match apply_network_receipt_payload(server, receipt_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        ingested.receipt_payloads_applied =
+                            ingested.receipt_payloads_applied.saturating_add(1);
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
             P2pMessage::NewAttestation(attestation_id) => {
                 ingested.attestations = ingested.attestations.saturating_add(1);
                 if attestation_id == [0; 32] {
                     ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::NewAttestationPayload {
+                attestation_id,
+                payload,
+            } => {
+                ingested.attestations = ingested.attestations.saturating_add(1);
+                ingested.attestation_payloads = ingested.attestation_payloads.saturating_add(1);
+                match apply_network_attestation_payload(server, attestation_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        ingested.attestation_payloads_applied =
+                            ingested.attestation_payloads_applied.saturating_add(1);
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
                 }
             }
             P2pMessage::PeerInfo { address } => {
@@ -972,6 +1037,13 @@ fn is_block_announcement(message: &P2pMessage) -> bool {
     )
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NetworkPayloadApply {
+    Applied,
+    Pending,
+    Invalid,
+}
+
 fn apply_network_job_payload(
     server: &mut RpcHttpServer,
     job_id: Hash,
@@ -999,6 +1071,93 @@ fn apply_network_job_payload(
     Ok(())
 }
 
+fn apply_network_receipt_payload(
+    server: &mut RpcHttpServer,
+    receipt_id: Hash,
+    payload: &[u8],
+) -> NetworkPayloadApply {
+    if receipt_id == [0; 32] {
+        return NetworkPayloadApply::Invalid;
+    }
+    let Ok(receipt) = decode_receipt_payload(payload) else {
+        return NetworkPayloadApply::Invalid;
+    };
+    if receipt.receipt_id() != receipt_id {
+        return NetworkPayloadApply::Invalid;
+    }
+    let chain = &server.gateway().node.chain;
+    if let Some(existing) = chain.state.receipts.get(&receipt_id) {
+        if existing == &receipt {
+            return NetworkPayloadApply::Applied;
+        }
+        return NetworkPayloadApply::Invalid;
+    }
+    if !chain.state.jobs.contains_key(&receipt.job_id())
+        || !chain.state.miners.contains_key(&receipt.miner())
+    {
+        return NetworkPayloadApply::Pending;
+    }
+    match server
+        .gateway_mut()
+        .node
+        .chain
+        .apply_command(ChainCommand::SubmitReceipt(receipt))
+    {
+        Ok(_) => NetworkPayloadApply::Applied,
+        Err(TvmError::InvalidReceipt("unknown job") | TvmError::UnknownMiner) => {
+            NetworkPayloadApply::Pending
+        }
+        Err(_) => NetworkPayloadApply::Invalid,
+    }
+}
+
+fn apply_network_attestation_payload(
+    server: &mut RpcHttpServer,
+    attestation_id: Hash,
+    payload: &[u8],
+) -> NetworkPayloadApply {
+    if attestation_id == [0; 32] {
+        return NetworkPayloadApply::Invalid;
+    }
+    let Ok(attestation) = decode_attestation_payload(payload) else {
+        return NetworkPayloadApply::Invalid;
+    };
+    if attestation_announcement_hash(&attestation) != attestation_id {
+        return NetworkPayloadApply::Invalid;
+    }
+    let chain = &server.gateway().node.chain;
+    if let Some(existing) = chain
+        .state
+        .attestations
+        .get(&attestation.receipt_id)
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|existing| existing.validator == attestation.validator)
+        })
+    {
+        if existing == &attestation {
+            return NetworkPayloadApply::Applied;
+        }
+        return NetworkPayloadApply::Invalid;
+    }
+    if !chain.state.validators.contains_key(&attestation.validator)
+        || !chain.state.receipts.contains_key(&attestation.receipt_id)
+    {
+        return NetworkPayloadApply::Pending;
+    }
+    match server
+        .gateway_mut()
+        .node
+        .chain
+        .apply_command(ChainCommand::SubmitAttestation(attestation))
+    {
+        Ok(_) => NetworkPayloadApply::Applied,
+        Err(TvmError::UnknownValidator | TvmError::UnknownReceipt) => NetworkPayloadApply::Pending,
+        Err(_) => NetworkPayloadApply::Invalid,
+    }
+}
+
 fn catch_up_to_announced_block(
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,
@@ -1024,14 +1183,14 @@ fn catch_up_to_announced_block(
     for tensor in catchup.tensors {
         server.gateway_mut().node.insert_tensor(tensor);
     }
+    if let Some(block) = block_at_height(&server.gateway().node.chain, target_height) {
+        publish_block_announcement(p2p_service, block.height, block.hash())?;
+    }
     publish_new_chain_announcements(
         p2p_service,
         &announcement_checkpoint,
         &server.gateway().node.chain,
     )?;
-    if let Some(block) = block_at_height(&server.gateway().node.chain, target_height) {
-        publish_block_announcement(p2p_service, block.height, block.hash())?;
-    }
     Ok(catchup.applied_blocks)
 }
 
@@ -1110,16 +1269,16 @@ fn produce_and_publish_synthetic_round(
     {
         return Ok(None);
     }
-    publish_new_chain_announcements(
-        p2p_service,
-        &announcement_checkpoint,
-        &server.gateway().node.chain,
-    )?;
     let Some(block) = server.gateway().node.chain.blocks.last() else {
         return Ok(None);
     };
     let block_hash = block.hash();
     publish_block_announcement(p2p_service, block.height, block_hash)?;
+    publish_new_chain_announcements(
+        p2p_service,
+        &announcement_checkpoint,
+        &server.gateway().node.chain,
+    )?;
     Ok(Some(block_hash))
 }
 
@@ -1173,15 +1332,35 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish job gossip: {error}"))?;
         }
     }
-    for receipt_id in chain.state.receipts.keys().copied() {
-        if !before.receipts.contains(&receipt_id) {
+    for (receipt_id, receipt) in &chain.state.receipts {
+        if !before.receipts.contains(receipt_id) {
             p2p_service
-                .publish_gossip(P2pMessage::NewReceipt(receipt_id))
+                .publish_gossip(P2pMessage::NewReceiptPayload {
+                    receipt_id: *receipt_id,
+                    payload: encode_receipt_payload(receipt),
+                })
+                .map_err(|error| format!("failed to publish receipt payload gossip: {error}"))?;
+            p2p_service
+                .publish_gossip(P2pMessage::NewReceipt(*receipt_id))
                 .map_err(|error| format!("failed to publish receipt gossip: {error}"))?;
         }
     }
-    for attestation_id in attestation_announcement_hashes(chain) {
+    for attestation in chain
+        .state
+        .attestations
+        .values()
+        .flat_map(|attestations| attestations.iter())
+    {
+        let attestation_id = attestation_announcement_hash(attestation);
         if !before.attestations.contains(&attestation_id) {
+            p2p_service
+                .publish_gossip(P2pMessage::NewAttestationPayload {
+                    attestation_id,
+                    payload: encode_attestation_payload(attestation),
+                })
+                .map_err(|error| {
+                    format!("failed to publish attestation payload gossip: {error}")
+                })?;
             p2p_service
                 .publish_gossip(P2pMessage::NewAttestation(attestation_id))
                 .map_err(|error| format!("failed to publish attestation gossip: {error}"))?;
@@ -1444,7 +1623,11 @@ mod tests {
             job_payloads: 1,
             job_payloads_applied: 1,
             receipts: 0,
+            receipt_payloads: 0,
+            receipt_payloads_applied: 0,
             attestations: 0,
+            attestation_payloads: 0,
+            attestation_payloads_applied: 0,
             peers: 0,
             invalid_events: 0,
             applied_blocks: 1,
@@ -1457,7 +1640,11 @@ mod tests {
             job_payloads: 2,
             job_payloads_applied: 2,
             receipts: 1,
+            receipt_payloads: 1,
+            receipt_payloads_applied: 1,
             attestations: 1,
+            attestation_payloads: 1,
+            attestation_payloads_applied: 1,
             peers: 1,
             invalid_events: 1,
             applied_blocks: 2,
@@ -1471,10 +1658,106 @@ mod tests {
         assert_eq!(cumulative.job_payloads, 3);
         assert_eq!(cumulative.job_payloads_applied, 3);
         assert_eq!(cumulative.receipts, 1);
+        assert_eq!(cumulative.receipt_payloads, 1);
+        assert_eq!(cumulative.receipt_payloads_applied, 1);
         assert_eq!(cumulative.attestations, 1);
+        assert_eq!(cumulative.attestation_payloads, 1);
+        assert_eq!(cumulative.attestation_payloads_applied, 1);
         assert_eq!(cumulative.peers, 1);
         assert_eq!(cumulative.invalid_events, 1);
         assert_eq!(cumulative.applied_blocks, 3);
+    }
+
+    fn test_rpc_server(chain: LocalChain) -> RpcHttpServer {
+        let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+        let gateway = RpcGateway::new(node, RpcPolicy::default());
+        RpcHttpServer::bind("127.0.0.1:0", gateway).unwrap()
+    }
+
+    #[test]
+    fn network_payload_application_defers_out_of_order_receipts_and_attestations() {
+        let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+
+        let mut missing_job_chain = testnet.chain.clone();
+        missing_job_chain.state.jobs.remove(&receipt.job_id());
+        missing_job_chain.state.receipts.remove(&receipt_id);
+        let mut missing_job_server = test_rpc_server(missing_job_chain);
+        assert_eq!(
+            apply_network_receipt_payload(
+                &mut missing_job_server,
+                receipt_id,
+                &encode_receipt_payload(&receipt),
+            ),
+            NetworkPayloadApply::Pending
+        );
+
+        let mut receipt_chain = testnet.chain.clone();
+        receipt_chain.state.receipts.remove(&receipt_id);
+        receipt_chain.state.attestations.remove(&receipt_id);
+        let mut receipt_server = test_rpc_server(receipt_chain);
+        assert_eq!(
+            apply_network_receipt_payload(
+                &mut receipt_server,
+                receipt_id,
+                &encode_receipt_payload(&receipt),
+            ),
+            NetworkPayloadApply::Applied
+        );
+
+        let mut missing_receipt_chain = testnet.chain.clone();
+        missing_receipt_chain
+            .state
+            .receipts
+            .remove(&attestation.receipt_id);
+        missing_receipt_chain
+            .state
+            .attestations
+            .remove(&attestation.receipt_id);
+        let mut missing_receipt_server = test_rpc_server(missing_receipt_chain);
+        assert_eq!(
+            apply_network_attestation_payload(
+                &mut missing_receipt_server,
+                attestation_id,
+                &encode_attestation_payload(&attestation),
+            ),
+            NetworkPayloadApply::Pending
+        );
+
+        let mut attestation_chain = testnet.chain.clone();
+        attestation_chain
+            .state
+            .attestations
+            .remove(&attestation.receipt_id);
+        let mut attestation_server = test_rpc_server(attestation_chain);
+        assert_eq!(
+            apply_network_attestation_payload(
+                &mut attestation_server,
+                attestation_id,
+                &encode_attestation_payload(&attestation),
+            ),
+            NetworkPayloadApply::Applied
+        );
     }
 
     #[test]
