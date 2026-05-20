@@ -139,6 +139,9 @@ The first chain-core cleanup slices are already in the tree:
 - Local CPU synthetic production moved into the `tensor_vm` library instead of remaining private binary code.
 - `JobSource` and `SyntheticLocalJobSource` separate deterministic local job generation from scheduler and
   block-production code.
+- `CpuReferenceMinerRole`, `ReferenceValidatorRole`, and `RoleReceiptBundle` separate CPU miner execution,
+  validator verification, served tensor artifacts, and receipt/attestation submission from local round
+  orchestration.
 
 These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
 state transitions before it satisfies the local CPU spec as a production-grade local chain.
@@ -147,9 +150,10 @@ state transitions before it satisfies the local CPU spec as a production-grade l
 
 ### 1. Local Production Is Still Single-Process
 
-Current live production still runs inside `miner-00`'s service loop. It now calls a shared library adapter,
-but that adapter still directly creates CPU miner objects, validator objects, receipts, attestations,
-settlement, block production, and finality votes against one `Chain`.
+Current live production still runs inside `miner-00`'s service loop. It now calls shared library role
+components for CPU miner execution and validator verification, but those components are still orchestrated
+inside one local producer process before settlement, block production, and finality votes are applied
+against one `Chain`.
 
 This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
 propagation, local-only networking shims, and single-participant shortcuts.
@@ -565,8 +569,10 @@ duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` 
 checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
-observations for every counted operator. The commands still delegate to the shared service runtime
-internally, so miner/validator/proposer ownership needs to be split further.
+observations for every counted operator. CPU miner execution and validator verification now live behind
+role-owned library components used by the local producer, but the long-running commands still delegate to
+the shared service runtime internally, so process-level miner/validator/proposer ownership needs to be
+split further.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

@@ -20,6 +20,7 @@ pub mod miner;
 pub mod oracle;
 pub mod p2p;
 pub mod profile;
+pub mod roles;
 pub mod rpc;
 pub mod runtime;
 pub mod scheduler;
@@ -66,6 +67,10 @@ pub use p2p::{
     request_response_stream_protocol, spawn_libp2p_service,
 };
 pub use profile::{ChainNetwork, ChainProfile, NodeConfig, NodeRole, ServiceExposure};
+pub use roles::{
+    CpuReferenceMinerRole, ReferenceValidatorRole, RoleReceiptArtifacts, RoleReceiptBundle,
+    primitive_type, validator_stake,
+};
 pub use rpc::{RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, RpcRequest, RpcResponse};
 pub use runtime::{
     BackendKind, CpuReferenceBackend, ExecutionBackend, GpuMinerBackend, cuda_device_count,

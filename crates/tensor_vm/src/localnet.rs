@@ -1,12 +1,14 @@
-use crate::chain::{BlockVote, Chain, JobState, TensorBlock};
+use crate::chain::{
+    BlockVote, Chain, ChainCommand, ChainEngine, JobState, ReceiptState, TensorBlock,
+};
 use crate::error::Result;
 use crate::jobs::{LinearTrainingStepJob, MatmulJob};
-use crate::miner::MinerNode;
 use crate::profile::ChainProfile;
-use crate::runtime::CpuReferenceBackend;
+use crate::roles::{
+    CpuReferenceMinerRole, ReferenceValidatorRole, RoleReceiptBundle, validator_stake,
+};
 use crate::scheduler::{JobScheduler, JobSource, SyntheticLocalJobSource};
 use crate::tensor::Tensor;
-use crate::validator::{MatmulVerificationInput, ValidatorNode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntheticCpuRoundResult {
@@ -57,48 +59,32 @@ fn produce_synthetic_matmul_round(
     job: MatmulJob,
 ) -> Result<Option<SyntheticCpuRoundResult>> {
     let beacon = chain.state.finalized_randomness;
-    chain.submit_job(JobState::TensorOp(job.clone()));
+    let job_state = JobState::TensorOp(job.clone());
+    chain.apply_command(ChainCommand::SubmitJob(job_state.clone()))?;
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
     let mut receipts = Vec::new();
     for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
-        let mut miner = MinerNode::new(miner_address, CpuReferenceBackend);
-        let (receipt, a, b, c) =
-            miner.solve_matmul_job(&job, chain.state.height, 1 + index as u64)?;
-        chain.submit_tensor_op_receipt(receipt.clone())?;
-        receipts.push((receipt, a, b, c));
+        let receipt = CpuReferenceMinerRole::new(miner_address).execute_job(
+            &job_state,
+            chain.state.height,
+            1 + index as u64,
+        )?;
+        chain.apply_command(ChainCommand::SubmitReceipt(receipt.receipt.clone()))?;
+        receipts.push(receipt);
     }
-    for (receipt, a, b, c) in &receipts {
-        let validation_seed = chain.validation_seed(&receipt.receipt_id);
-        let validator_assignment = scheduler.assign_validators(chain, receipt.receipt_id, &beacon);
-        for validator_address in validator_assignment.validators {
-            let stake = chain
-                .state
-                .validators
-                .get(&validator_address)
-                .map(|validator| validator.stake)
-                .unwrap_or_default();
-            let validator = ValidatorNode::new(validator_address, stake);
-            let attestation = validator.verify_matmul(MatmulVerificationInput {
-                job: &job,
-                receipt,
-                a,
-                b,
-                c,
-                validation_seed: &validation_seed,
-                params: &chain.params.freivalds,
-            })?;
-            chain.submit_attestation(attestation)?;
-        }
-    }
-    let Some((canonical_receipt, canonical_a, canonical_b, canonical_c)) = receipts.first() else {
+    attest_receipt_bundles(chain, scheduler, &job_state, &receipts, &beacon)?;
+    let Some(canonical_receipt) = receipts.first() else {
         return Ok(None);
     };
-    if !chain.has_attestation_quorum(&canonical_receipt.receipt_id)
-        || !chain.has_redundant_agreement(&canonical_receipt.receipt_id)
+    if !chain.has_attestation_quorum(&canonical_receipt.receipt_id())
+        || !chain.has_redundant_agreement(&canonical_receipt.receipt_id())
     {
         return Ok(None);
     }
-    chain.settle_epoch(1_000, 500);
+    chain.apply_command(ChainCommand::SettleEpoch {
+        miner_reward_pool: 1_000,
+        validator_reward_pool: 500,
+    })?;
     let proposer = chain.proposer_for_next_epoch(&beacon).unwrap_or_default();
     let timestamp = chain
         .blocks
@@ -113,11 +99,7 @@ fn produce_synthetic_matmul_round(
     finalize_local_cpu_block(chain, &block)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
-        tensors: vec![
-            canonical_a.clone(),
-            canonical_b.clone(),
-            canonical_c.clone(),
-        ],
+        tensors: canonical_receipt.served_tensors(),
     }))
 }
 
@@ -129,56 +111,41 @@ fn produce_synthetic_linear_training_round(
     let beacon = chain.state.finalized_randomness;
     let weights = SyntheticLocalJobSource::linear_training_weights();
     register_synthetic_linear_model(chain, &job, &weights);
-    chain.submit_job(JobState::LinearTrainingStep(job.clone()));
+    let job_state = JobState::LinearTrainingStep(job.clone());
+    chain.apply_command(ChainCommand::SubmitJob(job_state.clone()))?;
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
     let mut receipts = Vec::new();
     for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
-        let mut miner = MinerNode::new(miner_address, CpuReferenceBackend);
-        let (receipt, output) = miner.solve_linear_training_step(
-            &job,
-            &weights,
+        let receipt = CpuReferenceMinerRole::new(miner_address).execute_job(
+            &job_state,
             chain.state.height,
             1 + index as u64,
         )?;
-        chain.submit_linear_receipt(receipt.clone())?;
-        receipts.push((receipt, output));
+        chain.apply_command(ChainCommand::SubmitReceipt(receipt.receipt.clone()))?;
+        receipts.push(receipt);
     }
-    for (receipt, output) in &receipts {
-        let validation_seed = chain.validation_seed(&receipt.receipt_id);
-        let validator_assignment = scheduler.assign_validators(chain, receipt.receipt_id, &beacon);
-        for validator_address in validator_assignment.validators {
-            let stake = chain
-                .state
-                .validators
-                .get(&validator_address)
-                .map(|validator| validator.stake)
-                .unwrap_or_default();
-            let validator = ValidatorNode::new(validator_address, stake);
-            let attestation = validator.verify_linear_training_step(
-                &job,
-                receipt,
-                &weights,
-                output,
-                &validation_seed,
-                &chain.params.freivalds,
-            )?;
-            chain.submit_attestation(attestation)?;
-        }
-    }
-    let Some((canonical_receipt, canonical_output)) = receipts.first() else {
+    attest_receipt_bundles(chain, scheduler, &job_state, &receipts, &beacon)?;
+    let Some(canonical_receipt) = receipts.first() else {
         return Ok(None);
     };
-    if !chain.has_attestation_quorum(&canonical_receipt.receipt_id)
-        || !chain.has_redundant_agreement(&canonical_receipt.receipt_id)
+    if !chain.has_attestation_quorum(&canonical_receipt.receipt_id())
+        || !chain.has_redundant_agreement(&canonical_receipt.receipt_id())
     {
         return Ok(None);
     }
-    chain.settle_epoch(1_000, 500);
+    chain.apply_command(ChainCommand::SettleEpoch {
+        miner_reward_pool: 1_000,
+        validator_reward_pool: 500,
+    })?;
+    let weight_root_after = match &canonical_receipt.receipt {
+        ReceiptState::LinearTrainingStep(receipt) => receipt.weight_root_after,
+        ReceiptState::TensorOp(_) => unreachable!("linear round must produce linear receipts"),
+    };
     chain.apply_model_transition(
         &job.model_id,
         job.step,
         &job.weight_root_before,
-        canonical_receipt.weight_root_after,
+        weight_root_after,
     )?;
     let proposer = chain.proposer_for_next_epoch(&beacon).unwrap_or_default();
     let timestamp = chain
@@ -194,15 +161,36 @@ fn produce_synthetic_linear_training_round(
     finalize_local_cpu_block(chain, &block)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
-        tensors: vec![
-            canonical_output.x.clone(),
-            canonical_output.target.clone(),
-            canonical_output.y.clone(),
-            canonical_output.dy.clone(),
-            canonical_output.grad_w.clone(),
-            canonical_output.weight_after.clone(),
-        ],
+        tensors: canonical_receipt.served_tensors(),
     }))
+}
+
+fn attest_receipt_bundles(
+    chain: &mut Chain,
+    scheduler: &JobScheduler,
+    job: &JobState,
+    receipts: &[RoleReceiptBundle],
+    beacon: &crate::types::Hash,
+) -> Result<()> {
+    for receipt in receipts {
+        let receipt_id = receipt.receipt_id();
+        let validation_seed = chain.validation_seed(&receipt_id);
+        let validator_assignment = scheduler.assign_validators(chain, receipt_id, beacon);
+        for validator_address in validator_assignment.validators {
+            let validator = ReferenceValidatorRole::new(
+                validator_address,
+                validator_stake(chain, &validator_address),
+            );
+            let attestation = validator.verify_receipt(
+                job,
+                receipt,
+                &validation_seed,
+                &chain.params.freivalds,
+            )?;
+            chain.apply_command(ChainCommand::SubmitAttestation(attestation))?;
+        }
+    }
+    Ok(())
 }
 
 fn register_synthetic_linear_model(

@@ -71,6 +71,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   post-startup matmul and LinearTrainingStep jobs emitted without embedding scheduler policy directly in
   the block-production adapter, and profile-controlled enablement so local CPU can generate synthetic jobs
   without public testnet or mainnet inheriting local-only job production
+- `CpuReferenceMinerRole`, `ReferenceValidatorRole`, and `RoleReceiptBundle` boundaries for CPU role work,
+  so local synthetic production drives miner execution and validator verification through role-owned
+  components before submitting receipts and attestations through the shared chain engine
 - Redundant miner-output agreement quorum before settlement, with disagreement/fewer-than-quorum receipts
   delayed rather than rewarded
 - Miner node executor with receipt submission and tensor serving
@@ -363,10 +366,10 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 228 passing library tests under Tarpaulin:
+The workspace currently has 234 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 213 in `tensor_vm`
+- 219 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 8 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -394,10 +397,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 99.22% workspace line coverage
-- 10461/10543 workspace lines covered
+- 99.23% workspace line coverage
+- 10511/10593 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9616/9616 `tensor_vm` lines covered
+- 9666/9666 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
