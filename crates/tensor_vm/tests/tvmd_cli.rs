@@ -1095,6 +1095,10 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("command=service_serve"));
         assert!(stdout.contains("role_loop_ready=true"));
         assert!(stdout.contains(&format!("runtime_command={role}_run")));
+        let role_can_produce_blocks = if role == "proposer" { "true" } else { "false" };
+        assert!(stdout.contains(&format!(
+            "role_can_produce_blocks={role_can_produce_blocks}"
+        )));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
@@ -1114,6 +1118,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains(&format!("role_runtime_command={role}_run")));
         assert!(status.contains(&format!("role_loop_role={role}")));
         assert!(status.contains("role_loop_ready=true"));
+        assert!(status.contains(&format!(
+            "role_can_produce_blocks={role_can_produce_blocks}"
+        )));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));

@@ -394,6 +394,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_RUNTIME_COMMAND=$(status_value role_runtime_command "$STATUS")
     SERVICE_ROLE_LOOP_READY=$(status_value role_loop_ready "$STATUS")
     SERVICE_ROLE_LOOP_ROLE=$(status_value role_loop_role "$STATUS")
+    SERVICE_ROLE_CAN_PRODUCE_BLOCKS=$(status_value role_can_produce_blocks "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
@@ -439,6 +440,8 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_READY" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_ROLE" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
@@ -508,10 +511,12 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_LOOP_READY" = "true" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-00)
+        [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" = "true" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "true" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
       *)
+        [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" = "false" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "false" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
@@ -674,6 +679,7 @@ all_operator_network_state_root=${ALL_OPERATOR_NETWORK_STATE_ROOT}
 all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
+all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true
 single_local_producer=true
 local_proposer_runtime=true

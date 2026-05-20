@@ -108,7 +108,7 @@ The local bundle is useful and should remain the first operational target:
   15 operators report the role command expected for their Compose service.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
-  `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
+  `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
   decoded `role_network_*_ingested` event counters, job, receipt, and attestation payload apply counters,
   `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
@@ -116,7 +116,7 @@ The local bundle is useful and should remain the first operational target:
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_height`,
   `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
-  loop, only `miner-00` reports timed produced-block progress, every other counted operator reports
+  loop, only `miner-00` reports block-production capability and timed produced-block progress, every other counted operator reports
   network-applied block progress from decoded block-header events, every non-producer has ingested decoded
   block-header/job/receipt/attestation events with zero invalid network events, every non-producer has
   accepted decoded job, receipt, and attestation payloads through the chain engine, at least one real libp2p
