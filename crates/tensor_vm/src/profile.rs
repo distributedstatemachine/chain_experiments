@@ -2,6 +2,7 @@ use crate::chain::{Chain, ChainParams};
 use crate::scheduler::{JobScheduler, SyntheticLocalJobSource};
 use crate::types::Hash;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ChainNetwork {
@@ -14,6 +15,7 @@ pub enum ChainNetwork {
 pub enum NodeRole {
     Gateway,
     Miner,
+    Proposer,
     Validator,
     Explorer,
 }
@@ -40,6 +42,15 @@ pub struct ChainProfile {
 }
 
 impl ChainProfile {
+    pub fn from_label(label: &str) -> Option<Self> {
+        match label {
+            "local" | "local_cpu" => Some(Self::local_cpu()),
+            "testnet" | "public_testnet" => Some(Self::public_testnet()),
+            "mainnet" => Some(Self::mainnet()),
+            _ => None,
+        }
+    }
+
     pub fn local_cpu() -> Self {
         Self {
             network: ChainNetwork::Local,
@@ -92,6 +103,10 @@ impl ChainProfile {
         self.service_exposure == ServiceExposure::PublicHttps
     }
 
+    pub fn synthetic_jobs_enabled(&self) -> bool {
+        self.synthetic_job_scheduler.is_some()
+    }
+
     pub fn synthetic_job_source(&self) -> Option<SyntheticLocalJobSource> {
         self.synthetic_job_scheduler
             .clone()
@@ -104,6 +119,8 @@ pub struct NodeConfig {
     pub profile: ChainProfile,
     pub role: NodeRole,
     pub data_dir: PathBuf,
+    pub block_interval: Option<Duration>,
+    pub local_producer: bool,
 }
 
 impl NodeConfig {
@@ -112,11 +129,40 @@ impl NodeConfig {
             profile,
             role,
             data_dir: data_dir.into(),
+            block_interval: None,
+            local_producer: false,
         }
     }
 
     pub fn build_chain(&self, finalized_randomness: Hash) -> Chain {
         self.profile.build_chain(finalized_randomness)
+    }
+
+    pub fn with_block_interval(mut self, interval: Option<Duration>) -> Self {
+        self.block_interval = interval;
+        self
+    }
+
+    pub fn with_local_producer(mut self, enabled: bool) -> Self {
+        self.local_producer = enabled;
+        self
+    }
+
+    pub fn synthetic_block_interval(&self) -> Option<Duration> {
+        self.profile
+            .synthetic_jobs_enabled()
+            .then_some(self.block_interval)
+            .flatten()
+    }
+
+    pub fn can_produce_local_blocks(&self) -> bool {
+        matches!(self.role, NodeRole::Gateway | NodeRole::Proposer)
+    }
+
+    pub fn local_synthetic_producer(&self) -> bool {
+        self.local_producer
+            && self.can_produce_local_blocks()
+            && self.synthetic_block_interval().is_some()
     }
 }
 
@@ -152,10 +198,44 @@ mod tests {
         assert_eq!(config.profile, profile);
         assert_eq!(config.role, NodeRole::Miner);
         assert_eq!(config.data_dir, PathBuf::from("local/miner-00"));
+        assert_eq!(config.block_interval, None);
+        assert!(!config.local_producer);
         assert_eq!(chain.params(), &profile.chain_params);
         assert!(!profile.public_evidence_required);
         assert!(!profile.requires_public_services());
         assert!(ChainProfile::public_testnet().requires_public_services());
+    }
+
+    #[test]
+    fn node_config_drives_local_runtime_policy_without_changing_chain_base() {
+        let interval = Duration::from_millis(1000);
+        let local_proposer = NodeConfig::new(
+            ChainProfile::from_label("local_cpu").unwrap(),
+            NodeRole::Proposer,
+            "local/proposer",
+        )
+        .with_block_interval(Some(interval))
+        .with_local_producer(true);
+        let local_miner =
+            NodeConfig::new(ChainProfile::local_cpu(), NodeRole::Miner, "local/miner")
+                .with_block_interval(Some(interval))
+                .with_local_producer(true);
+        let public_proposer = NodeConfig::new(
+            ChainProfile::public_testnet(),
+            NodeRole::Proposer,
+            "testnet/proposer",
+        )
+        .with_block_interval(Some(interval))
+        .with_local_producer(true);
+
+        assert_eq!(local_proposer.synthetic_block_interval(), Some(interval));
+        assert!(local_proposer.local_synthetic_producer());
+        assert_eq!(local_miner.synthetic_block_interval(), Some(interval));
+        assert!(!local_miner.can_produce_local_blocks());
+        assert!(!local_miner.local_synthetic_producer());
+        assert_eq!(public_proposer.synthetic_block_interval(), None);
+        assert!(!public_proposer.local_synthetic_producer());
+        assert!(ChainProfile::from_label("staging").is_none());
     }
 
     #[test]

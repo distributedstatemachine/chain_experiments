@@ -71,10 +71,13 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   post-startup matmul and LinearTrainingStep jobs emitted without embedding scheduler policy directly in
   the block-production adapter, and profile-controlled enablement so local CPU can generate synthetic jobs
   without public testnet or mainnet inheriting local-only job production
-- The long-running service runtime consumes `TENSORVM_CHAIN_PROFILE`, reports `chain_profile` and
-  `role_chain_profile`, and gates timed synthetic production through `ChainProfile` so local CPU,
-  public-testnet, and mainnet profiles share the same runtime path while selecting different job-source
-  policy.
+- The long-running service runtime consumes `TENSORVM_CHAIN_PROFILE`, builds `NodeConfig` at the CLI
+  boundary, reports `chain_profile` and `role_chain_profile`, and gates timed synthetic production through
+  profile, role, block-interval, and local-producer policy so local CPU, public-testnet, and mainnet profiles
+  share the same runtime path while selecting different job-source policy.
+- Local block catch-up now prunes future pre-applied synthetic jobs, receipts, attestations, and validator
+  attestation counters before replaying to an observed block header, preventing decoded role payload gossip
+  from causing duplicate-receipt replay failures on non-producer operators.
 - `CpuReferenceMinerRole`, `ReferenceValidatorRole`, and `RoleReceiptBundle` boundaries for CPU role work,
   so local synthetic production drives miner execution and validator verification through role-owned
   components before submitting receipts and attestations through the shared chain engine
@@ -407,9 +410,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.23% workspace line coverage
-- 10524/10606 workspace lines covered
+- 10547/10629 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9679/9679 `tensor_vm` lines covered
+- 9702/9702 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     io::ErrorKind,
     path::Path,
     thread,
@@ -7,9 +7,9 @@ use std::{
 };
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
-    Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord, PrimitiveType, RpcGateway,
-    RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService, TvmError,
-    ValidatorAttestation,
+    Libp2pControlPlaneConfig, LocalChain, NodeConfig, NodeRole, NodeStore, PeerRecord,
+    PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
+    TvmError, ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -504,13 +504,12 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         listen: config.listen,
         p2p_listen: config.p2p_listen,
-        data_dir: config.data_dir,
         identity_seed: config.identity_seed,
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "miner_run",
         role: RuntimeRole::Miner,
-        profile: runtime_chain_profile()?,
+        node: runtime_node_config(config.data_dir, RuntimeRole::Miner)?,
     })?;
     let device = config.device.unwrap_or("unknown");
     Ok(format!(
@@ -523,13 +522,12 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         listen: config.listen,
         p2p_listen: config.p2p_listen,
-        data_dir: config.data_dir,
         identity_seed: config.identity_seed,
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "validator_run",
         role: RuntimeRole::Validator,
-        profile: runtime_chain_profile()?,
+        node: runtime_node_config(config.data_dir, RuntimeRole::Validator)?,
     })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -541,13 +539,12 @@ fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<St
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         listen: config.listen,
         p2p_listen: config.p2p_listen,
-        data_dir: config.data_dir,
         identity_seed: config.identity_seed,
         auth_token: config.auth_token,
         max_requests: config.max_requests,
         runtime_command: "proposer_run",
         role: RuntimeRole::Proposer,
-        profile: runtime_chain_profile()?,
+        node: runtime_node_config(config.data_dir, RuntimeRole::Proposer)?,
     })?;
     Ok(format!(
         "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -566,13 +563,12 @@ fn serve_service(
     serve_service_with_runtime(ServiceRuntimeConfig {
         listen,
         p2p_listen,
-        data_dir,
         identity_seed,
         auth_token,
         max_requests,
         runtime_command: "service_serve",
         role: RuntimeRole::Service,
-        profile: runtime_chain_profile()?,
+        node: runtime_node_config(data_dir, RuntimeRole::Service)?,
     })
 }
 
@@ -594,8 +590,13 @@ impl RuntimeRole {
         }
     }
 
-    fn can_produce_local_blocks(self) -> bool {
-        matches!(self, Self::Service | Self::Proposer)
+    fn node_role(self) -> NodeRole {
+        match self {
+            Self::Service => NodeRole::Gateway,
+            Self::Miner => NodeRole::Miner,
+            Self::Validator => NodeRole::Validator,
+            Self::Proposer => NodeRole::Proposer,
+        }
     }
 }
 
@@ -605,35 +606,45 @@ fn runtime_chain_profile() -> std::result::Result<ChainProfile, String> {
 }
 
 fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, String> {
-    match label {
-        "local" | "local_cpu" => Ok(ChainProfile::local_cpu()),
-        "testnet" | "public_testnet" => Ok(ChainProfile::public_testnet()),
-        "mainnet" => Ok(ChainProfile::mainnet()),
-        other => Err(format!(
-            "unsupported TENSORVM_CHAIN_PROFILE {other:?}; expected local_cpu, public_testnet, or mainnet"
-        )),
-    }
+    ChainProfile::from_label(label).ok_or_else(|| {
+        format!(
+            "unsupported TENSORVM_CHAIN_PROFILE {label:?}; expected local_cpu, public_testnet, or mainnet"
+        )
+    })
+}
+
+fn runtime_node_config(
+    data_dir: &str,
+    role: RuntimeRole,
+) -> std::result::Result<NodeConfig, String> {
+    Ok(
+        NodeConfig::new(runtime_chain_profile()?, role.node_role(), data_dir)
+            .with_block_interval(runtime_block_interval())
+            .with_local_producer(runtime_local_block_producer()),
+    )
 }
 
 struct ServiceRuntimeConfig<'a> {
     listen: &'a str,
     p2p_listen: &'a str,
-    data_dir: &'a str,
     identity_seed: Option<[u8; 32]>,
     auth_token: &'a str,
     max_requests: usize,
     runtime_command: &'a str,
     role: RuntimeRole,
-    profile: ChainProfile,
+    node: NodeConfig,
 }
 
 fn serve_service_with_runtime(
     config: ServiceRuntimeConfig<'_>,
 ) -> std::result::Result<String, String> {
-    let store = NodeStore::open(config.data_dir);
-    let chain = store
-        .load_chain()
-        .map_err(|error| format!("failed to load node store {}: {error}", config.data_dir))?;
+    let store = NodeStore::open(&config.node.data_dir);
+    let chain = store.load_chain().map_err(|error| {
+        format!(
+            "failed to load node store {}: {error}",
+            config.node.data_dir.display()
+        )
+    })?;
     let bootstrap_addresses = if store.peer_book_store().path().exists() {
         store
             .peer_book_store()
@@ -641,7 +652,7 @@ fn serve_service_with_runtime(
             .map_err(|error| {
                 format!(
                     "failed to load libp2p peer book {}: {error}",
-                    config.data_dir
+                    config.node.data_dir.display()
                 )
             })?
     } else {
@@ -675,16 +686,9 @@ fn serve_service_with_runtime(
     let mut server = RpcHttpServer::bind(config.listen, gateway)
         .map_err(|error| format!("failed to bind service listener {}: {error}", config.listen))?;
     let mut served_requests = 0usize;
-    let profile_allows_synthetic_blocks = config.profile.synthetic_job_source().is_some();
-    let block_interval = if profile_allows_synthetic_blocks {
-        local_cpu_block_interval()
-    } else {
-        None
-    };
+    let block_interval = config.node.synthetic_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
-    let local_producer = profile_allows_synthetic_blocks
-        && config.role.can_produce_local_blocks()
-        && local_cpu_role_producer();
+    let local_producer = config.node.local_synthetic_producer();
     let mut produced_blocks = 0usize;
     let mut network_applied_blocks = 0usize;
     let mut network_event_ingest = NetworkEventIngest::default();
@@ -766,7 +770,7 @@ fn serve_service_with_runtime(
                     && produce_and_publish_synthetic_round(
                         &mut server,
                         &p2p_service,
-                        &config.profile,
+                        &config.node.profile,
                     )?
                     .is_some()
                 {
@@ -816,8 +820,8 @@ fn serve_service_with_runtime(
         "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
         config.role.label(),
-        config.profile.label(),
-        config.role.can_produce_local_blocks(),
+        config.node.profile.label(),
+        config.node.can_produce_local_blocks(),
         config.listen,
         config.p2p_listen,
         p2p_service.connected_peer_count(),
@@ -828,7 +832,7 @@ fn serve_service_with_runtime(
         p2p_service.latest_observed_block_height(),
         hex(&p2p_service.latest_observed_block_hash()),
         hex_hash_list(&p2p_service.observed_block_hashes()),
-        config.data_dir,
+        config.node.data_dir.display(),
         network_event_ingest.events,
         network_event_ingest.block_announcements,
         network_event_ingest.block_headers,
@@ -894,13 +898,13 @@ fn write_role_runtime_status(
     config: &ServiceRuntimeConfig<'_>,
     snapshot: &RoleRuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
-    let path = Path::new(config.data_dir).join("role-runtime.status");
+    let path = config.node.data_dir.join("role-runtime.status");
     let contents = format!(
         "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role.label(),
-        config.profile.label(),
-        config.role.can_produce_local_blocks(),
+        config.node.profile.label(),
+        config.node.can_produce_local_blocks(),
         snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
@@ -1299,7 +1303,7 @@ fn replay_synthetic_rounds_to_observed_block(
         return Ok(None);
     }
     let mut candidate = chain.clone();
-    prune_future_synthetic_jobs_for_replay(&mut candidate, latest_height);
+    prune_future_synthetic_state_for_replay(&mut candidate, latest_height);
     let mut tensors = Vec::new();
     let mut applied_blocks = 0usize;
     let max_replay_blocks = target_height.saturating_sub(latest_height).min(128) as usize;
@@ -1328,13 +1332,61 @@ fn replay_synthetic_rounds_to_observed_block(
     }))
 }
 
-fn prune_future_synthetic_jobs_for_replay(chain: &mut LocalChain, latest_height: u64) {
+fn prune_future_synthetic_state_for_replay(chain: &mut LocalChain, latest_height: u64) {
     let receipt_window = chain.params.receipt_submission_window;
+    let future_job_ids = chain
+        .state
+        .jobs
+        .iter()
+        .filter_map(|(job_id, job)| {
+            let is_future_synthetic_job = synthetic_job_submission_height(job, receipt_window)
+                .map(|height| height > latest_height)
+                .unwrap_or(false);
+            is_future_synthetic_job.then_some(*job_id)
+        })
+        .collect::<BTreeSet<_>>();
+    let future_receipt_ids = chain
+        .state
+        .receipts
+        .iter()
+        .filter_map(|(receipt_id, receipt)| {
+            future_job_ids
+                .contains(&receipt.job_id())
+                .then_some(*receipt_id)
+        })
+        .collect::<BTreeSet<_>>();
+    let mut future_valid_attestations_by_validator = BTreeMap::<_, u64>::new();
+    for receipt_id in &future_receipt_ids {
+        if let Some(attestations) = chain.state.attestations.get(receipt_id) {
+            for attestation in attestations {
+                if attestation.result == VerificationResult::Valid
+                    && attestation.data_availability_passed
+                {
+                    *future_valid_attestations_by_validator
+                        .entry(attestation.validator)
+                        .or_default() += 1;
+                }
+            }
+        }
+    }
     chain.state.jobs.retain(|_, job| {
         synthetic_job_submission_height(job, receipt_window)
             .map(|height| height <= latest_height)
             .unwrap_or(true)
     });
+    chain
+        .state
+        .receipts
+        .retain(|receipt_id, _| !future_receipt_ids.contains(receipt_id));
+    for receipt_id in future_receipt_ids {
+        chain.state.attestations.remove(&receipt_id);
+        chain.state.settled_receipts.remove(&receipt_id);
+    }
+    for (validator, count) in future_valid_attestations_by_validator {
+        if let Some(validator) = chain.state.validators.get_mut(&validator) {
+            validator.valid_attestations = validator.valid_attestations.saturating_sub(count);
+        }
+    }
 }
 
 fn synthetic_job_submission_height(job: &tensor_vm::JobState, receipt_window: u64) -> Option<u64> {
@@ -1493,7 +1545,7 @@ fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
         .join(",")
 }
 
-fn local_cpu_block_interval() -> Option<Duration> {
+fn runtime_block_interval() -> Option<Duration> {
     std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
@@ -1501,7 +1553,7 @@ fn local_cpu_block_interval() -> Option<Duration> {
         .map(Duration::from_millis)
 }
 
-fn local_cpu_role_producer() -> bool {
+fn runtime_local_block_producer() -> bool {
     match std::env::var("TENSORVM_LOCAL_CPU_ROLE_PRODUCER") {
         Ok(value) => matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"),
         Err(_) => std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS").is_ok(),
@@ -1706,6 +1758,79 @@ mod tests {
     }
 
     #[test]
+    fn network_catchup_prunes_future_receipt_payloads_before_replay() {
+        let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        testnet.run_linear_training_round(&scheduler);
+        let seed_chain = testnet.chain.clone();
+
+        let mut announced_chain = seed_chain.clone();
+        produce_synthetic_cpu_round_with_tensors(&mut announced_chain)
+            .unwrap()
+            .expect("first local synthetic round must advance");
+        produce_synthetic_cpu_round_with_tensors(&mut announced_chain)
+            .unwrap()
+            .expect("second local synthetic round must advance");
+
+        let mut polluted_chain = seed_chain.clone();
+        for job in announced_chain
+            .state
+            .jobs
+            .iter()
+            .filter(|(job_id, _)| !seed_chain.state.jobs.contains_key(*job_id))
+            .map(|(_, job)| job.clone())
+        {
+            polluted_chain
+                .apply_command(ChainCommand::SubmitJob(job))
+                .unwrap();
+        }
+        for receipt in announced_chain
+            .state
+            .receipts
+            .iter()
+            .filter(|(receipt_id, _)| !seed_chain.state.receipts.contains_key(*receipt_id))
+            .map(|(_, receipt)| receipt.clone())
+        {
+            polluted_chain
+                .apply_command(ChainCommand::SubmitReceipt(receipt))
+                .unwrap();
+        }
+        for attestation in announced_chain
+            .state
+            .attestations
+            .iter()
+            .filter(|(receipt_id, _)| !seed_chain.state.attestations.contains_key(*receipt_id))
+            .flat_map(|(_, attestations)| attestations.iter().cloned())
+        {
+            polluted_chain
+                .apply_command(ChainCommand::SubmitAttestation(attestation))
+                .unwrap();
+        }
+        assert!(polluted_chain.state.receipts.len() > seed_chain.state.receipts.len());
+
+        let announced_block = announced_chain
+            .blocks
+            .last()
+            .expect("announced chain must contain a head block");
+        let catchup = replay_synthetic_rounds_to_observed_block(
+            &polluted_chain,
+            announced_block.height,
+            announced_block.hash(),
+        )
+        .unwrap()
+        .expect("matching observed head must replay after pruning future role payloads");
+
+        assert_eq!(catchup.applied_blocks, 2);
+        assert_eq!(catchup.chain.blocks, announced_chain.blocks);
+        assert_eq!(catchup.chain.state.receipts, announced_chain.state.receipts);
+        assert_eq!(
+            catchup.chain.state.attestations,
+            announced_chain.state.attestations
+        );
+    }
+
+    #[test]
     fn network_event_ingest_accumulates_runtime_counters() {
         let mut cumulative = NetworkEventIngest {
             events: 2,
@@ -1762,10 +1887,27 @@ mod tests {
 
     #[test]
     fn runtime_role_policy_blocks_miner_and_validator_local_production() {
-        assert!(RuntimeRole::Service.can_produce_local_blocks());
-        assert!(RuntimeRole::Proposer.can_produce_local_blocks());
-        assert!(!RuntimeRole::Miner.can_produce_local_blocks());
-        assert!(!RuntimeRole::Validator.can_produce_local_blocks());
+        let profile = ChainProfile::local_cpu();
+        assert!(
+            NodeConfig::new(profile.clone(), RuntimeRole::Service.node_role(), "service")
+                .can_produce_local_blocks()
+        );
+        assert!(
+            NodeConfig::new(
+                profile.clone(),
+                RuntimeRole::Proposer.node_role(),
+                "proposer"
+            )
+            .can_produce_local_blocks()
+        );
+        assert!(
+            !NodeConfig::new(profile.clone(), RuntimeRole::Miner.node_role(), "miner")
+                .can_produce_local_blocks()
+        );
+        assert!(
+            !NodeConfig::new(profile, RuntimeRole::Validator.node_role(), "validator")
+                .can_produce_local_blocks()
+        );
 
         assert_eq!(RuntimeRole::Service.label(), "service");
         assert_eq!(RuntimeRole::Miner.label(), "miner");

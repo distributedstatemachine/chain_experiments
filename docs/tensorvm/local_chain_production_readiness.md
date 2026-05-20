@@ -107,9 +107,10 @@ The local bundle is useful and should remain the first operational target:
   `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker fails unless all
   15 operators report the role command expected for their Compose service.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
-  and exposes `chain_profile`/`role_chain_profile` in readiness, serve, and status output. Only the local
-  CPU profile enables deterministic synthetic block production; public-testnet and mainnet profiles use
-  the same chain engine with local synthetic jobs disabled.
+  builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
+  readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
+  production; public-testnet and mainnet profiles use the same chain engine with local synthetic jobs
+  disabled.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_chain_profile`, `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
@@ -237,9 +238,9 @@ non-producers validate and apply job payloads through `ChainCommand::SubmitJob`,
 apply live block catch-up from drained `NewBlockHeader` events instead of reading only aggregate
 latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes
 block announcements ahead of payload-only messages and local synthetic replay prunes future pre-applied
-synthetic jobs before matching an observed head, so decoded payloads cannot poison deterministic local
-catch-up. The remaining gap is replacing deterministic replay with role-owned miner, validator, and
-proposer loops that assemble blocks from network-visible state.
+synthetic jobs, receipts, attestations, and validator attestation counters before matching an observed head,
+so decoded payloads cannot poison deterministic local catch-up. The remaining gap is replacing deterministic
+replay with role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -606,8 +607,9 @@ Status: partially complete. `ChainProfile` and `NodeConfig` exist and tests prov
 `ChainProfile` now also owns optional synthetic-job scheduling: the local CPU profile enables the
 deterministic matmul/LinearTrainingStep source, while public testnet and mainnet profiles disable local-only
 synthetic production. The long-running node runtime now reads `TENSORVM_CHAIN_PROFILE`, reports the active
-profile in serve/status surfaces, and gates synthetic production through that profile. More profile fields
-still need to move out of environment variables and into `NodeConfig`.
+profile in serve/status surfaces, and gates synthetic production through `NodeConfig` role policy, block
+interval, and local-producer settings. Bootstrap, auth, exposure, and persistence settings still need to
+move into `NodeConfig` instead of being passed as separate runtime fields.
 
 ### Phase 6: Restart And Recovery
 
