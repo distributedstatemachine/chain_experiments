@@ -935,6 +935,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
     assert!(stdout.contains("command=service_serve"));
+    assert!(stdout.contains("chain_profile=local_cpu"));
     assert!(stdout.contains("served_requests=9"));
     assert!(
         stdout_value(&stdout, "produced_blocks")
@@ -949,6 +950,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(status.contains("status_source=node_store"));
     assert!(status.contains("operator_name=unknown"));
     assert!(status.contains("role=unknown"));
+    assert!(status.contains("role_chain_profile=local_cpu"));
     assert_eq!(stdout_value(&status, "registered_miner_count"), "10");
     assert_eq!(stdout_value(&status, "registered_validator_count"), "5");
     assert!(
@@ -1138,6 +1140,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("command=service_serve"));
         assert!(stdout.contains("role_loop_ready=true"));
         assert!(stdout.contains(&format!("runtime_command={role}_run")));
+        assert!(stdout.contains("chain_profile=local_cpu"));
         let role_can_produce_blocks = if role == "proposer" { "true" } else { "false" };
         assert!(stdout.contains(&format!(
             "role_can_produce_blocks={role_can_produce_blocks}"
@@ -1161,6 +1164,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains(&format!("role_runtime_command={role}_run")));
         assert!(status.contains(&format!("role_loop_role={role}")));
         assert!(status.contains("role_loop_ready=true"));
+        assert!(status.contains("role_chain_profile=local_cpu"));
         assert!(status.contains(&format!(
             "role_can_produce_blocks={role_can_produce_blocks}"
         )));

@@ -258,6 +258,7 @@ deployment:
 `miner-00` reports `runtime_command=proposer_run` for local gateway/proposer duties
 the other miner operators report `runtime_command=miner_run`
 all validator operators report `runtime_command=validator_run`
+all operators report `chain_profile=local_cpu` / `role_chain_profile=local_cpu`
 all operators report live role-loop readiness, role command, produced-block counters, and latest role height
 at least one finalized block after startup
 chain height and block count advance past the seeded two-block baseline

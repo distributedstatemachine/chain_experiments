@@ -80,6 +80,14 @@ impl ChainProfile {
         Chain::with_params(self.chain_params.clone(), finalized_randomness)
     }
 
+    pub fn label(&self) -> &'static str {
+        match self.network {
+            ChainNetwork::Local => "local_cpu",
+            ChainNetwork::Testnet => "public_testnet",
+            ChainNetwork::Mainnet => "mainnet",
+        }
+    }
+
     pub fn requires_public_services(&self) -> bool {
         self.service_exposure == ServiceExposure::PublicHttps
     }
@@ -173,5 +181,8 @@ mod tests {
             public_profile.build_chain(beacon).params(),
             mainnet_profile.build_chain(beacon).params()
         );
+        assert_eq!(ChainProfile::local_cpu().label(), "local_cpu");
+        assert_eq!(public_profile.label(), "public_testnet");
+        assert_eq!(mainnet_profile.label(), "mainnet");
     }
 }

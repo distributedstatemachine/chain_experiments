@@ -106,9 +106,13 @@ The local bundle is useful and should remain the first operational target:
   `tvmd proposer run` for gateway/proposer duties, the other miners run `tvmd miner run`, validators run
   `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker fails unless all
   15 operators report the role command expected for their Compose service.
+- Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
+  and exposes `chain_profile`/`role_chain_profile` in readiness, serve, and status output. Only the local
+  CPU profile enables deterministic synthetic block production; public-testnet and mainnet profiles use
+  the same chain engine with local synthetic jobs disabled.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
-  `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
+  `role_chain_profile`, `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
   decoded `role_network_*_ingested` event counters, job, receipt, and attestation payload apply counters,
   `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
@@ -598,10 +602,12 @@ miner/validator/proposer ownership still needs to be split further.
 - Remove profile-specific chain transition branches.
 - Ensure all profile tests instantiate the same engine.
 
-Status: started. `ChainProfile` and `NodeConfig` exist and tests prove all profiles build the same engine.
+Status: partially complete. `ChainProfile` and `NodeConfig` exist and tests prove all profiles build the same engine.
 `ChainProfile` now also owns optional synthetic-job scheduling: the local CPU profile enables the
 deterministic matmul/LinearTrainingStep source, while public testnet and mainnet profiles disable local-only
-synthetic production. The runtime still needs to consume those profiles end to end.
+synthetic production. The long-running node runtime now reads `TENSORVM_CHAIN_PROFILE`, reports the active
+profile in serve/status surfaces, and gates synthetic production through that profile. More profile fields
+still need to move out of environment variables and into `NodeConfig`.
 
 ### Phase 6: Restart And Recovery
 

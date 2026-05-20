@@ -153,6 +153,8 @@ for service in $EXPECTED_SERVICES; do
     || fail "$service libp2p identity seed does not match its operator ID"
   compose exec -T "$service" grep -q "^local_cpu_role_producer=" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service readiness file does not report local CPU producer mode"
+  compose exec -T "$service" grep -q "^chain_profile=local_cpu" /var/lib/tensorvm/local-cpu-ready \
+    || fail "$service readiness file does not report the local CPU chain profile"
   compose exec -T "$service" grep "^p2p_peer_id=" /var/lib/tensorvm/local-cpu-ready >> "$TMP_DIR/p2p_peer_ids"
   compose exec -T "$service" printenv TENSORVM_OPERATOR_ID >> "$TMP_DIR/operator_ids"
   compose exec -T "$service" printenv TENSORVM_NODE_MULTIADDR >> "$TMP_DIR/node_multiaddrs"
@@ -432,6 +434,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_RUNTIME_COMMAND=$(status_value role_runtime_command "$STATUS")
     SERVICE_ROLE_LOOP_READY=$(status_value role_loop_ready "$STATUS")
     SERVICE_ROLE_LOOP_ROLE=$(status_value role_loop_role "$STATUS")
+    SERVICE_ROLE_CHAIN_PROFILE=$(status_value role_chain_profile "$STATUS")
     SERVICE_ROLE_CAN_PRODUCE_BLOCKS=$(status_value role_can_produce_blocks "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
@@ -478,6 +481,7 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_READY" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOOP_ROLE" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_CHAIN_PROFILE" = "local_cpu" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
@@ -723,6 +727,7 @@ all_operator_network_state_root=${ALL_OPERATOR_NETWORK_STATE_ROOT}
 all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
+all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true
 single_local_producer=true

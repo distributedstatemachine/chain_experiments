@@ -3,7 +3,10 @@ use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
 use crate::jobs::PrimitiveType;
-use crate::localnet::produce_synthetic_cpu_round_with_tensors;
+use crate::localnet::{
+    produce_synthetic_cpu_round_with_profile, produce_synthetic_cpu_round_with_tensors,
+};
+use crate::profile::ChainProfile;
 use crate::telemetry::TelemetrySnapshot;
 use crate::tensor::{DEFAULT_CHUNK_SIZE, Tensor};
 use crate::txpool::{TxPool, parse_transaction_envelope};
@@ -226,6 +229,20 @@ impl RpcNode {
 
     pub fn produce_synthetic_cpu_round(&mut self) -> Result<Option<u64>> {
         let Some(round) = produce_synthetic_cpu_round_with_tensors(&mut self.chain)? else {
+            return Ok(None);
+        };
+        for tensor in round.tensors {
+            self.insert_tensor(tensor);
+        }
+        Ok(Some(round.height))
+    }
+
+    pub fn produce_synthetic_cpu_round_with_profile(
+        &mut self,
+        profile: &ChainProfile,
+    ) -> Result<Option<u64>> {
+        let Some(round) = produce_synthetic_cpu_round_with_profile(&mut self.chain, profile)?
+        else {
             return Ok(None);
         };
         for tensor in round.tensors {
@@ -2404,14 +2421,24 @@ mod tests {
         }
         let mut rpc = RpcNode::new(chain);
 
-        assert_eq!(rpc.produce_synthetic_cpu_round().unwrap(), Some(1));
+        assert_eq!(
+            rpc.produce_synthetic_cpu_round_with_profile(&ChainProfile::public_testnet())
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            rpc.produce_synthetic_cpu_round_with_profile(&ChainProfile::local_cpu())
+                .unwrap(),
+            Some(1)
+        );
+        assert_eq!(rpc.produce_synthetic_cpu_round().unwrap(), Some(2));
         let latest = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
             path: "/tensor/latest".to_owned(),
             body: Vec::new(),
         });
         assert_eq!(latest.status, 200);
-        assert!(latest.body.contains("\"tensor_count\":3"));
+        assert!(latest.body.contains("\"tensor_count\":9"));
     }
 
     #[test]

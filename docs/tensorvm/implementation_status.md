@@ -71,6 +71,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   post-startup matmul and LinearTrainingStep jobs emitted without embedding scheduler policy directly in
   the block-production adapter, and profile-controlled enablement so local CPU can generate synthetic jobs
   without public testnet or mainnet inheriting local-only job production
+- The long-running service runtime consumes `TENSORVM_CHAIN_PROFILE`, reports `chain_profile` and
+  `role_chain_profile`, and gates timed synthetic production through `ChainProfile` so local CPU,
+  public-testnet, and mainnet profiles share the same runtime path while selecting different job-source
+  policy.
 - `CpuReferenceMinerRole`, `ReferenceValidatorRole`, and `RoleReceiptBundle` boundaries for CPU role work,
   so local synthetic production drives miner execution and validator verification through role-owned
   components before submitting receipts and attestations through the shared chain engine
@@ -345,8 +349,9 @@ preflight, public evidence, or deployment-gated work can count:
   matching finalized block hash and state root via
   `all_operator_network_head_convergence=true`, plus p2p observation of that same network head hash,
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
-  `all_operator_role_runtime_commands=true`, `all_operator_role_production_policy=true`,
-  `all_operator_role_runtime_counters=true`, `single_local_producer=true`,
+  `all_operator_role_runtime_commands=true`, `all_operator_chain_profiles=true`,
+  `all_operator_role_production_policy=true`, `all_operator_role_runtime_counters=true`,
+  `single_local_producer=true`,
   `all_non_producer_network_applied_blocks=true`,
   `all_non_producer_network_event_ingestion=true`,
   `all_non_producer_network_payload_announcements=true`,
@@ -358,7 +363,7 @@ preflight, public evidence, or deployment-gated work can count:
   `all_operator_p2p_attestation_gossip=true`,
   `all_operator_p2p_target_head_observed=true`, `all_operator_p2p_latest_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
-  command, live role-loop counters, one block-production-capable runtime, one local timed producer,
+  command, active chain profile, live role-loop counters, one block-production-capable runtime, one local timed producer,
   network-applied block progress from decoded block-header events on every non-producer, decoded job/receipt/attestation event ingestion plus decoded
   job/receipt/attestation payload application on every non-producer, real libp2p connected-peer count,
   observed consensus gossip including block gossip for the target convergence head, live chain counters,
@@ -402,9 +407,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.23% workspace line coverage
-- 10513/10595 workspace lines covered
+- 10524/10606 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9668/9668 `tensor_vm` lines covered
+- 9679/9679 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

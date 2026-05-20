@@ -48,7 +48,7 @@ The checked run starts 10 miner containers and 5 validator containers, verifies 
 requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` to run
 `tvmd proposer run`, the other miners to run `tvmd miner run`, and validators to run
 `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
-producer, decoded network-event ingestion, decoded job, receipt, and attestation payload application, and
+producer, the `local_cpu` chain profile, decoded network-event ingestion, decoded job, receipt, and attestation payload application, and
 network-applied block counters for every non-producer, plus observed job/receipt/attestation/block gossip
 counters for every counted operator, verifies the seeded local CPU
 chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
@@ -180,7 +180,7 @@ continues finalizing blocks after restart.
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
   runtime command, live role-loop counters, local-producer mode, decoded network-event ingestion, decoded
   job/receipt/attestation payload application, network-applied block counters for non-producers, real libp2p
-  connected-peer counts, live chain counters,
+  connected-peer counts, active chain profile, live chain counters,
   advancement past the shared seed, finalized live TensorOp and LinearTrainingStep block-view evidence,
   the same first live finalized block hash, and the same finalized common-head block hash through
   `tvmd service block`. The restart-continuity gate captures

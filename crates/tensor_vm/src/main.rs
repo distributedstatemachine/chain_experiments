@@ -6,9 +6,10 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    ChainCommand, ChainEngine, CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig,
-    LocalChain, NodeStore, PeerRecord, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode,
-    RpcPolicy, Tensor, TensorVmLibp2pService, TvmError, ValidatorAttestation,
+    ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
+    Libp2pControlPlaneConfig, LocalChain, NodeStore, PeerRecord, PrimitiveType, RpcGateway,
+    RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService, TvmError,
+    ValidatorAttestation,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -382,7 +383,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -391,6 +392,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_runtime_command"),
         role_runtime_status_field(data_dir, "role_loop_ready"),
         role_runtime_status_field(data_dir, "role_loop_role"),
+        role_runtime_status_field(data_dir, "role_chain_profile"),
         role_runtime_status_field(data_dir, "role_can_produce_blocks"),
         role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
@@ -508,6 +510,7 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
         max_requests: config.max_requests,
         runtime_command: "miner_run",
         role: RuntimeRole::Miner,
+        profile: runtime_chain_profile()?,
     })?;
     let device = config.device.unwrap_or("unknown");
     Ok(format!(
@@ -526,6 +529,7 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
         max_requests: config.max_requests,
         runtime_command: "validator_run",
         role: RuntimeRole::Validator,
+        profile: runtime_chain_profile()?,
     })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -543,6 +547,7 @@ fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<St
         max_requests: config.max_requests,
         runtime_command: "proposer_run",
         role: RuntimeRole::Proposer,
+        profile: runtime_chain_profile()?,
     })?;
     Ok(format!(
         "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -567,6 +572,7 @@ fn serve_service(
         max_requests,
         runtime_command: "service_serve",
         role: RuntimeRole::Service,
+        profile: runtime_chain_profile()?,
     })
 }
 
@@ -593,6 +599,22 @@ impl RuntimeRole {
     }
 }
 
+fn runtime_chain_profile() -> std::result::Result<ChainProfile, String> {
+    let label = std::env::var("TENSORVM_CHAIN_PROFILE").unwrap_or_else(|_| "local_cpu".to_owned());
+    chain_profile_from_label(&label)
+}
+
+fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, String> {
+    match label {
+        "local" | "local_cpu" => Ok(ChainProfile::local_cpu()),
+        "testnet" | "public_testnet" => Ok(ChainProfile::public_testnet()),
+        "mainnet" => Ok(ChainProfile::mainnet()),
+        other => Err(format!(
+            "unsupported TENSORVM_CHAIN_PROFILE {other:?}; expected local_cpu, public_testnet, or mainnet"
+        )),
+    }
+}
+
 struct ServiceRuntimeConfig<'a> {
     listen: &'a str,
     p2p_listen: &'a str,
@@ -602,6 +624,7 @@ struct ServiceRuntimeConfig<'a> {
     max_requests: usize,
     runtime_command: &'a str,
     role: RuntimeRole,
+    profile: ChainProfile,
 }
 
 fn serve_service_with_runtime(
@@ -652,9 +675,16 @@ fn serve_service_with_runtime(
     let mut server = RpcHttpServer::bind(config.listen, gateway)
         .map_err(|error| format!("failed to bind service listener {}: {error}", config.listen))?;
     let mut served_requests = 0usize;
-    let block_interval = local_cpu_block_interval();
+    let profile_allows_synthetic_blocks = config.profile.synthetic_job_source().is_some();
+    let block_interval = if profile_allows_synthetic_blocks {
+        local_cpu_block_interval()
+    } else {
+        None
+    };
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
-    let local_producer = config.role.can_produce_local_blocks() && local_cpu_role_producer();
+    let local_producer = profile_allows_synthetic_blocks
+        && config.role.can_produce_local_blocks()
+        && local_cpu_role_producer();
     let mut produced_blocks = 0usize;
     let mut network_applied_blocks = 0usize;
     let mut network_event_ingest = NetworkEventIngest::default();
@@ -733,7 +763,12 @@ fn serve_service_with_runtime(
             }
             if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
                 if local_producer
-                    && produce_and_publish_synthetic_round(&mut server, &p2p_service)?.is_some()
+                    && produce_and_publish_synthetic_round(
+                        &mut server,
+                        &p2p_service,
+                        &config.profile,
+                    )?
+                    .is_some()
                 {
                     store
                         .persist_chain(&server.gateway().node.chain)
@@ -778,9 +813,10 @@ fn serve_service_with_runtime(
         }
     }
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+        "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
         config.role.label(),
+        config.profile.label(),
         config.role.can_produce_local_blocks(),
         config.listen,
         config.p2p_listen,
@@ -860,9 +896,10 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = Path::new(config.data_dir).join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role.label(),
+        config.profile.label(),
         config.role.can_produce_local_blocks(),
         snapshot.local_producer,
         snapshot.served_requests,
@@ -1312,12 +1349,13 @@ fn synthetic_job_submission_height(job: &tensor_vm::JobState, receipt_window: u6
 fn produce_and_publish_synthetic_round(
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,
+    profile: &ChainProfile,
 ) -> std::result::Result<Option<Hash>, String> {
     let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
     if server
         .gateway_mut()
         .node
-        .produce_synthetic_cpu_round()
+        .produce_synthetic_cpu_round_with_profile(profile)
         .map_err(|error| format!("synthetic CPU round failed: {error}"))?
         .is_none()
     {
@@ -1733,6 +1771,21 @@ mod tests {
         assert_eq!(RuntimeRole::Miner.label(), "miner");
         assert_eq!(RuntimeRole::Validator.label(), "validator");
         assert_eq!(RuntimeRole::Proposer.label(), "proposer");
+    }
+
+    #[test]
+    fn chain_profile_labels_drive_runtime_synthetic_jobs() {
+        let local = chain_profile_from_label("local_cpu").unwrap();
+        let testnet = chain_profile_from_label("public_testnet").unwrap();
+        let mainnet = chain_profile_from_label("mainnet").unwrap();
+
+        assert_eq!(local.label(), "local_cpu");
+        assert_eq!(testnet.label(), "public_testnet");
+        assert_eq!(mainnet.label(), "mainnet");
+        assert!(local.synthetic_job_source().is_some());
+        assert!(testnet.synthetic_job_source().is_none());
+        assert!(mainnet.synthetic_job_source().is_none());
+        assert!(chain_profile_from_label("staging").is_err());
     }
 
     fn test_rpc_server(chain: LocalChain) -> RpcHttpServer {
