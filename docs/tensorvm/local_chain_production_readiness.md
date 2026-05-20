@@ -235,13 +235,14 @@ block gossip counters from the long-running command. Local block production now 
 `NewReceipt`, and `NewAttestation` hash announcements, and height-bearing `NewBlockHeader`
 announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the runtime loop;
 non-producers validate and apply job payloads through `ChainCommand::SubmitJob`, receipt payloads through
-`ChainCommand::SubmitReceipt`, and attestation payloads through `ChainCommand::SubmitAttestation`, then
-apply live block catch-up from drained `NewBlockHeader` events instead of reading only aggregate
-latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes
-block announcements ahead of payload-only messages and local synthetic replay prunes future pre-applied
-synthetic jobs, receipts, attestations, and validator attestation counters before matching an observed head,
-so decoded payloads cannot poison deterministic local catch-up. The remaining gap is replacing deterministic
-replay with role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
+`ChainCommand::SubmitReceipt`, and attestation payloads through `ChainCommand::SubmitAttestation`. Pending
+receipt and attestation payloads are retained and retried once prerequisite jobs or receipts arrive, then
+live block catch-up is applied from drained `NewBlockHeader` events instead of reading only aggregate
+latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes block
+announcements ahead of payload-only messages and local synthetic replay prunes future pre-applied synthetic
+jobs, receipts, attestations, and validator attestation counters before matching an observed head, so decoded
+payloads cannot poison deterministic local catch-up. The remaining gap is replacing deterministic replay
+with role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -539,10 +540,10 @@ receipts, per-receipt validator-attestation details, live tensor descriptor/row/
 15 operator node stores reporting role status, live chain counters, finalized live TensorOp and
 LinearTrainingStep block-view evidence, the single local producer, network
 applied block progress on every non-producer, accepted job, receipt, and attestation payload application
-through the shared chain engine on every non-producer, the same first live finalized block hash, the same
-finalized common-head block hash, and a finalized local-head checkpoint/state root that was also observed
-through p2p block gossip via `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep
-receipt evidence, real libp2p
+through the shared chain engine on every non-producer, pending receipt/attestation retry for out-of-order
+p2p payloads, the same first live finalized block hash, the same finalized common-head block hash, and a
+finalized local-head checkpoint/state root that was also observed through p2p block gossip via
+`tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
 connected-peer counts, job/receipt/attestation/block gossip observations from every role runtime, and
 nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for

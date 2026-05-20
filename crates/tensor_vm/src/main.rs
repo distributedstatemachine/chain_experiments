@@ -715,6 +715,7 @@ fn serve_service_with_runtime(
     let mut produced_blocks = 0usize;
     let mut network_applied_blocks = 0usize;
     let mut network_event_ingest = NetworkEventIngest::default();
+    let mut pending_network_payloads = PendingNetworkPayloads::default();
     write_role_runtime_status(
         &config,
         &role_runtime_status_snapshot(
@@ -759,7 +760,12 @@ fn serve_service_with_runtime(
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {}
                 Err(error) => return Err(format!("service request failed: {error}")),
             }
-            let ingested = ingest_network_events(&mut server, &p2p_service, local_producer)?;
+            let ingested = ingest_network_events(
+                &mut server,
+                &p2p_service,
+                local_producer,
+                &mut pending_network_payloads,
+            )?;
             if ingested.has_activity() {
                 network_applied_blocks =
                     network_applied_blocks.saturating_add(ingested.applied_blocks);
@@ -985,7 +991,12 @@ struct NetworkEventIngest {
 
 impl NetworkEventIngest {
     fn has_activity(self) -> bool {
-        self.events > 0 || self.invalid_events > 0 || self.applied_blocks > 0
+        self.events > 0
+            || self.job_payloads_applied > 0
+            || self.receipt_payloads_applied > 0
+            || self.attestation_payloads_applied > 0
+            || self.invalid_events > 0
+            || self.applied_blocks > 0
     }
 
     fn accumulate(&mut self, other: Self) {
@@ -1017,6 +1028,71 @@ impl NetworkEventIngest {
     }
 }
 
+#[derive(Debug, Default)]
+struct PendingNetworkPayloads {
+    receipts: BTreeMap<Hash, Vec<u8>>,
+    attestations: BTreeMap<Hash, Vec<u8>>,
+}
+
+impl PendingNetworkPayloads {
+    fn queue_receipt(&mut self, receipt_id: Hash, payload: Vec<u8>) {
+        self.receipts.entry(receipt_id).or_insert(payload);
+    }
+
+    fn queue_attestation(&mut self, attestation_id: Hash, payload: Vec<u8>) {
+        self.attestations.entry(attestation_id).or_insert(payload);
+    }
+
+    fn retry(&mut self, server: &mut RpcHttpServer) -> NetworkEventIngest {
+        let mut ingested = NetworkEventIngest::default();
+        loop {
+            let mut progressed = false;
+            for receipt_id in self.receipts.keys().copied().collect::<Vec<_>>() {
+                let Some(payload) = self.receipts.get(&receipt_id).cloned() else {
+                    continue;
+                };
+                match apply_network_receipt_payload(server, receipt_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        self.receipts.remove(&receipt_id);
+                        ingested.receipt_payloads_applied =
+                            ingested.receipt_payloads_applied.saturating_add(1);
+                        progressed = true;
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        self.receipts.remove(&receipt_id);
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                        progressed = true;
+                    }
+                }
+            }
+            for attestation_id in self.attestations.keys().copied().collect::<Vec<_>>() {
+                let Some(payload) = self.attestations.get(&attestation_id).cloned() else {
+                    continue;
+                };
+                match apply_network_attestation_payload(server, attestation_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        self.attestations.remove(&attestation_id);
+                        ingested.attestation_payloads_applied =
+                            ingested.attestation_payloads_applied.saturating_add(1);
+                        progressed = true;
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        self.attestations.remove(&attestation_id);
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                        progressed = true;
+                    }
+                }
+            }
+            if !progressed {
+                break;
+            }
+        }
+        ingested
+    }
+}
+
 struct NetworkCatchup {
     chain: LocalChain,
     tensors: Vec<Tensor>,
@@ -1027,6 +1103,7 @@ fn ingest_network_events(
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,
     local_producer: bool,
+    pending_payloads: &mut PendingNetworkPayloads,
 ) -> std::result::Result<NetworkEventIngest, String> {
     let mut ingested = NetworkEventIngest::default();
     for message in network_ingest_order(p2p_service.drain_observed_messages()) {
@@ -1093,7 +1170,9 @@ fn ingest_network_events(
                         ingested.receipt_payloads_applied =
                             ingested.receipt_payloads_applied.saturating_add(1);
                     }
-                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Pending => {
+                        pending_payloads.queue_receipt(receipt_id, payload);
+                    }
                     NetworkPayloadApply::Invalid => {
                         ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                     }
@@ -1116,7 +1195,9 @@ fn ingest_network_events(
                         ingested.attestation_payloads_applied =
                             ingested.attestation_payloads_applied.saturating_add(1);
                     }
-                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Pending => {
+                        pending_payloads.queue_attestation(attestation_id, payload);
+                    }
                     NetworkPayloadApply::Invalid => {
                         ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                     }
@@ -1138,6 +1219,7 @@ fn ingest_network_events(
             }
         }
     }
+    ingested.accumulate(pending_payloads.retry(server));
     Ok(ingested)
 }
 
@@ -2042,6 +2124,92 @@ mod tests {
                 &encode_attestation_payload(&attestation),
             ),
             NetworkPayloadApply::Applied
+        );
+    }
+
+    #[test]
+    fn pending_network_payloads_retry_after_dependencies_arrive() {
+        let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        let job = testnet
+            .chain
+            .state
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
+        let job_id = job.job_id();
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+
+        let mut out_of_order_chain = testnet.chain.clone();
+        out_of_order_chain.state.jobs.remove(&job_id);
+        out_of_order_chain.state.receipts.remove(&receipt_id);
+        out_of_order_chain.state.attestations.remove(&receipt_id);
+        let mut server = test_rpc_server(out_of_order_chain);
+        let mut pending = PendingNetworkPayloads::default();
+
+        assert_eq!(
+            apply_network_receipt_payload(
+                &mut server,
+                receipt_id,
+                &encode_receipt_payload(&receipt)
+            ),
+            NetworkPayloadApply::Pending
+        );
+        pending.queue_receipt(receipt_id, encode_receipt_payload(&receipt));
+        assert_eq!(
+            apply_network_attestation_payload(
+                &mut server,
+                attestation_id,
+                &encode_attestation_payload(&attestation),
+            ),
+            NetworkPayloadApply::Pending
+        );
+        pending.queue_attestation(attestation_id, encode_attestation_payload(&attestation));
+
+        apply_network_job_payload(&mut server, job_id, &encode_job_payload(&job)).unwrap();
+        let retried = pending.retry(&mut server);
+
+        assert!(retried.has_activity());
+        assert_eq!(retried.receipt_payloads_applied, 1);
+        assert_eq!(retried.attestation_payloads_applied, 1);
+        assert_eq!(retried.invalid_events, 0);
+        assert!(pending.receipts.is_empty());
+        assert!(pending.attestations.is_empty());
+        assert_eq!(
+            server.gateway().node.chain.state.receipts.get(&receipt_id),
+            Some(&receipt)
+        );
+        assert_eq!(
+            server
+                .gateway()
+                .node
+                .chain
+                .state
+                .attestations
+                .get(&receipt_id)
+                .and_then(|items| items.first()),
+            Some(&attestation)
         );
     }
 

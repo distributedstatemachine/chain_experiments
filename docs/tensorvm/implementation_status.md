@@ -103,6 +103,7 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
   disconnect, local job/receipt/attestation announcements and height-bearing block-header announcement
   publishing over Gossipsub, decoded inbound message queues consumed by the role runtime,
+  pending receipt/attestation payload retry when gossip arrives before prerequisite jobs or receipts,
   runtime-observed consensus-gossip counters, latest observed block heights, bounded observed block-hash
   sets, network-event ingestion counters, and network-applied block counters exposed through role status,
   and durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>` dial
