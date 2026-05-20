@@ -1,6 +1,6 @@
 # TensorVM Completion Audit
 
-Audit date: May 19, 2026.
+Audit date: May 20, 2026.
 
 Objective audited: fully implement [`mvp_spec.md`](mvp_spec.md) for TensorVM.
 
@@ -47,10 +47,10 @@ The objective decomposes into these deliverables:
 | P2P/RPC runtime and socket tests | `p2p` rust-libp2p swarm, background libp2p service runtime, Kademlia/bootstrap, protocol tests, P2P codec tests, peer-book upsert and `/p2p/<peer-id>` bootstrap address loading, `rpc` socketed HTTP and health-route tests, state-root-bearing `/chain/head` responses, `/explorer/ws` WebSocket polling for explorer data, `tvmd service init/peer add/readiness/serve` launch validation, `tvmd_cli::service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces` covering short mandatory-libp2p readiness startup from the initialized node store and durable peer book, unauthenticated request rejection, `/health`, `/rpc/health`, `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`, `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, `/telemetry/dashboard`, mutable `/tx`, `/receipt`, and `/attestation` submissions, registered miner/validator state read-back, process-level signed `service-health` generation for reached RPC/explorer/faucet/telemetry health responses, captured `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard` response-body evidence generation through matching `service-content-from-bytes` and `service-content-from-file` CLI outputs, process-derived libp2p peer/protocol/control data accepted only when bound to an external public multiaddr directly and through `network-observation-from-service-log`, immediately summarized/artifact-bound from the resulting network-runtime root, and the same local libp2p peer/protocol data rejected as public network-observation evidence when bound to loopback, public network-observation evidence rejected without nonzero TCP listen ports, and public evidence/preflight service URLs rejected when local, private, special-use DNS, single-label DNS, documentation, shared-address, benchmarking, multicast, reserved, root-only, query/fragment-bearing, or not exact query-free service paths | Reference implementation present |
 | Required commands documented | [`implementation_status.md`](implementation_status.md) and [`tarpaulin_report.md`](tarpaulin_report.md) | Present |
 | `cargo fmt --check --all` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo test --workspace --release` | Latest iteration evidence records 14 `experiments`, 205 `tensor_vm` library tests, 1 `tensor_vm_explorer` library test, 5 `tvmd` binary tests, 1 local CPU Compose integration test, and 7 `tvmd` CLI integration tests | Passed |
+| `cargo test --workspace --release` | Latest iteration evidence records 14 `experiments`, 209 `tensor_vm` library tests, 1 `tensor_vm_explorer` library test, 5 `tvmd` binary tests, 1 local CPU Compose integration test, and 7 `tvmd` CLI integration tests | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Latest iteration evidence records pass from workspace root | Passed |
-| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 220 instrumented library tests | Passed |
-| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 9358/9358 lines covered | Passed |
+| `cargo tarpaulin` | [`tarpaulin_report.md`](tarpaulin_report.md) records 221 instrumented library tests | Passed |
+| TensorVM line coverage | [`tarpaulin_report.md`](tarpaulin_report.md) records 100.00% `tensor_vm` crate line coverage, 9365/9365 lines covered | Passed |
 | CUDA feature gate | [`implementation_status.md`](implementation_status.md) records 182 `tensor_vm` tests under `--features cuda-kernels` | Passed locally |
 
 Current AC13 evidence tooling also includes `tvmd public-evidence run-window-from-file ...`, which derives

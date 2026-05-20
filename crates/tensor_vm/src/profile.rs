@@ -1,4 +1,5 @@
 use crate::chain::{Chain, ChainParams};
+use crate::scheduler::{JobScheduler, SyntheticLocalJobSource};
 use crate::types::Hash;
 use std::path::PathBuf;
 
@@ -33,6 +34,7 @@ pub struct ChainProfile {
     pub validator_stake: u64,
     pub faucet_balance: u64,
     pub faucet_drip: u64,
+    pub synthetic_job_scheduler: Option<JobScheduler>,
     pub public_evidence_required: bool,
     pub service_exposure: ServiceExposure,
 }
@@ -48,6 +50,7 @@ impl ChainProfile {
             validator_stake: 10_000,
             faucet_balance: 1_000_000,
             faucet_drip: 100,
+            synthetic_job_scheduler: Some(JobScheduler::with_small_shape((8, 8, 8))),
             public_evidence_required: false,
             service_exposure: ServiceExposure::LoopbackOnly,
         }
@@ -56,6 +59,7 @@ impl ChainProfile {
     pub fn public_testnet() -> Self {
         Self {
             network: ChainNetwork::Testnet,
+            synthetic_job_scheduler: None,
             public_evidence_required: true,
             service_exposure: ServiceExposure::PublicHttps,
             ..Self::local_cpu()
@@ -65,6 +69,7 @@ impl ChainProfile {
     pub fn mainnet() -> Self {
         Self {
             network: ChainNetwork::Mainnet,
+            synthetic_job_scheduler: None,
             public_evidence_required: true,
             service_exposure: ServiceExposure::PublicHttps,
             ..Self::local_cpu()
@@ -77,6 +82,12 @@ impl ChainProfile {
 
     pub fn requires_public_services(&self) -> bool {
         self.service_exposure == ServiceExposure::PublicHttps
+    }
+
+    pub fn synthetic_job_source(&self) -> Option<SyntheticLocalJobSource> {
+        self.synthetic_job_scheduler
+            .clone()
+            .map(SyntheticLocalJobSource::new)
     }
 }
 
@@ -105,6 +116,7 @@ impl NodeConfig {
 mod tests {
     use super::*;
     use crate::chain::ChainEngine;
+    use crate::scheduler::JobSource;
     use crate::types::hash_bytes;
 
     #[test]
@@ -136,5 +148,30 @@ mod tests {
         assert!(!profile.public_evidence_required);
         assert!(!profile.requires_public_services());
         assert!(ChainProfile::public_testnet().requires_public_services());
+    }
+
+    #[test]
+    fn profiles_configure_local_synthetic_jobs_without_changing_chain_base() {
+        let mut local_source = ChainProfile::local_cpu()
+            .synthetic_job_source()
+            .expect("local profile should enable deterministic synthetic jobs");
+        let public_profile = ChainProfile::public_testnet();
+        let mainnet_profile = ChainProfile::mainnet();
+        let beacon = hash_bytes(b"test", &[b"profile-synthetic-jobs"]);
+        let mut local_chain = ChainProfile::local_cpu().build_chain(beacon);
+        local_chain.state.height = 0;
+
+        let Some(crate::chain::JobState::TensorOp(job)) = local_source.next_job(&local_chain)
+        else {
+            panic!("local synthetic source should emit a matmul job first");
+        };
+
+        assert_eq!((job.m, job.k, job.n), (8, 8, 8));
+        assert!(public_profile.synthetic_job_source().is_none());
+        assert!(mainnet_profile.synthetic_job_source().is_none());
+        assert_eq!(
+            public_profile.build_chain(beacon).params(),
+            mainnet_profile.build_chain(beacon).params()
+        );
     }
 }

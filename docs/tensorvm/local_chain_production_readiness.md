@@ -571,7 +571,9 @@ internally, so miner/validator/proposer ownership needs to be split further.
 - Ensure all profile tests instantiate the same engine.
 
 Status: started. `ChainProfile` and `NodeConfig` exist and tests prove all profiles build the same engine.
-The runtime still needs to consume those profiles end to end.
+`ChainProfile` now also owns optional synthetic-job scheduling: the local CPU profile enables the
+deterministic matmul/LinearTrainingStep source, while public testnet and mainnet profiles disable local-only
+synthetic production. The runtime still needs to consume those profiles end to end.
 
 ### Phase 6: Restart And Recovery
 
@@ -628,8 +630,7 @@ Keep this incremental:
 2. Wire miner receipt production through role processes.
 3. Wire validator attestation production through role processes.
 4. Wire proposer/block production through network-visible state.
-5. Make `SyntheticLocalJobSource` profile-configured and expose per-block evidence for both live primitive
-   types after startup.
+5. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

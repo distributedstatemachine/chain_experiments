@@ -69,7 +69,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   diversity is insufficient, and validator assignment
 - `JobSource` and `SyntheticLocalJobSource` boundaries for local CPU job generation, with deterministic
   post-startup matmul and LinearTrainingStep jobs emitted without embedding scheduler policy directly in
-  the block-production adapter
+  the block-production adapter, and profile-controlled enablement so local CPU can generate synthetic jobs
+  without public testnet or mainnet inheriting local-only job production
 - Redundant miner-output agreement quorum before settlement, with disagreement/fewer-than-quorum receipts
   delayed rather than rewarded
 - Miner node executor with receipt submission and tensor serving
@@ -293,7 +294,7 @@ cargo test -p tensor_vm --features cuda-kernels --release
 cargo clippy -p tensor_vm --features cuda-kernels --all-targets -- -D warnings
 ```
 
-The May 19, 2026 Compose verification on this host used
+The May 20, 2026 Compose verification on this host used
 `TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080` for `up --wait` and local check-script runs because host port
 `8080` was already allocated; the Compose default remains `8080`.
 
@@ -355,10 +356,10 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 220 passing library tests under Tarpaulin:
+The workspace currently has 221 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 205 in `tensor_vm`
+- 209 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 5 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -387,9 +388,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.20% workspace line coverage
-- 10203/10285 workspace lines covered
+- 10210/10292 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9358/9358 `tensor_vm` lines covered
+- 9365/9365 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

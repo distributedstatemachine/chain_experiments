@@ -52,7 +52,9 @@ pub use jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
     PrimitiveType, TensorOpReceipt,
 };
-pub use localnet::{finalize_local_cpu_block, produce_synthetic_cpu_round};
+pub use localnet::{
+    finalize_local_cpu_block, produce_synthetic_cpu_round, produce_synthetic_cpu_round_with_profile,
+};
 pub use miner::MinerNode;
 pub use p2p::{
     GossipTopic, Libp2pControlPlaneConfig, NetworkStackRecommendation, PeerBookStore, PeerRecord,

@@ -235,6 +235,19 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_job_source_default_matches_local_cpu_profile_shape() {
+        let beacon = hash_bytes(b"test", &[b"synthetic-default-source"]);
+        let chain = LocalChain::new(beacon);
+        let mut source = SyntheticLocalJobSource::default();
+
+        let Some(JobState::TensorOp(job)) = source.next_job(&chain) else {
+            panic!("default synthetic local job source must emit TensorOp jobs first");
+        };
+
+        assert_eq!((job.m, job.k, job.n), (8, 8, 8));
+    }
+
+    #[test]
     fn synthetic_job_source_emits_linear_training_steps_on_odd_heights() {
         let beacon = hash_bytes(b"test", &[b"synthetic-linear-source"]);
         let mut chain = LocalChain::new(beacon);
