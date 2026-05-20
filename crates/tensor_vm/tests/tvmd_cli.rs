@@ -1023,7 +1023,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
 
 #[test]
 fn role_run_commands_serve_through_role_specific_surfaces() {
-    for role in ["miner", "validator"] {
+    for role in ["miner", "validator", "proposer"] {
         let data_dir = unique_test_dir(&format!("{role}-run"));
         let data_dir_text = data_dir.to_string_lossy().into_owned();
         let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
@@ -1040,11 +1040,17 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
                 "--node".to_owned(),
                 "/ip4/127.0.0.1/tcp/4001".to_owned(),
             ]);
-        } else {
+        } else if role == "validator" {
             args.extend([
                 "validator.key".to_owned(),
                 "--node".to_owned(),
                 "/ip4/127.0.0.1/tcp/4002".to_owned(),
+            ]);
+        } else {
+            args.extend([
+                "proposer.key".to_owned(),
+                "--node".to_owned(),
+                "/ip4/127.0.0.1/tcp/4003".to_owned(),
             ]);
         }
         args.extend([
@@ -1083,6 +1089,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains(&format!("command={role}_run")));
         assert!(stdout.contains(&format!("role={role}")));
         assert!(stdout.contains("role_runtime_ready=true"));
+        if role == "proposer" {
+            assert!(stdout.contains("proposer_ready=true"));
+        }
         assert!(stdout.contains("command=service_serve"));
         assert!(stdout.contains("role_loop_ready=true"));
         assert!(stdout.contains(&format!("runtime_command={role}_run")));

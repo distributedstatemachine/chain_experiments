@@ -167,7 +167,8 @@ initialize or load its durable node store
 load its stable wallet and libp2p identity
 seed the bootstrap peer book, except for miner-00
 start the mandatory libp2p control plane
-start its role command as `tvmd miner run` or `tvmd validator run`
+start its role command as `tvmd miner run`, `tvmd validator run`, or the local gateway/proposer
+`tvmd proposer run`
 report readiness only after the role process and libp2p runtime are live
 ```
 
@@ -253,7 +254,8 @@ deployment:
 15 libp2p-ready nodes
 10 CPU-ready miners
 0 CUDA-required miners
-all miner operators report `runtime_command=miner_run`
+`miner-00` reports `runtime_command=proposer_run` for local gateway/proposer duties
+the other miner operators report `runtime_command=miner_run`
 all validator operators report `runtime_command=validator_run`
 all operators report live role-loop readiness, role command, produced-block counters, and latest role height
 at least one finalized block after startup

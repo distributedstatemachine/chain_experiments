@@ -37,6 +37,7 @@ services:
       TENSORVM_SEED_LOCAL_TESTNET: "true"
       TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: "1000"
       TENSORVM_LOCAL_CPU_ROLE_PRODUCER: "true"
+      TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run
     ports:
       - "127.0.0.1:8545:8545"
       - "127.0.0.1:4001:4001"

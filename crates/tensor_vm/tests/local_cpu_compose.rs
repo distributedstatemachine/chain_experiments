@@ -91,6 +91,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
     assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
     assert!(compose.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\""));
+    assert!(compose.contains("TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"));
     assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER=false"));
@@ -130,10 +131,12 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "--identity-seed",
         "tvmd local-testnet seed",
         "local-testnet-seed.out",
-        "runtime_command=${ROLE}_run",
+        "RUNTIME_COMMAND=",
+        "runtime_command=$RUNTIME_COMMAND",
         "local_cpu_role_producer=",
         "tvmd miner run",
         "tvmd validator run",
+        "tvmd proposer run",
         "public_evidence_full_spec=false",
         "independently_checkable=false",
     ] {
@@ -205,6 +208,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_role_runtime_commands=true",
         "all_operator_role_runtime_counters=true",
         "single_local_producer=true",
+        "local_proposer_runtime=true",
         "all_non_producer_network_applied_blocks=true",
         "all_operator_p2p_connected_peers=true",
         "all_operator_p2p_block_gossip=true",

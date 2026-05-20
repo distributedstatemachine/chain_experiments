@@ -45,9 +45,10 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 
 The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
-requires 10 CPU-ready miners and zero CUDA-required miners, requires miners to run `tvmd miner run` and
-validators to run `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters,
-one local timed producer, network-applied block counters for every non-producer, plus observed
+requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` to run
+`tvmd proposer run`, the other miners to run `tvmd miner run`, and validators to run
+`tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
+producer, network-applied block counters for every non-producer, plus observed
 job/receipt/attestation/block gossip counters for every counted operator, verifies the seeded local CPU
 chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
 miners, full finality and data availability,
@@ -163,8 +164,8 @@ continues finalizing blocks after restart.
   TCP/TLS/Yamux swarm construction, Gossipsub subscriptions, Identify, Kademlia discovery/address
   registration, JSON request-response protocols, `tvmd service peer add` bootstrap seeding,
   `tvmd service readiness` startup checks for the mandatory libp2p control-plane runtime,
-  `tvmd service serve` startup of the same runtime, `tvmd miner run` and `tvmd validator run`
-  role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
+  `tvmd service serve` startup of the same runtime, `tvmd miner run`, `tvmd validator run`, and
+  `tvmd proposer run` role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
   with peer-ID-preserving DNS/TCP dial multiaddrs and bootstrap redial, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
   `tvmd service status` durable node-store reporting,

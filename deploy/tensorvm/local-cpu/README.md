@@ -24,11 +24,11 @@ explorer
 
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
 distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
-libp2p readiness path, and then execs its role command: miners run `tvmd miner run`, validators run
-`tvmd validator run`. Miner containers also run the CPU miner readiness command with `--device cpu`;
-validators run the validator readiness command. Every operator seeds the same deterministic local CPU chain
-and keeps producing live synthetic CPU jobs from that shared base, while `miner-00` exposes the host-facing
-gateway routes.
+libp2p readiness path, and then execs its role command: `miner-00` runs `tvmd proposer run` for local
+gateway/proposer duties, the other miners run `tvmd miner run`, and validators run `tvmd validator run`.
+Miner containers also run the CPU miner readiness command with `--device cpu`; validators run the validator
+readiness command. Every operator seeds the same deterministic local CPU chain and keeps producing live
+synthetic CPU jobs from that shared base, while `miner-00` exposes the host-facing gateway routes.
 
 The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
 `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.

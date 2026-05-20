@@ -161,8 +161,16 @@ done
 for service in $MINERS; do
   compose exec -T "$service" grep -q "role=miner" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not marked as a miner"
-  compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not running the miner role command"
+  case "$service" in
+    miner-00)
+      compose exec -T "$service" grep -q "runtime_command=proposer_run" /var/lib/tensorvm/local-cpu-ready \
+        || fail "$service is not running the proposer role command"
+      ;;
+    *)
+      compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
+        || fail "$service is not running the miner role command"
+      ;;
+  esac
   compose exec -T "$service" grep -q "device=cpu" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not using the CPU backend"
 done
@@ -445,11 +453,15 @@ while [ "$attempt" -lt 60 ]; do
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     case "$service" in
+      miner-00) [ "$SERVICE_RUNTIME_COMMAND" = "proposer_run" ] || { STATUS_MISMATCH=true; continue; } ;;
       miner-*) [ "$SERVICE_RUNTIME_COMMAND" = "miner_run" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_RUNTIME_COMMAND" = "validator_run" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     [ "$SERVICE_ROLE_RUNTIME_COMMAND" = "$SERVICE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
-    [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; }
+    case "$service" in
+      miner-00) [ "$SERVICE_ROLE_LOOP_ROLE" = "proposer" ] || { STATUS_MISMATCH=true; continue; } ;;
+      *) [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; } ;;
+    esac
     [ "$SERVICE_ROLE_LOOP_READY" = "true" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-00)
@@ -609,6 +621,7 @@ all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_runtime_counters=true
 single_local_producer=true
+local_proposer_runtime=true
 all_non_producer_network_applied_blocks=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true

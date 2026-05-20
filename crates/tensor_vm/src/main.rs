@@ -98,6 +98,29 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
                 max_requests: *max_requests,
             })
         }
+        CliCommand::ProposerRun {
+            wallet,
+            node,
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            run_proposer_service(RoleServiceConfig {
+                wallet,
+                device: None,
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed: *identity_seed,
+                auth_token,
+                max_requests: *max_requests,
+            })
+        }
         CliCommand::ServiceInit { data_dir } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             init_service_store(data_dir)
@@ -461,6 +484,23 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
     })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
+        config.wallet, config.node
+    ))
+}
+
+fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
+    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
+        listen: config.listen,
+        p2p_listen: config.p2p_listen,
+        data_dir: config.data_dir,
+        identity_seed: config.identity_seed,
+        auth_token: config.auth_token,
+        max_requests: config.max_requests,
+        runtime_command: "proposer_run",
+        role: "proposer",
+    })?;
+    Ok(format!(
+        "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
         config.wallet, config.node
     ))
 }

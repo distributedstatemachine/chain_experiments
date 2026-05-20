@@ -18,6 +18,7 @@ IS_BOOTSTRAP="${TENSORVM_IS_BOOTSTRAP:-false}"
 IDENTITY_SEED="${TENSORVM_LIBP2P_IDENTITY_SEED:-$OPERATOR_ID}"
 SEED_LOCAL_TESTNET="${TENSORVM_SEED_LOCAL_TESTNET:-false}"
 LOCAL_CPU_ROLE_PRODUCER="${TENSORVM_LOCAL_CPU_ROLE_PRODUCER:-false}"
+RUNTIME_COMMAND="${TENSORVM_ROLE_RUNTIME_COMMAND:-${ROLE}_run}"
 READY_FILE="$DATA_DIR/local-cpu-ready"
 INIT_OUT="/tmp/tensorvm-service-init.out"
 
@@ -67,7 +68,7 @@ tvmd service readiness \
   echo "operator_name=$OPERATOR_NAME"
   echo "operator_id=$OPERATOR_ID"
   echo "role=$ROLE"
-  echo "runtime_command=${ROLE}_run"
+  echo "runtime_command=$RUNTIME_COMMAND"
   echo "local_cpu_role_producer=$LOCAL_CPU_ROLE_PRODUCER"
   echo "node_multiaddr=$NODE_MULTIADDR"
   cat "$DATA_DIR/role-start.out"
@@ -81,6 +82,17 @@ tvmd service readiness \
 
 case "$ROLE" in
   miner)
+    if [ "$RUNTIME_COMMAND" = "proposer_run" ]; then
+      exec tvmd proposer run \
+        --wallet "$WALLET" \
+        --node "$NODE_MULTIADDR" \
+        --listen "$RPC_LISTEN" \
+        --p2p-listen "$P2P_LISTEN" \
+        --data-dir "$DATA_DIR" \
+        --identity-seed "$IDENTITY_SEED" \
+        --auth-token "$AUTH_TOKEN" \
+        --max-requests 0
+    fi
     exec tvmd miner run \
       --wallet "$WALLET" \
       --device cpu \

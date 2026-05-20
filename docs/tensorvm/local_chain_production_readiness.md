@@ -102,9 +102,10 @@ The local bundle is useful and should remain the first operational target:
   matrix.
 - `tvmd service init` validates the complete node store on restart and repairs torn snapshot/block-log
   state from `chain.state` before readiness is allowed.
-- Compose now execs role-specific runtime commands for counted operators: miners run `tvmd miner run`,
-  validators run `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker
-  fails unless all 15 operators report the role command expected for their Compose service.
+- Compose now execs role-specific runtime commands for counted operators: `miner-00` runs
+  `tvmd proposer run` for gateway/proposer duties, the other miners run `tvmd miner run`, validators run
+  `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker fails unless all
+  15 operators report the role command expected for their Compose service.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
@@ -159,15 +160,14 @@ Required fix:
 
 ### 2. Miner And Validator Containers Still Delegate Internals To The Service Runtime
 
-`tvmd miner start` and `tvmd validator start` prove local readiness, and each container now execs the
-matching long-running `tvmd miner run` or `tvmd validator run` surface. Those role commands still delegate
-their inner serving path to the shared service runtime, so they prove the command surface and Compose
-contract but not independent role ownership yet.
+`tvmd miner start` and `tvmd validator start` prove local readiness. Containers now exec the matching
+long-running `tvmd miner run`, `tvmd validator run`, or `tvmd proposer run` surface. Those role commands
+still delegate their inner serving path to the shared service runtime, so they prove the command surface
+and Compose contract but not independent role ownership yet.
 
 Required fix:
 
-- Keep `tvmd miner run` and `tvmd validator run` as the counted operator entrypoints.
-- Add `tvmd proposer run` or `tvmd node run --role <role>` for proposer/gateway duties.
+- Keep `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` as counted operator entrypoints.
 - Move miner, validator, and proposer internals out of the generic service loop so each role loop owns
   only its role responsibilities.
 - Keep readiness commands as preflight checks, not the runtime.
@@ -544,13 +544,14 @@ smaller chain modules and the existing test module.
 - Initially run them against the existing RPC endpoints.
 - Then move gossip/request-response ingestion into the node runtime.
 
-Status: started. `tvmd miner run` and `tvmd validator run` are long-running role-specific command surfaces,
-Compose uses them for counted operators, and the local checker verifies `runtime_command=miner_run` or
-`runtime_command=validator_run` through ready files and `tvmd service status`. The status path also exposes
-live role-loop counters, local-producer mode, network-applied block counters, real libp2p connected-peer
-counts, job/receipt/attestation/block gossip observations, and target-head block-gossip observations for
-every counted operator. The commands still delegate to the service runtime internally, and proposer/node
-run ownership still needs to be split out.
+Status: started. `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` are long-running
+role-specific command surfaces. Compose uses `tvmd proposer run` for `miner-00`'s local gateway/proposer
+duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` for validators; the local
+checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
+exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
+connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
+observations for every counted operator. The commands still delegate to the shared service runtime
+internally, so miner/validator/proposer ownership needs to be split further.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
