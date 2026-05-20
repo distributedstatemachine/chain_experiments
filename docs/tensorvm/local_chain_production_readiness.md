@@ -110,7 +110,8 @@ The local bundle is useful and should remain the first operational target:
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
   production; public-testnet and mainnet profiles use the same chain engine with local synthetic jobs
-  disabled.
+  disabled. `NodeConfig` now carries typed network listen/auth/identity/max-request settings and storage
+  paths for the runtime.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_chain_profile`, `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
@@ -603,13 +604,15 @@ miner/validator/proposer ownership still needs to be split further.
 - Remove profile-specific chain transition branches.
 - Ensure all profile tests instantiate the same engine.
 
-Status: partially complete. `ChainProfile` and `NodeConfig` exist and tests prove all profiles build the same engine.
+Status: partially complete. `ChainProfile`, `NodeConfig`, `NetworkConfig`, and `StorageConfig` exist and
+tests prove all profiles build the same engine.
 `ChainProfile` now also owns optional synthetic-job scheduling: the local CPU profile enables the
 deterministic matmul/LinearTrainingStep source, while public testnet and mainnet profiles disable local-only
 synthetic production. The long-running node runtime now reads `TENSORVM_CHAIN_PROFILE`, reports the active
 profile in serve/status surfaces, and gates synthetic production through `NodeConfig` role policy, block
-interval, and local-producer settings. Bootstrap, auth, exposure, and persistence settings still need to
-move into `NodeConfig` instead of being passed as separate runtime fields.
+interval, local-producer settings, network listen/auth/identity/max-request settings, and storage path.
+Bootstrap peer loading still comes from the persisted peer book; profile-specific public exposure policy
+still needs to be wired through runtime adapters rather than documented profile fields only.
 
 ### Phase 6: Restart And Recovery
 

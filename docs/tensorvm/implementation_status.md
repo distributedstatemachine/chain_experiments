@@ -75,6 +75,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   boundary, reports `chain_profile` and `role_chain_profile`, and gates timed synthetic production through
   profile, role, block-interval, and local-producer policy so local CPU, public-testnet, and mainnet profiles
   share the same runtime path while selecting different job-source policy.
+- `NodeConfig` now owns typed `NetworkConfig` and `StorageConfig` values for runtime listen addresses,
+  libp2p identity seed, RPC auth token, max-request limit, and node-store path, reducing the remaining
+  service-loop argument plumbing to runtime command and role label.
 - Local block catch-up now prunes future pre-applied synthetic jobs, receipts, attestations, and validator
   attestation counters before replaying to an observed block header, preventing decoded role payload gossip
   from causing duplicate-receipt replay failures on non-producer operators.

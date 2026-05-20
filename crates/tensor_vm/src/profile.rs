@@ -1,7 +1,7 @@
 use crate::chain::{Chain, ChainParams};
 use crate::scheduler::{JobScheduler, SyntheticLocalJobSource};
 use crate::types::Hash;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -118,9 +118,65 @@ impl ChainProfile {
 pub struct NodeConfig {
     pub profile: ChainProfile,
     pub role: NodeRole,
-    pub data_dir: PathBuf,
+    pub network: NetworkConfig,
+    pub storage: StorageConfig,
     pub block_interval: Option<Duration>,
     pub local_producer: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NetworkConfig {
+    pub rpc_listen: String,
+    pub p2p_listen: String,
+    pub identity_seed: Option<[u8; 32]>,
+    pub auth_token: String,
+    pub max_requests: usize,
+}
+
+impl NetworkConfig {
+    pub fn new(rpc_listen: impl Into<String>, p2p_listen: impl Into<String>) -> Self {
+        Self {
+            rpc_listen: rpc_listen.into(),
+            p2p_listen: p2p_listen.into(),
+            identity_seed: None,
+            auth_token: String::new(),
+            max_requests: 0,
+        }
+    }
+
+    pub fn with_identity_seed(mut self, identity_seed: Option<[u8; 32]>) -> Self {
+        self.identity_seed = identity_seed;
+        self
+    }
+
+    pub fn with_auth_token(mut self, auth_token: impl Into<String>) -> Self {
+        self.auth_token = auth_token.into();
+        self
+    }
+
+    pub fn with_max_requests(mut self, max_requests: usize) -> Self {
+        self.max_requests = max_requests;
+        self
+    }
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self::new("127.0.0.1:8545", "127.0.0.1:0")
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StorageConfig {
+    pub data_dir: PathBuf,
+}
+
+impl StorageConfig {
+    pub fn new(data_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+        }
+    }
 }
 
 impl NodeConfig {
@@ -128,7 +184,8 @@ impl NodeConfig {
         Self {
             profile,
             role,
-            data_dir: data_dir.into(),
+            network: NetworkConfig::default(),
+            storage: StorageConfig::new(data_dir),
             block_interval: None,
             local_producer: false,
         }
@@ -136,6 +193,20 @@ impl NodeConfig {
 
     pub fn build_chain(&self, finalized_randomness: Hash) -> Chain {
         self.profile.build_chain(finalized_randomness)
+    }
+
+    pub fn data_dir(&self) -> &Path {
+        &self.storage.data_dir
+    }
+
+    pub fn with_network(mut self, network: NetworkConfig) -> Self {
+        self.network = network;
+        self
+    }
+
+    pub fn with_storage(mut self, storage: StorageConfig) -> Self {
+        self.storage = storage;
+        self
     }
 
     pub fn with_block_interval(mut self, interval: Option<Duration>) -> Self {
@@ -197,7 +268,9 @@ mod tests {
 
         assert_eq!(config.profile, profile);
         assert_eq!(config.role, NodeRole::Miner);
-        assert_eq!(config.data_dir, PathBuf::from("local/miner-00"));
+        assert_eq!(config.data_dir(), Path::new("local/miner-00"));
+        assert_eq!(config.storage.data_dir, PathBuf::from("local/miner-00"));
+        assert_eq!(config.network, NetworkConfig::default());
         assert_eq!(config.block_interval, None);
         assert!(!config.local_producer);
         assert_eq!(chain.params(), &profile.chain_params);
@@ -214,6 +287,13 @@ mod tests {
             NodeRole::Proposer,
             "local/proposer",
         )
+        .with_network(
+            NetworkConfig::new("127.0.0.1:9000", "/ip4/127.0.0.1/tcp/19000")
+                .with_identity_seed(Some([7; 32]))
+                .with_auth_token("secret")
+                .with_max_requests(25),
+        )
+        .with_storage(StorageConfig::new("local/proposer-store"))
         .with_block_interval(Some(interval))
         .with_local_producer(true);
         let local_miner =
@@ -230,6 +310,10 @@ mod tests {
 
         assert_eq!(local_proposer.synthetic_block_interval(), Some(interval));
         assert!(local_proposer.local_synthetic_producer());
+        assert_eq!(local_proposer.data_dir(), Path::new("local/proposer-store"));
+        assert_eq!(local_proposer.network.identity_seed, Some([7; 32]));
+        assert_eq!(local_proposer.network.auth_token, "secret");
+        assert_eq!(local_proposer.network.max_requests, 25);
         assert_eq!(local_miner.synthetic_block_interval(), Some(interval));
         assert!(!local_miner.can_produce_local_blocks());
         assert!(!local_miner.local_synthetic_producer());

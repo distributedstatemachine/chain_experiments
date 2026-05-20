@@ -66,7 +66,9 @@ pub use p2p::{
     gossipsub_ident_topic, recommended_network_stack, request_response_protocol_for_message,
     request_response_stream_protocol, spawn_libp2p_service,
 };
-pub use profile::{ChainNetwork, ChainProfile, NodeConfig, NodeRole, ServiceExposure};
+pub use profile::{
+    ChainNetwork, ChainProfile, NetworkConfig, NodeConfig, NodeRole, ServiceExposure, StorageConfig,
+};
 pub use roles::{
     CpuReferenceMinerRole, ReferenceValidatorRole, RoleReceiptArtifacts, RoleReceiptBundle,
     primitive_type, validator_stake,

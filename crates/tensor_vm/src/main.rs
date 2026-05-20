@@ -7,9 +7,9 @@ use std::{
 };
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
-    Libp2pControlPlaneConfig, LocalChain, NodeConfig, NodeRole, NodeStore, PeerRecord,
-    PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
-    TvmError, ValidatorAttestation, VerificationResult,
+    Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NodeConfig, NodeRole, NodeStore,
+    PeerRecord, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
+    TensorVmLibp2pService, TvmError, ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -502,14 +502,17 @@ struct RoleServiceConfig<'a> {
 
 fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        listen: config.listen,
-        p2p_listen: config.p2p_listen,
-        identity_seed: config.identity_seed,
-        auth_token: config.auth_token,
-        max_requests: config.max_requests,
         runtime_command: "miner_run",
         role: RuntimeRole::Miner,
-        node: runtime_node_config(config.data_dir, RuntimeRole::Miner)?,
+        node: runtime_node_config(
+            config.data_dir,
+            RuntimeRole::Miner,
+            config.listen,
+            config.p2p_listen,
+            config.identity_seed,
+            config.auth_token,
+            config.max_requests,
+        )?,
     })?;
     let device = config.device.unwrap_or("unknown");
     Ok(format!(
@@ -520,14 +523,17 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
 
 fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        listen: config.listen,
-        p2p_listen: config.p2p_listen,
-        identity_seed: config.identity_seed,
-        auth_token: config.auth_token,
-        max_requests: config.max_requests,
         runtime_command: "validator_run",
         role: RuntimeRole::Validator,
-        node: runtime_node_config(config.data_dir, RuntimeRole::Validator)?,
+        node: runtime_node_config(
+            config.data_dir,
+            RuntimeRole::Validator,
+            config.listen,
+            config.p2p_listen,
+            config.identity_seed,
+            config.auth_token,
+            config.max_requests,
+        )?,
     })?;
     Ok(format!(
         "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -537,14 +543,17 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
 
 fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        listen: config.listen,
-        p2p_listen: config.p2p_listen,
-        identity_seed: config.identity_seed,
-        auth_token: config.auth_token,
-        max_requests: config.max_requests,
         runtime_command: "proposer_run",
         role: RuntimeRole::Proposer,
-        node: runtime_node_config(config.data_dir, RuntimeRole::Proposer)?,
+        node: runtime_node_config(
+            config.data_dir,
+            RuntimeRole::Proposer,
+            config.listen,
+            config.p2p_listen,
+            config.identity_seed,
+            config.auth_token,
+            config.max_requests,
+        )?,
     })?;
     Ok(format!(
         "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
@@ -561,14 +570,17 @@ fn serve_service(
     max_requests: usize,
 ) -> std::result::Result<String, String> {
     serve_service_with_runtime(ServiceRuntimeConfig {
-        listen,
-        p2p_listen,
-        identity_seed,
-        auth_token,
-        max_requests,
         runtime_command: "service_serve",
         role: RuntimeRole::Service,
-        node: runtime_node_config(data_dir, RuntimeRole::Service)?,
+        node: runtime_node_config(
+            data_dir,
+            RuntimeRole::Service,
+            listen,
+            p2p_listen,
+            identity_seed,
+            auth_token,
+            max_requests,
+        )?,
     })
 }
 
@@ -616,20 +628,26 @@ fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, St
 fn runtime_node_config(
     data_dir: &str,
     role: RuntimeRole,
+    listen: &str,
+    p2p_listen: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
 ) -> std::result::Result<NodeConfig, String> {
     Ok(
         NodeConfig::new(runtime_chain_profile()?, role.node_role(), data_dir)
+            .with_network(
+                NetworkConfig::new(listen, p2p_listen)
+                    .with_identity_seed(identity_seed)
+                    .with_auth_token(auth_token)
+                    .with_max_requests(max_requests),
+            )
             .with_block_interval(runtime_block_interval())
             .with_local_producer(runtime_local_block_producer()),
     )
 }
 
 struct ServiceRuntimeConfig<'a> {
-    listen: &'a str,
-    p2p_listen: &'a str,
-    identity_seed: Option<[u8; 32]>,
-    auth_token: &'a str,
-    max_requests: usize,
     runtime_command: &'a str,
     role: RuntimeRole,
     node: NodeConfig,
@@ -638,11 +656,12 @@ struct ServiceRuntimeConfig<'a> {
 fn serve_service_with_runtime(
     config: ServiceRuntimeConfig<'_>,
 ) -> std::result::Result<String, String> {
-    let store = NodeStore::open(&config.node.data_dir);
+    let network = &config.node.network;
+    let store = NodeStore::open(config.node.data_dir());
     let chain = store.load_chain().map_err(|error| {
         format!(
             "failed to load node store {}: {error}",
-            config.node.data_dir.display()
+            config.node.data_dir().display()
         )
     })?;
     let bootstrap_addresses = if store.peer_book_store().path().exists() {
@@ -652,7 +671,7 @@ fn serve_service_with_runtime(
             .map_err(|error| {
                 format!(
                     "failed to load libp2p peer book {}: {error}",
-                    config.node.data_dir.display()
+                    config.node.data_dir().display()
                 )
             })?
     } else {
@@ -660,9 +679,9 @@ fn serve_service_with_runtime(
     };
     let bootstrap_peer_count = bootstrap_addresses.len();
     let p2p_config = Libp2pControlPlaneConfig {
-        listen_addresses: vec![config.p2p_listen.to_owned()],
+        listen_addresses: vec![network.p2p_listen.clone()],
         bootstrap_addresses,
-        identity_seed: config.identity_seed,
+        identity_seed: network.identity_seed,
         ..Libp2pControlPlaneConfig::default()
     };
     let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
@@ -674,17 +693,21 @@ fn serve_service_with_runtime(
     let p2p_peer_id = p2p_service.peer_id().to_string();
     let p2p_topics = p2p_service.info().subscribed_topics.len();
     let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
-    let identity = p2p_identity_report(config.identity_seed);
+    let identity = p2p_identity_report(network.identity_seed);
     let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
     let gateway = RpcGateway::new(
         node,
         RpcPolicy {
-            auth_token: Some(config.auth_token.to_owned()),
+            auth_token: Some(network.auth_token.clone()),
             ..RpcPolicy::default()
         },
     );
-    let mut server = RpcHttpServer::bind(config.listen, gateway)
-        .map_err(|error| format!("failed to bind service listener {}: {error}", config.listen))?;
+    let mut server = RpcHttpServer::bind(&network.rpc_listen, gateway).map_err(|error| {
+        format!(
+            "failed to bind service listener {}: {error}",
+            network.rpc_listen
+        )
+    })?;
     let mut served_requests = 0usize;
     let block_interval = config.node.synthetic_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
@@ -710,7 +733,7 @@ fn serve_service_with_runtime(
         })?;
     }
     loop {
-        if config.max_requests != 0 && served_requests >= config.max_requests {
+        if network.max_requests != 0 && served_requests >= network.max_requests {
             break;
         }
         if let Some(interval) = block_interval {
@@ -822,8 +845,8 @@ fn serve_service_with_runtime(
         config.role.label(),
         config.node.profile.label(),
         config.node.can_produce_local_blocks(),
-        config.listen,
-        config.p2p_listen,
+        network.rpc_listen,
+        network.p2p_listen,
         p2p_service.connected_peer_count(),
         p2p_service.observed_block_gossip_count(),
         p2p_service.observed_job_gossip_count(),
@@ -832,7 +855,7 @@ fn serve_service_with_runtime(
         p2p_service.latest_observed_block_height(),
         hex(&p2p_service.latest_observed_block_hash()),
         hex_hash_list(&p2p_service.observed_block_hashes()),
-        config.node.data_dir.display(),
+        config.node.data_dir().display(),
         network_event_ingest.events,
         network_event_ingest.block_announcements,
         network_event_ingest.block_headers,
@@ -898,7 +921,7 @@ fn write_role_runtime_status(
     config: &ServiceRuntimeConfig<'_>,
     snapshot: &RoleRuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
-    let path = config.node.data_dir.join("role-runtime.status");
+    let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
         "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
