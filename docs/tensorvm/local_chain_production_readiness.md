@@ -125,6 +125,9 @@ The local bundle is useful and should remain the first operational target:
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
+- `tvmd service block` now exposes per-height receipt IDs, settled receipt IDs, and TensorOp versus
+  LinearTrainingStep receipt counts, and the checker fails unless finalized live blocks expose both
+  primitive types through that block view.
 
 That is enough for a useful local demonstration. It is not enough for a production-grade local chain.
 
@@ -256,7 +259,9 @@ Current assertion:
 The seed covers both TensorOp and LinearTrainingStep. Live post-startup production now uses
 `SyntheticLocalJobSource` for both matmul and LinearTrainingStep jobs, and the checker requires
 `model_count` to advance past the seeded baseline plus receipt details to name more than the seeded count
-of both primitive types.
+of both primitive types. The service block view now reports per-height receipt IDs and primitive counts, and
+the local checker requires finalized live TensorOp and LinearTrainingStep block evidence near the current
+head.
 
 Required fix:
 
@@ -265,6 +270,9 @@ Required fix:
   - LinearTrainingStep jobs
 - Extend this from per-receipt primitive evidence to per-block primitive evidence once block views expose
   included receipt IDs by block.
+
+Status: complete for the current local block view. Receipt ownership is still not role-owned end to end,
+but block-height receipt evidence is now queryable and gated.
 
 ### 7. The Checker Does Not Prove All Local-Spec Acceptance Items
 
@@ -522,7 +530,8 @@ jobs, receipts, attestations, and votes.
 Status: partially complete. The document exists and the checker gates live post-startup height, blocks,
 jobs, model-count advancement, attestation-count growth, reward-balance growth, receipts, and settled
 receipts, per-receipt validator-attestation details, live tensor descriptor/row/chunk/opening fetches, all
-15 operator node stores reporting role status, live chain counters, the single local producer, network
+15 operator node stores reporting role status, live chain counters, finalized live TensorOp and
+LinearTrainingStep block-view evidence, the single local producer, network
 applied block progress on every non-producer, accepted job, receipt, and attestation payload application
 through the shared chain engine on every non-producer, the same first live finalized block hash, the same
 finalized common-head block hash, and a finalized local-head checkpoint/state root that was also observed

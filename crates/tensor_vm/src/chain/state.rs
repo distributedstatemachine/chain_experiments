@@ -212,6 +212,13 @@ impl ReceiptState {
         }
     }
 
+    pub fn submitted_at_block(&self) -> u64 {
+        match self {
+            Self::TensorOp(receipt) => receipt.submitted_at_block,
+            Self::LinearTrainingStep(receipt) => receipt.submitted_at_block,
+        }
+    }
+
     pub fn tensor_work_units(&self) -> u64 {
         match self {
             Self::TensorOp(receipt) => receipt.tensor_work_units,

@@ -234,10 +234,7 @@ fn ratio_u64(numerator: u64, denominator: u64) -> f64 {
 }
 
 fn receipt_submitted_at_block(receipt: &ReceiptState) -> u64 {
-    match receipt {
-        ReceiptState::TensorOp(receipt) => receipt.submitted_at_block,
-        ReceiptState::LinearTrainingStep(receipt) => receipt.submitted_at_block,
-    }
+    receipt.submitted_at_block()
 }
 
 fn average_verification_cost_ratio(chain: &LocalChain) -> f64 {

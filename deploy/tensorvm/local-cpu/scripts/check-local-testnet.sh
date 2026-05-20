@@ -306,6 +306,44 @@ curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}
 curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
   || fail "live tensor opening was not fetchable"
 
+LIVE_TENSOR_OP_BLOCK_HEIGHT=0
+LIVE_TENSOR_OP_BLOCK_RECEIPTS=0
+LIVE_LINEAR_TRAINING_BLOCK_HEIGHT=0
+LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS=0
+BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))
+[ "$BLOCK_SCAN_START" -gt 2 ] || BLOCK_SCAN_START=3
+BLOCK_SCAN_HEIGHT="$BLOCK_SCAN_START"
+while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
+  if BLOCK_RAW=$(read_service_block miner-00 "$BLOCK_SCAN_HEIGHT"); then
+    BLOCK_STATUS="$BLOCK_RAW"
+    BLOCK_FINALIZED=$(status_value finalized "$BLOCK_STATUS")
+    BLOCK_RECEIPT_IDS=$(status_value receipt_ids "$BLOCK_STATUS")
+    BLOCK_TENSOR_OP_RECEIPTS=$(status_value tensor_op_receipt_count "$BLOCK_STATUS")
+    BLOCK_LINEAR_TRAINING_RECEIPTS=$(status_value linear_training_receipt_count "$BLOCK_STATUS")
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ -n "$BLOCK_RECEIPT_IDS" ] \
+      && [ "$BLOCK_RECEIPT_IDS" != "none" ] \
+      && [ "${BLOCK_TENSOR_OP_RECEIPTS:-0}" -gt 0 ]; then
+      LIVE_TENSOR_OP_BLOCK_HEIGHT="$BLOCK_SCAN_HEIGHT"
+      LIVE_TENSOR_OP_BLOCK_RECEIPTS="$BLOCK_TENSOR_OP_RECEIPTS"
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ -n "$BLOCK_RECEIPT_IDS" ] \
+      && [ "$BLOCK_RECEIPT_IDS" != "none" ] \
+      && [ "${BLOCK_LINEAR_TRAINING_RECEIPTS:-0}" -gt 0 ]; then
+      LIVE_LINEAR_TRAINING_BLOCK_HEIGHT="$BLOCK_SCAN_HEIGHT"
+      LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS="$BLOCK_LINEAR_TRAINING_RECEIPTS"
+    fi
+    if [ "$LIVE_TENSOR_OP_BLOCK_HEIGHT" -gt 0 ] && [ "$LIVE_LINEAR_TRAINING_BLOCK_HEIGHT" -gt 0 ]; then
+      break
+    fi
+  fi
+  BLOCK_SCAN_HEIGHT=$((BLOCK_SCAN_HEIGHT + 1))
+done
+
+[ "$LIVE_TENSOR_OP_BLOCK_HEIGHT" -gt 0 ] || fail "service block view did not expose finalized live TensorOp receipt evidence"
+[ "$LIVE_LINEAR_TRAINING_BLOCK_HEIGHT" -gt 0 ] || fail "service block view did not expose finalized live LinearTrainingStep receipt evidence"
+
 ALL_OPERATOR_NETWORK_HEAD_HEIGHT=""
 ALL_OPERATOR_NETWORK_HEAD_HASH=""
 ALL_OPERATOR_NETWORK_STATE_ROOT=""
@@ -660,6 +698,12 @@ live_attestations=true
 live_receipt_attestations=true
 live_tensor_op_receipts=true
 live_linear_training_receipts=true
+live_tensor_op_block_evidence=true
+live_tensor_op_block_height=${LIVE_TENSOR_OP_BLOCK_HEIGHT}
+live_tensor_op_block_receipts=${LIVE_TENSOR_OP_BLOCK_RECEIPTS}
+live_linear_training_block_evidence=true
+live_linear_training_block_height=${LIVE_LINEAR_TRAINING_BLOCK_HEIGHT}
+live_linear_training_block_receipts=${LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS}
 live_tensor_fetch=true
 live_rewards=true
 all_operator_status_count=15

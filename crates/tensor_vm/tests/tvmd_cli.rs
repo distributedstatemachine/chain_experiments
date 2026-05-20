@@ -1012,11 +1012,54 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
     assert_eq!(stdout_value(&block, "finalized"), "true");
     assert!(
+        stdout_value(&block, "receipt_count")
+            .parse::<u64>()
+            .expect("service block receipt count must parse")
+            > 0
+    );
+    assert_ne!(stdout_value(&block, "receipt_ids"), "none");
+    assert!(
+        stdout_value(&block, "settled_receipt_count")
+            .parse::<u64>()
+            .expect("service block settled receipt count must parse")
+            > 0
+    );
+    assert!(block.contains("tensor_op_receipt_count="));
+    assert!(block.contains("linear_training_receipt_count="));
+    assert!(
         stdout_value(&block, "latest_height")
             .parse::<u64>()
             .expect("service block latest height must parse")
             > 2
     );
+    let first_live_height = stdout_value(&status, "first_live_block_height")
+        .parse::<u64>()
+        .expect("first live block height must parse");
+    let latest_block_height = stdout_value(&status, "latest_block_height")
+        .parse::<u64>()
+        .expect("latest block height must parse");
+    let mut saw_tensor_op_block = false;
+    let mut saw_linear_training_block = false;
+    for height in first_live_height..=latest_block_height.min(first_live_height + 4) {
+        let block = run_tvmd(&[
+            "service",
+            "block",
+            "--data-dir",
+            &data_dir_text,
+            "--height",
+            &height.to_string(),
+        ]);
+        saw_tensor_op_block |= stdout_value(&block, "tensor_op_receipt_count")
+            .parse::<u64>()
+            .expect("tensor op receipt count must parse")
+            > 0;
+        saw_linear_training_block |= stdout_value(&block, "linear_training_receipt_count")
+            .parse::<u64>()
+            .expect("linear training receipt count must parse")
+            > 0;
+    }
+    assert!(saw_tensor_op_block);
+    assert!(saw_linear_training_block);
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }

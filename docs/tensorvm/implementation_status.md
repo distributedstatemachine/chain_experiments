@@ -328,11 +328,13 @@ preflight, public evidence, or deployment-gated work can count:
   `standalone_explorer_websocket_polling=true`; the gate now also requires
   `live_block_production=true`, `live_synthetic_jobs=true`, `live_linear_training_jobs=true`,
   `live_attestations=true`, `live_receipt_attestations=true`, `live_tensor_op_receipts=true`,
-  `live_linear_training_receipts=true`, `live_tensor_fetch=true`, and `live_rewards=true`, proving
+  `live_linear_training_receipts=true`, `live_tensor_op_block_evidence=true`,
+  `live_linear_training_block_evidence=true`, `live_tensor_fetch=true`, and `live_rewards=true`, proving
   `/chain/head` and explorer counters advance past the seeded two-block baseline, at least one live
   LinearTrainingStep advances model state after startup, validators add attestations, `/explorer/receipts`
   exposes per-receipt validator attestation details plus named post-seed TensorOp and LinearTrainingStep
-  primitive receipts for live work,
+  primitive receipts for live work, and `tvmd service block` exposes finalized live block-height receipt
+  IDs and primitive counts for both TensorOp and LinearTrainingStep work,
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
   settled live work credits new rewards; the gate also runs `tvmd service status` and
   `tvmd service block` inside all 15 operator containers and requires
@@ -400,9 +402,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.23% workspace line coverage
-- 10511/10593 workspace lines covered
+- 10513/10595 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9666/9666 `tensor_vm` lines covered
+- 9668/9668 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

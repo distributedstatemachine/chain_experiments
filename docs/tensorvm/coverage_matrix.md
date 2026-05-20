@@ -59,7 +59,9 @@ explorer page opens a WebSocket to the TensorVM `/explorer/ws` data endpoint, wa
 height, block, job, receipt, settled-receipt, model-count, attestation-count, and reward-balance
 advancement so the live producer must settle at least one LinearTrainingStep and credit new validator/miner
 rewards after the seed, requires live receipt details to expose validator attestation counts and more than
-the seeded count of both `tensor_op` and `linear_training_step` primitive receipts, fetches a live tensor
+the seeded count of both `tensor_op` and `linear_training_step` primitive receipts, requires finalized
+live `tvmd service block` views to expose block-height receipt IDs and primitive counts for both TensorOp
+and LinearTrainingStep work, fetches a live tensor
 descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
 common-head block hash through `tvmd service block`, selects miner-00's latest finalized p2p-observed head
@@ -179,8 +181,9 @@ continues finalizing blocks after restart.
   runtime command, live role-loop counters, local-producer mode, decoded network-event ingestion, decoded
   job/receipt/attestation payload application, network-applied block counters for non-producers, real libp2p
   connected-peer counts, live chain counters,
-  advancement past the shared seed, the same first live finalized block hash, and the same finalized
-  common-head block hash through `tvmd service block`. The restart-continuity gate captures
+  advancement past the shared seed, finalized live TensorOp and LinearTrainingStep block-view evidence,
+  the same first live finalized block hash, and the same finalized common-head block hash through
+  `tvmd service block`. The restart-continuity gate captures
   pre/post peer IDs, heights, block counts, and common-head hashes around actual Compose restarts, while
   service init validates full node-store consistency and repairs torn snapshot/block-log state from
   `chain.state`.

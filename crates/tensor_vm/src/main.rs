@@ -7,8 +7,8 @@ use std::{
 };
 use tensor_vm::{
     ChainCommand, ChainEngine, CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig,
-    LocalChain, NodeStore, PeerRecord, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
-    TensorVmLibp2pService, TvmError, ValidatorAttestation,
+    LocalChain, NodeStore, PeerRecord, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode,
+    RpcPolicy, Tensor, TensorVmLibp2pService, TvmError, ValidatorAttestation,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -448,13 +448,41 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         ));
     };
     let block_hash = block.hash();
+    let mut receipt_ids = Vec::new();
+    let mut tensor_op_receipt_ids = Vec::new();
+    let mut linear_training_receipt_ids = Vec::new();
+    let mut settled_receipt_ids = Vec::new();
+    for receipt in chain
+        .state
+        .receipts
+        .values()
+        .filter(|receipt| receipt.submitted_at_block() == height)
+    {
+        let receipt_id = receipt.receipt_id();
+        receipt_ids.push(receipt_id);
+        if chain.state.settled_receipts.contains(&receipt_id) {
+            settled_receipt_ids.push(receipt_id);
+        }
+        match receipt.primitive_type() {
+            PrimitiveType::TensorOp => tensor_op_receipt_ids.push(receipt_id),
+            PrimitiveType::LinearTrainingStep => linear_training_receipt_ids.push(receipt_id),
+        }
+    }
     Ok(format!(
-        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nstatus_source=node_store",
+        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
         hex(&block_hash),
         hex(&block.state_root),
         block.epoch,
         chain.state.height,
         chain.is_block_finalized(&block_hash),
+        receipt_ids.len(),
+        hex_hash_list(&receipt_ids),
+        tensor_op_receipt_ids.len(),
+        hex_hash_list(&tensor_op_receipt_ids),
+        linear_training_receipt_ids.len(),
+        hex_hash_list(&linear_training_receipt_ids),
+        settled_receipt_ids.len(),
+        hex_hash_list(&settled_receipt_ids),
     ))
 }
 
