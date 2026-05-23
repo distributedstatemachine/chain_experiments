@@ -5,6 +5,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP spec](mvp_spec.md)
 - [Bad assumptions ledger](bad_assumptions_ledger.md)
 - [Formal proof manifest v0](formal_proof_manifest_v0.md)
+- [MVP core assumption discharge plan](mvp_core_assumption_discharge_plan.md)
 - [MVP core proof completion audit](mvp_core_proof_completion_audit.md)
 - [MVP core proof traceability matrix](mvp_core_proof_traceability_matrix.md)
 - [MVP core mechanization checklist](mvp_core_mechanization_checklist.md)

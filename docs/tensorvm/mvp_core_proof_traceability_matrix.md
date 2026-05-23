@@ -6,6 +6,10 @@ Purpose: tie every current proof claim to the Rust surface, evidence class, allo
 and next gate. This document is a control surface for avoiding accidental overclaiming. It is not a proof by
 itself and it does not upgrade any blocked theorem.
 
+Assumption categories and discharge gates are tracked in
+[`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md). A traceability row can
+move to a stronger status only when its assumption-discharge category has been satisfied.
+
 ## Status Key
 
 | Status | Meaning |
@@ -72,6 +76,7 @@ A claim may be used in public or release-facing text only if all of these are tr
 4. Its wording matches the "Allowed Wording" column.
 5. It does not depend on a dirty/uncommitted code change unless that change is explicitly cited as
    uncommitted evidence.
+6. Any related assumption-discharge gate is satisfied or still stated as an assumption.
 
 If any condition fails, phrase it as a gap or target, not as a property.
 

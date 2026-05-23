@@ -103,3 +103,8 @@ consensus object.
 
 This ledger should remain open until useful-verification PoW, canonical settled-receipt blockspace, and v2
 block finality validation are implemented and mapped back into the formal proof manifest.
+
+Assumptions should be discharged only through the category-specific gates in
+[`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md); tests, local runs, and
+wording changes do not discharge cryptographic, public-evidence, or missing-implementation assumptions by
+themselves.
