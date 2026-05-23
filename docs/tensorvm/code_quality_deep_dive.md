@@ -111,6 +111,8 @@ spaghetti around.
   persistence plus storage fixtures off raw `Chain` params/block fields.
 - Iteration 39 introduced shared crate-internal enum tag helpers for dtype, primitive type, and
   verification-result codecs, then routed storage, p2p, and chain roots through them.
+- Iteration 40 moved fixed-length block and block-vote payload codecs behind shared crate-internal
+  helpers while preserving storage and p2p error boundaries.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

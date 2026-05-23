@@ -24,7 +24,7 @@ const HASH_LEN: usize = 32;
 const U64_LEN: usize = 8;
 const SNAPSHOT_PAYLOAD_LEN: usize = U64_LEN + U64_LEN + HASH_LEN + U64_LEN + HASH_LEN + HASH_LEN;
 const SNAPSHOT_DIGEST_LEN: usize = HASH_LEN;
-const BLOCK_PAYLOAD_LEN: usize = U64_LEN * 4 + HASH_LEN * 11;
+const BLOCK_PAYLOAD_LEN: usize = codec::TENSOR_BLOCK_PAYLOAD_LEN;
 const BLOCK_DIGEST_LEN: usize = HASH_LEN;
 const CHAIN_STATE_DIGEST_LEN: usize = HASH_LEN;
 const SNAPSHOT_FILE_NAME: &str = "chain.snapshot";
@@ -938,11 +938,7 @@ fn encode_block_votes(out: &mut Vec<u8>, votes: &BTreeMap<Hash, Vec<BlockVote>>)
         write_hash(out, block_hash);
         write_len(out, votes.len());
         for vote in votes {
-            write_hash(out, &vote.validator);
-            write_hash(out, &vote.block_hash);
-            write_u64(out, vote.block_height);
-            write_u64(out, vote.stake);
-            write_hash(out, &vote.signature);
+            out.extend_from_slice(&codec::encode_block_vote_payload(vote));
         }
     }
 }
@@ -953,13 +949,9 @@ fn decode_block_votes(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Vec
         let block_hash = reader.read_hash()?;
         let mut votes = Vec::with_capacity(reader.read_len()?);
         for _ in 0..votes.capacity() {
-            let vote = BlockVote {
-                validator: reader.read_hash()?,
-                block_hash: reader.read_hash()?,
-                block_height: reader.read_u64()?,
-                stake: reader.read_u64()?,
-                signature: reader.read_hash()?,
-            };
+            let vote =
+                codec::decode_block_vote_payload(reader.read_exact(codec::BLOCK_VOTE_PAYLOAD_LEN)?)
+                    .ok_or(TvmError::Storage("invalid block vote payload length"))?;
             votes.push(vote);
         }
         block_votes.insert(block_hash, votes);
@@ -1066,23 +1058,7 @@ fn encode_block_record(block: &TensorBlock) -> Vec<u8> {
 }
 
 fn encode_block_payload(block: &TensorBlock) -> Vec<u8> {
-    let mut payload = Vec::with_capacity(BLOCK_PAYLOAD_LEN);
-    payload.extend_from_slice(&block.height.to_le_bytes());
-    payload.extend_from_slice(&block.parent_hash);
-    payload.extend_from_slice(&block.epoch.to_le_bytes());
-    payload.extend_from_slice(&block.proposer);
-    payload.extend_from_slice(&block.settled_receipt_set_root);
-    payload.extend_from_slice(&block.checks_root);
-    payload.extend_from_slice(&block.attestation_root);
-    payload.extend_from_slice(&block.state_root);
-    payload.extend_from_slice(&block.reward_root);
-    payload.extend_from_slice(&block.beacon);
-    payload.extend_from_slice(&block.difficulty_target);
-    payload.extend_from_slice(&block.nonce.to_le_bytes());
-    payload.extend_from_slice(&block.timestamp.to_le_bytes());
-    payload.extend_from_slice(&block.proposer_signature);
-    payload.extend_from_slice(&block.validator_signature_aggregate);
-    payload
+    codec::encode_tensor_block_payload(block)
 }
 
 fn decode_block_log(bytes: &[u8]) -> Result<Vec<TensorBlock>> {
@@ -1114,27 +1090,8 @@ fn decode_block_log(bytes: &[u8]) -> Result<Vec<TensorBlock>> {
 }
 
 fn decode_block_payload(bytes: &[u8]) -> Result<TensorBlock> {
-    if bytes.len() != BLOCK_PAYLOAD_LEN {
-        return Err(TvmError::Storage("invalid block payload length"));
-    }
-    let mut offset = 0;
-    Ok(TensorBlock {
-        height: read_u64(bytes, &mut offset)?,
-        parent_hash: read_hash(bytes, &mut offset)?,
-        epoch: read_u64(bytes, &mut offset)?,
-        proposer: read_hash(bytes, &mut offset)?,
-        settled_receipt_set_root: read_hash(bytes, &mut offset)?,
-        checks_root: read_hash(bytes, &mut offset)?,
-        attestation_root: read_hash(bytes, &mut offset)?,
-        state_root: read_hash(bytes, &mut offset)?,
-        reward_root: read_hash(bytes, &mut offset)?,
-        beacon: read_hash(bytes, &mut offset)?,
-        difficulty_target: read_hash(bytes, &mut offset)?,
-        nonce: read_u64(bytes, &mut offset)?,
-        timestamp: read_u64(bytes, &mut offset)?,
-        proposer_signature: read_hash(bytes, &mut offset)?,
-        validator_signature_aggregate: read_hash(bytes, &mut offset)?,
-    })
+    codec::decode_tensor_block_payload(bytes)
+        .ok_or(TvmError::Storage("invalid block payload length"))
 }
 
 fn read_u64(bytes: &[u8], offset: &mut usize) -> Result<u64> {

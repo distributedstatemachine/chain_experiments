@@ -29,8 +29,8 @@ const MAX_RECEIPT_HASHES: usize = 16;
 const MAX_TENSOR_SHAPE_DIMS: usize = 16;
 const MAX_TENSOR_VALUES: usize = 1_000_000;
 const MAX_WIRE_BYTES: usize = 16 * 1024 * 1024;
-const BLOCK_PAYLOAD_LEN: usize = 8 * 4 + 32 * 11;
-const BLOCK_VOTE_PAYLOAD_LEN: usize = 32 * 3 + 8 * 2;
+const BLOCK_PAYLOAD_LEN: usize = codec::TENSOR_BLOCK_PAYLOAD_LEN;
+const BLOCK_VOTE_PAYLOAD_LEN: usize = codec::BLOCK_VOTE_PAYLOAD_LEN;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -1377,83 +1377,22 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
 }
 
 pub fn encode_block_payload(block: &TensorBlock) -> Vec<u8> {
-    let mut out = Vec::with_capacity(BLOCK_PAYLOAD_LEN);
-    write_u64(&mut out, block.height);
-    write_hash(&mut out, &block.parent_hash);
-    write_u64(&mut out, block.epoch);
-    write_hash(&mut out, &block.proposer);
-    write_hash(&mut out, &block.settled_receipt_set_root);
-    write_hash(&mut out, &block.checks_root);
-    write_hash(&mut out, &block.attestation_root);
-    write_hash(&mut out, &block.state_root);
-    write_hash(&mut out, &block.reward_root);
-    write_hash(&mut out, &block.beacon);
-    write_hash(&mut out, &block.difficulty_target);
-    write_u64(&mut out, block.nonce);
-    write_u64(&mut out, block.timestamp);
-    write_hash(&mut out, &block.proposer_signature);
-    write_hash(&mut out, &block.validator_signature_aggregate);
-    out
+    codec::encode_tensor_block_payload(block)
 }
 
 pub fn decode_block_payload(input: &[u8]) -> TvmResult<TensorBlock> {
-    if input.len() != BLOCK_PAYLOAD_LEN {
-        return Err(TvmError::InvalidReceipt("invalid block payload length"));
-    }
-    let mut reader = Reader::new(input);
-    let block = TensorBlock {
-        height: reader.read_u64()?,
-        parent_hash: reader.read_hash()?,
-        epoch: reader.read_u64()?,
-        proposer: reader.read_hash()?,
-        settled_receipt_set_root: reader.read_hash()?,
-        checks_root: reader.read_hash()?,
-        attestation_root: reader.read_hash()?,
-        state_root: reader.read_hash()?,
-        reward_root: reader.read_hash()?,
-        beacon: reader.read_hash()?,
-        difficulty_target: reader.read_hash()?,
-        nonce: reader.read_u64()?,
-        timestamp: reader.read_u64()?,
-        proposer_signature: reader.read_hash()?,
-        validator_signature_aggregate: reader.read_hash()?,
-    };
-    if !reader.is_done() {
-        return Err(TvmError::InvalidReceipt("trailing block payload bytes"));
-    }
-    Ok(block)
+    codec::decode_tensor_block_payload(input)
+        .ok_or(TvmError::InvalidReceipt("invalid block payload length"))
 }
 
 pub fn encode_block_vote_payload(vote: &BlockVote) -> Vec<u8> {
-    let mut out = Vec::with_capacity(BLOCK_VOTE_PAYLOAD_LEN);
-    write_hash(&mut out, &vote.validator);
-    write_hash(&mut out, &vote.block_hash);
-    write_u64(&mut out, vote.block_height);
-    write_u64(&mut out, vote.stake);
-    write_hash(&mut out, &vote.signature);
-    out
+    codec::encode_block_vote_payload(vote)
 }
 
 pub fn decode_block_vote_payload(input: &[u8]) -> TvmResult<BlockVote> {
-    if input.len() != BLOCK_VOTE_PAYLOAD_LEN {
-        return Err(TvmError::InvalidReceipt(
-            "invalid block vote payload length",
-        ));
-    }
-    let mut reader = Reader::new(input);
-    let vote = BlockVote {
-        validator: reader.read_hash()?,
-        block_hash: reader.read_hash()?,
-        block_height: reader.read_u64()?,
-        stake: reader.read_u64()?,
-        signature: reader.read_hash()?,
-    };
-    if !reader.is_done() {
-        return Err(TvmError::InvalidReceipt(
-            "trailing block vote payload bytes",
-        ));
-    }
-    Ok(vote)
+    codec::decode_block_vote_payload(input).ok_or(TvmError::InvalidReceipt(
+        "invalid block vote payload length",
+    ))
 }
 
 pub fn encode_tensor_payload(tensor: &Tensor) -> Vec<u8> {
