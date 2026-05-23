@@ -1,5 +1,6 @@
 use crate::api::P2pMessage;
 use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
+use crate::codec;
 use crate::error::{Result as TvmResult, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
@@ -2041,45 +2042,25 @@ fn read_bool(reader: &mut Reader<'_>) -> TvmResult<bool> {
 }
 
 fn dtype_from_tag(tag: u8) -> TvmResult<DType> {
-    match tag {
-        1 => Ok(DType::Int32),
-        2 => Ok(DType::Int64),
-        3 => Ok(DType::Fixed32),
-        4 => Ok(DType::FieldElement),
-        _ => Err(TvmError::InvalidReceipt("unknown dtype tag")),
-    }
+    codec::dtype_from_tag(tag).ok_or(TvmError::InvalidReceipt("unknown dtype tag"))
 }
 
 fn primitive_type_tag(primitive_type: PrimitiveType) -> u8 {
-    match primitive_type {
-        PrimitiveType::TensorOp => 1,
-        PrimitiveType::LinearTrainingStep => 2,
-    }
+    codec::primitive_type_tag(primitive_type)
 }
 
 fn primitive_type_from_tag(tag: u8) -> TvmResult<PrimitiveType> {
-    match tag {
-        1 => Ok(PrimitiveType::TensorOp),
-        2 => Ok(PrimitiveType::LinearTrainingStep),
-        _ => Err(TvmError::InvalidReceipt("unknown primitive type tag")),
-    }
+    codec::primitive_type_from_tag(tag)
+        .ok_or(TvmError::InvalidReceipt("unknown primitive type tag"))
 }
 
 fn verification_result_tag(result: VerificationResult) -> u8 {
-    match result {
-        VerificationResult::Valid => 1,
-        VerificationResult::Invalid => 2,
-        VerificationResult::Unavailable => 3,
-    }
+    codec::verification_result_tag(result)
 }
 
 fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
-    match tag {
-        1 => Ok(VerificationResult::Valid),
-        2 => Ok(VerificationResult::Invalid),
-        3 => Ok(VerificationResult::Unavailable),
-        _ => Err(TvmError::InvalidReceipt("unknown verification result tag")),
-    }
+    codec::verification_result_from_tag(tag)
+        .ok_or(TvmError::InvalidReceipt("unknown verification result tag"))
 }
 
 #[cfg(test)]

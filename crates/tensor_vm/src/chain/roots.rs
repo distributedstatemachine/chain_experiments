@@ -2,7 +2,7 @@ use super::{
     AccountState, BlockVote, ChainState, JobState, MinerState, ModelState, ReceiptState,
     RewardState, ValidatorState,
 };
-use crate::jobs::PrimitiveType;
+use crate::codec::{dtype_tag, primitive_type_tag, verification_result_tag};
 use crate::types::{Address, Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
 use std::collections::{BTreeMap, BTreeSet};
@@ -121,7 +121,7 @@ pub(super) fn job_root(jobs: &BTreeMap<Hash, JobState>) -> Hash {
                 encode_usize(&mut encoded, job.m);
                 encode_usize(&mut encoded, job.k);
                 encode_usize(&mut encoded, job.n);
-                encoded.push(dtype_code(job.dtype));
+                encoded.push(dtype_tag(job.dtype));
                 encoded.extend_from_slice(&job.modulus.unwrap_or_default().to_le_bytes());
                 encoded.extend_from_slice(&job.seed_a);
                 encoded.extend_from_slice(&job.seed_b);
@@ -139,7 +139,7 @@ pub(super) fn job_root(jobs: &BTreeMap<Hash, JobState>) -> Hash {
                 encode_usizes(&mut encoded, &job.weight_shape);
                 encode_usizes(&mut encoded, &job.target_shape);
                 encoded.extend_from_slice(&job.lr.to_le_bytes());
-                encoded.push(dtype_code(job.dtype));
+                encoded.push(dtype_tag(job.dtype));
                 encoded.extend_from_slice(&job.deadline_block.to_le_bytes());
                 encoded.extend_from_slice(&job.reward_weight.to_le_bytes());
             }
@@ -200,8 +200,8 @@ pub(super) fn attestation_root(attestations: &BTreeMap<Hash, Vec<ValidatorAttest
             encoded.extend_from_slice(&attestation.validator);
             encoded.extend_from_slice(&attestation.receipt_id);
             encoded.extend_from_slice(&attestation.job_id);
-            encoded.push(primitive_type_code(attestation.primitive_type));
-            encoded.push(verification_result_code(attestation.result));
+            encoded.push(primitive_type_tag(attestation.primitive_type));
+            encoded.push(verification_result_tag(attestation.result));
             encoded.push(attestation.data_availability_passed as u8);
             encoded.extend_from_slice(&attestation.checks_root);
             encoded.extend_from_slice(&attestation.stake.to_le_bytes());
@@ -300,23 +300,4 @@ fn encode_usizes(out: &mut Vec<u8>, values: &[usize]) {
 
 fn encode_usize(out: &mut Vec<u8>, value: usize) {
     out.extend_from_slice(&(value as u64).to_le_bytes());
-}
-
-fn dtype_code(dtype: crate::tensor::DType) -> u8 {
-    dtype.tag()
-}
-
-fn primitive_type_code(primitive_type: PrimitiveType) -> u8 {
-    match primitive_type {
-        PrimitiveType::TensorOp => 1,
-        PrimitiveType::LinearTrainingStep => 2,
-    }
-}
-
-fn verification_result_code(result: VerificationResult) -> u8 {
-    match result {
-        VerificationResult::Valid => 1,
-        VerificationResult::Invalid => 2,
-        VerificationResult::Unavailable => 3,
-    }
 }

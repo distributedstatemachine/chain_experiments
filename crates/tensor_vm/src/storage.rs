@@ -3,6 +3,7 @@ use crate::chain::{
     ChainStateParts, HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardState,
     TensorBlock, ValidatorState,
 };
+use crate::codec;
 use crate::error::{Result, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
@@ -1226,49 +1227,27 @@ fn decode_hardware_class(tag: u8) -> Result<HardwareClass> {
 }
 
 fn dtype_code(dtype: DType) -> u8 {
-    dtype.tag()
+    codec::dtype_tag(dtype)
 }
 
 fn decode_dtype(tag: u8) -> Result<DType> {
-    match tag {
-        1 => Ok(DType::Int32),
-        2 => Ok(DType::Int64),
-        3 => Ok(DType::Fixed32),
-        4 => Ok(DType::FieldElement),
-        _ => Err(TvmError::Storage("unknown dtype")),
-    }
+    codec::dtype_from_tag(tag).ok_or(TvmError::Storage("unknown dtype"))
 }
 
 fn primitive_type_code(primitive_type: PrimitiveType) -> u8 {
-    match primitive_type {
-        PrimitiveType::TensorOp => 1,
-        PrimitiveType::LinearTrainingStep => 2,
-    }
+    codec::primitive_type_tag(primitive_type)
 }
 
 fn decode_primitive_type(tag: u8) -> Result<PrimitiveType> {
-    match tag {
-        1 => Ok(PrimitiveType::TensorOp),
-        2 => Ok(PrimitiveType::LinearTrainingStep),
-        _ => Err(TvmError::Storage("unknown primitive type")),
-    }
+    codec::primitive_type_from_tag(tag).ok_or(TvmError::Storage("unknown primitive type"))
 }
 
 fn verification_result_code(result: VerificationResult) -> u8 {
-    match result {
-        VerificationResult::Valid => 1,
-        VerificationResult::Invalid => 2,
-        VerificationResult::Unavailable => 3,
-    }
+    codec::verification_result_tag(result)
 }
 
 fn decode_verification_result(tag: u8) -> Result<VerificationResult> {
-    match tag {
-        1 => Ok(VerificationResult::Valid),
-        2 => Ok(VerificationResult::Invalid),
-        3 => Ok(VerificationResult::Unavailable),
-        _ => Err(TvmError::Storage("unknown verification result")),
-    }
+    codec::verification_result_from_tag(tag).ok_or(TvmError::Storage("unknown verification result"))
 }
 
 struct StateReader<'a> {

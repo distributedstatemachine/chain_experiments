@@ -109,6 +109,8 @@ spaghetti around.
   explicit decoded-parts constructor plus read accessors.
 - Iteration 38 added an explicit crate-only `ChainParts` restore constructor and moved storage
   persistence plus storage fixtures off raw `Chain` params/block fields.
+- Iteration 39 introduced shared crate-internal enum tag helpers for dtype, primitive type, and
+  verification-result codecs, then routed storage, p2p, and chain roots through them.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
