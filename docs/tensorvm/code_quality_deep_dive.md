@@ -147,6 +147,8 @@ spaghetti around.
   bootstrap assertions with the node builder.
 - Iteration 57 moved the raw two-swarm gossip/request-response integration test and its async wait
   helpers into `p2p/node.rs`, leaving `p2p.rs` focused on service-level integration tests.
+- Iteration 58 moved the remaining libp2p service integration tests and polling helpers into
+  `p2p/service.rs`, leaving `p2p.rs` as the public p2p configuration and re-export facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
