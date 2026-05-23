@@ -1,4 +1,4 @@
-use crate::chain::{Chain, HardwareClass, JobState};
+use crate::chain::{Chain, ChainCommand, ChainEngine, HardwareClass, JobState};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -430,20 +430,22 @@ impl RpcNode {
         let Some(faucet) = self.faucet.as_mut() else {
             return self.not_found("faucet not configured");
         };
-        match faucet.claim(
-            address,
-            self.chain.state.epoch,
-            &mut self.chain.state.rewards,
-        ) {
-            Ok(amount) => {
-                let balance = faucet.balance();
-                self.ok(format!(
-                    "{{\"claimed\":{},\"address\":\"{}\",\"faucet_balance\":{}}}",
-                    amount,
-                    hex(&address),
-                    balance
-                ))
-            }
+        match faucet.claim(address, self.chain.state.epoch) {
+            Ok(amount) => match self
+                .chain
+                .apply_command(ChainCommand::CreditReward { address, amount })
+            {
+                Ok(_) => {
+                    let balance = faucet.balance();
+                    self.ok(format!(
+                        "{{\"claimed\":{},\"address\":\"{}\",\"faucet_balance\":{}}}",
+                        amount,
+                        hex(&address),
+                        balance
+                    ))
+                }
+                Err(error) => self.bad_request(&error.to_string()),
+            },
             Err(error) => self.bad_request(&error.to_string()),
         }
     }
@@ -1749,6 +1751,7 @@ mod tests {
         });
         assert_eq!(claim.status, 200);
         assert_eq!(rpc.chain.state.rewards.balance(&user), 100);
+        assert_eq!(rpc.faucet.as_ref().unwrap().balance(), 900);
 
         let duplicate = rpc.handle_mut(&RpcRequest {
             method: "POST".to_owned(),
@@ -1756,6 +1759,8 @@ mod tests {
             body: Vec::new(),
         });
         assert_eq!(duplicate.status, 400);
+        assert_eq!(rpc.chain.state.rewards.balance(&user), 100);
+        assert_eq!(rpc.faucet.as_ref().unwrap().balance(), 900);
 
         let missing_faucet = RpcNode::new(Chain::new(beacon)).handle(&RpcRequest {
             method: "GET".to_owned(),

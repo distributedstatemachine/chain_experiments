@@ -355,6 +355,19 @@ mod tests {
         );
         assert_eq!(chain.state.rewards.balance(&miner), 0);
         assert_eq!(chain.state.accounts.get(&miner).unwrap().balance, 45);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::CreditReward {
+                    address: receiver,
+                    amount: 9,
+                })
+                .unwrap(),
+            vec![ChainEvent::RewardCredited {
+                address: receiver,
+                amount: 9,
+            }]
+        );
+        assert_eq!(chain.state.rewards.balance(&receiver), 9);
 
         let matmul_job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
         let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&matmul_job, miner, 0, 3).unwrap();

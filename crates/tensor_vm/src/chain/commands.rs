@@ -19,6 +19,10 @@ impl ChainEngine for Chain {
                 self.transfer(from, to, amount)?;
                 Ok(vec![ChainEvent::AccountTransferred { from, to, amount }])
             }
+            ChainCommand::CreditReward { address, amount } => {
+                self.state.rewards.credit(address, amount);
+                Ok(vec![ChainEvent::RewardCredited { address, amount }])
+            }
             ChainCommand::ClaimReward(address) => {
                 let amount = self.state.rewards.balance(&address);
                 accounts::claim_reward(self, address)?;

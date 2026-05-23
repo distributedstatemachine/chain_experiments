@@ -54,6 +54,8 @@ spaghetti around.
 - Iteration 10 stopped validator remote tensor-fetch bookkeeping from persisting unchanged chain state.
   Runtime status still records fetch failures/successes, but snapshot and chain-state files are no longer
   rewritten when no consensus data changed.
+- Iteration 11 moved faucet reward credits behind `ChainCommand::CreditReward`. The faucet now owns only
+  drip eligibility and faucet balance, while the RPC claim path asks the chain engine to mutate reward state.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -201,7 +203,7 @@ through imperative methods on `Chain`.
 
 Remaining examples:
 
-- runtime, RPC test setup, and lower-level model tests still call direct mutation helpers in several places.
+- runtime test setup and lower-level model tests still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
 - `apply_transaction` now routes non-reference writes through `ChainCommand` and rejects txpool-only
   reference submissions, but the public transaction surface still mixes immediate mutations with queued

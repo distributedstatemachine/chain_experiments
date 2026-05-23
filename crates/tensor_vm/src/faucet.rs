@@ -1,4 +1,3 @@
-use crate::chain::RewardState;
 use crate::error::{Result, TvmError};
 use crate::types::Address;
 use std::collections::BTreeMap;
@@ -27,12 +26,7 @@ impl Faucet {
         self.drip_amount
     }
 
-    pub fn claim(
-        &mut self,
-        address: Address,
-        epoch: u64,
-        rewards: &mut RewardState,
-    ) -> Result<u64> {
+    pub fn claim(&mut self, address: Address, epoch: u64) -> Result<u64> {
         if self.claims.get(&address).copied() == Some(epoch) {
             return Err(TvmError::InvalidReceipt(
                 "faucet already claimed this epoch",
@@ -43,7 +37,6 @@ impl Faucet {
         }
         self.balance -= self.drip_amount;
         self.claims.insert(address, epoch);
-        rewards.credit(address, self.drip_amount);
         Ok(self.drip_amount)
     }
 }
@@ -57,11 +50,9 @@ mod tests {
     fn faucet_drips_once_per_epoch() {
         let mut faucet = Faucet::new(1_000, 100);
         let user = address(b"user");
-        let mut rewards = RewardState::default();
-        assert_eq!(faucet.claim(user, 0, &mut rewards).unwrap(), 100);
-        assert_eq!(rewards.balance(&user), 100);
-        assert!(faucet.claim(user, 0, &mut rewards).is_err());
-        assert_eq!(faucet.claim(user, 1, &mut rewards).unwrap(), 100);
+        assert_eq!(faucet.claim(user, 0).unwrap(), 100);
+        assert!(faucet.claim(user, 0).is_err());
+        assert_eq!(faucet.claim(user, 1).unwrap(), 100);
         assert_eq!(faucet.balance(), 800);
     }
 }

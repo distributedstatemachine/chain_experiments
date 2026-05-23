@@ -45,6 +45,10 @@ pub enum ChainCommand {
         to: Address,
         amount: u64,
     },
+    CreditReward {
+        address: Address,
+        amount: u64,
+    },
     ClaimReward(Address),
     SubmitJob(JobState),
     SubmitReceipt(ReceiptState),
