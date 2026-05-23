@@ -151,8 +151,8 @@ impl ReferenceValidatorRole {
 
 pub fn validator_stake(chain: &Chain, validator: &Address) -> u64 {
     chain
-        .state
-        .validators
+        .state()
+        .validators()
         .get(validator)
         .map(|validator| validator.stake)
         .unwrap_or_default()

@@ -96,6 +96,7 @@ spaghetti around.
   assertions onto the `ChainState` accessors.
 - Iteration 31 finished the read-only telemetry metric paths that still reached through `chain.state`,
   leaving settled-work fixture mutation helpers as a separate follow-up.
+- Iteration 32 moved role-level validator stake lookup onto the `ChainState` validator accessor.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
