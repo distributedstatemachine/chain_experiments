@@ -119,6 +119,8 @@ spaghetti around.
   codec helpers while preserving p2p and storage error mapping.
 - Iteration 43 moved `ReceiptState` payload encoding and streaming decode into the same shared
   codec boundary while keeping p2p hash-vector caps out of persisted storage decoding.
+- Iteration 44 moved validator-attestation payload encoding and streaming decode into shared
+  codec helpers, leaving p2p and storage responsible only for envelopes and error domains.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

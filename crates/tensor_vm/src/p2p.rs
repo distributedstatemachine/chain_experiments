@@ -2,10 +2,9 @@ use crate::api::P2pMessage;
 use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
 use crate::codec::{self, CodecError};
 use crate::error::{Result as TvmResult, TvmError};
-use crate::jobs::PrimitiveType;
 use crate::tensor::{DType, Tensor};
 use crate::types::{Hash, hash_bytes};
-use crate::verify::{ValidatorAttestation, VerificationResult};
+use crate::verify::ValidatorAttestation;
 use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
@@ -1318,7 +1317,7 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         4 => P2pMessage::NewAttestation(reader.read_hash()?),
         15 => P2pMessage::NewAttestationPayload {
             attestation_id: reader.read_hash()?,
-            payload: reader.read_bytes()?,
+            payload: reader.read_bytes_with_max(codec::ATTESTATION_PAYLOAD_LEN)?,
         },
         5 => P2pMessage::RequestTensorChunk {
             tensor_id: reader.read_hash()?,
@@ -1437,7 +1436,12 @@ fn job_codec_error(error: CodecError) -> TvmError {
         CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
         CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
         CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
+        CodecError::UnknownPrimitiveType => TvmError::InvalidReceipt("unknown primitive type tag"),
+        CodecError::UnknownVerificationResult => {
+            TvmError::InvalidReceipt("unknown verification result tag")
+        }
         CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
+        CodecError::InvalidBool => TvmError::InvalidReceipt("invalid bool tag"),
         CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
         CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
         CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
@@ -1459,7 +1463,12 @@ fn receipt_codec_error(error: CodecError) -> TvmError {
         CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
         CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
         CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
+        CodecError::UnknownPrimitiveType => TvmError::InvalidReceipt("unknown primitive type tag"),
+        CodecError::UnknownVerificationResult => {
+            TvmError::InvalidReceipt("unknown verification result tag")
+        }
         CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
+        CodecError::InvalidBool => TvmError::InvalidReceipt("invalid bool tag"),
         CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
         CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
         CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
@@ -1467,38 +1476,30 @@ fn receipt_codec_error(error: CodecError) -> TvmError {
 }
 
 pub fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8> {
-    let mut out = Vec::new();
-    write_hash(&mut out, &attestation.validator);
-    write_hash(&mut out, &attestation.receipt_id);
-    write_hash(&mut out, &attestation.job_id);
-    out.push(primitive_type_tag(attestation.primitive_type));
-    out.push(verification_result_tag(attestation.result));
-    write_hash(&mut out, &attestation.checks_root);
-    out.push(u8::from(attestation.data_availability_passed));
-    write_u64(&mut out, attestation.stake);
-    write_hash(&mut out, &attestation.signature);
-    out
+    codec::encode_attestation_payload(attestation)
 }
 
 pub fn decode_attestation_payload(input: &[u8]) -> TvmResult<ValidatorAttestation> {
-    let mut reader = Reader::new(input);
-    let attestation = ValidatorAttestation {
-        validator: reader.read_hash()?,
-        receipt_id: reader.read_hash()?,
-        job_id: reader.read_hash()?,
-        primitive_type: primitive_type_from_tag(reader.read_u8()?)?,
-        result: verification_result_from_tag(reader.read_u8()?)?,
-        checks_root: reader.read_hash()?,
-        data_availability_passed: read_bool(&mut reader)?,
-        stake: reader.read_u64()?,
-        signature: reader.read_hash()?,
-    };
-    if !reader.is_done() {
-        return Err(TvmError::InvalidReceipt(
-            "trailing attestation payload bytes",
-        ));
+    codec::decode_attestation_payload(input).map_err(attestation_codec_error)
+}
+
+fn attestation_codec_error(error: CodecError) -> TvmError {
+    match error {
+        CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
+        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing attestation payload bytes"),
+        CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
+        CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
+        CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
+        CodecError::UnknownPrimitiveType => TvmError::InvalidReceipt("unknown primitive type tag"),
+        CodecError::UnknownVerificationResult => {
+            TvmError::InvalidReceipt("unknown verification result tag")
+        }
+        CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
+        CodecError::InvalidBool => TvmError::InvalidReceipt("invalid bool tag"),
+        CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
+        CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
+        CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
     }
-    Ok(attestation)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1821,34 +1822,8 @@ fn read_usize_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<usiz
     Ok(values)
 }
 
-fn read_bool(reader: &mut Reader<'_>) -> TvmResult<bool> {
-    match reader.read_u8()? {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(TvmError::InvalidReceipt("invalid bool tag")),
-    }
-}
-
 fn dtype_from_tag(tag: u8) -> TvmResult<DType> {
     codec::dtype_from_tag(tag).ok_or(TvmError::InvalidReceipt("unknown dtype tag"))
-}
-
-fn primitive_type_tag(primitive_type: PrimitiveType) -> u8 {
-    codec::primitive_type_tag(primitive_type)
-}
-
-fn primitive_type_from_tag(tag: u8) -> TvmResult<PrimitiveType> {
-    codec::primitive_type_from_tag(tag)
-        .ok_or(TvmError::InvalidReceipt("unknown primitive type tag"))
-}
-
-fn verification_result_tag(result: VerificationResult) -> u8 {
-    codec::verification_result_tag(result)
-}
-
-fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
-    codec::verification_result_from_tag(tag)
-        .ok_or(TvmError::InvalidReceipt("unknown verification result tag"))
 }
 
 #[cfg(test)]
@@ -1857,7 +1832,7 @@ mod tests {
     use crate::chain::{BlockVote, JobState, ReceiptState};
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
-        TensorOpReceipt,
+        PrimitiveType, TensorOpReceipt,
     };
     use crate::scheduler::SyntheticLocalJobSource;
     use crate::tensor::{DType, Tensor};
@@ -2238,7 +2213,7 @@ mod tests {
                     job_id,
                     primitive_type,
                     result,
-                    checks_root: hash_bytes(b"test", &[&[verification_result_tag(result)]]),
+                    checks_root: hash_bytes(b"test", &[&[codec::verification_result_tag(result)]]),
                     data_availability_passed: result != VerificationResult::Unavailable,
                 },
             );

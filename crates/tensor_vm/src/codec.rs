@@ -4,10 +4,11 @@ use crate::jobs::{
 };
 use crate::tensor::DType;
 use crate::types::Hash;
-use crate::verify::VerificationResult;
+use crate::verify::{ValidatorAttestation, VerificationResult};
 
 pub(crate) const TENSOR_BLOCK_PAYLOAD_LEN: usize = 8 * 4 + 32 * 11;
 pub(crate) const BLOCK_VOTE_PAYLOAD_LEN: usize = 32 * 3 + 8 * 2;
+pub(crate) const ATTESTATION_PAYLOAD_LEN: usize = 32 * 5 + 8 + 3;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum CodecError {
@@ -16,7 +17,10 @@ pub(crate) enum CodecError {
     UnknownJobTag,
     UnknownReceiptTag,
     UnknownDType,
+    UnknownPrimitiveType,
+    UnknownVerificationResult,
     InvalidOptionalU64,
+    InvalidBool,
     UsizeOverflow,
     ShapeVectorTooLarge,
     HashVectorTooLarge,
@@ -318,6 +322,48 @@ pub(crate) fn decode_receipt_payload_from(
     }
 }
 
+pub(crate) fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8> {
+    let mut out = Vec::new();
+    write_hash(&mut out, &attestation.validator);
+    write_hash(&mut out, &attestation.receipt_id);
+    write_hash(&mut out, &attestation.job_id);
+    out.push(primitive_type_tag(attestation.primitive_type));
+    out.push(verification_result_tag(attestation.result));
+    write_hash(&mut out, &attestation.checks_root);
+    out.push(u8::from(attestation.data_availability_passed));
+    write_u64(&mut out, attestation.stake);
+    write_hash(&mut out, &attestation.signature);
+    out
+}
+
+pub(crate) fn decode_attestation_payload(input: &[u8]) -> Result<ValidatorAttestation, CodecError> {
+    let mut offset = 0;
+    let attestation = decode_attestation_payload_from(input, &mut offset)?;
+    if offset != input.len() {
+        return Err(CodecError::TrailingBytes);
+    }
+    Ok(attestation)
+}
+
+pub(crate) fn decode_attestation_payload_from(
+    input: &[u8],
+    offset: &mut usize,
+) -> Result<ValidatorAttestation, CodecError> {
+    Ok(ValidatorAttestation {
+        validator: read_hash(input, offset)?,
+        receipt_id: read_hash(input, offset)?,
+        job_id: read_hash(input, offset)?,
+        primitive_type: primitive_type_from_tag(read_u8(input, offset)?)
+            .ok_or(CodecError::UnknownPrimitiveType)?,
+        result: verification_result_from_tag(read_u8(input, offset)?)
+            .ok_or(CodecError::UnknownVerificationResult)?,
+        checks_root: read_hash(input, offset)?,
+        data_availability_passed: read_bool(input, offset)?,
+        stake: read_u64(input, offset)?,
+        signature: read_hash(input, offset)?,
+    })
+}
+
 fn write_hash(out: &mut Vec<u8>, hash: &Hash) {
     out.extend_from_slice(hash);
 }
@@ -358,6 +404,14 @@ fn read_u8(input: &[u8], offset: &mut usize) -> Result<u8, CodecError> {
     let byte = input.get(*offset).copied().ok_or(CodecError::Truncated)?;
     *offset += 1;
     Ok(byte)
+}
+
+fn read_bool(input: &[u8], offset: &mut usize) -> Result<bool, CodecError> {
+    match read_u8(input, offset)? {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(CodecError::InvalidBool),
+    }
 }
 
 fn read_hash(input: &[u8], offset: &mut usize) -> Result<Hash, CodecError> {
@@ -676,6 +730,71 @@ mod tests {
         let truncated = encode_receipt_payload(&linear_receipt);
         assert_eq!(
             decode_receipt_payload(&truncated[..truncated.len() - 1], Some(16)),
+            Err(CodecError::Truncated)
+        );
+    }
+
+    #[test]
+    fn attestation_payloads_roundtrip_stream_and_reject_malformed_edges() {
+        const PRIMITIVE_TYPE_OFFSET: usize = 32 + 32 + 32;
+        const VERIFICATION_RESULT_OFFSET: usize = PRIMITIVE_TYPE_OFFSET + 1;
+        const DATA_AVAILABILITY_OFFSET: usize = VERIFICATION_RESULT_OFFSET + 1 + 32;
+
+        let attestation = ValidatorAttestation {
+            validator: hash(62),
+            receipt_id: hash(63),
+            job_id: hash(64),
+            primitive_type: PrimitiveType::LinearTrainingStep,
+            result: VerificationResult::Unavailable,
+            checks_root: hash(65),
+            data_availability_passed: false,
+            stake: 66,
+            signature: hash(67),
+        };
+
+        let payload = encode_attestation_payload(&attestation);
+        assert_eq!(
+            decode_attestation_payload(&payload),
+            Ok(attestation.clone())
+        );
+
+        let mut offset = 0;
+        assert_eq!(
+            decode_attestation_payload_from(&payload, &mut offset),
+            Ok(attestation)
+        );
+        assert_eq!(offset, payload.len());
+
+        let mut bad_primitive = payload.clone();
+        bad_primitive[PRIMITIVE_TYPE_OFFSET] = 9;
+        assert_eq!(
+            decode_attestation_payload(&bad_primitive),
+            Err(CodecError::UnknownPrimitiveType)
+        );
+
+        let mut bad_result = payload.clone();
+        bad_result[VERIFICATION_RESULT_OFFSET] = 9;
+        assert_eq!(
+            decode_attestation_payload(&bad_result),
+            Err(CodecError::UnknownVerificationResult)
+        );
+
+        let mut bad_bool = payload.clone();
+        bad_bool[DATA_AVAILABILITY_OFFSET] = 9;
+        assert_eq!(
+            decode_attestation_payload(&bad_bool),
+            Err(CodecError::InvalidBool)
+        );
+
+        let mut trailing = payload.clone();
+        trailing.push(0);
+        assert_eq!(
+            decode_attestation_payload(&trailing),
+            Err(CodecError::TrailingBytes)
+        );
+
+        assert_eq!(
+            decode_attestation_payload(&payload[..payload.len() - 1]),
             Err(CodecError::Truncated)
         );
     }

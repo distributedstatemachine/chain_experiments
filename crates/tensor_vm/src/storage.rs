@@ -5,10 +5,9 @@ use crate::chain::{
 };
 use crate::codec;
 use crate::error::{Result, TvmError};
-use crate::jobs::PrimitiveType;
 use crate::p2p::PeerBookStore;
 use crate::types::{Hash, hash_bytes};
-use crate::verify::{FreivaldsParams, ValidatorAttestation, VerificationResult};
+use crate::verify::{FreivaldsParams, ValidatorAttestation};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
@@ -744,7 +743,12 @@ fn storage_job_codec_error(error: codec::CodecError) -> TvmError {
         codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
         codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
         codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
+        codec::CodecError::UnknownVerificationResult => {
+            TvmError::Storage("unknown verification result")
+        }
         codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
         codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
         codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
         codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
@@ -777,7 +781,12 @@ fn storage_receipt_codec_error(error: codec::CodecError) -> TvmError {
         codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
         codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
         codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
+        codec::CodecError::UnknownVerificationResult => {
+            TvmError::Storage("unknown verification result")
+        }
         codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
         codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
         codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
         codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
@@ -793,15 +802,7 @@ fn encode_attestations(
         write_hash(out, receipt_id);
         write_len(out, items.len());
         for attestation in items {
-            write_hash(out, &attestation.validator);
-            write_hash(out, &attestation.receipt_id);
-            write_hash(out, &attestation.job_id);
-            out.push(primitive_type_code(attestation.primitive_type));
-            out.push(verification_result_code(attestation.result));
-            write_hash(out, &attestation.checks_root);
-            out.push(attestation.data_availability_passed as u8);
-            write_u64(out, attestation.stake);
-            write_hash(out, &attestation.signature);
+            out.extend_from_slice(&codec::encode_attestation_payload(attestation));
         }
     }
 }
@@ -812,24 +813,36 @@ fn decode_attestations(
     let mut attestations = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let receipt_id = reader.read_hash()?;
-        let mut items = Vec::with_capacity(reader.read_len()?);
-        for _ in 0..items.capacity() {
-            let attestation = ValidatorAttestation {
-                validator: reader.read_hash()?,
-                receipt_id: reader.read_hash()?,
-                job_id: reader.read_hash()?,
-                primitive_type: decode_primitive_type(reader.read_u8()?)?,
-                result: decode_verification_result(reader.read_u8()?)?,
-                checks_root: reader.read_hash()?,
-                data_availability_passed: reader.read_bool()?,
-                stake: reader.read_u64()?,
-                signature: reader.read_hash()?,
-            };
+        let item_count = reader.read_len()?;
+        let mut items = Vec::with_capacity(item_count);
+        for _ in 0..item_count {
+            let attestation =
+                codec::decode_attestation_payload_from(reader.input, &mut reader.offset)
+                    .map_err(storage_attestation_codec_error)?;
             items.push(attestation);
         }
         attestations.insert(receipt_id, items);
     }
     Ok(attestations)
+}
+
+fn storage_attestation_codec_error(error: codec::CodecError) -> TvmError {
+    match error {
+        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
+        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
+        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
+        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
+        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
+        codec::CodecError::UnknownVerificationResult => {
+            TvmError::Storage("unknown verification result")
+        }
+        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
+        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
+        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
+        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
+    }
 }
 
 fn encode_block_votes(out: &mut Vec<u8>, votes: &BTreeMap<Hash, Vec<BlockVote>>) {
@@ -1059,22 +1072,6 @@ fn decode_hardware_class(tag: u8) -> Result<HardwareClass> {
     }
 }
 
-fn primitive_type_code(primitive_type: PrimitiveType) -> u8 {
-    codec::primitive_type_tag(primitive_type)
-}
-
-fn decode_primitive_type(tag: u8) -> Result<PrimitiveType> {
-    codec::primitive_type_from_tag(tag).ok_or(TvmError::Storage("unknown primitive type"))
-}
-
-fn verification_result_code(result: VerificationResult) -> u8 {
-    codec::verification_result_tag(result)
-}
-
-fn decode_verification_result(tag: u8) -> Result<VerificationResult> {
-    codec::verification_result_from_tag(tag).ok_or(TvmError::Storage("unknown verification result"))
-}
-
 struct StateReader<'a> {
     input: &'a [u8],
     offset: usize,
@@ -1096,14 +1093,6 @@ impl<'a> StateReader<'a> {
 
     fn read_u8(&mut self) -> Result<u8> {
         Ok(self.read_exact(1)?[0])
-    }
-
-    fn read_bool(&mut self) -> Result<bool> {
-        match self.read_u8()? {
-            0 => Ok(false),
-            1 => Ok(true),
-            _ => Err(TvmError::Storage("invalid boolean")),
-        }
     }
 
     fn read_u64(&mut self) -> Result<u64> {
@@ -1150,11 +1139,11 @@ mod tests {
     use crate::chain::ChainCommand;
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
-        TensorOpReceipt,
+        PrimitiveType, TensorOpReceipt,
     };
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
-    use crate::verify::AttestationStatement;
+    use crate::verify::{AttestationStatement, VerificationResult};
 
     fn chain_with_blocks(chain: &Chain, blocks: Vec<TensorBlock>) -> Chain {
         Chain::from_parts(ChainParts {
@@ -1760,46 +1749,9 @@ mod tests {
             Err(TvmError::Storage("unknown hardware class"))
         );
 
-        assert_eq!(primitive_type_code(PrimitiveType::TensorOp), 1);
-        assert_eq!(primitive_type_code(PrimitiveType::LinearTrainingStep), 2);
-        assert_eq!(decode_primitive_type(1).unwrap(), PrimitiveType::TensorOp);
-        assert_eq!(
-            decode_primitive_type(2).unwrap(),
-            PrimitiveType::LinearTrainingStep
-        );
-        assert_eq!(
-            decode_primitive_type(9),
-            Err(TvmError::Storage("unknown primitive type"))
-        );
-
-        assert_eq!(verification_result_code(VerificationResult::Valid), 1);
-        assert_eq!(verification_result_code(VerificationResult::Invalid), 2);
-        assert_eq!(verification_result_code(VerificationResult::Unavailable), 3);
-        assert_eq!(
-            decode_verification_result(1).unwrap(),
-            VerificationResult::Valid
-        );
-        assert_eq!(
-            decode_verification_result(2).unwrap(),
-            VerificationResult::Invalid
-        );
-        assert_eq!(
-            decode_verification_result(3).unwrap(),
-            VerificationResult::Unavailable
-        );
-        assert_eq!(
-            decode_verification_result(9),
-            Err(TvmError::Storage("unknown verification result"))
-        );
-
         assert_eq!(
             StateReader::new(&[]).read_u8(),
             Err(TvmError::Storage("truncated chain state"))
-        );
-        assert!(!StateReader::new(&[0]).read_bool().unwrap());
-        assert_eq!(
-            StateReader::new(&[2]).read_bool(),
-            Err(TvmError::Storage("invalid boolean"))
         );
         assert_eq!(
             StateReader::new(&[2]).read_option_hash(),
