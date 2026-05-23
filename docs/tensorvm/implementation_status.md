@@ -9,7 +9,7 @@ blockspace, selected receipts are marked included once, and block votes validate
 parent-root checks before counting stake. Remaining consensus gaps are exact parent-state snapshots and
 child-state apply semantics, selected-receipt lifecycle/opening metadata, `checks_root` challenge openings,
 difficulty retargeting, zero-receipt skip fallback, and live validator proposer networking. See
-[`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md).
+[`mvp_core_formal_proofs.md`](../formal/mvp_core_formal_proofs.md).
 
 ## Implemented In `crates/tensor_vm`
 

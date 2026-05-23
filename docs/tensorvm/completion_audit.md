@@ -10,7 +10,8 @@ public testnet run.
 
 Update: the reviewed v2 MVP spec supersedes the prior settled-TensorWork proposer model. The local reference
 chain still proves many verifier and role-runtime properties, but it does not yet satisfy the v2
-useful-verification PoW consensus criteria. See [`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md).
+useful-verification PoW consensus criteria. See
+[`mvp_core_formal_proofs.md`](../formal/mvp_core_formal_proofs.md).
 
 ## Success Criteria
 

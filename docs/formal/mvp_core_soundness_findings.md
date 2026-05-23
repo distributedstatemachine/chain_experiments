@@ -39,7 +39,7 @@ and search for a PoW nonce over that commitment. It also says TensorWork no long
 
 Evidence:
 
-- [`mvp_spec.md`](mvp_spec.md) defines useful-verification PoW and says TensorWork no longer selects
+- [`mvp_spec.md`](../tensorvm/mvp_spec.md) defines useful-verification PoW and says TensorWork no longer selects
   proposers.
 - [`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md) already records this as the central proof
   boundary.
@@ -90,9 +90,9 @@ Evidence:
 
 - [`../../crates/tensor_vm/src/chain/proposer.rs`](../../crates/tensor_vm/src/chain/proposer.rs) selects
   validators by stake/beacon and returns `None` without validators.
-- [`coverage_matrix.md`](coverage_matrix.md) now marks the useful-verification PoW criterion as partially
+- [`coverage_matrix.md`](../tensorvm/coverage_matrix.md) now marks the useful-verification PoW criterion as partially
   complete.
-- [`completion_audit.md`](completion_audit.md) now marks the v2 block-production and zero-receipt fallback
+- [`completion_audit.md`](../tensorvm/completion_audit.md) now marks the v2 block-production and zero-receipt fallback
   criteria as not complete.
 
 Finding:
