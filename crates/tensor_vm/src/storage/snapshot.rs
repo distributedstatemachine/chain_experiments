@@ -4,9 +4,9 @@ use crate::types::{Hash, hash_bytes};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::codec::{HASH_LEN, U64_LEN, read_hash_at, read_u64_at, write_hash, write_u64};
+
 const SNAPSHOT_MAGIC: &[u8] = b"TENSORVM_SNAPSHOT\n";
-const HASH_LEN: usize = 32;
-const U64_LEN: usize = 8;
 const SNAPSHOT_PAYLOAD_LEN: usize = U64_LEN + U64_LEN + HASH_LEN + U64_LEN + HASH_LEN + HASH_LEN;
 const SNAPSHOT_DIGEST_LEN: usize = HASH_LEN;
 
@@ -71,23 +71,23 @@ impl ChainSnapshot {
 
         let mut offset = 0;
         Ok(Self {
-            height: read_u64(payload, &mut offset)?,
-            epoch: read_u64(payload, &mut offset)?,
-            finalized_randomness: read_hash(payload, &mut offset)?,
-            block_count: read_u64(payload, &mut offset)?,
-            state_root: read_hash(payload, &mut offset)?,
-            latest_block_hash: read_hash(payload, &mut offset)?,
+            height: read_u64_at(payload, &mut offset, "truncated snapshot u64")?,
+            epoch: read_u64_at(payload, &mut offset, "truncated snapshot u64")?,
+            finalized_randomness: read_hash_at(payload, &mut offset, "truncated snapshot hash")?,
+            block_count: read_u64_at(payload, &mut offset, "truncated snapshot u64")?,
+            state_root: read_hash_at(payload, &mut offset, "truncated snapshot hash")?,
+            latest_block_hash: read_hash_at(payload, &mut offset, "truncated snapshot hash")?,
         })
     }
 
     fn encode_payload(&self) -> Vec<u8> {
         let mut payload = Vec::with_capacity(SNAPSHOT_PAYLOAD_LEN);
-        payload.extend_from_slice(&self.height.to_le_bytes());
-        payload.extend_from_slice(&self.epoch.to_le_bytes());
-        payload.extend_from_slice(&self.finalized_randomness);
-        payload.extend_from_slice(&self.block_count.to_le_bytes());
-        payload.extend_from_slice(&self.state_root);
-        payload.extend_from_slice(&self.latest_block_hash);
+        write_u64(&mut payload, self.height);
+        write_u64(&mut payload, self.epoch);
+        write_hash(&mut payload, &self.finalized_randomness);
+        write_u64(&mut payload, self.block_count);
+        write_hash(&mut payload, &self.state_root);
+        write_hash(&mut payload, &self.latest_block_hash);
         payload
     }
 }
@@ -133,26 +133,6 @@ impl SnapshotStore {
         self.save(&snapshot)?;
         Ok(snapshot)
     }
-}
-
-fn read_u64(bytes: &[u8], offset: &mut usize) -> Result<u64> {
-    if bytes.len().saturating_sub(*offset) < U64_LEN {
-        return Err(TvmError::Storage("truncated snapshot u64"));
-    }
-    let mut out = [0_u8; U64_LEN];
-    out.copy_from_slice(&bytes[*offset..*offset + U64_LEN]);
-    *offset += U64_LEN;
-    Ok(u64::from_le_bytes(out))
-}
-
-fn read_hash(bytes: &[u8], offset: &mut usize) -> Result<Hash> {
-    if bytes.len().saturating_sub(*offset) < HASH_LEN {
-        return Err(TvmError::Storage("truncated snapshot hash"));
-    }
-    let mut out = [0_u8; HASH_LEN];
-    out.copy_from_slice(&bytes[*offset..*offset + HASH_LEN]);
-    *offset += HASH_LEN;
-    Ok(out)
 }
 
 #[cfg(test)]
@@ -204,11 +184,11 @@ mod tests {
         );
 
         assert_eq!(
-            read_u64(&[1, 2], &mut 0),
+            read_u64_at(&[1, 2], &mut 0, "truncated snapshot u64"),
             Err(TvmError::Storage("truncated snapshot u64"))
         );
         assert_eq!(
-            read_hash(&[1, 2], &mut 0),
+            read_hash_at(&[1, 2], &mut 0, "truncated snapshot hash"),
             Err(TvmError::Storage("truncated snapshot hash"))
         );
     }

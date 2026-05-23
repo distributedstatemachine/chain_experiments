@@ -2,7 +2,7 @@ use crate::chain::{
     AccountState, BlockVote, Chain, ChainParams, ChainParts, ChainState, ChainStateParts,
     HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardState, ValidatorState,
 };
-use crate::codec;
+use crate::codec as payload_codec;
 use crate::error::{Result, TvmError};
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{FreivaldsParams, ValidatorAttestation};
@@ -11,10 +11,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::block_log::{BLOCK_PAYLOAD_LEN, decode_block_payload, encode_block_payload};
+use super::codec::{
+    HASH_LEN, StateReader, write_hash, write_i64, write_len, write_option_hash, write_u64,
+};
 
 const CHAIN_STATE_MAGIC: &[u8] = b"TENSORVM_STATE\n";
-const HASH_LEN: usize = 32;
-const U64_LEN: usize = 8;
 const CHAIN_STATE_DIGEST_LEN: usize = HASH_LEN;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -314,7 +315,7 @@ fn encode_jobs(out: &mut Vec<u8>, jobs: &BTreeMap<Hash, JobState>) {
     write_len(out, jobs.len());
     for (job_id, job) in jobs {
         write_hash(out, job_id);
-        out.extend_from_slice(&codec::encode_job_payload(job));
+        out.extend_from_slice(&payload_codec::encode_job_payload(job));
     }
 }
 
@@ -322,29 +323,35 @@ fn decode_jobs(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, JobState>>
     let mut jobs = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
-        let job = codec::decode_job_payload_from(reader.input, &mut reader.offset, None)
+        let job = payload_codec::decode_job_payload_from(reader.input, &mut reader.offset, None)
             .map_err(storage_codec_error)?;
         jobs.insert(key, job);
     }
     Ok(jobs)
 }
 
-fn storage_codec_error(error: codec::CodecError) -> TvmError {
+fn storage_codec_error(error: payload_codec::CodecError) -> TvmError {
     match error {
-        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
-        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
-        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
-        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
-        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
-        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
-        codec::CodecError::UnknownVerificationResult => {
+        payload_codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
+        payload_codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
+        payload_codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
+        payload_codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
+        payload_codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        payload_codec::CodecError::UnknownPrimitiveType => {
+            TvmError::Storage("unknown primitive type")
+        }
+        payload_codec::CodecError::UnknownVerificationResult => {
             TvmError::Storage("unknown verification result")
         }
-        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
-        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
-        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
-        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
-        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
+        payload_codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        payload_codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
+        payload_codec::CodecError::UsizeOverflow => {
+            TvmError::Storage("chain state length overflow")
+        }
+        payload_codec::CodecError::ShapeVectorTooLarge => {
+            TvmError::Storage("shape vector too large")
+        }
+        payload_codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
     }
 }
 
@@ -352,7 +359,7 @@ fn encode_receipts(out: &mut Vec<u8>, receipts: &BTreeMap<Hash, ReceiptState>) {
     write_len(out, receipts.len());
     for (receipt_id, receipt) in receipts {
         write_hash(out, receipt_id);
-        out.extend_from_slice(&codec::encode_receipt_payload(receipt));
+        out.extend_from_slice(&payload_codec::encode_receipt_payload(receipt));
     }
 }
 
@@ -360,8 +367,9 @@ fn decode_receipts(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Receip
     let mut receipts = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
-        let receipt = codec::decode_receipt_payload_from(reader.input, &mut reader.offset, None)
-            .map_err(storage_codec_error)?;
+        let receipt =
+            payload_codec::decode_receipt_payload_from(reader.input, &mut reader.offset, None)
+                .map_err(storage_codec_error)?;
         receipts.insert(key, receipt);
     }
     Ok(receipts)
@@ -376,7 +384,7 @@ fn encode_attestations(
         write_hash(out, receipt_id);
         write_len(out, items.len());
         for attestation in items {
-            out.extend_from_slice(&codec::encode_attestation_payload(attestation));
+            out.extend_from_slice(&payload_codec::encode_attestation_payload(attestation));
         }
     }
 }
@@ -391,7 +399,7 @@ fn decode_attestations(
         let mut items = Vec::with_capacity(item_count);
         for _ in 0..item_count {
             let attestation =
-                codec::decode_attestation_payload_from(reader.input, &mut reader.offset)
+                payload_codec::decode_attestation_payload_from(reader.input, &mut reader.offset)
                     .map_err(storage_codec_error)?;
             items.push(attestation);
         }
@@ -406,7 +414,7 @@ fn encode_block_votes(out: &mut Vec<u8>, votes: &BTreeMap<Hash, Vec<BlockVote>>)
         write_hash(out, block_hash);
         write_len(out, votes.len());
         for vote in votes {
-            out.extend_from_slice(&codec::encode_block_vote_payload(vote));
+            out.extend_from_slice(&payload_codec::encode_block_vote_payload(vote));
         }
     }
 }
@@ -418,9 +426,10 @@ fn decode_block_votes(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Vec
         let vote_count = reader.read_len()?;
         let mut votes = Vec::with_capacity(vote_count);
         for _ in 0..vote_count {
-            let vote =
-                codec::decode_block_vote_payload(reader.read_exact(codec::BLOCK_VOTE_PAYLOAD_LEN)?)
-                    .ok_or(TvmError::Storage("invalid block vote payload length"))?;
+            let vote = payload_codec::decode_block_vote_payload(
+                reader.read_exact(payload_codec::BLOCK_VOTE_PAYLOAD_LEN)?,
+            )
+            .ok_or(TvmError::Storage("invalid block vote payload length"))?;
             votes.push(vote);
         }
         block_votes.insert(block_hash, votes);
@@ -517,32 +526,6 @@ fn decode_hash_vec_map(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Ve
     Ok(items)
 }
 
-fn write_u64(out: &mut Vec<u8>, value: u64) {
-    out.extend_from_slice(&value.to_le_bytes());
-}
-
-fn write_i64(out: &mut Vec<u8>, value: i64) {
-    out.extend_from_slice(&value.to_le_bytes());
-}
-
-fn write_len(out: &mut Vec<u8>, value: usize) {
-    write_u64(out, value as u64);
-}
-
-fn write_hash(out: &mut Vec<u8>, hash: &Hash) {
-    out.extend_from_slice(hash);
-}
-
-fn write_option_hash(out: &mut Vec<u8>, value: &Option<Hash>) {
-    match value {
-        Some(hash) => {
-            out.push(1);
-            write_hash(out, hash);
-        }
-        None => out.push(0),
-    }
-}
-
 fn hardware_class_code(hardware_class: HardwareClass) -> u8 {
     match hardware_class {
         HardwareClass::Cpu => 1,
@@ -559,67 +542,6 @@ fn decode_hardware_class(tag: u8) -> Result<HardwareClass> {
         3 => Ok(HardwareClass::DatacenterGpu),
         4 => Ok(HardwareClass::Other),
         _ => Err(TvmError::Storage("unknown hardware class")),
-    }
-}
-
-struct StateReader<'a> {
-    input: &'a [u8],
-    offset: usize,
-}
-
-impl<'a> StateReader<'a> {
-    fn new(input: &'a [u8]) -> Self {
-        Self { input, offset: 0 }
-    }
-
-    fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
-        if self.input.len().saturating_sub(self.offset) < len {
-            return Err(TvmError::Storage("truncated chain state"));
-        }
-        let start = self.offset;
-        self.offset += len;
-        Ok(&self.input[start..self.offset])
-    }
-
-    fn read_u8(&mut self) -> Result<u8> {
-        Ok(self.read_exact(1)?[0])
-    }
-
-    fn read_u64(&mut self) -> Result<u64> {
-        let mut out = [0_u8; U64_LEN];
-        out.copy_from_slice(self.read_exact(U64_LEN)?);
-        Ok(u64::from_le_bytes(out))
-    }
-
-    fn read_i64(&mut self) -> Result<i64> {
-        let mut out = [0_u8; U64_LEN];
-        out.copy_from_slice(self.read_exact(U64_LEN)?);
-        Ok(i64::from_le_bytes(out))
-    }
-
-    fn read_len(&mut self) -> Result<usize> {
-        Ok(self.read_u64()? as usize)
-    }
-
-    fn read_hash(&mut self) -> Result<Hash> {
-        let mut out = [0_u8; HASH_LEN];
-        out.copy_from_slice(self.read_exact(HASH_LEN)?);
-        Ok(out)
-    }
-
-    fn read_option_hash(&mut self) -> Result<Option<Hash>> {
-        match self.read_u8()? {
-            0 => Ok(None),
-            1 => Ok(Some(self.read_hash()?)),
-            _ => Err(TvmError::Storage("invalid optional hash")),
-        }
-    }
-
-    fn finish(&self) -> Result<()> {
-        if self.offset != self.input.len() {
-            return Err(TvmError::Storage("trailing chain state bytes"));
-        }
-        Ok(())
     }
 }
 
@@ -856,7 +778,7 @@ mod tests {
         let mut bad_job_dtype = Vec::new();
         write_len(&mut bad_job_dtype, 1);
         write_hash(&mut bad_job_dtype, &key);
-        let mut bad_job_dtype_payload = codec::encode_job_payload(&bad_job_template);
+        let mut bad_job_dtype_payload = payload_codec::encode_job_payload(&bad_job_template);
         bad_job_dtype_payload[TENSOR_DTYPE_OFFSET] = 9;
         bad_job_dtype.extend_from_slice(&bad_job_dtype_payload);
         assert_eq!(
@@ -867,7 +789,7 @@ mod tests {
         let mut bad_job_optional = Vec::new();
         write_len(&mut bad_job_optional, 1);
         write_hash(&mut bad_job_optional, &key);
-        let mut bad_job_optional_payload = codec::encode_job_payload(&bad_job_template);
+        let mut bad_job_optional_payload = payload_codec::encode_job_payload(&bad_job_template);
         bad_job_optional_payload[TENSOR_OPTIONAL_MODULUS_OFFSET] = 9;
         bad_job_optional.extend_from_slice(&bad_job_optional_payload);
         assert_eq!(

@@ -157,6 +157,8 @@ spaghetti around.
   `storage/chain_state.rs`, leaving `storage.rs` focused on `NodeStore` orchestration.
 - Iteration 62 extracted `NodeStore` orchestration, recovery/status checks, and node-store tests into
   `storage/node_store.rs`, making `storage.rs` a public facade over the storage submodules.
+- Iteration 63 extracted shared primitive storage-format readers/writers into `storage/codec.rs`,
+  removing duplicate snapshot readers while keeping chain-state domain codecs in `storage/chain_state.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

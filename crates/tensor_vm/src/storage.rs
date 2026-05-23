@@ -1,5 +1,6 @@
 mod block_log;
 mod chain_state;
+mod codec;
 mod node_store;
 mod snapshot;
 
