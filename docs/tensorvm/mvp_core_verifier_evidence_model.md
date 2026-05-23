@@ -19,6 +19,11 @@ semantic verifier-execution theorem. A signed `Valid` statement, a per-attestati
 aggregate root over signed `checks_root` values is still a statement about bytes unless the protocol can
 recompute, open, or challenge the verifier transcript.
 
+Reward finality for challengeable evidence is specified separately in
+[`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md). This evidence
+model is not enough by itself unless the reward state waits for that direct recomputation or challenge
+finality.
+
 ## Current Verdict
 
 The semantic bridge remains blocked.
@@ -71,7 +76,7 @@ parts.
 | EVID-005 | `AttestationEvidence` binds a validator signature to a specific `CheckLeaf`. | Implementation-dischargeable plus signature assumptions. | Prevents a signed Valid bit from floating free of verifier evidence. |
 | EVID-006 | `BlockChecksRoot` is exactly the ordered root of selected receipt `CheckLeaf` values. | Implementation-blocked. | Prevents arbitrary or incomplete aggregate check roots. |
 | EVID-007 | A valid challenge opening can disprove a wrong leaf within the challenge window. | Implementation/evidence-blocked. | Makes hidden or summarized transcript commitments accountable. |
-| EVID-008 | Reward settlement waits for the challenge window or imports direct recomputation. | Implementation-blocked. | Prevents paying rewards before evidence can be contested. |
+| EVID-008 | Reward settlement waits for the challenge window or imports direct recomputation. | Paper-specified in the reward-finality model, implementation-blocked. | Prevents paying rewards before evidence can be contested. |
 | EVID-009 | No accepted invalid verifier evidence after the challenge window, under explicit assumptions. | Assumption-bound. | Requires honest/challenger availability, DA, timeout, and verifier soundness assumptions. |
 
 The current syntactic quorum theorem can stay in the sound kernel. A semantic theorem must import the
@@ -206,7 +211,8 @@ are true:
 3. The leaf binds receipt id, receipt hash, primitive type, validation seed anchor, verifier parameters,
    artifact roots, result, and transcript roots.
 4. The chain can recompute leaves directly or validate challenge openings against `checks_root`.
-5. Challenge windows, deadlines, reward delay, clawback, and state transitions are part of consensus state.
+5. Challenge windows, deadlines, reward delay, clawback, and state transitions are part of consensus state;
+   see `mvp_core_reward_finality_challenge_model.md`.
 6. DA assumptions cover every artifact needed through the challenge window.
 7. The probabilistic verifier budget is imported into the semantic theorem.
 8. The traceability matrix maps the theorem to committed code, adversarial tests, and remaining assumptions.

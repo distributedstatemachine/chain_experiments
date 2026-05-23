@@ -13,6 +13,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core useful-PoW work model](mvp_core_useful_pow_work_model.md)
 - [MVP core fallback liveness model](mvp_core_fallback_liveness_model.md)
 - [MVP core verifier evidence model](mvp_core_verifier_evidence_model.md)
+- [MVP core reward finality and challenge model](mvp_core_reward_finality_challenge_model.md)
 - [MVP core parent-state transition model](mvp_core_parent_state_transition_model.md)
 - [MVP core probabilistic soundness budget](mvp_core_probabilistic_soundness_budget.md)
 - [MVP core receipt-lifecycle seed model](mvp_core_receipt_lifecycle_seed_model.md)

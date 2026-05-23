@@ -34,6 +34,9 @@ Related boundary documents:
   and no-PoW fallback path as a separate liveness-only transition, not useful-PoW.
 - [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
   recomputable/challengeable evidence bridge from signed Valid statements to semantic verifier execution.
+- [`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md) defines
+  delayed reward finality, challenge resolution, and clawback/nonpayment obligations for verifier-dependent
+  rewards.
 - [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md) defines the
   required parent-state validation and child-state transition theorem for v2 finality.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
@@ -77,6 +80,7 @@ Related boundary documents:
 | Settlement | `local-proof-ready` for v1 syntactic-quorum settlement | Settlement/quorum behavior is testable, but semantic verifier execution and v2 blockspace pool semantics are missing. |
 | Useful-verification PoW | `implementation-blocked` | Current block type cannot support the reviewed v2 consensus theorem. |
 | Fallback liveness | `implementation-blocked` | The fallback proof model is now specified, but the v2 fallback object, timeout evidence, rotation, rewards, and tests are missing. |
+| Reward finality | `implementation-blocked` | The delayed reward/challenge model is now specified, but reward state, challenge openings, clawback, and settlement tests are missing. |
 | Finality | `reference-only` | Stake-threshold finality exists for current blocks, not for v2 useful-PoW validity. |
 | Verification-time artifact retrieval | `local-proof-ready` for root-matched local fetch, `assumption-bound` for availability | Current worktree can check fetched tensor roots before verifier use; public DA is not proven. |
 | Public availability/operator independence | `assumption-bound` | Local and request-response fetches do not prove public DA or independent operators. |
@@ -668,6 +672,36 @@ reduced fallback reward transition
 fallback vote admission gate
 ```
 
+### TVM-REWARD-001: Delayed Reward Finality And Challenge Settlement
+
+Target statement:
+
+```text
+Finalized v2 blocks create pending verifier-dependent reward claims; those claims become spendable only
+after direct recomputation or challenge-window finality with no unresolved valid challenge.
+```
+
+Status: `implementation-blocked`
+
+Why blocked:
+
+Current reward evidence does not expose a complete pending/challenged/invalidated/settled state machine,
+consensus challenge openings, or deterministic clawback/nonpayment transition.
+
+Paper model:
+
+- [`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md)
+
+Required code surface before proof:
+
+```text
+RewardClaim status encoding
+valid_challenge(parent_state, challenge)
+resolve_challenge(parent_state, challenge)
+settle_reward_claim(parent_state, claim)
+reward_root over pending/challenged/invalidated/settled states
+```
+
 ## Bad Assumptions Register
 
 | Bad Assumption | Why It Is Bad | Correct Framing |
@@ -681,6 +715,7 @@ fallback vote admission gate
 | Aggregate checks_root proves verifier execution | A root over signed check claims is still a root over claims. | Need recomputable or challengeable verifier evidence. |
 | Stake finality implies useful-PoW validity | Current votes only check known block hash and signature/stake. | Votes must require v2 block validation. |
 | Fallback or empty blocks prove useful work | Fallback is a liveness transition for zero-receipt, below-floor, or timeout cases. | Keep fallback disjoint from useful-PoW and give it reduced rewards. |
+| Block finality means reward finality | Verifier-dependent rewards remain challengeable after block ordering finality. | Use pending reward claims until direct recomputation or challenge-window settlement. |
 | Reference signatures imply production authentication | `sign` is a hash helper. | Use real signature assumptions and production crypto. |
 | Local containers are independent operators | They are separate local participants, not independent principals. | Public evidence must prove independent operators. |
 | Local tensor serving is durable DA | It proves a path, not public retention. | DA needs active/retention-window external measurement. |

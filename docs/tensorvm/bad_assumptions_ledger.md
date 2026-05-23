@@ -48,6 +48,7 @@ ledger. The local v2-block candidate is tracked separately in
 | BA-024 | "Validating a block against current state proves it was valid for its parent." | Critical | The proof target requires `valid_v2_block(parent_state, block)`, while candidate validation patterns can recompute roots from mutable chain state unless an exact parent snapshot is modeled. | Current-state validation can accept or reject based on later receipts, attestations, rewards, randomness, or direct state mutation. It does not prove the block transition from its parent. | Parent-state validation is a required theorem, not an implementation detail. | Define parent-state lookup, `apply_v2_block`, child roots, finality certificates, and atomic failure semantics; see `mvp_core_parent_state_transition_model.md`. |
 | BA-025 | "A settled receipt id set is canonical blockspace." | Critical | Current/candidate state can represent settled receipt ids, but the v2 theorem needs eligibility, spent/included state, expiry, DA-through-challenge-window status, cap accounting, and selected receipt leaves. | A set of ids does not prove why receipts are eligible, why omitted receipts were omitted, whether selected receipts were already spent, or how much block capacity they consumed. | Settled ids are at most an input to a future blockspace selector. | Define the settled receipt pool, selection policy, selected leaf schema, carry-over/spent rules, and omission theorem; see `mvp_core_settled_receipt_blockspace_model.md`. |
 | BA-026 | "A zero-receipt or timeout block is useful-verification PoW." | Critical | The v2 spec needs a PoW-skip fallback for zero-receipt or no-PoW periods, but current fallback evidence is v1/local and the dirty v2 candidate has no fallback implementation. | Fallback preserves liveness when useful-PoW is unavailable; it does not prove verification work, cannot reuse normal useful-PoW rewards, and cannot skip parent-state validation. | Fallback is a separate liveness-only proof obligation. | Add a disjoint fallback block kind, timeout/no-work evidence, deterministic validator rotation, reduced rewards, no miner TWU rewards, and parent-state validation; see `mvp_core_fallback_liveness_model.md`. |
+| BA-027 | "Block finality means reward finality." | Critical | The v2 spec separates finalized block ordering from delayed verifier reward settlement, and current/candidate code has no discharged challenge-window reward state. | A finalized block can still contain wrong `checks_root` evidence or unavailable artifacts. Paying spendable rewards before direct recomputation or challenge-window finality makes clawback impossible. | Finalized blocks may create pending reward claims only. | Add pending/challenged/invalidated/settled reward states, challenge openings, clawback/nonpayment, DA-through-window assumptions, and settlement tests; see `mvp_core_reward_finality_challenge_model.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -77,6 +78,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
     actually represented.
 15. Say **PoW-skip fallback** or **liveness fallback**, not useful-verification PoW, for zero-receipt,
     below-floor, or timeout blocks.
+16. Say **pending reward claim** until direct recomputation or challenge-window finality makes the reward
+    spendable.
 
 ## Claims We Can Make Today
 
@@ -104,6 +107,7 @@ These are defensible with current docs/code evidence:
 - Finality soundness requires validation against the exact parent state and deterministic child roots.
 - Canonical blockspace requires a settled receipt lifecycle model, not only a set of ids.
 - Zero-receipt and no-PoW liveness require a separate fallback transition; fallback is not useful work.
+- Reward finality is a separate delayed transition from block finality.
 
 ## Claims We Must Not Make Today
 
@@ -127,6 +131,7 @@ These would overstate the current MVP:
 - "A block validated against current mutable state was valid for its parent state."
 - "A settled receipt id root proves canonical blockspace."
 - "A zero-receipt, below-floor, or timeout block proves useful-verification PoW."
+- "Finalized blocks have already paid irreversible verifier-dependent rewards."
 
 ## Proof Hygiene Checklist
 

@@ -14,6 +14,8 @@ The useful-PoW work model that separates structural header validity from economi
 in [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 The verifier evidence model for recomputable or challengeable check leaves is defined in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+The reward-finality model for delayed settlement, challenges, and clawback is defined in
+[`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
 The local dirty v2-block candidate is audited in
 [`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md); it does not yet discharge
 these obligations.
@@ -93,6 +95,7 @@ This theorem must not be stated over the current v1 block type.
 | `PowHeader` | parent hash, selected receipt root, checks root, beacon, proposer | Needed to bind nonce search to useful verification. | Missing. |
 | `DifficultyState` | target, retarget window, floor, ceiling | Needed to prove target validity and liveness bounds. | Missing as v2 state. |
 | `BlockVoteV2` or validation rule | vote over valid v2 block hash after block validation | Needed to prove finality counts valid blocks only. | Missing. |
+| `RewardFinalityState` | pending claims, challenge windows, challenge resolutions, settled claims, clawbacks | Needed to prove `reward_root` and delayed verifier-dependent settlement. | Paper-specified in `mvp_core_reward_finality_challenge_model.md`; implementation not started. |
 | `FallbackBlock` rule | timeout, stake rotation, reduced reward, no miner TWU rewards for empty blockspace | Needed for zero-receipt/no-PoW liveness theorem. | Paper-specified in `mvp_core_fallback_liveness_model.md`; implementation not started. |
 
 ## Theorem Spine
@@ -280,6 +283,34 @@ Counterexamples killed:
 
 Current status: implementation-blocked for v2.
 
+### V2-REWARD-001: Delayed Reward Finality And Challenge Settlement
+
+Statement:
+
+```text
+Verifier-dependent rewards created by a valid v2 block are pending until direct recomputation or
+challenge-window finality; valid challenges deterministically invalidate dependent claims before they become
+spendable.
+```
+
+Dependencies:
+
+- reward finality model
+- `RewardClaim` status encoding
+- challenge opening validation against `checks_root`
+- DA-through-challenge-window assumption
+- challenger availability or direct recomputation assumption
+- deterministic reward root encoding
+- clawback/nonpayment transition
+
+Counterexamples killed:
+
+- Paying spendable proposer, miner, or validator rewards before challenge finality.
+- Treating signed reward-settlement records as proof that verifier evidence was sound.
+- Mutating unrelated balances while resolving a targeted challenge.
+
+Current status: paper-specified, implementation-blocked.
+
 ### V2-FIN-001: Vote Admission Requires V2 Validity
 
 Statement:
@@ -365,6 +396,7 @@ validate_block_v2(parent_state, block) =
   && useful_pow_valid(parent_state, block)
   && state_transition_valid(parent_state, block)
   && reward_transition_valid(parent_state, block)
+  && reward_finality_state_valid(parent_state, block)
 ```
 
 Finality must depend on this predicate:
@@ -386,6 +418,7 @@ Any path that mutates `finalized_blocks` without this predicate is outside the v
 | TensorWork is still acceptable for proposer choice | v2 makes validator useful-PoW the proposer primitive. |
 | Empty blocks can use old fallback | v2 fallback has different reward and eligibility semantics. |
 | Fallback is useful-PoW | v2 fallback is a reduced-reward liveness path and must not claim useful work. |
+| Finalized block means settled rewards | Reward finality is delayed until direct recomputation or challenge-window settlement. |
 
 ## Release Gate For Moving Consensus Out Of Blocked Status
 

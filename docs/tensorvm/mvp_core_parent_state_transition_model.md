@@ -10,6 +10,9 @@ parent state and the resulting child state is deterministic.
 This document is a proof target. It does not mark the dirty v2-block candidate or current implementation
 sound.
 
+Reward finality and challenge-window state used by `reward_root` are specified in
+[`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
+
 ## Current Verdict
 
 The reviewed v2 finality theorem is still blocked at the parent-state transition layer.
@@ -183,7 +186,7 @@ Required restrictions:
 
 - No proposer reward is credited before block validity succeeds.
 - Miner and validator rewards that depend on verifier evidence wait for direct recomputation or challenge
-  finality.
+  finality and remain pending until the reward-finality model settles them.
 - Fallback blocks carry reduced proposer rewards and no miner TWU rewards for empty blockspace.
 - Failed block production or failed vote admission leaves rewards unchanged.
 
@@ -240,7 +243,8 @@ before mutating. Reward credit before block validation is a direct counterexampl
 1. Matching roots against current state proves validity against parent state.
 2. A block's beacon is valid because it is included in the block hash.
 3. `state_root` proves a transition if it is computed before applying the block.
-4. `reward_root` is safe if rewards are credited before block validation.
+4. `reward_root` is safe if rewards are credited before block validation or before challenge-window reward
+   finality.
 5. Vote admission can skip state-transition roots and still prove finality validity.
 6. Finalized hash membership is a certificate.
 7. A build-clean local implementation is enough without adversarial tests for wrong parent, wrong beacon,

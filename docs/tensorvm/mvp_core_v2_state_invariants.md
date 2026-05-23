@@ -49,6 +49,7 @@ required witness fields and vote admission does not require v2 validation.
 | Verification transcript | Every selected receipt has recomputable check leaves and block-level aggregate binding. | Missing. |
 | Useful-PoW block validity | Header, nonce, target, selected root, checks root, beacon, and proposer are validated together. | Missing. |
 | Proposer eligibility | Block proposer is a registered validator that won useful-verification PoW. | Contradicted by current reference path. |
+| Reward finality | Verifier-dependent rewards remain pending until challenge-window finality or direct recomputation. | Paper-specified, implementation-blocked. |
 | Finality safety | Votes and finalized-set mutation are allowed only after v2 block validation. | Missing. |
 | Fallback safety | Empty/timeout fallback has explicit validity and reward restrictions. | Paper-specified, implementation-blocked. |
 | Public evidence | DA and operator-independence claims are backed by external observations. | Evidence-bound. |
@@ -72,6 +73,7 @@ required witness fields and vote admission does not require v2 validation.
 | INV-013 | Finalized-set mutation implies prior parent-state v2 validation. | finalized block set and validation certificate. | A block enters finalized state only through valid v2 vote quorum or valid fallback path with a certificate for the exact parent state. | Current finality can certify a reference block. |
 | INV-014 | Fallback validity is explicit and reward-safe. | timeout/synchrony state, no-work evidence, validator rotation, reduced reward, no miner TWU reward, parent-state fallback certificate. | Fallback blocks preserve safety and cannot claim useful work. | Paper model exists in `mvp_core_fallback_liveness_model.md`; v2 fallback object is missing. |
 | INV-015 | Public DA claims are evidence-linked. | retention window, observers, signed measurements, operator identities. | Public claims require enough signed evidence for the window and operator threshold. | Local/remote fetch proves only verification-time retrieval. |
+| INV-016 | Reward finality is delayed and challenge-safe. | pending/challenged/invalidated/settled claim status, challenge windows, opening roots, maturity deadlines, spendable balances. | Block application creates pending claims; only direct recomputation or closed challenge windows settle them, and valid challenges claw back or invalidate dependent claims before spendability. | No v2 reward-finality state machine exists. |
 
 ## Preservation Theorems
 
@@ -92,6 +94,8 @@ apply_v2_block_roots_are_deterministic
 vote_admission_requires_validate_block_v2
 finalized_block_has_validity_certificate
 fallback_block_preserves_v2_safety
+reward_finality_waits_for_challenge_window
+valid_challenge_invalidates_only_dependent_claims
 public_da_claim_requires_external_evidence
 ```
 
@@ -109,6 +113,7 @@ traceable.
 | CEX-005 quorum is syntactic unless evidence is bound | INV-007, INV-008, INV-012 |
 | CEX-006 assignment uses current beacon, not receipt-lifecycle seed | INV-002 |
 | CEX-007 reference signatures are not production auth | INV-012 plus production signature assumption |
+| CEX-010 finalized block pays irreversible rewards before challenge finality | INV-011, INV-016 |
 
 If a counterexample still constructs after an implementation change, the related invariant is not
 discharged.

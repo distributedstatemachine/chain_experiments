@@ -15,6 +15,8 @@ The production-authentication boundary behind `CEX-007` is specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 The root/encoding boundary behind `CEX-004` and block-level `checks_root` failures is specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+The reward-finality boundary behind `CEX-010` is specified in
+[`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
 
 This is not a code change and not a mechanized proof. It is a negative proof ledger for the formal manifest.
 
@@ -328,6 +330,37 @@ Define a `CheckLeaf` and `VerifierTranscript` schema, bind attestation signature
 direct recomputation or challenge openings as specified in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
+### CEX-010: Finalized Blocks Can Pay Rewards Before Challenge Finality
+
+Witness construction for an insufficient future repair:
+
+```text
+Build a v2-shaped block B with selected receipt r and checks_root h.
+Finalize B with enough validator votes.
+Immediately credit spendable proposer, miner, or validator rewards from h.
+Later, within the intended verification challenge window, a challenger opens h and proves the check leaf for
+r was false or unavailable.
+```
+
+Accepted by the insufficient repair:
+
+- B can be finalized as an ordering object.
+- `reward_root` can include balances derived from B.
+- A later challenge can identify a bad `checks_root` leaf.
+
+Why this disproves the reward-soundness theorem:
+
+If verifier-dependent rewards are already spendable, the later challenge cannot deterministically claw back
+the exact affected claims without adding more state and assumptions. Block finality proves ordering only; it
+does not prove reward finality for evidence that is still challengeable.
+
+Repair gate:
+
+Represent verifier-dependent rewards as pending claims until direct recomputation or challenge-window
+settlement. Add challenge admission, deterministic resolution, claim invalidation, clawback/nonpayment, and
+single-use settlement as specified in
+[`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
+
 ## Manifest Corrections Required
 
 The formal manifest should interpret current claims this way:
@@ -343,6 +376,7 @@ The formal manifest should interpret current claims this way:
 | Signatures | Reference signing tests message-flow shape. | Reference signing proves production authentication. |
 | Useful-PoW work | A valid nonce can prove hash-target success over a validated header. | A valid nonce proves useful-work dominance or proposer-local verification. |
 | Verifier evidence | An aggregate checks root can commit signed check claims. | An aggregate checks root proves those claims came from real verifier execution. |
+| Reward finality | Finalized blocks may create pending verifier-dependent reward claims. | Block finality makes verifier-dependent rewards irreversible. |
 
 ## Proof Upgrade Order
 
@@ -357,6 +391,7 @@ The minimum proof repair order is:
 7. Replace reference signatures with a production signature scheme before making authentication claims.
 8. Discharge the useful-PoW work model before claiming useful-work dominance.
 9. Discharge the verifier evidence model before claiming semantic verifier execution.
+10. Discharge the reward-finality model before making verifier-dependent rewards spendable.
 
 ## Current Judgment
 
