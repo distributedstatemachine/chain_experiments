@@ -145,6 +145,8 @@ spaghetti around.
   allowing peer-book codec constants and helper readers/writers to become module-private.
 - Iteration 56 moved libp2p node construction tests into `p2p/node.rs`, keeping those transport and
   bootstrap assertions with the node builder.
+- Iteration 57 moved the raw two-swarm gossip/request-response integration test and its async wait
+  helpers into `p2p/node.rs`, leaving `p2p.rs` focused on service-level integration tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
