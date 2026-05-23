@@ -155,6 +155,8 @@ spaghetti around.
   `storage/block_log.rs`, leaving `storage.rs` to orchestrate node-store recovery and chain-state codecs.
 - Iteration 61 extracted chain-state persistence, full-chain codecs, and chain-state decoder tests into
   `storage/chain_state.rs`, leaving `storage.rs` focused on `NodeStore` orchestration.
+- Iteration 62 extracted `NodeStore` orchestration, recovery/status checks, and node-store tests into
+  `storage/node_store.rs`, making `storage.rs` a public facade over the storage submodules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
