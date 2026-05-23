@@ -56,6 +56,8 @@ spaghetti around.
   rewritten when no consensus data changed.
 - Iteration 11 moved faucet reward credits behind `ChainCommand::CreditReward`. The faucet now owns only
   drip eligibility and faucet balance, while the RPC claim path asks the chain engine to mutate reward state.
+- Iteration 12 made `apply_transaction` return the `ChainEvent`s produced by its delegated `ChainCommand`,
+  so public transaction writes no longer silently discard the typed mutation effects.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -205,9 +207,9 @@ Remaining examples:
 
 - runtime test setup and lower-level model tests still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
-- `apply_transaction` now routes non-reference writes through `ChainCommand` and rejects txpool-only
-  reference submissions, but the public transaction surface still mixes immediate mutations with queued
-  reference announcements.
+- `apply_transaction` now routes non-reference writes through `ChainCommand`, returns command events, and
+  rejects txpool-only reference submissions, but the public transaction surface still mixes immediate
+  mutations with queued reference announcements.
 
 This violates single responsibility and interface segregation: callers must know which mutation path emits
 events, which one finalizes, and which one silently mutates.

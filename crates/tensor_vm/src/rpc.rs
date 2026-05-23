@@ -466,7 +466,7 @@ impl RpcNode {
             .chain
             .apply_transaction(envelope.sender, envelope.transaction.clone())
         {
-            Ok(()) => {
+            Ok(_) => {
                 self.txpool.submit_envelope(&envelope);
                 self.accepted()
             }
