@@ -149,6 +149,8 @@ spaghetti around.
   helpers into `p2p/node.rs`, leaving `p2p.rs` focused on service-level integration tests.
 - Iteration 58 moved the remaining libp2p service integration tests and polling helpers into
   `p2p/service.rs`, leaving `p2p.rs` as the public p2p configuration and re-export facade.
+- Iteration 59 extracted snapshot encoding, decoding, persistence, and snapshot-specific tests into
+  `storage/snapshot.rs`, starting the documented storage module split behind unchanged public exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -13,13 +13,14 @@ use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-const SNAPSHOT_MAGIC: &[u8] = b"TENSORVM_SNAPSHOT\n";
+mod snapshot;
+
+pub use snapshot::{ChainSnapshot, SnapshotStore};
+
 const BLOCK_LOG_MAGIC: &[u8] = b"TENSORVM_BLOCK_LOG\n";
 const CHAIN_STATE_MAGIC: &[u8] = b"TENSORVM_STATE\n";
 const HASH_LEN: usize = 32;
 const U64_LEN: usize = 8;
-const SNAPSHOT_PAYLOAD_LEN: usize = U64_LEN + U64_LEN + HASH_LEN + U64_LEN + HASH_LEN + HASH_LEN;
-const SNAPSHOT_DIGEST_LEN: usize = HASH_LEN;
 const BLOCK_PAYLOAD_LEN: usize = codec::TENSOR_BLOCK_PAYLOAD_LEN;
 const BLOCK_DIGEST_LEN: usize = HASH_LEN;
 const CHAIN_STATE_DIGEST_LEN: usize = HASH_LEN;
@@ -27,131 +28,6 @@ const SNAPSHOT_FILE_NAME: &str = "chain.snapshot";
 const BLOCK_LOG_FILE_NAME: &str = "blocks.log";
 const CHAIN_STATE_FILE_NAME: &str = "chain.state";
 const PEER_BOOK_FILE_NAME: &str = "peers.book";
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ChainSnapshot {
-    pub height: u64,
-    pub epoch: u64,
-    pub finalized_randomness: Hash,
-    pub block_count: u64,
-    pub state_root: Hash,
-    pub latest_block_hash: Hash,
-}
-
-impl ChainSnapshot {
-    pub fn from_chain(chain: &Chain) -> Self {
-        Self {
-            height: chain.state().height(),
-            epoch: chain.state().epoch(),
-            finalized_randomness: chain.state().finalized_randomness(),
-            block_count: chain.blocks().len() as u64,
-            state_root: chain.state_root(),
-            latest_block_hash: chain
-                .blocks()
-                .last()
-                .map(TensorBlock::hash)
-                .unwrap_or([0; 32]),
-        }
-    }
-
-    pub fn digest(&self) -> Hash {
-        hash_bytes(b"tensor-vm-snapshot-v1", &[&self.encode_payload()])
-    }
-
-    pub fn encode(&self) -> Vec<u8> {
-        let payload = self.encode_payload();
-        let digest = hash_bytes(b"tensor-vm-snapshot-v1", &[&payload]);
-        let mut encoded =
-            Vec::with_capacity(SNAPSHOT_MAGIC.len() + SNAPSHOT_PAYLOAD_LEN + SNAPSHOT_DIGEST_LEN);
-        encoded.extend_from_slice(SNAPSHOT_MAGIC);
-        encoded.extend_from_slice(&payload);
-        encoded.extend_from_slice(&digest);
-        encoded
-    }
-
-    pub fn decode(bytes: &[u8]) -> Result<Self> {
-        if !bytes.starts_with(SNAPSHOT_MAGIC) {
-            return Err(TvmError::Storage("invalid snapshot magic"));
-        }
-
-        let expected_len = SNAPSHOT_MAGIC.len() + SNAPSHOT_PAYLOAD_LEN + SNAPSHOT_DIGEST_LEN;
-        if bytes.len() != expected_len {
-            return Err(TvmError::Storage("invalid snapshot length"));
-        }
-
-        let payload_start = SNAPSHOT_MAGIC.len();
-        let payload_end = payload_start + SNAPSHOT_PAYLOAD_LEN;
-        let payload = &bytes[payload_start..payload_end];
-        let expected_digest = hash_bytes(b"tensor-vm-snapshot-v1", &[payload]);
-        if bytes[payload_end..] != expected_digest {
-            return Err(TvmError::Storage("snapshot checksum mismatch"));
-        }
-
-        let mut offset = 0;
-        Ok(Self {
-            height: read_u64(payload, &mut offset)?,
-            epoch: read_u64(payload, &mut offset)?,
-            finalized_randomness: read_hash(payload, &mut offset)?,
-            block_count: read_u64(payload, &mut offset)?,
-            state_root: read_hash(payload, &mut offset)?,
-            latest_block_hash: read_hash(payload, &mut offset)?,
-        })
-    }
-
-    fn encode_payload(&self) -> Vec<u8> {
-        let mut payload = Vec::with_capacity(SNAPSHOT_PAYLOAD_LEN);
-        payload.extend_from_slice(&self.height.to_le_bytes());
-        payload.extend_from_slice(&self.epoch.to_le_bytes());
-        payload.extend_from_slice(&self.finalized_randomness);
-        payload.extend_from_slice(&self.block_count.to_le_bytes());
-        payload.extend_from_slice(&self.state_root);
-        payload.extend_from_slice(&self.latest_block_hash);
-        payload
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SnapshotStore {
-    path: PathBuf,
-}
-
-impl SnapshotStore {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into() }
-    }
-
-    pub fn path(&self) -> &std::path::Path {
-        &self.path
-    }
-
-    pub fn save(&self, snapshot: &ChainSnapshot) -> Result<()> {
-        if let Some(parent) = self.path.parent()
-            && !parent.as_os_str().is_empty()
-        {
-            fs::create_dir_all(parent)
-                .map_err(|_| TvmError::Storage("failed to create snapshot directory"))?;
-        }
-
-        let temp_path = self.path.with_extension("tmp");
-        fs::write(&temp_path, snapshot.encode())
-            .map_err(|_| TvmError::Storage("failed to write snapshot"))?;
-        fs::rename(&temp_path, &self.path)
-            .map_err(|_| TvmError::Storage("failed to commit snapshot"))?;
-        Ok(())
-    }
-
-    pub fn load(&self) -> Result<ChainSnapshot> {
-        let bytes =
-            fs::read(&self.path).map_err(|_| TvmError::Storage("failed to read snapshot"))?;
-        ChainSnapshot::decode(&bytes)
-    }
-
-    pub fn save_chain(&self, chain: &Chain) -> Result<ChainSnapshot> {
-        let snapshot = ChainSnapshot::from_chain(chain);
-        self.save(&snapshot)?;
-        Ok(snapshot)
-    }
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlockLogStore {
@@ -970,26 +846,6 @@ fn decode_block_payload(bytes: &[u8]) -> Result<TensorBlock> {
         .ok_or(TvmError::Storage("invalid block payload length"))
 }
 
-fn read_u64(bytes: &[u8], offset: &mut usize) -> Result<u64> {
-    if bytes.len().saturating_sub(*offset) < U64_LEN {
-        return Err(TvmError::Storage("truncated snapshot u64"));
-    }
-    let mut out = [0_u8; U64_LEN];
-    out.copy_from_slice(&bytes[*offset..*offset + U64_LEN]);
-    *offset += U64_LEN;
-    Ok(u64::from_le_bytes(out))
-}
-
-fn read_hash(bytes: &[u8], offset: &mut usize) -> Result<Hash> {
-    if bytes.len().saturating_sub(*offset) < HASH_LEN {
-        return Err(TvmError::Storage("truncated snapshot hash"));
-    }
-    let mut out = [0_u8; HASH_LEN];
-    out.copy_from_slice(&bytes[*offset..*offset + HASH_LEN]);
-    *offset += HASH_LEN;
-    Ok(out)
-}
-
 fn write_u64(out: &mut Vec<u8>, value: u64) {
     out.extend_from_slice(&value.to_le_bytes());
 }
@@ -1230,90 +1086,6 @@ mod tests {
             .unwrap();
         chain.produce_block(validator, 1_006).unwrap();
         chain
-    }
-
-    #[test]
-    fn snapshot_roundtrips_through_bytes_and_detects_tampering() {
-        let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-genesis"]));
-        let miner = address(b"snapshot-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.credit_account(miner, 42);
-        chain.produce_block(miner, 1_000).unwrap();
-
-        let snapshot = ChainSnapshot::from_chain(&chain);
-        let encoded = snapshot.encode();
-        assert_eq!(ChainSnapshot::decode(&encoded).unwrap(), snapshot);
-        assert_eq!(
-            snapshot.digest(),
-            hash_bytes(b"tensor-vm-snapshot-v1", &[&snapshot.encode_payload()])
-        );
-
-        let mut tampered = encoded;
-        tampered[SNAPSHOT_MAGIC.len() + 10] ^= 1;
-        assert_eq!(
-            ChainSnapshot::decode(&tampered),
-            Err(TvmError::Storage("snapshot checksum mismatch"))
-        );
-    }
-
-    #[test]
-    fn snapshot_decoder_rejects_bad_magic_length_and_truncated_fields() {
-        assert_eq!(
-            ChainSnapshot::decode(b"bad"),
-            Err(TvmError::Storage("invalid snapshot magic"))
-        );
-
-        let mut short = Vec::from(SNAPSHOT_MAGIC);
-        short.extend_from_slice(&0_u64.to_le_bytes());
-        assert_eq!(
-            ChainSnapshot::decode(&short),
-            Err(TvmError::Storage("invalid snapshot length"))
-        );
-
-        assert_eq!(
-            decode_block_payload(&[0; 4]),
-            Err(TvmError::Storage("invalid block payload length"))
-        );
-        assert_eq!(
-            read_u64(&[1, 2], &mut 0),
-            Err(TvmError::Storage("truncated snapshot u64"))
-        );
-        assert_eq!(
-            read_hash(&[1, 2], &mut 0),
-            Err(TvmError::Storage("truncated snapshot hash"))
-        );
-    }
-
-    #[test]
-    fn snapshot_store_writes_and_reads_file() {
-        let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-store-genesis"]));
-        let miner = address(b"snapshot-store-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 2_000).unwrap();
-
-        let path = std::env::temp_dir().join(format!(
-            "tensor-vm-snapshot-{}-{}.bin",
-            std::process::id(),
-            chain.state().height()
-        ));
-        let store = SnapshotStore::new(path.clone());
-        let saved = store.save_chain(&chain).unwrap();
-        let loaded = store.load().unwrap();
-
-        assert_eq!(store.path(), path.as_path());
-        assert_eq!(loaded, saved);
-
-        let _ = std::fs::remove_file(path);
     }
 
     #[test]
@@ -1828,6 +1600,10 @@ mod tests {
         assert_eq!(
             decode_block_log(&truncated),
             Err(TvmError::Storage("invalid block log length"))
+        );
+        assert_eq!(
+            decode_block_payload(&[0; 4]),
+            Err(TvmError::Storage("invalid block payload length"))
         );
 
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-parent"]));
