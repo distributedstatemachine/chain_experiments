@@ -209,6 +209,8 @@ spaghetti around.
   parsing tests into `main_tests/runtime_roles.rs`.
 - Iteration 88 moved binary service command tests for public manifests and service-store recovery into
   `main_tests/service_commands.rs`.
+- Iteration 89 moved runtime network-ingest and loop-counter state tests into
+  `main_tests/runtime_state.rs`, leaving `main_tests.rs` as module wiring plus shared helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
