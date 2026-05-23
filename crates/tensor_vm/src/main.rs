@@ -6,10 +6,10 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    BlockVote, Chain, ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
-    Libp2pControlPlaneConfig, NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole,
-    NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads, PrimitiveType, ReceiptState,
-    RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, SyntheticLocalJobSource, Tensor,
+    BlockVote, Chain, ChainCommand, ChainEngine, ChainProfile, ChainSnapshot, CliCommand, Faucet,
+    JobScheduler, Libp2pControlPlaneConfig, NetworkConfig, NetworkEventIngest, NodeConfig,
+    NodeRole, NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads, PrimitiveType,
+    ReceiptState, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, SyntheticLocalJobSource, Tensor,
     TensorVmLibp2pService,
     api::P2pMessage,
     cli::{
@@ -1490,17 +1490,24 @@ impl RoleRuntimeLoop {
     }
 
     fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
+        let chain_snapshot_before = ChainSnapshot::from_chain(&self.server.gateway().node.chain);
         match self.server.serve_next() {
-            Ok(()) => self.record_served_request(),
+            Ok(()) => {
+                let chain_changed = ChainSnapshot::from_chain(&self.server.gateway().node.chain)
+                    != chain_snapshot_before;
+                self.record_served_request(chain_changed)
+            }
             Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(()),
             Err(error) => Err(format!("service request failed: {error}")),
         }
     }
 
-    fn record_served_request(&mut self) -> std::result::Result<(), String> {
-        self.store
-            .persist_chain(&self.server.gateway().node.chain)
-            .map_err(|error| format!("failed to persist service state: {error}"))?;
+    fn record_served_request(&mut self, chain_changed: bool) -> std::result::Result<(), String> {
+        if chain_changed {
+            self.store
+                .persist_chain(&self.server.gateway().node.chain)
+                .map_err(|error| format!("failed to persist service state: {error}"))?;
+        }
         self.runtime_state.record_served_request();
         self.write_status()
     }
@@ -2360,6 +2367,82 @@ mod tests {
         assert!(report.contains("block_count=2"));
         assert_eq!(store.load_chain().unwrap(), chain);
 
+        std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+    }
+
+    #[test]
+    fn role_runtime_read_only_rpc_does_not_persist_chain() {
+        let data_dir = unique_temp_data_dir("role-runtime-read-only-rpc");
+        let _ = std::fs::remove_dir_all(&data_dir);
+        let config = test_service_runtime_config(&data_dir, "secret");
+        let chain = config
+            .node
+            .build_chain(hash_bytes(b"test", &[b"read-only-rpc-no-persist"]));
+        let store = NodeStore::open(data_dir.clone());
+        store.persist_chain(&chain).unwrap();
+        let snapshot_modified = file_modified_at(store.snapshot_store().path());
+        let chain_state_modified = file_modified_at(store.chain_state_store().path());
+        thread::sleep(Duration::from_millis(1_100));
+
+        let mut runtime = RoleRuntimeLoop::start(config).unwrap();
+        let addr = runtime.server.local_addr().unwrap();
+        let client = thread::spawn(move || {
+            send_http_request(
+                addr,
+                "GET /chain/head HTTP/1.1\r\nhost: localhost\r\nx-tensorchain-auth: secret\r\n\r\n",
+            )
+        });
+
+        runtime.serve_rpc_once().unwrap();
+        let response = client.join().unwrap();
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert_eq!(
+            file_modified_at(store.snapshot_store().path()),
+            snapshot_modified
+        );
+        assert_eq!(
+            file_modified_at(store.chain_state_store().path()),
+            chain_state_modified
+        );
+        assert_eq!(store.load_chain().unwrap(), chain);
+        let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
+        assert!(status.contains("role_served_requests=1"));
+
+        drop(runtime);
+        std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+    }
+
+    #[test]
+    fn role_runtime_mutating_rpc_persists_chain() {
+        let data_dir = unique_temp_data_dir("role-runtime-mutating-rpc");
+        let _ = std::fs::remove_dir_all(&data_dir);
+        let config = test_service_runtime_config(&data_dir, "secret");
+        let chain = config
+            .node
+            .build_chain(hash_bytes(b"test", &[b"mutating-rpc-persist"]));
+        let store = NodeStore::open(data_dir.clone());
+        store.persist_chain(&chain).unwrap();
+        let user = address(b"runtime-faucet-persist-user");
+
+        let mut runtime = RoleRuntimeLoop::start(config).unwrap();
+        let addr = runtime.server.local_addr().unwrap();
+        let request = format!(
+            "POST /faucet/claim/{} HTTP/1.1\r\nhost: localhost\r\nx-tensorchain-auth: secret\r\ncontent-length: 0\r\n\r\n",
+            hex(&user)
+        );
+        let client = thread::spawn(move || send_http_request(addr, &request));
+
+        runtime.serve_rpc_once().unwrap();
+        let response = client.join().unwrap();
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        let persisted = store.load_chain().unwrap();
+        assert_eq!(persisted.state().rewards.balance(&user), 100);
+        let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
+        assert!(status.contains("role_served_requests=1"));
+
+        drop(runtime);
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
     }
 
@@ -3250,6 +3333,49 @@ mod tests {
         for tensor in bundle.served_tensors() {
             node.insert_tensor(tensor);
         }
+    }
+
+    fn unique_temp_data_dir(name: &str) -> std::path::PathBuf {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("tensor-vm-{name}-{}-{now}", std::process::id()))
+    }
+
+    fn test_service_runtime_config(data_dir: &Path, auth_token: &str) -> ServiceRuntimeConfig {
+        let data_dir_text = data_dir.to_string_lossy().into_owned();
+        ServiceRuntimeConfig {
+            runtime_command: "service_serve",
+            role: RuntimeRole::Service,
+            role_wallet_address: None,
+            node: runtime_node_config(
+                &data_dir_text,
+                RuntimeRole::Service,
+                "127.0.0.1:0",
+                "/ip4/127.0.0.1/tcp/0",
+                Some(hash_bytes(b"test", &[data_dir_text.as_bytes()])),
+                auth_token,
+                0,
+            )
+            .unwrap(),
+        }
+    }
+
+    fn file_modified_at(path: &Path) -> std::time::SystemTime {
+        std::fs::metadata(path).unwrap().modified().unwrap()
+    }
+
+    fn send_http_request(addr: std::net::SocketAddr, request: &str) -> String {
+        use std::io::{Read, Write};
+        use std::net::{Shutdown, TcpStream};
+
+        let mut client = TcpStream::connect(addr).unwrap();
+        client.write_all(request.as_bytes()).unwrap();
+        client.shutdown(Shutdown::Write).unwrap();
+        let mut response = String::new();
+        client.read_to_string(&mut response).unwrap();
+        response
     }
 
     fn free_tcp_port() -> u16 {

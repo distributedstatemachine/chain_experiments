@@ -38,6 +38,9 @@ spaghetti around.
 - Iteration 4 removed the silent `apply_transaction` success path for receipt and attestation reference
   submissions. Those transaction variants are now explicitly txpool-only via `Transaction::is_reference_submission`,
   and direct chain application returns an error instead of pretending to mutate state.
+- Iteration 5 stopped runtime RPC serving from persisting chain state after read-only requests. The service
+  loop now compares chain snapshots around a served RPC request, persists only when the chain changed, and
+  still updates served-request runtime status for read-only traffic.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -617,7 +620,7 @@ Fix:
 5. Introduce typed status snapshots and JSON outputs.
 6. Move local CPU checker policy into Rust.
 7. Replace hand-rolled CLI parsing with `clap`.
-8. Stop persisting chain state on read-only RPC requests.
+8. Stop persisting chain state on read-only RPC requests. Completed in Iteration 5.
 9. Split `main.rs`, `cli.rs`, `p2p.rs`, `rpc.rs`, and `storage.rs` by ownership.
 10. Replace stringly errors with typed domain errors.
 11. Move large inline tests into focused module or integration test files.
