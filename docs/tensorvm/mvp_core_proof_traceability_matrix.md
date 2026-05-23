@@ -9,6 +9,8 @@ itself and it does not upgrade any blocked theorem.
 Assumption categories and discharge gates are tracked in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md). A traceability row can
 move to a stronger status only when its assumption-discharge category has been satisfied.
+The adversary model used to interpret those assumptions is stated in
+[`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
 
 ## Status Key
 

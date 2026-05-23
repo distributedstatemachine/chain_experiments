@@ -18,6 +18,8 @@ Related boundary documents:
 - [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md) classifies proof
   assumptions by whether they are permanent, mechanizable, implementation-dischargeable, evidence-bound, or
   wording guardrails.
+- [`mvp_core_adversary_model.md`](mvp_core_adversary_model.md) states the adversary capabilities and proof
+  worlds that current claims are measured against.
 - [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md) maps the sound-kernel
   theorem set to future Lean/TorchLean modules, assumptions, and proof dependencies.
 - [`mvp_core_v2_consensus_proof_obligations.md`](mvp_core_v2_consensus_proof_obligations.md) defines the

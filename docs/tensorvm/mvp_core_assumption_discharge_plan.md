@@ -7,6 +7,9 @@ prove the full MVP core sound. It says which assumptions are permanent model ass
 mechanized, which require implementation changes, and which require external public evidence before claims
 can be upgraded.
 
+The adversary model for these assumptions is defined in
+[`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
+
 ## Discharge Categories
 
 | Category | Meaning | What Discharges It | What Does Not Discharge It |
