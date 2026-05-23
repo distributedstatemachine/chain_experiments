@@ -141,6 +141,8 @@ spaghetti around.
   background worker loop into `p2p/service.rs`, leaving node construction and service tests in the facade.
 - Iteration 54 moved libp2p node construction, transport setup, listen binding, and bootstrap dialing
   into `p2p/node.rs`, leaving the parent module as the public configuration facade plus p2p tests.
+- Iteration 55 moved peer-book persistence and malformed-decoder tests into `p2p/peer_book.rs`,
+  allowing peer-book codec constants and helper readers/writers to become module-private.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -5,7 +5,7 @@ use libp2p::{Multiaddr, PeerId};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub(super) const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
+const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -152,7 +152,7 @@ fn encode_peer_records(records: &[PeerRecord]) -> Vec<u8> {
     encoded
 }
 
-pub(super) fn decode_peer_records(bytes: &[u8]) -> TvmResult<Vec<PeerRecord>> {
+fn decode_peer_records(bytes: &[u8]) -> TvmResult<Vec<PeerRecord>> {
     if !bytes.starts_with(PEER_BOOK_MAGIC) {
         return Err(TvmError::Storage("invalid peer book magic"));
     }
@@ -185,7 +185,7 @@ pub(super) fn decode_peer_records(bytes: &[u8]) -> TvmResult<Vec<PeerRecord>> {
     Ok(records)
 }
 
-pub(super) fn read_peer_u64(bytes: &[u8], offset: &mut usize) -> TvmResult<u64> {
+fn read_peer_u64(bytes: &[u8], offset: &mut usize) -> TvmResult<u64> {
     if bytes.len().saturating_sub(*offset) < 8 {
         return Err(TvmError::Storage("truncated peer book u64"));
     }
@@ -211,7 +211,188 @@ fn write_u64(out: &mut Vec<u8>, value: u64) {
     out.extend_from_slice(&value.to_le_bytes());
 }
 
-pub(super) fn write_string(out: &mut Vec<u8>, value: &str) {
+fn write_string(out: &mut Vec<u8>, value: &str) {
     write_u64(out, value.len() as u64);
     out.extend_from_slice(value.as_bytes());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn peer_book_store_persists_libp2p_bootstrap_records_and_detects_tampering() {
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        let address_a: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        let address_b: Multiaddr = "/dns/bootstrap.tensorvm.example/tcp/4001".parse().unwrap();
+        let records = vec![
+            PeerRecord::new(peer_a, address_a.clone()),
+            PeerRecord::new(peer_b, address_b.clone()),
+        ];
+        let path = std::env::temp_dir().join(format!(
+            "tensor-vm-libp2p-peer-book-{}-{}.bin",
+            std::process::id(),
+            records.len()
+        ));
+        let store = PeerBookStore::new(path.clone());
+        store.save_records(&records).unwrap();
+        assert_eq!(store.path(), path.as_path());
+
+        let loaded = store.load_records().unwrap();
+        assert_eq!(loaded, records);
+        assert_eq!(
+            store.load_bootstrap_addresses().unwrap(),
+            vec![
+                format!("{address_a}/p2p/{peer_a}"),
+                format!("{address_b}/p2p/{peer_b}")
+            ]
+        );
+        assert_eq!(loaded[0].peer_id().unwrap(), peer_a);
+        assert_eq!(loaded[1].multiaddr().unwrap(), address_b);
+
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[PEER_BOOK_MAGIC.len() + 4] ^= 1;
+        std::fs::write(&path, bytes).unwrap();
+        assert_eq!(
+            store.load_records(),
+            Err(TvmError::Storage("peer book checksum mismatch"))
+        );
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn peer_book_store_upserts_bootstrap_records_with_peer_ids() {
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        let address_a: Multiaddr = "/ip4/127.0.0.1/tcp/4001".parse().unwrap();
+        let address_a_updated: Multiaddr = "/ip4/127.0.0.1/tcp/4002".parse().unwrap();
+        let address_b = format!("/ip4/127.0.0.1/tcp/4003/p2p/{peer_b}");
+        let path = std::env::temp_dir().join(format!(
+            "tensor-vm-libp2p-peer-book-upsert-{}-{}.bin",
+            std::process::id(),
+            peer_a
+        ));
+        let store = PeerBookStore::new(path.clone());
+
+        let records = store
+            .upsert_record(PeerRecord::new(peer_a, address_a))
+            .unwrap();
+        assert_eq!(records.len(), 1);
+        let records = store
+            .upsert_record(PeerRecord::from_strings(&peer_b.to_string(), &address_b).unwrap())
+            .unwrap();
+        assert_eq!(records.len(), 2);
+        let records = store
+            .upsert_record(PeerRecord::new(peer_a, address_a_updated.clone()))
+            .unwrap();
+        assert_eq!(records.len(), 2);
+
+        assert_eq!(
+            store.load_bootstrap_addresses().unwrap(),
+            vec![
+                format!("{address_a_updated}/p2p/{peer_a}"),
+                address_b.clone()
+            ]
+        );
+
+        let mismatched_peer = PeerId::random();
+        let mismatch = PeerRecord::from_strings(
+            &mismatched_peer.to_string(),
+            &format!("/ip4/127.0.0.1/tcp/4004/p2p/{peer_a}"),
+        );
+        assert_eq!(
+            mismatch,
+            Err(TvmError::Storage("peer book address peer id mismatch"))
+        );
+        let missing_tcp = PeerRecord::from_strings(&peer_a.to_string(), &format!("/p2p/{peer_a}"));
+        assert_eq!(
+            missing_tcp,
+            Err(TvmError::Storage("peer book address missing tcp port"))
+        );
+        let zero_tcp = PeerRecord::from_strings(&peer_a.to_string(), "/ip4/127.0.0.1/tcp/0");
+        assert_eq!(
+            zero_tcp,
+            Err(TvmError::Storage("peer book address missing tcp port"))
+        );
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn peer_book_decode_rejects_malformed_records() {
+        assert_eq!(
+            decode_peer_records(b"bad-peer-book"),
+            Err(TvmError::Storage("invalid peer book magic"))
+        );
+
+        let mut short = Vec::from(PEER_BOOK_MAGIC);
+        short.extend_from_slice(&0_u64.to_le_bytes());
+        assert_eq!(
+            decode_peer_records(&short),
+            Err(TvmError::Storage("invalid peer book length"))
+        );
+
+        let mut trailing_payload = Vec::new();
+        write_u64(&mut trailing_payload, 0);
+        trailing_payload.push(1);
+        let trailing_digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&trailing_payload]);
+        let mut trailing = Vec::from(PEER_BOOK_MAGIC);
+        trailing.extend_from_slice(&trailing_payload);
+        trailing.extend_from_slice(&trailing_digest);
+        assert_eq!(
+            decode_peer_records(&trailing),
+            Err(TvmError::Storage("trailing peer book bytes"))
+        );
+
+        let mut bad_record_payload = Vec::new();
+        write_u64(&mut bad_record_payload, 1);
+        write_string(&mut bad_record_payload, "not-a-peer-id");
+        write_string(&mut bad_record_payload, "/ip4/127.0.0.1/tcp/4001");
+        let bad_record_digest =
+            hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&bad_record_payload]);
+        let mut bad_record = Vec::from(PEER_BOOK_MAGIC);
+        bad_record.extend_from_slice(&bad_record_payload);
+        bad_record.extend_from_slice(&bad_record_digest);
+        assert_eq!(
+            decode_peer_records(&bad_record),
+            Err(TvmError::Storage("invalid peer id"))
+        );
+
+        let mut truncated_string_payload = Vec::new();
+        write_u64(&mut truncated_string_payload, 1);
+        write_u64(&mut truncated_string_payload, 10);
+        truncated_string_payload.extend_from_slice(b"short");
+        let truncated_string_digest = hash_bytes(
+            b"tensor-vm-libp2p-peer-book-v1",
+            &[&truncated_string_payload],
+        );
+        let mut truncated_string = Vec::from(PEER_BOOK_MAGIC);
+        truncated_string.extend_from_slice(&truncated_string_payload);
+        truncated_string.extend_from_slice(&truncated_string_digest);
+        assert_eq!(
+            decode_peer_records(&truncated_string),
+            Err(TvmError::Storage("truncated peer book string"))
+        );
+
+        let peer = PeerId::random();
+        let mut bad_addr_payload = Vec::new();
+        write_u64(&mut bad_addr_payload, 1);
+        write_string(&mut bad_addr_payload, &peer.to_string());
+        write_string(&mut bad_addr_payload, "not-a-multiaddr");
+        let bad_addr_digest = hash_bytes(b"tensor-vm-libp2p-peer-book-v1", &[&bad_addr_payload]);
+        let mut bad_addr = Vec::from(PEER_BOOK_MAGIC);
+        bad_addr.extend_from_slice(&bad_addr_payload);
+        bad_addr.extend_from_slice(&bad_addr_digest);
+        assert_eq!(
+            decode_peer_records(&bad_addr),
+            Err(TvmError::InvalidReceipt("invalid libp2p multiaddr"))
+        );
+
+        assert_eq!(
+            read_peer_u64(&[1, 2], &mut 0),
+            Err(TvmError::Storage("truncated peer book u64"))
+        );
+    }
 }
