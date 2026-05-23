@@ -72,6 +72,8 @@ spaghetti around.
   settlement ownership inside `chain/*` instead of scattered storage/RPC/watcher tests.
 - Iteration 19 moved malformed/orphan receipt fixture inserts in telemetry and watcher tests behind a
   crate-test-only `Chain` helper, making those consensus bypasses explicit test setup.
+- Iteration 20 moved the storage durability fixture's data-unavailable marker and treasury setup behind
+  crate-test-only `Chain` helpers instead of reaching into state internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -271,8 +271,19 @@ impl Chain {
     }
 
     #[cfg(test)]
+    pub(crate) fn mark_receipt_data_unavailable_for_testing(&mut self, receipt_id: Hash) {
+        self.state.data_unavailable_receipts.insert(receipt_id);
+    }
+
+    #[cfg(test)]
     pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
         self.state.receipts.insert(receipt.receipt_id(), receipt);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_reward_treasury_for_testing(&mut self, treasury: u64) {
+        self.state.rewards =
+            RewardState::from_parts(self.state.rewards.balances().clone(), treasury);
     }
 }
 

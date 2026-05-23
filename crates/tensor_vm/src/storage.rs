@@ -1470,17 +1470,14 @@ mod tests {
         chain.submit_job(JobState::LinearTrainingStep(linear));
         chain.submit_linear_receipt(linear_receipt.clone()).unwrap();
         chain.mark_receipt_settled_for_testing(receipt.receipt_id);
-        chain
-            .state
-            .data_unavailable_receipts
-            .insert(linear_receipt.receipt_id);
+        chain.mark_receipt_data_unavailable_for_testing(linear_receipt.receipt_id);
         chain
             .apply_command(ChainCommand::CreditReward {
                 address: miner,
                 amount: 77,
             })
             .unwrap();
-        chain.state.rewards = RewardState::from_parts(chain.state.rewards.balances().clone(), 11);
+        chain.set_reward_treasury_for_testing(11);
 
         let block = chain.produce_block(validator, 1_000).unwrap();
         chain
