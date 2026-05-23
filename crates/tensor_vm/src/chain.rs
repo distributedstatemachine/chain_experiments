@@ -42,6 +42,18 @@ impl Chain {
         genesis::with_params(params, finalized_randomness)
     }
 
+    pub fn params(&self) -> &ChainParams {
+        &self.params
+    }
+
+    pub fn state(&self) -> &ChainState {
+        &self.state
+    }
+
+    pub fn blocks(&self) -> &[TensorBlock] {
+        &self.blocks
+    }
+
     pub fn register_miner(&mut self, address: Address, stake: u64) -> Result<()> {
         operators::register_miner(self, address, stake)
     }

@@ -435,9 +435,9 @@ pub struct ChainState {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Chain {
-    pub params: ChainParams,
-    pub state: ChainState,
-    pub blocks: Vec<TensorBlock>,
+    pub(crate) params: ChainParams,
+    pub(crate) state: ChainState,
+    pub(crate) blocks: Vec<TensorBlock>,
 }
 
 fn reward_share(total_emission: u64, basis_points: u64) -> u64 {

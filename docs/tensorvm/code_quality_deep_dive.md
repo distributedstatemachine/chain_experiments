@@ -29,6 +29,9 @@ spaghetti around.
 - Iteration 1 completed the core abstraction rename: the protocol state machine is now `Chain`, with no
   `LocalChain` compatibility alias in the Rust source or public exports. The remaining findings below refer
   to `Chain` as the current type, while the rationale section preserves why the old name was removed.
+- Iteration 2 started the encapsulation work by making `Chain`'s top-level `params`, `state`, and `blocks`
+  fields crate-private and adding inherent read-only accessors. Internal modules can still mutate
+  `ChainState` directly, so the larger command-boundary finding remains open.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -140,14 +143,15 @@ Rules that should follow from this:
 
 ### 1. Chain State Has No Real Encapsulation
 
-`Chain` and `ChainState` expose their internals directly in
-`crates/tensor_vm/src/chain/state.rs`.
+`Chain` now hides its top-level fields from external crate users, but `ChainState` still exposes its
+internals directly in `crates/tensor_vm/src/chain/state.rs`, and internal runtime modules can still bypass
+the command boundary.
 
 ```rust
 pub struct Chain {
-    pub params: ChainParams,
-    pub state: ChainState,
-    pub blocks: Vec<TensorBlock>,
+    pub(crate) params: ChainParams,
+    pub(crate) state: ChainState,
+    pub(crate) blocks: Vec<TensorBlock>,
 }
 ```
 
@@ -161,9 +165,9 @@ Impact:
 - Runtime and tests can create states the chain engine would never admit.
 - Future refactors will keep needing defensive cleanup because invalid states are representable everywhere.
 
-Fix:
+Remaining fix:
 
-- Make `Chain.state`, `Chain.blocks`, and `Chain.params` private or at least `pub(crate)`.
+- Move direct internal mutation of `Chain.state`, `Chain.blocks`, and `Chain.params` behind narrower helpers.
 - Expose immutable views through `ChainView` or narrow accessor methods.
 - Route production mutations through `ChainEngine::apply_command`.
 - Move direct-state test setup into explicit `#[cfg(test)]` builders.

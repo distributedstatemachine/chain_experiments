@@ -306,7 +306,7 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     testnet.run_matmul_round(&scheduler);
-    let matmul_settled_receipts = testnet.chain.state.settled_receipts.len();
+    let matmul_settled_receipts = testnet.chain.state().settled_receipts.len();
     testnet.run_linear_training_round(&scheduler);
 
     let store = NodeStore::open(data_dir);
@@ -326,12 +326,12 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let rewarded_miners = testnet
         .miners
         .iter()
-        .filter(|miner| testnet.chain.state.rewards.balance(miner) > 0)
+        .filter(|miner| testnet.chain.state().rewards.balance(miner) > 0)
         .count();
-    let total_reward_balance: u64 = testnet.chain.state.rewards.balances.values().sum();
+    let total_reward_balance: u64 = testnet.chain.state().rewards.balances.values().sum();
     let attestation_count: usize = testnet
         .chain
-        .state
+        .state()
         .attestations
         .values()
         .map(Vec::len)
@@ -340,12 +340,12 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
         "command=local_testnet_seed\ndata_dir={data_dir}\nminers={}\nvalidators={}\nheight={}\nblocks={}\nsettled_receipts={}\nmatmul_settled={}\nlinear_training_settled={}\nmodel_states={}\nrewarded_miners={rewarded_miners}\ntotal_reward_balance={total_reward_balance}\nattestation_count={attestation_count}\ntotal_tensor_work={}\nfinality_rate_bps={}\ndata_availability_bps={}\nnode_store_ready=true\npersisted_block_count={}\nlatest_block_hash={}\npublic_evidence_full_spec=false\nindependently_checkable=false",
         testnet.miners.len(),
         testnet.validators.len(),
-        testnet.chain.state.height,
-        testnet.chain.blocks.len(),
-        testnet.chain.state.settled_receipts.len(),
+        testnet.chain.state().height,
+        testnet.chain.blocks().len(),
+        testnet.chain.state().settled_receipts.len(),
         matmul_settled_receipts > 0,
-        !testnet.chain.state.model_states.is_empty(),
-        testnet.chain.state.model_states.len(),
+        !testnet.chain.state().model_states.is_empty(),
+        testnet.chain.state().model_states.len(),
         telemetry.total_tensor_work,
         local_evidence.finality_rate_bps,
         local_evidence.data_availability_bps,
@@ -363,25 +363,25 @@ fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<Str
         .status()
         .map_err(|error| format!("failed to inspect node store {data_dir}: {error}"))?;
     let latest_block_height = chain
-        .blocks
+        .blocks()
         .last()
         .map(|block| block.height)
         .unwrap_or_default();
     let finalized_block_count = chain
-        .blocks
+        .blocks()
         .iter()
         .filter(|block| chain.is_block_finalized(&block.hash()))
         .count();
-    let ready = status.block_count == chain.blocks.len()
+    let ready = status.block_count == chain.blocks().len()
         && status.block_count > 0
-        && chain.state.height == latest_block_height.saturating_add(1)
+        && chain.state().height == latest_block_height.saturating_add(1)
         && finalized_block_count <= status.block_count;
     if json {
         Ok(format!(
             "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true,\"ready\":{},\"height\":{},\"latest_block_height\":{},\"block_count\":{},\"finalized_block_count\":{},\"node_store_ready\":true}}",
             json_escape(data_dir),
             ready,
-            chain.state.height,
+            chain.state().height,
             latest_block_height,
             status.block_count,
             finalized_block_count
@@ -389,7 +389,8 @@ fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<Str
     } else {
         Ok(format!(
             "command=local_cpu_verify\ndata_dir={data_dir}\nstructured_verifier_ready=true\nready={ready}\nheight={}\nlatest_block_height={latest_block_height}\nblock_count={}\nfinalized_block_count={finalized_block_count}\nnode_store_ready=true",
-            chain.state.height, status.block_count
+            chain.state().height,
+            status.block_count
         ))
     }
 }
@@ -407,16 +408,16 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .status()
         .map_err(|error| format!("failed to inspect node store {data_dir}: {error}"))?;
     let latest_block_height = chain
-        .blocks
+        .blocks()
         .last()
         .map(|block| block.height)
         .unwrap_or_default();
     let finalized_block_count = chain
-        .blocks
+        .blocks()
         .iter()
         .filter(|block| chain.is_block_finalized(&block.hash()))
         .count();
-    let first_live_block = chain.blocks.iter().find(|block| block.height > 2);
+    let first_live_block = chain.blocks().iter().find(|block| block.height > 2);
     let first_live_block_height = first_live_block
         .map(|block| block.height)
         .unwrap_or_default();
@@ -432,9 +433,9 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     } else {
         0
     };
-    let attestation_count: usize = chain.state.attestations.values().map(Vec::len).sum();
+    let attestation_count: usize = chain.state().attestations.values().map(Vec::len).sum();
     let reward_account_count = chain
-        .state
+        .state()
         .rewards
         .balances
         .values()
@@ -510,19 +511,19 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_p2p_observed_block_payload_hashes"),
         ready_file_field(data_dir, "node_multiaddr"),
         ready_file_field(data_dir, "p2p_peer_id"),
-        chain.state.height,
-        chain.state.epoch,
+        chain.state().height,
+        chain.state().epoch,
         status.block_count,
         hex(&status.latest_block_hash),
         hex(&chain.state_root()),
         hex(&status.block_log_root),
         hex(&first_live_block_hash),
-        chain.state.miners.len(),
-        chain.state.validators.len(),
-        chain.state.jobs.len(),
-        chain.state.receipts.len(),
-        chain.state.settled_receipts.len(),
-        chain.state.model_states.len(),
+        chain.state().miners.len(),
+        chain.state().validators.len(),
+        chain.state().jobs.len(),
+        chain.state().receipts.len(),
+        chain.state().settled_receipts.len(),
+        chain.state().model_states.len(),
     ))
 }
 
@@ -531,7 +532,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let chain = store
         .load_chain()
         .map_err(|error| format!("failed to load node store {data_dir}: {error}"))?;
-    let Some(block) = chain.blocks.iter().find(|block| block.height == height) else {
+    let Some(block) = chain.blocks().iter().find(|block| block.height == height) else {
         return Err(format!(
             "block height {height} is not in node store {data_dir}"
         ));
@@ -541,26 +542,26 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let blockspace_caps = chain.blockspace_caps();
     let selected_receipt_twu = selected_receipt_ids
         .iter()
-        .filter_map(|receipt_id| chain.state.receipts.get(receipt_id))
+        .filter_map(|receipt_id| chain.state().receipts.get(receipt_id))
         .map(|receipt| receipt.tensor_work_units())
         .sum::<u64>();
     let selected_receipt_bytes = selected_receipt_ids
         .iter()
-        .filter_map(|receipt_id| chain.state.receipts.get(receipt_id))
+        .filter_map(|receipt_id| chain.state().receipts.get(receipt_id))
         .map(|receipt| receipt.estimated_block_bytes())
         .sum::<u64>();
     let block_valid = chain.validate_block(block).is_ok();
-    let proposer_registered = chain.state.validators.contains_key(&block.proposer);
+    let proposer_registered = chain.state().validators.contains_key(&block.proposer);
     let pow_hash = block.pow_hash();
     let pow_header_hash = block.pow_header_hash();
     let block_votes = chain
-        .state
+        .state()
         .block_votes
         .get(&block_hash)
         .cloned()
         .unwrap_or_default();
     let total_validator_stake = chain
-        .state
+        .state()
         .validators
         .values()
         .map(|validator| validator.stake)
@@ -570,7 +571,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let mut valid_vote_validators = Vec::new();
     let mut valid_vote_stake = 0_u64;
     for vote in &block_votes {
-        let Some(validator) = chain.state.validators.get(&vote.validator) else {
+        let Some(validator) = chain.state().validators.get(&vote.validator) else {
             continue;
         };
         if validator.stake != vote.stake || !vote.verify_signature() {
@@ -586,14 +587,14 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let mut linear_training_receipt_ids = Vec::new();
     let mut settled_receipt_ids = Vec::new();
     for receipt in chain
-        .state
+        .state()
         .receipts
         .values()
         .filter(|receipt| receipt.submitted_at_block() == height)
     {
         let receipt_id = receipt.receipt_id();
         receipt_ids.push(receipt_id);
-        if chain.state.settled_receipts.contains(&receipt_id) {
+        if chain.state().settled_receipts.contains(&receipt_id) {
             settled_receipt_ids.push(receipt_id);
         }
         match receipt.primitive_type() {
@@ -609,7 +610,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         proposer_registered,
         hex(&block.state_root),
         block.epoch,
-        chain.state.height,
+        chain.state().height,
         chain.is_block_finalized(&block_hash),
         hex(&block.settled_receipt_set_root),
         hex_hash_list(&selected_receipt_ids),
@@ -645,8 +646,8 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
 }
 
 fn finality_threshold_stake(chain: &Chain, total_validator_stake: u64) -> u64 {
-    let numerator = chain.params.finality_stake_numerator;
-    let denominator = chain.params.finality_stake_denominator.max(1);
+    let numerator = chain.params().finality_stake_numerator;
+    let denominator = chain.params().finality_stake_denominator.max(1);
     total_validator_stake
         .saturating_mul(numerator)
         .saturating_add(denominator.saturating_sub(1))
@@ -890,20 +891,20 @@ fn runtime_role_wallet_registration(
     };
     match role {
         RuntimeRole::Miner => {
-            if chain.state.miners.contains_key(&address) {
+            if chain.state().miners.contains_key(&address) {
                 "miner"
             } else {
                 "unregistered"
             }
         }
         RuntimeRole::Validator => {
-            if chain.state.validators.contains_key(&address) {
+            if chain.state().validators.contains_key(&address) {
                 "validator"
             } else {
                 "unregistered"
             }
         }
-        RuntimeRole::Proposer if chain.state.validators.contains_key(&address) => "validator",
+        RuntimeRole::Proposer if chain.state().validators.contains_key(&address) => "validator",
         RuntimeRole::Proposer => "unregistered",
         RuntimeRole::Service => "none",
     }
@@ -928,9 +929,9 @@ struct MinerRoleWorkObservation {
 
 fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
-    let assignment_seed = chain.state.finalized_randomness;
+    let assignment_seed = chain.state().finalized_randomness;
     let mut observation = MinerRoleWorkObservation::default();
-    for job_id in chain.state.jobs.keys() {
+    for job_id in chain.state().jobs.keys() {
         let assignment = scheduler.assign_miners(chain, *job_id, &assignment_seed);
         if !assignment.miners.contains(&miner) {
             continue;
@@ -945,7 +946,7 @@ fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkOb
 
 fn miner_has_receipt_for_job(chain: &Chain, miner: Address, job_id: Hash) -> bool {
     chain
-        .state
+        .state()
         .receipts
         .values()
         .any(|receipt| receipt.job_id() == job_id && receipt.miner() == miner)
@@ -963,21 +964,24 @@ fn submit_miner_role_receipt(
     miner: Address,
     job_id: Hash,
 ) -> std::result::Result<Option<MinerRoleReceiptSubmission>, String> {
-    if !node.chain.state.miners.contains_key(&miner) {
+    if !node.chain.state().miners.contains_key(&miner) {
         return Ok(None);
     }
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
-    let assignment =
-        scheduler.assign_miners(&node.chain, job_id, &node.chain.state.finalized_randomness);
+    let assignment = scheduler.assign_miners(
+        &node.chain,
+        job_id,
+        &node.chain.state().finalized_randomness,
+    );
     if !assignment.miners.contains(&miner) || miner_has_receipt_for_job(&node.chain, miner, job_id)
     {
         return Ok(None);
     }
-    let Some(job) = node.chain.state.jobs.get(&job_id).cloned() else {
+    let Some(job) = node.chain.state().jobs.get(&job_id).cloned() else {
         return Ok(None);
     };
     let bundle = CpuReferenceMinerRole::new(miner)
-        .execute_job(&job, node.chain.state.height, 1)
+        .execute_job(&job, node.chain.state().height, 1)
         .map_err(|error| format!("miner role failed to execute job {}: {error}", hex(&job_id)))?;
     if bundle.receipt.job_id() != job_id || bundle.receipt.miner() != miner {
         return Err("miner role produced receipt for the wrong job or miner".to_owned());
@@ -1016,9 +1020,9 @@ fn validator_role_work_observation(
     validator: Address,
 ) -> ValidatorRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
-    let assignment_seed = node.chain.state.finalized_randomness;
+    let assignment_seed = node.chain.state().finalized_randomness;
     let mut observation = ValidatorRoleWorkObservation::default();
-    for (receipt_id, receipt) in &node.chain.state.receipts {
+    for (receipt_id, receipt) in &node.chain.state().receipts {
         let assignment = scheduler.assign_validators(&node.chain, *receipt_id, &assignment_seed);
         if !assignment.validators.contains(&validator) {
             continue;
@@ -1039,7 +1043,7 @@ fn validator_role_work_observation(
 
 fn validator_has_attested_for_receipt(chain: &Chain, validator: Address, receipt_id: Hash) -> bool {
     chain
-        .state
+        .state()
         .attestations
         .get(&receipt_id)
         .is_some_and(|attestations| {
@@ -1073,7 +1077,7 @@ fn fetch_validator_role_missing_tensors(
     p2p_service: &TensorVmLibp2pService,
     receipt_id: Hash,
 ) -> std::result::Result<ValidatorRemoteTensorFetchReport, String> {
-    let Some(receipt) = node.chain.state.receipts.get(&receipt_id).cloned() else {
+    let Some(receipt) = node.chain.state().receipts.get(&receipt_id).cloned() else {
         return Ok(ValidatorRemoteTensorFetchReport::default());
     };
     let missing_roots = validator_receipt_required_remote_roots(node, &receipt);
@@ -1197,7 +1201,7 @@ fn submit_validator_role_attestation(
     validator: Address,
     receipt_id: Hash,
 ) -> std::result::Result<Option<ValidatorRoleAttestationSubmission>, String> {
-    let Some(validator_state) = node.chain.state.validators.get(&validator) else {
+    let Some(validator_state) = node.chain.state().validators.get(&validator) else {
         return Ok(None);
     };
     let validator_stake = validator_state.stake;
@@ -1205,17 +1209,17 @@ fn submit_validator_role_attestation(
     let assignment = scheduler.assign_validators(
         &node.chain,
         receipt_id,
-        &node.chain.state.finalized_randomness,
+        &node.chain.state().finalized_randomness,
     );
     if !assignment.validators.contains(&validator)
         || validator_has_attested_for_receipt(&node.chain, validator, receipt_id)
     {
         return Ok(None);
     }
-    let Some(receipt) = node.chain.state.receipts.get(&receipt_id).cloned() else {
+    let Some(receipt) = node.chain.state().receipts.get(&receipt_id).cloned() else {
         return Ok(None);
     };
-    let Some(job) = node.chain.state.jobs.get(&receipt.job_id()).cloned() else {
+    let Some(job) = node.chain.state().jobs.get(&receipt.job_id()).cloned() else {
         return Ok(None);
     };
     let Some(bundle) = role_receipt_bundle_from_local_tensors(node, &receipt) else {
@@ -1227,7 +1231,7 @@ fn submit_validator_role_attestation(
             &job,
             &bundle,
             &validation_seed,
-            &node.chain.params.freivalds,
+            &node.chain.params().freivalds,
         )
         .map_err(|error| {
             format!(
@@ -1257,13 +1261,13 @@ fn submit_validator_role_block_vote(
     node: &mut RpcNode,
     validator: Address,
 ) -> std::result::Result<Option<ValidatorRoleBlockVoteSubmission>, String> {
-    let Some(validator_state) = node.chain.state.validators.get(&validator) else {
+    let Some(validator_state) = node.chain.state().validators.get(&validator) else {
         return Ok(None);
     };
     let validator_stake = validator_state.stake;
     let Some(block) = node
         .chain
-        .blocks
+        .blocks()
         .iter()
         .rev()
         .find(|block| {
@@ -1292,7 +1296,7 @@ fn submit_validator_role_block_vote(
 
 fn validator_has_block_vote(chain: &Chain, validator: Address, block_hash: Hash) -> bool {
     chain
-        .state
+        .state()
         .block_votes
         .get(&block_hash)
         .is_some_and(|votes| votes.iter().any(|vote| vote.validator == validator))
@@ -1302,7 +1306,7 @@ fn role_receipt_bundle_from_local_tensors(
     node: &RpcNode,
     receipt: &ReceiptState,
 ) -> Option<RoleReceiptBundle> {
-    let job = node.chain.state.jobs.get(&receipt.job_id())?;
+    let job = node.chain.state().jobs.get(&receipt.job_id())?;
     match (job, receipt) {
         (tensor_vm::JobState::TensorOp(_), ReceiptState::TensorOp(receipt)) => {
             let a = node
@@ -1894,7 +1898,7 @@ impl RuntimeStatusSnapshot {
             produced_blocks: state.produced_blocks(),
             network_applied_blocks: state.network_applied_blocks(),
             local_producer,
-            latest_height: server.gateway().node.chain.state.height,
+            latest_height: server.gateway().node.chain.state().height,
             p2p_connected_peers: p2p_service.connected_peer_count(),
             p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
             p2p_observed_block_payloads: p2p_service.observed_block_payload_gossip_count(),
@@ -2071,7 +2075,7 @@ fn produce_and_publish_synthetic_round(
         p2p_service.register_tensor(tensor.clone());
         server.gateway_mut().node.insert_tensor(tensor);
     }
-    let Some(block) = server.gateway().node.chain.blocks.last() else {
+    let Some(block) = server.gateway().node.chain.blocks().last() else {
         return Ok(None);
     };
     let block_hash = block.hash();
@@ -2116,8 +2120,8 @@ struct ChainAnnouncementCheckpoint {
 
 fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementCheckpoint {
     ChainAnnouncementCheckpoint {
-        jobs: chain.state.jobs.keys().copied().collect(),
-        receipts: chain.state.receipts.keys().copied().collect(),
+        jobs: chain.state().jobs.keys().copied().collect(),
+        receipts: chain.state().receipts.keys().copied().collect(),
         attestations: attestation_announcement_hashes(chain).collect(),
         block_votes: block_vote_announcement_keys(chain).collect(),
     }
@@ -2128,7 +2132,7 @@ fn publish_new_chain_announcements(
     before: &ChainAnnouncementCheckpoint,
     chain: &Chain,
 ) -> std::result::Result<(), String> {
-    for (job_id, job) in &chain.state.jobs {
+    for (job_id, job) in &chain.state().jobs {
         if !before.jobs.contains(job_id) {
             p2p_service
                 .publish_gossip(P2pMessage::NewJobPayload {
@@ -2141,7 +2145,7 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish job gossip: {error}"))?;
         }
     }
-    for (receipt_id, receipt) in &chain.state.receipts {
+    for (receipt_id, receipt) in &chain.state().receipts {
         if !before.receipts.contains(receipt_id) {
             p2p_service
                 .publish_gossip(P2pMessage::NewReceiptPayload {
@@ -2155,7 +2159,7 @@ fn publish_new_chain_announcements(
         }
     }
     for attestation in chain
-        .state
+        .state()
         .attestations
         .values()
         .flat_map(|attestations| attestations.iter())
@@ -2175,7 +2179,7 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish attestation gossip: {error}"))?;
         }
     }
-    for (block_hash, votes) in &chain.state.block_votes {
+    for (block_hash, votes) in &chain.state().block_votes {
         for vote in votes {
             let key = (*block_hash, vote.validator);
             if !before.block_votes.contains(&key) {
@@ -2196,7 +2200,7 @@ fn publish_new_chain_announcements(
 
 fn attestation_announcement_hashes(chain: &Chain) -> impl Iterator<Item = Hash> + '_ {
     chain
-        .state
+        .state()
         .attestations
         .values()
         .flat_map(|attestations| attestations.iter().map(attestation_announcement_hash))
@@ -2204,7 +2208,7 @@ fn attestation_announcement_hashes(chain: &Chain) -> impl Iterator<Item = Hash> 
 
 fn block_vote_announcement_keys(chain: &Chain) -> impl Iterator<Item = (Hash, Address)> + '_ {
     chain
-        .state
+        .state()
         .block_votes
         .iter()
         .flat_map(|(block_hash, votes)| votes.iter().map(move |vote| (*block_hash, vote.validator)))
@@ -2273,8 +2277,8 @@ fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {
 mod tests {
     use super::*;
     use tensor_vm::{
-        ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, NetworkPayloadApply,
-        VerificationResult, network_ingest_order,
+        ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, FreivaldsParams,
+        NetworkPayloadApply, ValidatorAttestation, VerificationResult, network_ingest_order,
         node::{
             apply_network_attestation_payload, apply_network_job_payload,
             apply_network_receipt_payload,
@@ -2335,10 +2339,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"service-init-recovery"]));
         let miner = address(b"service-init-recovery-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         chain.produce_block(miner, 1_006).unwrap();
@@ -2574,10 +2578,10 @@ mod tests {
         let validator = address(b"runtime-wallet-validator");
         let unknown = address(b"runtime-wallet-unknown");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(validator, chain.params.validator_min_stake)
+            .register_validator(validator, chain.params().validator_min_stake)
             .unwrap();
 
         assert_eq!(
@@ -2658,17 +2662,17 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-work-observation"]));
         let miner = address(b"miner-work-observation-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
         let job_state = tensor_vm::JobState::TensorOp(job);
@@ -2681,7 +2685,7 @@ mod tests {
         assert_eq!(observation.unreceipted_jobs, BTreeSet::from([job_id]));
 
         let bundle = tensor_vm::roles::CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state.height, 1)
+            .execute_job(&job_state, chain.state().height, 1)
             .unwrap();
         chain
             .apply_command(ChainCommand::SubmitReceipt(bundle.receipt))
@@ -2698,17 +2702,17 @@ mod tests {
         let miner = address(b"miner-work-assigned");
         let unassigned = address(b"miner-work-unassigned");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         chain
             .apply_command(ChainCommand::SubmitJob(tensor_vm::JobState::TensorOp(job)))
@@ -2725,17 +2729,17 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-receipt-submit"]));
         let miner = address(b"miner-receipt-submit-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
         chain
@@ -2749,10 +2753,10 @@ mod tests {
 
         assert_eq!(submission.receipts_submitted, 1);
         assert_eq!(submission.tensors_inserted, 3);
-        assert_eq!(node.chain.state.receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts.len(), 1);
         let receipt = node
             .chain
-            .state
+            .state()
             .receipts
             .values()
             .next()
@@ -2767,26 +2771,29 @@ mod tests {
 
     #[test]
     fn miner_role_receipt_submission_skips_duplicate_unregistered_and_unassigned_work() {
-        let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-receipt-skip"]));
-        chain.params.replication_factor = 1;
+        let params = ChainParams {
+            replication_factor: 1,
+            ..ChainParams::default()
+        };
+        let mut chain = Chain::with_params(params, hash_bytes(b"test", &[b"miner-receipt-skip"]));
         let miner_a = address(b"miner-receipt-skip-a");
         let miner_b = address(b"miner-receipt-skip-b");
         let unknown = address(b"miner-receipt-skip-unknown");
         chain
-            .register_miner(miner_a, chain.params.miner_min_stake)
+            .register_miner(miner_a, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_miner(miner_b, chain.params.miner_min_stake)
+            .register_miner(miner_b, chain.params().miner_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
         chain
@@ -2795,7 +2802,7 @@ mod tests {
         let assignment = JobScheduler::with_small_shape((8, 8, 8)).assign_miners(
             &chain,
             job_id,
-            &chain.state.finalized_randomness,
+            &chain.state().finalized_randomness,
         );
         let assigned = assignment.miners[0];
         let unassigned = [miner_a, miner_b]
@@ -2814,21 +2821,21 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state.receipts.len(), 0);
+        assert_eq!(node.chain.state().receipts.len(), 0);
 
         assert!(
             submit_miner_role_receipt(&mut node, assigned, job_id)
                 .unwrap()
                 .is_some()
         );
-        assert_eq!(node.chain.state.receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts.len(), 1);
         assert_tensor_count(&node, 3);
         assert!(
             submit_miner_role_receipt(&mut node, assigned, job_id)
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state.receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts.len(), 1);
         assert_tensor_count(&node, 3);
     }
 
@@ -2838,27 +2845,27 @@ mod tests {
         let miner = address(b"validator-work-miner");
         let validator = address(b"validator-work-validator");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(validator, chain.params.validator_min_stake)
+            .register_validator(validator, chain.params().validator_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
         chain
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state.height, 1)
+            .execute_job(&job_state, chain.state().height, 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -2895,37 +2902,46 @@ mod tests {
     #[test]
     fn validator_role_attestation_submission_skips_missing_unregistered_unassigned_and_duplicates()
     {
-        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-attestation-skip"]));
-        chain.params.freivalds.validators_per_job = 1;
+        let params = ChainParams {
+            freivalds: FreivaldsParams {
+                validators_per_job: 1,
+                ..FreivaldsParams::default()
+            },
+            ..ChainParams::default()
+        };
+        let mut chain = Chain::with_params(
+            params,
+            hash_bytes(b"test", &[b"validator-attestation-skip"]),
+        );
         let miner = address(b"validator-attestation-miner");
         let validator_a = address(b"validator-attestation-a");
         let validator_b = address(b"validator-attestation-b");
         let unknown = address(b"validator-attestation-unknown");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(validator_a, chain.params.validator_min_stake)
+            .register_validator(validator_a, chain.params().validator_min_stake)
             .unwrap();
         chain
-            .register_validator(validator_b, chain.params.validator_min_stake)
+            .register_validator(validator_b, chain.params().validator_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
         chain
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state.height, 1)
+            .execute_job(&job_state, chain.state().height, 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -2934,7 +2950,7 @@ mod tests {
         let assignment = JobScheduler::with_small_shape((8, 8, 8)).assign_validators(
             &chain,
             receipt_id,
-            &chain.state.finalized_randomness,
+            &chain.state().finalized_randomness,
         );
         let assigned = assignment.validators[0];
         let unassigned = [validator_a, validator_b]
@@ -2958,7 +2974,7 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert!(!node.chain.state.attestations.contains_key(&receipt_id));
+        assert!(!node.chain.state().attestations.contains_key(&receipt_id));
 
         insert_bundle_tensors(&mut node, &bundle);
         let submission = submit_validator_role_attestation(&mut node, assigned, receipt_id)
@@ -2967,7 +2983,7 @@ mod tests {
         assert_eq!(submission.attestations_submitted, 1);
         let attestations = node
             .chain
-            .state
+            .state()
             .attestations
             .get(&receipt_id)
             .expect("attestation should be stored");
@@ -2979,7 +2995,7 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state.attestations[&receipt_id].len(), 1);
+        assert_eq!(node.chain.state().attestations[&receipt_id].len(), 1);
         let observation = validator_role_work_observation(&node, assigned);
         assert_eq!(observation.assigned_receipts, BTreeSet::from([receipt_id]));
         assert!(observation.unattested_receipts.is_empty());
@@ -2997,7 +3013,7 @@ mod tests {
         ];
         for validator in validators {
             chain
-                .register_validator(validator, chain.params.validator_min_stake)
+                .register_validator(validator, chain.params().validator_min_stake)
                 .unwrap();
         }
         let block = chain.produce_block(validators[0], 1_000).unwrap();
@@ -3005,7 +3021,7 @@ mod tests {
         let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
 
         assert!(!node.chain.is_block_finalized(&block_hash));
-        assert!(!node.chain.state.block_votes.contains_key(&block_hash));
+        assert!(!node.chain.state().block_votes.contains_key(&block_hash));
         assert!(
             submit_validator_role_block_vote(&mut node, address(b"unknown-block-voter"))
                 .unwrap()
@@ -3017,7 +3033,7 @@ mod tests {
             .expect("registered validator should vote on an unfinalized block");
         assert_eq!(first.block_votes_submitted, 1);
         assert!(!node.chain.is_block_finalized(&block_hash));
-        assert_eq!(node.chain.state.block_votes[&block_hash].len(), 1);
+        assert_eq!(node.chain.state().block_votes[&block_hash].len(), 1);
         assert!(
             submit_validator_role_block_vote(&mut node, validators[0])
                 .unwrap()
@@ -3101,32 +3117,39 @@ mod tests {
 
     #[test]
     fn validator_role_fetches_remote_tensors_before_attesting() {
-        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-remote-fetch"]));
-        chain.params.freivalds.validators_per_job = 1;
+        let params = ChainParams {
+            freivalds: FreivaldsParams {
+                validators_per_job: 1,
+                ..FreivaldsParams::default()
+            },
+            ..ChainParams::default()
+        };
+        let mut chain =
+            Chain::with_params(params, hash_bytes(b"test", &[b"validator-remote-fetch"]));
         let miner = address(b"validator-remote-fetch-miner");
         let validator = address(b"validator-remote-fetch-validator");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(validator, chain.params.validator_min_stake)
+            .register_validator(validator, chain.params().validator_min_stake)
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
             chain
-                .state
+                .state()
                 .height
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
         chain
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state.height, 1)
+            .execute_job(&job_state, chain.state().height, 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -3181,7 +3204,7 @@ mod tests {
             .expect("remote-fetched tensors should allow attestation");
         assert_eq!(submission.attestations_submitted, 1);
         assert_eq!(
-            node.chain.state.attestations[&receipt_id][0].result,
+            node.chain.state().attestations[&receipt_id][0].result,
             VerificationResult::Valid
         );
     }
@@ -3251,14 +3274,58 @@ mod tests {
         assert_eq!(service_b.connected_peer_count(), 1);
     }
 
+    fn chain_with_network_participants(
+        receipt: &ReceiptState,
+        attestation: &ValidatorAttestation,
+    ) -> Chain {
+        let mut chain = Chain::new(local_cpu_seed_beacon());
+        chain
+            .register_miner(receipt.miner(), chain.params().miner_min_stake)
+            .unwrap();
+        chain
+            .register_validator(attestation.validator, chain.params().validator_min_stake)
+            .unwrap();
+        chain
+    }
+
+    fn chain_with_network_job(
+        job: tensor_vm::JobState,
+        receipt: &ReceiptState,
+        attestation: &ValidatorAttestation,
+    ) -> Chain {
+        let mut chain = chain_with_network_participants(receipt, attestation);
+        chain.apply_command(ChainCommand::SubmitJob(job)).unwrap();
+        chain
+    }
+
+    fn chain_with_network_receipt(
+        job: tensor_vm::JobState,
+        receipt: ReceiptState,
+        attestation: &ValidatorAttestation,
+    ) -> Chain {
+        let mut chain = chain_with_network_job(job, &receipt, attestation);
+        chain
+            .apply_command(ChainCommand::SubmitReceipt(receipt))
+            .unwrap();
+        chain
+    }
+
     #[test]
     fn network_payload_application_defers_out_of_order_receipts_and_attestations() {
         let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
         let scheduler = JobScheduler::with_small_shape((8, 8, 8));
         testnet.run_matmul_round(&scheduler);
+        let job = testnet
+            .chain
+            .state()
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
         let receipt = testnet
             .chain
-            .state
+            .state()
             .receipts
             .values()
             .next()
@@ -3267,7 +3334,7 @@ mod tests {
         let receipt_id = receipt.receipt_id();
         let attestation = testnet
             .chain
-            .state
+            .state()
             .attestations
             .values()
             .flat_map(|items| items.iter())
@@ -3276,9 +3343,7 @@ mod tests {
             .clone();
         let attestation_id = attestation_announcement_hash(&attestation);
 
-        let mut missing_job_chain = testnet.chain.clone();
-        missing_job_chain.state.jobs.remove(&receipt.job_id());
-        missing_job_chain.state.receipts.remove(&receipt_id);
+        let missing_job_chain = chain_with_network_participants(&receipt, &attestation);
         let mut missing_job_server = test_rpc_server(missing_job_chain);
         assert_eq!(
             apply_network_receipt_payload(
@@ -3289,9 +3354,7 @@ mod tests {
             NetworkPayloadApply::Pending
         );
 
-        let mut receipt_chain = testnet.chain.clone();
-        receipt_chain.state.receipts.remove(&receipt_id);
-        receipt_chain.state.attestations.remove(&receipt_id);
+        let receipt_chain = chain_with_network_job(job.clone(), &receipt, &attestation);
         let mut receipt_server = test_rpc_server(receipt_chain);
         assert_eq!(
             apply_network_receipt_payload(
@@ -3302,15 +3365,7 @@ mod tests {
             NetworkPayloadApply::Applied
         );
 
-        let mut missing_receipt_chain = testnet.chain.clone();
-        missing_receipt_chain
-            .state
-            .receipts
-            .remove(&attestation.receipt_id);
-        missing_receipt_chain
-            .state
-            .attestations
-            .remove(&attestation.receipt_id);
+        let missing_receipt_chain = chain_with_network_job(job.clone(), &receipt, &attestation);
         let mut missing_receipt_server = test_rpc_server(missing_receipt_chain);
         assert_eq!(
             apply_network_attestation_payload(
@@ -3321,11 +3376,7 @@ mod tests {
             NetworkPayloadApply::Pending
         );
 
-        let mut attestation_chain = testnet.chain.clone();
-        attestation_chain
-            .state
-            .attestations
-            .remove(&attestation.receipt_id);
+        let attestation_chain = chain_with_network_receipt(job, receipt.clone(), &attestation);
         let mut attestation_server = test_rpc_server(attestation_chain);
         assert_eq!(
             apply_network_attestation_payload(
@@ -3344,7 +3395,7 @@ mod tests {
         testnet.run_matmul_round(&scheduler);
         let job = testnet
             .chain
-            .state
+            .state()
             .jobs
             .values()
             .next()
@@ -3353,7 +3404,7 @@ mod tests {
         let job_id = job.job_id();
         let receipt = testnet
             .chain
-            .state
+            .state()
             .receipts
             .values()
             .next()
@@ -3362,7 +3413,7 @@ mod tests {
         let receipt_id = receipt.receipt_id();
         let attestation = testnet
             .chain
-            .state
+            .state()
             .attestations
             .values()
             .flat_map(|items| items.iter())
@@ -3371,10 +3422,7 @@ mod tests {
             .clone();
         let attestation_id = attestation_announcement_hash(&attestation);
 
-        let mut out_of_order_chain = testnet.chain.clone();
-        out_of_order_chain.state.jobs.remove(&job_id);
-        out_of_order_chain.state.receipts.remove(&receipt_id);
-        out_of_order_chain.state.attestations.remove(&receipt_id);
+        let out_of_order_chain = chain_with_network_participants(&receipt, &attestation);
         let mut server = test_rpc_server(out_of_order_chain);
         let mut pending = PendingNetworkPayloads::default();
 
@@ -3412,7 +3460,13 @@ mod tests {
         assert_eq!(retried.invalid_events, 0);
         assert!(pending.is_empty());
         assert_eq!(
-            server.gateway().node.chain.state.receipts.get(&receipt_id),
+            server
+                .gateway()
+                .node
+                .chain
+                .state()
+                .receipts
+                .get(&receipt_id),
             Some(&receipt)
         );
         assert_eq!(
@@ -3420,7 +3474,7 @@ mod tests {
                 .gateway()
                 .node
                 .chain
-                .state
+                .state()
                 .attestations
                 .get(&receipt_id)
                 .and_then(|items| items.first()),
