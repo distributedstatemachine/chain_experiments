@@ -4,10 +4,10 @@ use super::roles::{
     submit_validator_role_block_vote, validator_remote_tensor_response,
     validator_role_work_observation,
 };
-use super::runtime::{
-    RoleRunLoop, RoleRuntimeLoop, RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig,
-    chain_profile_from_label, runtime_node_config, runtime_role_wallet_registered,
-    runtime_role_wallet_registration,
+use super::runtime::{RoleRunLoop, RoleRuntimeLoop};
+use super::runtime_config::{
+    RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, chain_profile_from_label,
+    runtime_node_config, runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
 use super::shared::local_cpu_seed_beacon;
 use super::*;

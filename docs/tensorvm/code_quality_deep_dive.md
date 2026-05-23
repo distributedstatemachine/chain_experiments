@@ -181,6 +181,8 @@ spaghetti around.
   `main/runtime.rs`, leaving `main.rs` close to CLI dispatch plus shared seed/identity helpers.
 - Iteration 74 moved the remaining shared binary seed and p2p identity report helpers into
   `main/shared.rs`, leaving `main.rs` as CLI dispatch and module wiring.
+- Iteration 75 moved runtime role/config construction, profile/env parsing, and wallet registration
+  helpers into `main/runtime_config.rs`, leaving `main/runtime.rs` focused on loop orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

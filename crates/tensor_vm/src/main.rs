@@ -19,6 +19,9 @@ mod roles;
 #[path = "main/runtime.rs"]
 mod runtime;
 
+#[path = "main/runtime_config.rs"]
+mod runtime_config;
+
 #[path = "main/shared.rs"]
 mod shared;
 
@@ -29,10 +32,8 @@ use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
 };
-use runtime::{
-    RoleServiceConfig, run_miner_service, run_proposer_service, run_validator_service,
-    serve_service,
-};
+use runtime::{run_miner_service, run_proposer_service, run_validator_service, serve_service};
+use runtime_config::RoleServiceConfig;
 use status::{service_block_status, service_status};
 
 fn main() {
