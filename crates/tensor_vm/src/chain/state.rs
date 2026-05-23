@@ -594,6 +594,23 @@ pub struct Chain {
     pub(crate) blocks: Vec<TensorBlock>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ChainParts {
+    pub params: ChainParams,
+    pub state: ChainState,
+    pub blocks: Vec<TensorBlock>,
+}
+
+impl Chain {
+    pub(crate) fn from_parts(parts: ChainParts) -> Self {
+        Self {
+            params: parts.params,
+            state: parts.state,
+            blocks: parts.blocks,
+        }
+    }
+}
+
 fn reward_share(total_emission: u64, basis_points: u64) -> u64 {
     total_emission.saturating_mul(basis_points) / 10_000
 }

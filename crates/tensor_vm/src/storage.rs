@@ -1,7 +1,7 @@
 use crate::chain::{
-    AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainState, ChainStateParts,
-    HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardState, TensorBlock,
-    ValidatorState,
+    AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainParts, ChainState,
+    ChainStateParts, HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardState,
+    TensorBlock, ValidatorState,
 };
 use crate::error::{Result, TvmError};
 use crate::jobs::{
@@ -47,10 +47,10 @@ impl ChainSnapshot {
             height: chain.state().height(),
             epoch: chain.state().epoch(),
             finalized_randomness: chain.state().finalized_randomness(),
-            block_count: chain.blocks.len() as u64,
+            block_count: chain.blocks().len() as u64,
             state_root: chain.state_root(),
             latest_block_hash: chain
-                .blocks
+                .blocks()
                 .last()
                 .map(TensorBlock::hash)
                 .unwrap_or([0; 32]),
@@ -200,7 +200,7 @@ impl BlockLogStore {
     }
 
     pub fn append_chain(&self, chain: &Chain) -> Result<()> {
-        for block in &chain.blocks {
+        for block in chain.blocks() {
             self.append_block(block)?;
         }
         Ok(())
@@ -215,15 +215,15 @@ impl BlockLogStore {
 
     pub fn sync_chain(&self, chain: &Chain) -> Result<Vec<TensorBlock>> {
         let existing = self.load_blocks_or_empty()?;
-        if existing.len() > chain.blocks.len() {
+        if existing.len() > chain.blocks().len() {
             return Err(TvmError::Storage("block log ahead of chain"));
         }
-        for (logged, expected) in existing.iter().zip(&chain.blocks) {
+        for (logged, expected) in existing.iter().zip(chain.blocks()) {
             if logged != expected {
                 return Err(TvmError::Storage("block log chain mismatch"));
             }
         }
-        for block in chain.blocks.iter().skip(existing.len()) {
+        for block in chain.blocks().iter().skip(existing.len()) {
             self.append_block(block)?;
         }
         self.load_blocks_or_empty()
@@ -246,7 +246,7 @@ impl BlockLogStore {
             .map_err(|_| TvmError::Storage("failed to open replacement block log"))?;
         file.write_all(BLOCK_LOG_MAGIC)
             .map_err(|_| TvmError::Storage("failed to write block log magic"))?;
-        for block in &chain.blocks {
+        for block in chain.blocks() {
             file.write_all(&encode_block_record(block))
                 .map_err(|_| TvmError::Storage("failed to write replacement block log record"))?;
         }
@@ -416,7 +416,7 @@ impl NodeStore {
         if ChainSnapshot::from_chain(&chain) != snapshot {
             return Err(TvmError::Storage("chain state snapshot mismatch"));
         }
-        if chain.blocks != blocks {
+        if chain.blocks() != blocks.as_slice() {
             return Err(TvmError::Storage("chain state block log mismatch"));
         }
         Ok(chain)
@@ -493,10 +493,10 @@ fn decode_chain_state_file(bytes: &[u8]) -> Result<Chain> {
 
 fn encode_chain_state_payload(chain: &Chain) -> Vec<u8> {
     let mut out = Vec::new();
-    encode_chain_params(&mut out, &chain.params);
+    encode_chain_params(&mut out, chain.params());
     encode_chain_state(&mut out, chain.state());
-    write_len(&mut out, chain.blocks.len());
-    for block in &chain.blocks {
+    write_len(&mut out, chain.blocks().len());
+    for block in chain.blocks() {
         out.extend_from_slice(&encode_block_payload(block));
     }
     out
@@ -512,11 +512,11 @@ fn decode_chain_state_payload(bytes: &[u8]) -> Result<Chain> {
         blocks.push(decode_block_payload(reader.read_exact(BLOCK_PAYLOAD_LEN)?)?);
     }
     reader.finish()?;
-    Ok(Chain {
+    Ok(Chain::from_parts(ChainParts {
         params,
         state,
         blocks,
-    })
+    }))
 }
 
 fn encode_chain_params(out: &mut Vec<u8>, params: &ChainParams) {
@@ -1376,6 +1376,14 @@ mod tests {
     use crate::types::{address, hash_bytes};
     use crate::verify::AttestationStatement;
 
+    fn chain_with_blocks(chain: &Chain, blocks: Vec<TensorBlock>) -> Chain {
+        Chain::from_parts(ChainParts {
+            params: chain.params().clone(),
+            state: chain.state().clone(),
+            blocks,
+        })
+    }
+
     fn durable_chain_fixture(label: &[u8]) -> Chain {
         let beacon = hash_bytes(b"test", &[label]);
         let params = ChainParams {
@@ -1397,14 +1405,14 @@ mod tests {
         chain
             .register_miner_with_profile_and_operator(
                 miner,
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
                 hash_bytes(b"test", &[b"durable-operator"]),
                 HardwareClass::DatacenterGpu,
                 8_500,
             )
             .unwrap();
         chain
-            .register_validator(validator, chain.params.validator_min_stake)
+            .register_validator(validator, chain.params().validator_min_stake)
             .unwrap();
         chain.credit_account(miner, 1_000);
         chain.transfer(miner, validator, 125).unwrap();
@@ -1418,7 +1426,7 @@ mod tests {
         chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
         let attestation = ValidatorAttestation::new(
             validator,
-            chain.params.validator_min_stake,
+            chain.params().validator_min_stake,
             AttestationStatement {
                 receipt_id: receipt.receipt_id,
                 job_id: receipt.job_id,
@@ -1484,7 +1492,7 @@ mod tests {
         chain
             .submit_block_vote(BlockVote::new(
                 validator,
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
                 &block,
             ))
             .unwrap();
@@ -1497,10 +1505,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-genesis"]));
         let miner = address(b"snapshot-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.credit_account(miner, 42);
         chain.produce_block(miner, 1_000).unwrap();
@@ -1554,10 +1562,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-store-genesis"]));
         let miner = address(b"snapshot-store-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 2_000).unwrap();
 
@@ -1581,10 +1589,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-genesis"]));
         let miner = address(b"block-log-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         chain.produce_block(miner, 1_006).unwrap();
@@ -1599,7 +1607,7 @@ mod tests {
         let loaded = store.load_blocks().unwrap();
 
         assert_eq!(store.path(), path.as_path());
-        assert_eq!(loaded, chain.blocks);
+        assert_eq!(loaded.as_slice(), chain.blocks());
         assert_eq!(loaded[1].parent_hash, loaded[0].hash());
 
         let mut bytes = std::fs::read(&path).unwrap();
@@ -1618,10 +1626,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-sync"]));
         let miner = address(b"block-log-sync-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         chain.produce_block(miner, 1_006).unwrap();
@@ -1638,16 +1646,13 @@ mod tests {
             hash_bytes(b"tensor-vm-block-log-file-root-v1", &[&[]])
         );
 
-        let first = Chain {
-            blocks: vec![chain.blocks[0].clone()],
-            ..chain.clone()
-        };
+        let first = chain_with_blocks(&chain, vec![chain.blocks()[0].clone()]);
         assert_eq!(
             store.sync_chain(&first).unwrap(),
-            vec![chain.blocks[0].clone()]
+            vec![chain.blocks()[0].clone()]
         );
-        assert_eq!(store.sync_chain(&chain).unwrap(), chain.blocks);
-        assert_eq!(store.sync_chain(&chain).unwrap(), chain.blocks);
+        assert_eq!(store.sync_chain(&chain).unwrap().as_slice(), chain.blocks());
+        assert_eq!(store.sync_chain(&chain).unwrap().as_slice(), chain.blocks());
         assert_eq!(
             store.sync_chain(&first),
             Err(TvmError::Storage("block log ahead of chain"))
@@ -1655,10 +1660,10 @@ mod tests {
 
         let mut different = Chain::new(hash_bytes(b"test", &[b"block-log-sync-other"]));
         different
-            .register_miner(miner, different.params.miner_min_stake)
+            .register_miner(miner, different.params().miner_min_stake)
             .unwrap();
         different
-            .register_validator(miner, different.params.validator_min_stake)
+            .register_validator(miner, different.params().validator_min_stake)
             .unwrap();
         different.produce_block(miner, 1_000).unwrap();
         different.produce_block(miner, 1_006).unwrap();
@@ -1675,10 +1680,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-replace"]));
         let miner = address(b"block-log-replace-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         chain.produce_block(miner, 1_006).unwrap();
@@ -1691,16 +1696,17 @@ mod tests {
         let store = BlockLogStore::new(path.clone());
         store.append_chain(&chain).unwrap();
 
-        let mut shorter = chain.clone();
-        shorter.blocks.pop();
+        let mut shorter_blocks = chain.blocks().to_vec();
+        shorter_blocks.pop();
+        let shorter = chain_with_blocks(&chain, shorter_blocks);
         assert_eq!(
             store.sync_chain(&shorter),
             Err(TvmError::Storage("block log ahead of chain"))
         );
 
         let replaced = store.replace_chain(&shorter).unwrap();
-        assert_eq!(replaced, shorter.blocks);
-        assert_eq!(store.load_blocks().unwrap(), shorter.blocks);
+        assert_eq!(replaced.as_slice(), shorter.blocks());
+        assert_eq!(store.load_blocks().unwrap().as_slice(), shorter.blocks());
 
         let empty = Chain::new(hash_bytes(b"test", &[b"block-log-replace-empty"]));
         assert!(store.replace_chain(&empty).unwrap().is_empty());
@@ -1714,10 +1720,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store"]));
         let miner = address(b"node-store-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         chain.produce_block(miner, 1_006).unwrap();
@@ -1746,7 +1752,7 @@ mod tests {
         let status = store.persist_chain(&chain).unwrap();
         assert_eq!(status.data_dir, data_dir);
         assert_eq!(status.block_count, 2);
-        assert_eq!(status.latest_block_hash, chain.blocks[1].hash());
+        assert_eq!(status.latest_block_hash, chain.blocks()[1].hash());
         assert_eq!(
             status.block_log_root,
             store.block_log_store().file_root().unwrap()
@@ -1755,7 +1761,7 @@ mod tests {
         assert_eq!(store.status().unwrap(), status);
         let loaded = store.load().unwrap();
         assert_eq!(loaded.snapshot, status.snapshot);
-        assert_eq!(loaded.blocks, chain.blocks);
+        assert_eq!(loaded.blocks.as_slice(), chain.blocks());
         assert_eq!(store.load_chain().unwrap(), chain);
 
         chain.produce_block(miner, 1_012).unwrap();
@@ -1766,7 +1772,7 @@ mod tests {
             updated.block_log_root,
             store.block_log_store().file_root().unwrap()
         );
-        assert_eq!(store.load().unwrap().blocks, chain.blocks);
+        assert_eq!(store.load().unwrap().blocks.as_slice(), chain.blocks());
         assert_eq!(store.load_chain().unwrap(), chain);
 
         let _ = std::fs::remove_file(store.snapshot_store().path());
@@ -1802,7 +1808,7 @@ mod tests {
             .unwrap();
         store
             .block_log_store()
-            .append_block(ahead.blocks.last().unwrap())
+            .append_block(ahead.blocks().last().unwrap())
             .unwrap();
         assert_eq!(
             store.status(),
@@ -1810,8 +1816,11 @@ mod tests {
         );
 
         let recovered_again = store.recover_from_chain_state().unwrap();
-        assert_eq!(recovered_again.block_count, chain.blocks.len());
-        assert_eq!(store.block_log_store().load_blocks().unwrap(), chain.blocks);
+        assert_eq!(recovered_again.block_count, chain.blocks().len());
+        assert_eq!(
+            store.block_log_store().load_blocks().unwrap().as_slice(),
+            chain.blocks()
+        );
         assert_eq!(store.load_chain().unwrap(), chain);
 
         let _ = std::fs::remove_file(store.snapshot_store().path());
@@ -1834,10 +1843,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"chain-store-boundary"]));
         let miner = address(b"chain-store-boundary-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
 
@@ -1849,7 +1858,7 @@ mod tests {
         let (status, loaded) = persist_and_reload(&store, &chain);
 
         assert_eq!(status.block_count, 1);
-        assert_eq!(status.latest_block_hash, chain.blocks[0].hash());
+        assert_eq!(status.latest_block_hash, chain.blocks()[0].hash());
         assert_eq!(
             status.block_log_root,
             store.block_log_store().file_root().unwrap()
@@ -1929,8 +1938,9 @@ mod tests {
             Err(TvmError::Storage("chain state snapshot mismatch"))
         );
 
-        let mut changed_blocks = chain.clone();
-        changed_blocks.blocks[0].timestamp = changed_blocks.blocks[0].timestamp.saturating_add(1);
+        let mut blocks = chain.blocks().to_vec();
+        blocks[0].timestamp = blocks[0].timestamp.saturating_add(1);
+        let changed_blocks = chain_with_blocks(&chain, blocks);
         store
             .chain_state_store()
             .save_chain(&changed_blocks)
@@ -2059,10 +2069,10 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store-mismatch"]));
         let miner = address(b"node-store-mismatch-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
 
@@ -2111,17 +2121,17 @@ mod tests {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-parent"]));
         let miner = address(b"block-log-parent-miner");
         chain
-            .register_miner(miner, chain.params.miner_min_stake)
+            .register_miner(miner, chain.params().miner_min_stake)
             .unwrap();
         chain
-            .register_validator(miner, chain.params.validator_min_stake)
+            .register_validator(miner, chain.params().validator_min_stake)
             .unwrap();
         chain.produce_block(miner, 1_000).unwrap();
         let mut second = chain.produce_block(miner, 1_006).unwrap();
         second.parent_hash = hash_bytes(b"test", &[b"wrong-parent"]);
 
         let mut bytes = Vec::from(BLOCK_LOG_MAGIC);
-        bytes.extend_from_slice(&encode_block_record(&chain.blocks[0]));
+        bytes.extend_from_slice(&encode_block_record(&chain.blocks()[0]));
         bytes.extend_from_slice(&encode_block_record(&second));
         assert_eq!(
             decode_block_log(&bytes),

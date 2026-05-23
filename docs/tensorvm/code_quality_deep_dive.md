@@ -107,6 +107,8 @@ spaghetti around.
   `Chain` helpers, removing the remaining external test-state map mutations.
 - Iteration 37 narrowed `ChainState` fields to `chain/*` internals and routed storage through an
   explicit decoded-parts constructor plus read accessors.
+- Iteration 38 added an explicit crate-only `ChainParts` restore constructor and moved storage
+  persistence plus storage fixtures off raw `Chain` params/block fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
