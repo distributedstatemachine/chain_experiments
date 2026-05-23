@@ -101,6 +101,8 @@ spaghetti around.
   assertion reads onto `ChainState` accessors.
 - Iteration 34 moved local testnet simulation, explorer summary, and colocated assertion reads onto
   `ChainState` accessors while leaving invalid-attestation fixture insertion explicit.
+- Iteration 35 moved telemetry settled-work fixtures behind a crate-test-only `Chain` helper instead
+  of mutating miner state maps directly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

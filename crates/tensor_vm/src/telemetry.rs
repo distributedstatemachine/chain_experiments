@@ -416,11 +416,8 @@ mod tests {
         chain.produce_block(validator, 10).unwrap();
         chain.produce_block(validator, 16).unwrap();
         chain
-            .state
-            .miners
-            .get_mut(&miner)
-            .unwrap()
-            .settled_tensor_work = 500;
+            .set_miner_settled_tensor_work_for_testing(miner, 500)
+            .unwrap();
         let snapshot = TelemetrySnapshot::from_chain(&chain);
         assert_eq!(snapshot.average_block_time, 6.0);
         assert_eq!(snapshot.max_miner_work_share, 1.0);
@@ -557,11 +554,8 @@ mod tests {
             })
             .unwrap();
         chain
-            .state
-            .miners
-            .get_mut(&miner)
-            .unwrap()
-            .settled_tensor_work = 64;
+            .set_miner_settled_tensor_work_for_testing(miner, 64)
+            .unwrap();
 
         let snapshot = TelemetrySnapshot::from_chain(&chain);
         assert_eq!(snapshot.invalid_receipts_submitted, 1);
@@ -590,17 +584,11 @@ mod tests {
             .register_miner_with_profile(datacenter_gpu, 300, HardwareClass::DatacenterGpu, 9_000)
             .unwrap();
         chain
-            .state
-            .miners
-            .get_mut(&consumer_gpu)
-            .unwrap()
-            .settled_tensor_work = 100;
+            .set_miner_settled_tensor_work_for_testing(consumer_gpu, 100)
+            .unwrap();
         chain
-            .state
-            .miners
-            .get_mut(&datacenter_gpu)
-            .unwrap()
-            .settled_tensor_work = 300;
+            .set_miner_settled_tensor_work_for_testing(datacenter_gpu, 300)
+            .unwrap();
 
         let snapshot = TelemetrySnapshot::from_chain(&chain);
         assert_eq!(snapshot.hardware_class_participation, 3);

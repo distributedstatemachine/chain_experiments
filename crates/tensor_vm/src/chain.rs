@@ -276,6 +276,20 @@ impl Chain {
     }
 
     #[cfg(test)]
+    pub(crate) fn set_miner_settled_tensor_work_for_testing(
+        &mut self,
+        miner: Address,
+        settled_tensor_work: u64,
+    ) -> Result<()> {
+        self.state
+            .miners
+            .get_mut(&miner)
+            .ok_or(TvmError::UnknownMiner)?
+            .settled_tensor_work = settled_tensor_work;
+        Ok(())
+    }
+
+    #[cfg(test)]
     pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
         self.state.receipts.insert(receipt.receipt_id(), receipt);
     }
