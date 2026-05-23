@@ -5,11 +5,8 @@ use crate::chain::{
 };
 use crate::codec;
 use crate::error::{Result, TvmError};
-use crate::jobs::{
-    LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
-};
+use crate::jobs::{LinearTrainingStepReceipt, PrimitiveType, TensorOpReceipt};
 use crate::p2p::PeerBookStore;
-use crate::tensor::DType;
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{FreivaldsParams, ValidatorAttestation, VerificationResult};
 use std::collections::{BTreeMap, BTreeSet};
@@ -725,37 +722,7 @@ fn encode_jobs(out: &mut Vec<u8>, jobs: &BTreeMap<Hash, JobState>) {
     write_len(out, jobs.len());
     for (job_id, job) in jobs {
         write_hash(out, job_id);
-        match job {
-            JobState::TensorOp(job) => {
-                out.push(1);
-                write_hash(out, &job.job_id);
-                write_u64(out, job.epoch);
-                write_len(out, job.m);
-                write_len(out, job.k);
-                write_len(out, job.n);
-                out.push(dtype_code(job.dtype));
-                write_option_u64(out, job.modulus);
-                write_hash(out, &job.seed_a);
-                write_hash(out, &job.seed_b);
-                write_u64(out, job.deadline_block);
-                write_u64(out, job.reward_weight);
-            }
-            JobState::LinearTrainingStep(job) => {
-                out.push(2);
-                write_hash(out, &job.job_id);
-                write_hash(out, &job.model_id);
-                write_u64(out, job.step);
-                write_hash(out, &job.batch_seed);
-                write_hash(out, &job.weight_root_before);
-                write_usize_vec(out, &job.input_shape);
-                write_usize_vec(out, &job.weight_shape);
-                write_usize_vec(out, &job.target_shape);
-                write_u64(out, job.lr);
-                out.push(dtype_code(job.dtype));
-                write_u64(out, job.deadline_block);
-                write_u64(out, job.reward_weight);
-            }
-        }
+        out.extend_from_slice(&codec::encode_job_payload(job));
     }
 }
 
@@ -763,40 +730,23 @@ fn decode_jobs(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, JobState>>
     let mut jobs = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
-        let tag = reader.read_u8()?;
-        let job = match tag {
-            1 => JobState::TensorOp(MatmulJob {
-                job_id: reader.read_hash()?,
-                epoch: reader.read_u64()?,
-                m: reader.read_len()?,
-                k: reader.read_len()?,
-                n: reader.read_len()?,
-                dtype: decode_dtype(reader.read_u8()?)?,
-                modulus: reader.read_option_u64()?,
-                seed_a: reader.read_hash()?,
-                seed_b: reader.read_hash()?,
-                deadline_block: reader.read_u64()?,
-                reward_weight: reader.read_u64()?,
-            }),
-            2 => JobState::LinearTrainingStep(LinearTrainingStepJob {
-                job_id: reader.read_hash()?,
-                model_id: reader.read_hash()?,
-                step: reader.read_u64()?,
-                batch_seed: reader.read_hash()?,
-                weight_root_before: reader.read_hash()?,
-                input_shape: reader.read_usize_vec()?,
-                weight_shape: reader.read_usize_vec()?,
-                target_shape: reader.read_usize_vec()?,
-                lr: reader.read_u64()?,
-                dtype: decode_dtype(reader.read_u8()?)?,
-                deadline_block: reader.read_u64()?,
-                reward_weight: reader.read_u64()?,
-            }),
-            _ => return Err(TvmError::Storage("unknown job tag")),
-        };
+        let job = codec::decode_job_payload_from(reader.input, &mut reader.offset, None)
+            .map_err(storage_job_codec_error)?;
         jobs.insert(key, job);
     }
     Ok(jobs)
+}
+
+fn storage_job_codec_error(error: codec::CodecError) -> TvmError {
+    match error {
+        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
+        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
+        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
+        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
+        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
+    }
 }
 
 fn encode_receipts(out: &mut Vec<u8>, receipts: &BTreeMap<Hash, ReceiptState>) {
@@ -1140,27 +1090,10 @@ fn write_option_hash(out: &mut Vec<u8>, value: &Option<Hash>) {
     }
 }
 
-fn write_option_u64(out: &mut Vec<u8>, value: Option<u64>) {
-    match value {
-        Some(value) => {
-            out.push(1);
-            write_u64(out, value);
-        }
-        None => out.push(0),
-    }
-}
-
 fn write_hash_vec(out: &mut Vec<u8>, hashes: &[Hash]) {
     write_len(out, hashes.len());
     for hash in hashes {
         write_hash(out, hash);
-    }
-}
-
-fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
-    write_len(out, values.len());
-    for value in values {
-        write_len(out, *value);
     }
 }
 
@@ -1181,14 +1114,6 @@ fn decode_hardware_class(tag: u8) -> Result<HardwareClass> {
         4 => Ok(HardwareClass::Other),
         _ => Err(TvmError::Storage("unknown hardware class")),
     }
-}
-
-fn dtype_code(dtype: DType) -> u8 {
-    codec::dtype_tag(dtype)
-}
-
-fn decode_dtype(tag: u8) -> Result<DType> {
-    codec::dtype_from_tag(tag).ok_or(TvmError::Storage("unknown dtype"))
 }
 
 fn primitive_type_code(primitive_type: PrimitiveType) -> u8 {
@@ -1268,28 +1193,12 @@ impl<'a> StateReader<'a> {
         }
     }
 
-    fn read_option_u64(&mut self) -> Result<Option<u64>> {
-        match self.read_u8()? {
-            0 => Ok(None),
-            1 => Ok(Some(self.read_u64()?)),
-            _ => Err(TvmError::Storage("invalid optional u64")),
-        }
-    }
-
     fn read_hash_vec(&mut self) -> Result<Vec<Hash>> {
         let mut hashes = Vec::with_capacity(self.read_len()?);
         for _ in 0..hashes.capacity() {
             hashes.push(self.read_hash()?);
         }
         Ok(hashes)
-    }
-
-    fn read_usize_vec(&mut self) -> Result<Vec<usize>> {
-        let mut values = Vec::with_capacity(self.read_len()?);
-        for _ in 0..values.capacity() {
-            values.push(self.read_len()?);
-        }
-        Ok(values)
     }
 
     fn finish(&self) -> Result<()> {
@@ -1308,7 +1217,7 @@ mod tests {
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
         TensorOpReceipt,
     };
-    use crate::tensor::Tensor;
+    use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
     use crate::verify::AttestationStatement;
 
@@ -1894,6 +1803,9 @@ mod tests {
 
     #[test]
     fn chain_state_decoder_rejects_invalid_tags_and_values() {
+        const TENSOR_DTYPE_OFFSET: usize = 1 + 32 + 8 + 8 + 8 + 8;
+        const TENSOR_OPTIONAL_MODULUS_OFFSET: usize = TENSOR_DTYPE_OFFSET + 1;
+
         assert_eq!(hardware_class_code(HardwareClass::Cpu), 1);
         assert_eq!(hardware_class_code(HardwareClass::ConsumerGpu), 2);
         assert_eq!(hardware_class_code(HardwareClass::DatacenterGpu), 3);
@@ -1912,16 +1824,6 @@ mod tests {
             decode_hardware_class(9),
             Err(TvmError::Storage("unknown hardware class"))
         );
-
-        assert_eq!(dtype_code(DType::Int32), 1);
-        assert_eq!(dtype_code(DType::Int64), 2);
-        assert_eq!(dtype_code(DType::Fixed32), 3);
-        assert_eq!(dtype_code(DType::FieldElement), 4);
-        assert_eq!(decode_dtype(1).unwrap(), DType::Int32);
-        assert_eq!(decode_dtype(2).unwrap(), DType::Int64);
-        assert_eq!(decode_dtype(3).unwrap(), DType::Fixed32);
-        assert_eq!(decode_dtype(4).unwrap(), DType::FieldElement);
-        assert_eq!(decode_dtype(9), Err(TvmError::Storage("unknown dtype")));
 
         assert_eq!(primitive_type_code(PrimitiveType::TensorOp), 1);
         assert_eq!(primitive_type_code(PrimitiveType::LinearTrainingStep), 2);
@@ -1968,17 +1870,9 @@ mod tests {
             StateReader::new(&[2]).read_option_hash(),
             Err(TvmError::Storage("invalid optional hash"))
         );
-        assert_eq!(
-            StateReader::new(&[2]).read_option_u64(),
-            Err(TvmError::Storage("invalid optional u64"))
-        );
-
         let mut none = Vec::new();
         write_option_hash(&mut none, &None);
         assert_eq!(StateReader::new(&none).read_option_hash().unwrap(), None);
-        none.clear();
-        write_option_u64(&mut none, None);
-        assert_eq!(StateReader::new(&none).read_option_u64().unwrap(), None);
 
         let key = hash_bytes(b"test", &[b"bad-key"]);
         let mut bad_job = Vec::new();
@@ -1988,6 +1882,38 @@ mod tests {
         assert_eq!(
             decode_jobs(&mut StateReader::new(&bad_job)),
             Err(TvmError::Storage("unknown job tag"))
+        );
+
+        let bad_job_template = JobState::TensorOp(MatmulJob::synthetic(
+            0,
+            2,
+            2,
+            2,
+            2,
+            &hash_bytes(b"test", &[b"bad-job-beacon"]),
+            10,
+        ));
+
+        let mut bad_job_dtype = Vec::new();
+        write_len(&mut bad_job_dtype, 1);
+        write_hash(&mut bad_job_dtype, &key);
+        let mut bad_job_dtype_payload = codec::encode_job_payload(&bad_job_template);
+        bad_job_dtype_payload[TENSOR_DTYPE_OFFSET] = 9;
+        bad_job_dtype.extend_from_slice(&bad_job_dtype_payload);
+        assert_eq!(
+            decode_jobs(&mut StateReader::new(&bad_job_dtype)),
+            Err(TvmError::Storage("unknown dtype"))
+        );
+
+        let mut bad_job_optional = Vec::new();
+        write_len(&mut bad_job_optional, 1);
+        write_hash(&mut bad_job_optional, &key);
+        let mut bad_job_optional_payload = codec::encode_job_payload(&bad_job_template);
+        bad_job_optional_payload[TENSOR_OPTIONAL_MODULUS_OFFSET] = 9;
+        bad_job_optional.extend_from_slice(&bad_job_optional_payload);
+        assert_eq!(
+            decode_jobs(&mut StateReader::new(&bad_job_optional)),
+            Err(TvmError::Storage("invalid optional u64"))
         );
 
         let mut bad_receipt = Vec::new();

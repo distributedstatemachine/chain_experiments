@@ -115,6 +115,8 @@ spaghetti around.
   helpers while preserving storage and p2p error boundaries.
 - Iteration 41 moved telemetry's remaining top-level `Chain` params/block reads onto the public
   accessors, keeping reporting off raw chain fields.
+- Iteration 42 moved `JobState` payload encoding and streaming decode into shared crate-internal
+  codec helpers while preserving p2p and storage error mapping.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

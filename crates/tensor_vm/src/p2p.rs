@@ -1,10 +1,8 @@
 use crate::api::P2pMessage;
 use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
-use crate::codec;
+use crate::codec::{self, CodecError};
 use crate::error::{Result as TvmResult, TvmError};
-use crate::jobs::{
-    LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
-};
+use crate::jobs::{LinearTrainingStepReceipt, PrimitiveType, TensorOpReceipt};
 use crate::tensor::{DType, Tensor};
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
@@ -1425,77 +1423,23 @@ pub fn decode_tensor_payload(input: &[u8]) -> TvmResult<Tensor> {
 }
 
 pub fn encode_job_payload(job: &JobState) -> Vec<u8> {
-    let mut out = Vec::new();
-    match job {
-        JobState::TensorOp(job) => {
-            out.push(1);
-            write_hash(&mut out, &job.job_id);
-            write_u64(&mut out, job.epoch);
-            write_u64(&mut out, job.m as u64);
-            write_u64(&mut out, job.k as u64);
-            write_u64(&mut out, job.n as u64);
-            out.push(job.dtype.tag());
-            write_optional_u64(&mut out, job.modulus);
-            write_hash(&mut out, &job.seed_a);
-            write_hash(&mut out, &job.seed_b);
-            write_u64(&mut out, job.deadline_block);
-            write_u64(&mut out, job.reward_weight);
-        }
-        JobState::LinearTrainingStep(job) => {
-            out.push(2);
-            write_hash(&mut out, &job.job_id);
-            write_hash(&mut out, &job.model_id);
-            write_u64(&mut out, job.step);
-            write_hash(&mut out, &job.batch_seed);
-            write_hash(&mut out, &job.weight_root_before);
-            write_usize_vec(&mut out, &job.input_shape);
-            write_usize_vec(&mut out, &job.weight_shape);
-            write_usize_vec(&mut out, &job.target_shape);
-            write_u64(&mut out, job.lr);
-            out.push(job.dtype.tag());
-            write_u64(&mut out, job.deadline_block);
-            write_u64(&mut out, job.reward_weight);
-        }
-    }
-    out
+    codec::encode_job_payload(job)
 }
 
 pub fn decode_job_payload(input: &[u8]) -> TvmResult<JobState> {
-    let mut reader = Reader::new(input);
-    let job = match reader.read_u8()? {
-        1 => JobState::TensorOp(MatmulJob {
-            job_id: reader.read_hash()?,
-            epoch: reader.read_u64()?,
-            m: read_usize(&mut reader)?,
-            k: read_usize(&mut reader)?,
-            n: read_usize(&mut reader)?,
-            dtype: dtype_from_tag(reader.read_u8()?)?,
-            modulus: read_optional_u64(&mut reader)?,
-            seed_a: reader.read_hash()?,
-            seed_b: reader.read_hash()?,
-            deadline_block: reader.read_u64()?,
-            reward_weight: reader.read_u64()?,
-        }),
-        2 => JobState::LinearTrainingStep(LinearTrainingStepJob {
-            job_id: reader.read_hash()?,
-            model_id: reader.read_hash()?,
-            step: reader.read_u64()?,
-            batch_seed: reader.read_hash()?,
-            weight_root_before: reader.read_hash()?,
-            input_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
-            weight_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
-            target_shape: read_usize_vec(&mut reader, MAX_JOB_SHAPE_DIMS)?,
-            lr: reader.read_u64()?,
-            dtype: dtype_from_tag(reader.read_u8()?)?,
-            deadline_block: reader.read_u64()?,
-            reward_weight: reader.read_u64()?,
-        }),
-        _ => return Err(TvmError::InvalidReceipt("unknown job payload tag")),
-    };
-    if !reader.is_done() {
-        return Err(TvmError::InvalidReceipt("trailing job payload bytes"));
+    codec::decode_job_payload(input, Some(MAX_JOB_SHAPE_DIMS)).map_err(job_codec_error)
+}
+
+fn job_codec_error(error: CodecError) -> TvmError {
+    match error {
+        CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
+        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing job payload bytes"),
+        CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
+        CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
+        CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
+        CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
+        CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
     }
-    Ok(job)
 }
 
 pub fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
@@ -1822,16 +1766,6 @@ fn write_u64(out: &mut Vec<u8>, value: u64) {
     out.extend_from_slice(&value.to_le_bytes());
 }
 
-fn write_optional_u64(out: &mut Vec<u8>, value: Option<u64>) {
-    match value {
-        Some(value) => {
-            out.push(1);
-            write_u64(out, value);
-        }
-        None => out.push(0),
-    }
-}
-
 fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
     write_u64(out, values.len() as u64);
     for value in values {
@@ -1928,14 +1862,6 @@ impl<'a> Reader<'a> {
     }
 }
 
-fn read_optional_u64(reader: &mut Reader<'_>) -> TvmResult<Option<u64>> {
-    match reader.read_u8()? {
-        0 => Ok(None),
-        1 => Ok(Some(reader.read_u64()?)),
-        _ => Err(TvmError::InvalidReceipt("invalid optional u64 tag")),
-    }
-}
-
 fn read_optional_bytes(reader: &mut Reader<'_>) -> TvmResult<Option<Vec<u8>>> {
     match reader.read_u8()? {
         0 => Ok(None),
@@ -2006,7 +1932,7 @@ fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
 mod tests {
     use super::*;
     use crate::chain::{BlockVote, JobState, ReceiptState};
-    use crate::jobs::{LinearTrainingStepSpec, MatmulJob};
+    use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob};
     use crate::scheduler::SyntheticLocalJobSource;
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};

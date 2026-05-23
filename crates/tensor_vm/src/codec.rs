@@ -1,11 +1,22 @@
-use crate::chain::{BlockVote, TensorBlock};
-use crate::jobs::PrimitiveType;
+use crate::chain::{BlockVote, JobState, TensorBlock};
+use crate::jobs::{LinearTrainingStepJob, MatmulJob, PrimitiveType};
 use crate::tensor::DType;
 use crate::types::Hash;
 use crate::verify::VerificationResult;
 
 pub(crate) const TENSOR_BLOCK_PAYLOAD_LEN: usize = 8 * 4 + 32 * 11;
 pub(crate) const BLOCK_VOTE_PAYLOAD_LEN: usize = 32 * 3 + 8 * 2;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum CodecError {
+    Truncated,
+    TrailingBytes,
+    UnknownJobTag,
+    UnknownDType,
+    InvalidOptionalU64,
+    UsizeOverflow,
+    ShapeVectorTooLarge,
+}
 
 pub(crate) fn dtype_tag(dtype: DType) -> u8 {
     dtype.tag()
@@ -79,21 +90,21 @@ pub(crate) fn decode_tensor_block_payload(input: &[u8]) -> Option<TensorBlock> {
     }
     let mut offset = 0;
     let block = TensorBlock {
-        height: read_u64(input, &mut offset)?,
-        parent_hash: read_hash(input, &mut offset)?,
-        epoch: read_u64(input, &mut offset)?,
-        proposer: read_hash(input, &mut offset)?,
-        settled_receipt_set_root: read_hash(input, &mut offset)?,
-        checks_root: read_hash(input, &mut offset)?,
-        attestation_root: read_hash(input, &mut offset)?,
-        state_root: read_hash(input, &mut offset)?,
-        reward_root: read_hash(input, &mut offset)?,
-        beacon: read_hash(input, &mut offset)?,
-        difficulty_target: read_hash(input, &mut offset)?,
-        nonce: read_u64(input, &mut offset)?,
-        timestamp: read_u64(input, &mut offset)?,
-        proposer_signature: read_hash(input, &mut offset)?,
-        validator_signature_aggregate: read_hash(input, &mut offset)?,
+        height: read_u64(input, &mut offset).ok()?,
+        parent_hash: read_hash(input, &mut offset).ok()?,
+        epoch: read_u64(input, &mut offset).ok()?,
+        proposer: read_hash(input, &mut offset).ok()?,
+        settled_receipt_set_root: read_hash(input, &mut offset).ok()?,
+        checks_root: read_hash(input, &mut offset).ok()?,
+        attestation_root: read_hash(input, &mut offset).ok()?,
+        state_root: read_hash(input, &mut offset).ok()?,
+        reward_root: read_hash(input, &mut offset).ok()?,
+        beacon: read_hash(input, &mut offset).ok()?,
+        difficulty_target: read_hash(input, &mut offset).ok()?,
+        nonce: read_u64(input, &mut offset).ok()?,
+        timestamp: read_u64(input, &mut offset).ok()?,
+        proposer_signature: read_hash(input, &mut offset).ok()?,
+        validator_signature_aggregate: read_hash(input, &mut offset).ok()?,
     };
     (offset == input.len()).then_some(block)
 }
@@ -114,13 +125,98 @@ pub(crate) fn decode_block_vote_payload(input: &[u8]) -> Option<BlockVote> {
     }
     let mut offset = 0;
     let vote = BlockVote {
-        validator: read_hash(input, &mut offset)?,
-        block_hash: read_hash(input, &mut offset)?,
-        block_height: read_u64(input, &mut offset)?,
-        stake: read_u64(input, &mut offset)?,
-        signature: read_hash(input, &mut offset)?,
+        validator: read_hash(input, &mut offset).ok()?,
+        block_hash: read_hash(input, &mut offset).ok()?,
+        block_height: read_u64(input, &mut offset).ok()?,
+        stake: read_u64(input, &mut offset).ok()?,
+        signature: read_hash(input, &mut offset).ok()?,
     };
     (offset == input.len()).then_some(vote)
+}
+
+pub(crate) fn encode_job_payload(job: &JobState) -> Vec<u8> {
+    let mut out = Vec::new();
+    match job {
+        JobState::TensorOp(job) => {
+            out.push(1);
+            write_hash(&mut out, &job.job_id);
+            write_u64(&mut out, job.epoch);
+            write_usize(&mut out, job.m);
+            write_usize(&mut out, job.k);
+            write_usize(&mut out, job.n);
+            out.push(dtype_tag(job.dtype));
+            write_optional_u64(&mut out, job.modulus);
+            write_hash(&mut out, &job.seed_a);
+            write_hash(&mut out, &job.seed_b);
+            write_u64(&mut out, job.deadline_block);
+            write_u64(&mut out, job.reward_weight);
+        }
+        JobState::LinearTrainingStep(job) => {
+            out.push(2);
+            write_hash(&mut out, &job.job_id);
+            write_hash(&mut out, &job.model_id);
+            write_u64(&mut out, job.step);
+            write_hash(&mut out, &job.batch_seed);
+            write_hash(&mut out, &job.weight_root_before);
+            write_usize_vec(&mut out, &job.input_shape);
+            write_usize_vec(&mut out, &job.weight_shape);
+            write_usize_vec(&mut out, &job.target_shape);
+            write_u64(&mut out, job.lr);
+            out.push(dtype_tag(job.dtype));
+            write_u64(&mut out, job.deadline_block);
+            write_u64(&mut out, job.reward_weight);
+        }
+    }
+    out
+}
+
+pub(crate) fn decode_job_payload(
+    input: &[u8],
+    max_shape_dims: Option<usize>,
+) -> Result<JobState, CodecError> {
+    let mut offset = 0;
+    let job = decode_job_payload_from(input, &mut offset, max_shape_dims)?;
+    if offset != input.len() {
+        return Err(CodecError::TrailingBytes);
+    }
+    Ok(job)
+}
+
+pub(crate) fn decode_job_payload_from(
+    input: &[u8],
+    offset: &mut usize,
+    max_shape_dims: Option<usize>,
+) -> Result<JobState, CodecError> {
+    match read_u8(input, offset)? {
+        1 => Ok(JobState::TensorOp(MatmulJob {
+            job_id: read_hash(input, offset)?,
+            epoch: read_u64(input, offset)?,
+            m: read_usize(input, offset)?,
+            k: read_usize(input, offset)?,
+            n: read_usize(input, offset)?,
+            dtype: dtype_from_tag(read_u8(input, offset)?).ok_or(CodecError::UnknownDType)?,
+            modulus: read_optional_u64(input, offset)?,
+            seed_a: read_hash(input, offset)?,
+            seed_b: read_hash(input, offset)?,
+            deadline_block: read_u64(input, offset)?,
+            reward_weight: read_u64(input, offset)?,
+        })),
+        2 => Ok(JobState::LinearTrainingStep(LinearTrainingStepJob {
+            job_id: read_hash(input, offset)?,
+            model_id: read_hash(input, offset)?,
+            step: read_u64(input, offset)?,
+            batch_seed: read_hash(input, offset)?,
+            weight_root_before: read_hash(input, offset)?,
+            input_shape: read_usize_vec(input, offset, max_shape_dims)?,
+            weight_shape: read_usize_vec(input, offset, max_shape_dims)?,
+            target_shape: read_usize_vec(input, offset, max_shape_dims)?,
+            lr: read_u64(input, offset)?,
+            dtype: dtype_from_tag(read_u8(input, offset)?).ok_or(CodecError::UnknownDType)?,
+            deadline_block: read_u64(input, offset)?,
+            reward_weight: read_u64(input, offset)?,
+        })),
+        _ => Err(CodecError::UnknownJobTag),
+    }
 }
 
 fn write_hash(out: &mut Vec<u8>, hash: &Hash) {
@@ -131,20 +227,79 @@ fn write_u64(out: &mut Vec<u8>, value: u64) {
     out.extend_from_slice(&value.to_le_bytes());
 }
 
-fn read_hash(input: &[u8], offset: &mut usize) -> Option<Hash> {
-    let bytes = input.get(*offset..(*offset).checked_add(32)?)?;
-    let mut out = [0_u8; 32];
-    out.copy_from_slice(bytes);
-    *offset += 32;
-    Some(out)
+fn write_usize(out: &mut Vec<u8>, value: usize) {
+    write_u64(out, value as u64);
 }
 
-fn read_u64(input: &[u8], offset: &mut usize) -> Option<u64> {
-    let bytes = input.get(*offset..(*offset).checked_add(8)?)?;
+fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
+    write_usize(out, values.len());
+    for value in values {
+        write_usize(out, *value);
+    }
+}
+
+fn write_optional_u64(out: &mut Vec<u8>, value: Option<u64>) {
+    match value {
+        Some(value) => {
+            out.push(1);
+            write_u64(out, value);
+        }
+        None => out.push(0),
+    }
+}
+
+fn read_u8(input: &[u8], offset: &mut usize) -> Result<u8, CodecError> {
+    let byte = input.get(*offset).copied().ok_or(CodecError::Truncated)?;
+    *offset += 1;
+    Ok(byte)
+}
+
+fn read_hash(input: &[u8], offset: &mut usize) -> Result<Hash, CodecError> {
+    let end = (*offset).checked_add(32).ok_or(CodecError::Truncated)?;
+    let bytes = input.get(*offset..end).ok_or(CodecError::Truncated)?;
+    let mut out = [0_u8; 32];
+    out.copy_from_slice(bytes);
+    *offset = end;
+    Ok(out)
+}
+
+fn read_u64(input: &[u8], offset: &mut usize) -> Result<u64, CodecError> {
+    let end = (*offset).checked_add(8).ok_or(CodecError::Truncated)?;
+    let bytes = input.get(*offset..end).ok_or(CodecError::Truncated)?;
     let mut out = [0_u8; 8];
     out.copy_from_slice(bytes);
-    *offset += 8;
-    Some(u64::from_le_bytes(out))
+    *offset = end;
+    Ok(u64::from_le_bytes(out))
+}
+
+fn read_usize(input: &[u8], offset: &mut usize) -> Result<usize, CodecError> {
+    usize::try_from(read_u64(input, offset)?).map_err(|_| CodecError::UsizeOverflow)
+}
+
+fn read_usize_vec(
+    input: &[u8],
+    offset: &mut usize,
+    max_shape_dims: Option<usize>,
+) -> Result<Vec<usize>, CodecError> {
+    let len = read_usize(input, offset)?;
+    if let Some(max_shape_dims) = max_shape_dims
+        && len > max_shape_dims
+    {
+        return Err(CodecError::ShapeVectorTooLarge);
+    }
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(read_usize(input, offset)?);
+    }
+    Ok(values)
+}
+
+fn read_optional_u64(input: &[u8], offset: &mut usize) -> Result<Option<u64>, CodecError> {
+    match read_u8(input, offset)? {
+        0 => Ok(None),
+        1 => Ok(Some(read_u64(input, offset)?)),
+        _ => Err(CodecError::InvalidOptionalU64),
+    }
 }
 
 #[cfg(test)]
@@ -230,6 +385,95 @@ mod tests {
         );
         payload.push(0);
         assert_eq!(decode_block_vote_payload(&payload), None);
+    }
+
+    #[test]
+    fn job_payloads_roundtrip_stream_and_reject_malformed_edges() {
+        const TENSOR_DTYPE_OFFSET: usize = 1 + 32 + 8 + 8 + 8 + 8;
+        const TENSOR_OPTIONAL_MODULUS_OFFSET: usize = TENSOR_DTYPE_OFFSET + 1;
+        const LINEAR_INPUT_SHAPE_LEN_OFFSET: usize = 1 + 32 + 32 + 8 + 32 + 32;
+
+        let tensor_job = JobState::TensorOp(MatmulJob {
+            job_id: hash(21),
+            epoch: 22,
+            m: 2,
+            k: 3,
+            n: 4,
+            dtype: DType::FieldElement,
+            modulus: Some(97),
+            seed_a: hash(23),
+            seed_b: hash(24),
+            deadline_block: 25,
+            reward_weight: 26,
+        });
+        let linear_job = JobState::LinearTrainingStep(LinearTrainingStepJob {
+            job_id: hash(27),
+            model_id: hash(28),
+            step: 29,
+            batch_seed: hash(30),
+            weight_root_before: hash(31),
+            input_shape: vec![2, 3],
+            weight_shape: vec![3, 4],
+            target_shape: vec![2, 4],
+            lr: 5,
+            dtype: DType::FieldElement,
+            deadline_block: 32,
+            reward_weight: 33,
+        });
+
+        for job in [tensor_job.clone(), linear_job.clone()] {
+            let payload = encode_job_payload(&job);
+            assert_eq!(decode_job_payload(&payload, Some(16)), Ok(job.clone()));
+
+            let mut offset = 0;
+            assert_eq!(
+                decode_job_payload_from(&payload, &mut offset, None),
+                Ok(job)
+            );
+            assert_eq!(offset, payload.len());
+        }
+
+        let mut unknown_job_tag = encode_job_payload(&tensor_job);
+        unknown_job_tag[0] = 9;
+        assert_eq!(
+            decode_job_payload(&unknown_job_tag, Some(16)),
+            Err(CodecError::UnknownJobTag)
+        );
+
+        let mut bad_dtype = encode_job_payload(&tensor_job);
+        bad_dtype[TENSOR_DTYPE_OFFSET] = 9;
+        assert_eq!(
+            decode_job_payload(&bad_dtype, Some(16)),
+            Err(CodecError::UnknownDType)
+        );
+
+        let mut bad_optional = encode_job_payload(&tensor_job);
+        bad_optional[TENSOR_OPTIONAL_MODULUS_OFFSET] = 9;
+        assert_eq!(
+            decode_job_payload(&bad_optional, Some(16)),
+            Err(CodecError::InvalidOptionalU64)
+        );
+
+        let mut trailing = encode_job_payload(&tensor_job);
+        trailing.push(0);
+        assert_eq!(
+            decode_job_payload(&trailing, Some(16)),
+            Err(CodecError::TrailingBytes)
+        );
+
+        let mut oversized_shape = encode_job_payload(&linear_job);
+        oversized_shape[LINEAR_INPUT_SHAPE_LEN_OFFSET..LINEAR_INPUT_SHAPE_LEN_OFFSET + 8]
+            .copy_from_slice(&17_u64.to_le_bytes());
+        assert_eq!(
+            decode_job_payload(&oversized_shape, Some(16)),
+            Err(CodecError::ShapeVectorTooLarge)
+        );
+
+        let truncated = encode_job_payload(&linear_job);
+        assert_eq!(
+            decode_job_payload(&truncated[..truncated.len() - 1], Some(16)),
+            Err(CodecError::Truncated)
+        );
     }
 
     fn hash(byte: u8) -> Hash {
