@@ -54,40 +54,40 @@ impl TelemetrySnapshot {
         let receipt_count = chain.state().receipts().len();
         let settled_receipt_count = chain.state().settled_receipts().len();
         let receipt_age_sum: u64 = chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .values()
             .map(|receipt| {
                 chain
-                    .state
-                    .height
+                    .state()
+                    .height()
                     .saturating_sub(receipt_submitted_at_block(receipt))
             })
             .sum();
         let average_receipt_age_blocks = ratio_u64(receipt_age_sum, receipt_count as u64);
         let total_attestations = chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .map(Vec::len)
             .sum::<usize>();
         let unavailable = chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .filter(|att| !att.data_availability_passed)
             .count();
         let invalid = chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .filter(|att| !matches!(att.result, crate::verify::VerificationResult::Valid))
             .count();
         let invalid_receipt_ids: BTreeSet<Hash> = chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .iter()
             .filter(|(_, items)| {
                 items
@@ -107,8 +107,8 @@ impl TelemetrySnapshot {
         );
         let validator_disagreement_rate = ratio(invalid, total_attestations);
         let valid_attestations = chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .filter(|att| {
@@ -116,22 +116,22 @@ impl TelemetrySnapshot {
             })
             .count();
         let total_tensor_work: u64 = chain
-            .state
-            .miners
+            .state()
+            .miners()
             .values()
             .map(|miner| miner.settled_tensor_work)
             .sum();
         let max_miner_work = chain
-            .state
-            .miners
+            .state()
+            .miners()
             .values()
             .map(|miner| miner.settled_tensor_work)
             .max()
             .unwrap_or(0);
         let epochs_seen = chain.state().epoch().saturating_add(1);
         let state_entries = chain
-            .state
-            .accounts
+            .state()
+            .accounts()
             .len()
             .saturating_add(chain.state().miners().len())
             .saturating_add(chain.state().validators().len())
@@ -142,14 +142,14 @@ impl TelemetrySnapshot {
             .saturating_add(chain.state().finalized_blocks().len())
             .saturating_add(chain.state().model_states().len());
         let miner_rewards: u64 = chain
-            .state
-            .miners
+            .state()
+            .miners()
             .keys()
             .map(|address| chain.state().rewards().balance(address))
             .sum();
         let validator_rewards: u64 = chain
-            .state
-            .validators
+            .state()
+            .validators()
             .keys()
             .map(|address| chain.state().rewards().balance(address))
             .sum();
@@ -262,8 +262,8 @@ fn average_verification_cost_ratio(chain: &Chain) -> f64 {
 
 fn estimated_bandwidth_per_validator(chain: &Chain) -> f64 {
     let total_bytes: u64 = chain
-        .state
-        .receipts
+        .state()
+        .receipts()
         .values()
         .map(|receipt| estimate_receipt_verification_bytes(chain, receipt))
         .sum::<u64>()
@@ -327,8 +327,8 @@ fn estimated_gpu_utilization(chain: &Chain) -> f64 {
 
 fn hardware_class_participation(chain: &Chain) -> usize {
     let classes: BTreeSet<HardwareClass> = chain
-        .state
-        .miners
+        .state()
+        .miners()
         .values()
         .map(|miner| miner.hardware_class)
         .collect();
@@ -380,8 +380,8 @@ fn encode_hashes(out: &mut Vec<u8>, hashes: &[Hash]) {
 
 fn estimated_cost_to_attack_one_epoch(chain: &Chain) -> u64 {
     let total_stake: u64 = chain
-        .state
-        .validators
+        .state()
+        .validators()
         .values()
         .map(|validator| validator.stake)
         .sum();

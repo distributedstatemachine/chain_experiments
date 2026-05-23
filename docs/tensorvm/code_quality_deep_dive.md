@@ -94,6 +94,8 @@ spaghetti around.
   accessor, removing another standalone production reach-through.
 - Iteration 30 moved node network-payload ingress duplicate/dependency checks and their colocated
   assertions onto the `ChainState` accessors.
+- Iteration 31 finished the read-only telemetry metric paths that still reached through `chain.state`,
+  leaving settled-work fixture mutation helpers as a separate follow-up.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
