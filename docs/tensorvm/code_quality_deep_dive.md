@@ -197,6 +197,8 @@ spaghetti around.
   formatting into `main/runtime_status.rs`, leaving `main/status.rs` focused on service status reads.
 - Iteration 82 moved `RoleRuntimeLoop` into `main/runtime_loop.rs`, leaving `main/runtime.rs`
   as the service runtime entrypoint and preserving the existing test-facing loop handle.
+- Iteration 83 moved binary runtime persistence/status tests into `main_tests/runtime_persistence.rs`,
+  starting the large `main_tests.rs` split along runtime behavior boundaries.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
