@@ -234,6 +234,9 @@ spaghetti around.
 - Iteration 98 extracted runtime RPC serving, mutation detection, chain persistence, and
   served-request counters into `main/runtime_rpc.rs`, preserving the `RoleRuntimeLoop` test wrapper
   as orchestration-only status writing.
+- Iteration 99 split runtime status snapshot collection into `main/runtime_status_snapshot.rs`,
+  leaving `main/runtime_status.rs` focused on the existing text renderers while preserving the
+  status-file and service-report contracts.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

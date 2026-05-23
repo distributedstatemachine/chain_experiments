@@ -46,6 +46,9 @@ mod runtime_config;
 #[path = "main/runtime_status.rs"]
 mod runtime_status;
 
+#[path = "main/runtime_status_snapshot.rs"]
+mod runtime_status_snapshot;
+
 #[path = "main/runtime_validator.rs"]
 mod runtime_validator;
 

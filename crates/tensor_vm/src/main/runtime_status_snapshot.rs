@@ -1,0 +1,125 @@
+use super::runtime_config::{
+    RuntimeRole, runtime_role_wallet_registered, runtime_role_wallet_registration,
+};
+use tensor_vm::{
+    NetworkEventIngest, NodeRuntimeState, RpcHttpServer, TensorVmLibp2pService, types::Address,
+};
+
+pub(super) struct RuntimeStatusSnapshot {
+    pub(super) served_requests: usize,
+    pub(super) produced_blocks: usize,
+    pub(super) network_applied_blocks: usize,
+    pub(super) local_producer: bool,
+    pub(super) latest_height: u64,
+    pub(super) p2p_connected_peers: usize,
+    pub(super) p2p_observed_blocks: usize,
+    pub(super) p2p_observed_block_payloads: usize,
+    pub(super) p2p_observed_block_votes: usize,
+    pub(super) p2p_observed_jobs: usize,
+    pub(super) p2p_observed_receipts: usize,
+    pub(super) p2p_observed_attestations: usize,
+    pub(super) p2p_latest_observed_block_height: u64,
+    pub(super) p2p_latest_observed_block_hash: [u8; 32],
+    pub(super) p2p_observed_block_hashes: Vec<[u8; 32]>,
+    pub(super) p2p_latest_observed_block_payload_height: u64,
+    pub(super) p2p_latest_observed_block_payload_hash: [u8; 32],
+    pub(super) p2p_observed_block_payload_hashes: Vec<[u8; 32]>,
+    pub(super) network_events: NetworkEventIngest,
+    pub(super) role_wallet_address: Option<Address>,
+    pub(super) role_wallet_registration: &'static str,
+    pub(super) role_wallet_registered: bool,
+    pub(super) miner_work_ready: bool,
+    pub(super) miner_assigned_jobs_seen: usize,
+    pub(super) miner_unreceipted_jobs: usize,
+    pub(super) miner_receipts_submitted: usize,
+    pub(super) miner_tensors_inserted: usize,
+    pub(super) validator_work_ready: bool,
+    pub(super) validator_assigned_receipts_seen: usize,
+    pub(super) validator_unattested_receipts: usize,
+    pub(super) validator_artifact_ready_receipts: usize,
+    pub(super) validator_artifact_missing_receipts: usize,
+    pub(super) validator_remote_tensor_fetch_attempts: usize,
+    pub(super) validator_remote_tensor_fetch_successes: usize,
+    pub(super) validator_remote_tensor_fetch_failures: usize,
+    pub(super) validator_remote_tensor_fetch_bytes: usize,
+    pub(super) validator_remote_tensors_inserted: usize,
+    pub(super) validator_attestations_submitted: usize,
+    pub(super) validator_block_votes_submitted: usize,
+}
+
+impl RuntimeStatusSnapshot {
+    pub(super) fn from_runtime_state(
+        state: &NodeRuntimeState,
+        server: &RpcHttpServer,
+        p2p_service: &TensorVmLibp2pService,
+        local_producer: bool,
+        role: RuntimeRole,
+        role_wallet_address: Option<Address>,
+    ) -> Self {
+        let chain = &server.gateway().node.chain;
+        Self {
+            served_requests: state.served_requests(),
+            produced_blocks: state.produced_blocks(),
+            network_applied_blocks: state.network_applied_blocks(),
+            local_producer,
+            latest_height: server.gateway().node.chain.state().height(),
+            p2p_connected_peers: p2p_service.connected_peer_count(),
+            p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
+            p2p_observed_block_payloads: p2p_service.observed_block_payload_gossip_count(),
+            p2p_observed_block_votes: p2p_service.observed_block_vote_gossip_count(),
+            p2p_observed_jobs: p2p_service.observed_job_gossip_count(),
+            p2p_observed_receipts: p2p_service.observed_receipt_gossip_count(),
+            p2p_observed_attestations: p2p_service.observed_attestation_gossip_count(),
+            p2p_latest_observed_block_height: p2p_service.latest_observed_block_height(),
+            p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
+            p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
+            p2p_latest_observed_block_payload_height: p2p_service
+                .latest_observed_block_payload_height(),
+            p2p_latest_observed_block_payload_hash: p2p_service
+                .latest_observed_block_payload_hash(),
+            p2p_observed_block_payload_hashes: p2p_service.observed_block_payload_hashes(),
+            network_events: state.network_events(),
+            role_wallet_address,
+            role_wallet_registration: runtime_role_wallet_registration(
+                role,
+                role_wallet_address,
+                chain,
+            ),
+            role_wallet_registered: runtime_role_wallet_registered(
+                role,
+                role_wallet_address,
+                chain,
+            ),
+            miner_work_ready: state.miner_work_ready(),
+            miner_assigned_jobs_seen: state.miner_assigned_jobs_seen(),
+            miner_unreceipted_jobs: state.miner_unreceipted_jobs(),
+            miner_receipts_submitted: state.miner_receipts_submitted(),
+            miner_tensors_inserted: state.miner_tensors_inserted(),
+            validator_work_ready: state.validator_work_ready(),
+            validator_assigned_receipts_seen: state.validator_assigned_receipts_seen(),
+            validator_unattested_receipts: state.validator_unattested_receipts(),
+            validator_artifact_ready_receipts: state.validator_artifact_ready_receipts(),
+            validator_artifact_missing_receipts: state.validator_artifact_missing_receipts(),
+            validator_remote_tensor_fetch_attempts: state.validator_remote_tensor_fetch_attempts(),
+            validator_remote_tensor_fetch_successes: state
+                .validator_remote_tensor_fetch_successes(),
+            validator_remote_tensor_fetch_failures: state.validator_remote_tensor_fetch_failures(),
+            validator_remote_tensor_fetch_bytes: state.validator_remote_tensor_fetch_bytes(),
+            validator_remote_tensors_inserted: state.validator_remote_tensors_inserted(),
+            validator_attestations_submitted: state.validator_attestations_submitted(),
+            validator_block_votes_submitted: state.validator_block_votes_submitted(),
+        }
+    }
+}
+
+pub(super) struct RuntimeP2pReport<'a> {
+    pub(super) peer_id: &'a str,
+    pub(super) topics: usize,
+    pub(super) request_response_protocols: usize,
+    pub(super) bootstrap_peer_count: usize,
+    pub(super) identity: &'a str,
+    pub(super) max_transmit_bytes: usize,
+    pub(super) request_timeout_seconds: u64,
+    pub(super) max_concurrent_streams: usize,
+    pub(super) idle_timeout_seconds: u64,
+}
