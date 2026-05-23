@@ -1,11 +1,11 @@
 use super::super::{
-    roles::{
-        submit_validator_role_attestation, submit_validator_role_block_vote,
-        validator_role_work_observation,
-    },
     validator_fetch::{
         ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
         validator_remote_tensor_response,
+    },
+    validator_role::{
+        submit_validator_role_attestation, submit_validator_role_block_vote,
+        validator_role_work_observation,
     },
 };
 use super::*;

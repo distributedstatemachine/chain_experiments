@@ -19,9 +19,6 @@ mod miner_role;
 #[path = "main/network.rs"]
 mod network;
 
-#[path = "main/roles.rs"]
-mod roles;
-
 #[path = "main/runtime.rs"]
 mod runtime;
 
@@ -51,6 +48,9 @@ mod status;
 
 #[path = "main/validator_fetch.rs"]
 mod validator_fetch;
+
+#[path = "main/validator_role.rs"]
+mod validator_role;
 
 use block_status::service_block_status;
 use commands::{

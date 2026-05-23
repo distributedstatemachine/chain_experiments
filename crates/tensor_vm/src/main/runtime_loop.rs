@@ -3,13 +3,13 @@ use std::{io::ErrorKind, thread, time::Duration};
 use super::{
     miner_role::tick_miner_role_work_once,
     network::ingest_network_events,
-    roles::tick_validator_role_work_once as tick_validator_role_worker_once,
     runtime_config::{RuntimeRole, ServiceRuntimeConfig},
     runtime_production::LocalProductionSchedule,
     runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
         RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
     },
+    validator_role::tick_validator_role_work_once as tick_validator_role_worker_once,
 };
 use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 

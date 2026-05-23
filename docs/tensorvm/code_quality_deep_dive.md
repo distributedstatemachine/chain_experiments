@@ -223,6 +223,8 @@ spaghetti around.
 - Iteration 94 extracted local synthetic production timing, persistence, and produced-block
   counters into `main/runtime_production.rs`, leaving `RoleRuntimeLoop` to orchestrate tick order
   and status writes.
+- Iteration 95 moved validator role worker implementation into `main/validator_role.rs` and
+  updated runtime callers and binary tests to use that focused module directly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
