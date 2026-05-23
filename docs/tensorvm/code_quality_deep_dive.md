@@ -125,6 +125,8 @@ spaghetti around.
   the existing p2p trailing-payload messages and storage error strings intact.
 - Iteration 46 made block-vote vector decoding loop over the decoded count directly instead of
   relying on vector capacity as an implicit counter.
+- Iteration 47 moved libp2p peer-book records, file encoding, and bootstrap multiaddr validation into
+  `p2p/peer_book.rs` while preserving the public `p2p` facade exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -523,7 +525,7 @@ Several files are far past a healthy size boundary:
 | --- | --- |
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
-| `crates/tensor_vm/src/p2p.rs` | libp2p service, gossip, request-response, peer book, codecs, tests |
+| `crates/tensor_vm/src/p2p.rs` | libp2p service, gossip, request-response, wire codecs, tests |
 | `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
