@@ -48,6 +48,7 @@ Finalized current blocks prove useful-verification PoW over canonical settled-re
 | Local settlement | Yes, v1 only | Settlement follows syntactic quorum and conflict rules | Semantic verifier execution is not proven by quorum |
 | Current block production | No | Reference behavior only | Superseded by v2 |
 | Current finality | No for v2 | Stake signatures over known v1 block hashes | Does not imply useful-PoW validity |
+| Verification-time artifact retrieval | Partial | Root-matched local/remote fetch can support verifier execution | Does not prove public DA or durable retention |
 | Public DA/operator independence | No | Outside kernel | Needs external evidence and assumptions |
 
 ## Formal Kernel Model
@@ -305,6 +306,7 @@ These are not defensible as current proof claims:
 | TensorWork-selected miners are v2 proposers | v2 says TensorWork does not select block proposers. |
 | Receipt map root is canonical blockspace | The current block commits the global receipt map, not a deterministic selected settled-receipt set. |
 | Attestation quorum proves verifier execution | The chain counts signed statements and does not recompute verifier transcripts. |
+| Remote tensor fetch proves public DA | Root-matched fetch proves only verification-time retrieval by one runtime. |
 | Reference signatures prove production authentication | The current signing helper is a hash relation, not production crypto. |
 | Local tensor serving proves public DA | Local fetches do not prove independent public retention. |
 | Local Compose operators are independent principals | Containers and deterministic wallet labels are local evidence only. |

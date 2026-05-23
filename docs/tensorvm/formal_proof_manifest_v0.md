@@ -13,6 +13,8 @@ Related boundary documents:
 
 - [`mvp_core_sound_kernel.md`](mvp_core_sound_kernel.md) defines the narrow proof kernel that is defensible
   today.
+- [`mvp_core_data_availability_boundary.md`](mvp_core_data_availability_boundary.md) separates
+  verification-time tensor retrieval from public data availability.
 - [`mvp_core_negative_proofs.md`](mvp_core_negative_proofs.md) records current counterexamples to the full
   reviewed v2 consensus theorem.
 
@@ -38,7 +40,8 @@ Related boundary documents:
 | Settlement | `local-proof-ready` for v1 syntactic-quorum settlement | Settlement/quorum behavior is testable, but semantic verifier execution and v2 blockspace pool semantics are missing. |
 | Useful-verification PoW | `implementation-blocked` | Current block type cannot support the reviewed v2 consensus theorem. |
 | Finality | `reference-only` | Stake-threshold finality exists for current blocks, not for v2 useful-PoW validity. |
-| Public availability/operator independence | `assumption-bound` | Local tests do not prove public DA or independent operators. |
+| Verification-time artifact retrieval | `local-proof-ready` for root-matched local fetch, `assumption-bound` for availability | Current worktree can check fetched tensor roots before verifier use; public DA is not proven. |
+| Public availability/operator independence | `assumption-bound` | Local and request-response fetches do not prove public DA or independent operators. |
 
 ## Core Theorems
 
