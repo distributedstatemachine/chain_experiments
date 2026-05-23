@@ -51,8 +51,8 @@ impl TelemetrySnapshot {
                 .unwrap_or(first);
             (last.saturating_sub(first) as f64) / (block_count.saturating_sub(1) as f64)
         };
-        let receipt_count = chain.state.receipts.len();
-        let settled_receipt_count = chain.state.settled_receipts.len();
+        let receipt_count = chain.state().receipts().len();
+        let settled_receipt_count = chain.state().settled_receipts().len();
         let receipt_age_sum: u64 = chain
             .state
             .receipts
@@ -99,7 +99,7 @@ impl TelemetrySnapshot {
         let invalid_receipts_submitted = invalid_receipt_ids.len();
         let invalid_receipts_accepted = invalid_receipt_ids
             .iter()
-            .filter(|receipt_id| chain.state.settled_receipts.contains(*receipt_id))
+            .filter(|receipt_id| chain.state().settled_receipts().contains(*receipt_id))
             .count() as u64;
         let data_availability_rate = ratio(
             total_attestations.saturating_sub(unavailable),
@@ -128,34 +128,34 @@ impl TelemetrySnapshot {
             .map(|miner| miner.settled_tensor_work)
             .max()
             .unwrap_or(0);
-        let epochs_seen = chain.state.epoch.saturating_add(1);
+        let epochs_seen = chain.state().epoch().saturating_add(1);
         let state_entries = chain
             .state
             .accounts
             .len()
-            .saturating_add(chain.state.miners.len())
-            .saturating_add(chain.state.validators.len())
-            .saturating_add(chain.state.jobs.len())
-            .saturating_add(chain.state.receipts.len())
-            .saturating_add(chain.state.attestations.len())
-            .saturating_add(chain.state.block_votes.len())
-            .saturating_add(chain.state.finalized_blocks.len())
-            .saturating_add(chain.state.model_states.len());
+            .saturating_add(chain.state().miners().len())
+            .saturating_add(chain.state().validators().len())
+            .saturating_add(chain.state().jobs().len())
+            .saturating_add(chain.state().receipts().len())
+            .saturating_add(chain.state().attestations().len())
+            .saturating_add(chain.state().block_votes().len())
+            .saturating_add(chain.state().finalized_blocks().len())
+            .saturating_add(chain.state().model_states().len());
         let miner_rewards: u64 = chain
             .state
             .miners
             .keys()
-            .map(|address| chain.state.rewards.balance(address))
+            .map(|address| chain.state().rewards().balance(address))
             .sum();
         let validator_rewards: u64 = chain
             .state
             .validators
             .keys()
-            .map(|address| chain.state.rewards.balance(address))
+            .map(|address| chain.state().rewards().balance(address))
             .sum();
 
         Self {
-            block_finality_rate: ratio(chain.state.finalized_blocks.len(), block_count),
+            block_finality_rate: ratio(chain.state().finalized_blocks().len(), block_count),
             average_block_time,
             average_receipt_age_blocks,
             receipt_count,
@@ -168,7 +168,7 @@ impl TelemetrySnapshot {
                 invalid_receipts_submitted as u64,
             ),
             validator_disagreement_rate,
-            data_withholding_incidents: chain.state.data_unavailable_receipts.len(),
+            data_withholding_incidents: chain.state().data_unavailable_receipts().len(),
             total_tensor_work,
             tensor_work_per_epoch: ratio_u64(total_tensor_work, epochs_seen),
             max_miner_work_share: ratio(max_miner_work as usize, total_tensor_work as usize),
@@ -240,11 +240,11 @@ fn receipt_submitted_at_block(receipt: &ReceiptState) -> u64 {
 fn average_verification_cost_ratio(chain: &Chain) -> f64 {
     let mut total_ratio = 0.0;
     let mut counted = 0_usize;
-    for receipt in chain.state.receipts.values() {
+    for receipt in chain.state().receipts().values() {
         let ReceiptState::TensorOp(receipt) = receipt else {
             continue;
         };
-        let Some(crate::chain::JobState::TensorOp(job)) = chain.state.jobs.get(&receipt.job_id)
+        let Some(crate::chain::JobState::TensorOp(job)) = chain.state().jobs().get(&receipt.job_id)
         else {
             continue;
         };
@@ -268,14 +268,14 @@ fn estimated_bandwidth_per_validator(chain: &Chain) -> f64 {
         .map(|receipt| estimate_receipt_verification_bytes(chain, receipt))
         .sum::<u64>()
         .saturating_mul(chain.params.freivalds.validators_per_job as u64);
-    ratio_u64(total_bytes, chain.state.validators.len() as u64)
+    ratio_u64(total_bytes, chain.state().validators().len() as u64)
 }
 
 fn estimate_receipt_verification_bytes(chain: &Chain, receipt: &ReceiptState) -> u64 {
     let elem_bytes = std::mem::size_of::<Elem>() as u64;
     match receipt {
         ReceiptState::TensorOp(receipt) => {
-            let Some(JobState::TensorOp(job)) = chain.state.jobs.get(&receipt.job_id) else {
+            let Some(JobState::TensorOp(job)) = chain.state().jobs().get(&receipt.job_id) else {
                 return 0;
             };
             (job.m as u64)
@@ -285,7 +285,7 @@ fn estimate_receipt_verification_bytes(chain: &Chain, receipt: &ReceiptState) ->
                 .saturating_mul(elem_bytes)
         }
         ReceiptState::LinearTrainingStep(receipt) => {
-            let Some(JobState::LinearTrainingStep(job)) = chain.state.jobs.get(&receipt.job_id)
+            let Some(JobState::LinearTrainingStep(job)) = chain.state().jobs().get(&receipt.job_id)
             else {
                 return 0;
             };
@@ -310,7 +310,7 @@ fn tensor_elements(shape: &[usize]) -> u64 {
 fn estimated_gpu_utilization(chain: &Chain) -> f64 {
     let mut weighted_utilization = 0_u64;
     let mut total_gpu_weight = 0_u64;
-    for miner in chain.state.miners.values() {
+    for miner in chain.state().miners().values() {
         if !miner.hardware_class.is_gpu() {
             continue;
         }
@@ -337,10 +337,10 @@ fn hardware_class_participation(chain: &Chain) -> usize {
 
 fn redundant_compute_overhead(chain: &Chain) -> f64 {
     let mut groups = BTreeSet::new();
-    for receipt in chain.state.receipts.values() {
+    for receipt in chain.state().receipts().values() {
         groups.insert(receipt_agreement_key(receipt));
     }
-    ratio(chain.state.receipts.len(), groups.len())
+    ratio(chain.state().receipts().len(), groups.len())
 }
 
 fn receipt_agreement_key(receipt: &ReceiptState) -> Vec<u8> {

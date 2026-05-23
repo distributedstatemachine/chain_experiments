@@ -80,6 +80,8 @@ spaghetti around.
   surface away from direct public field reads.
 - Iteration 23 moved RPC handlers and RPC tests onto the `ChainState` accessors, reducing another external
   service surface's dependence on public state fields.
+- Iteration 24 moved telemetry snapshot and metric calculations onto the `ChainState` accessors, keeping
+  reporting code on the same read-only boundary as RPC.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
