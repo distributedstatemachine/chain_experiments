@@ -6,14 +6,13 @@ their commits are pushed.
 
 ## Current State
 
-- Active feature: Iteration 10, remote validator tensor fetch, is implemented and locally validated in
-  the current worktree; commit/push is the remaining action for this iteration.
-- Current status: local `main` is pushed to `origin/main` at
-  `ad19b0ef40bf414056de9392764e4c1359f6639b` (`Compact local chain execution plan`). Push output:
-  remote reported the repository moved to `git@github.com:distributedstatemachine/tensor_vm.git`, but the
-  push to `github.com:one-covenant/chain_experiments.git` succeeded:
-  `c916b19..ad19b0e main -> main`. Follow-up `git ls-remote origin refs/heads/main` confirmed the remote
-  branch at `ad19b0ef40bf414056de9392764e4c1359f6639b`.
+- Active feature: Iteration 10, remote validator tensor fetch, is implemented, validated, and pushed; this
+  follow-up evidence update records the feature push.
+- Current status: Iteration 10 feature commit `2d6609eb47480dac8c57fd8727e30654b0fcb885`
+  (`Add remote validator tensor fetch`) was pushed to `origin/main`. Push output reported the repository
+  moved to `git@github.com:distributedstatemachine/tensor_vm.git`, but the push to
+  `github.com:one-covenant/chain_experiments.git` succeeded: `98f968b..2d6609e main -> main`. Follow-up
+  `git ls-remote origin refs/heads/main` confirmed `2d6609eb47480dac8c57fd8727e30654b0fcb885`.
 - Current blockers:
   - `docs/tensorvm/codex_5_5_local_chain_workflow.md` is referenced by `goal.md` but is not present in the
     worktree or tracked `docs/tensorvm` files. The readiness document has been read in full; the missing
@@ -203,6 +202,11 @@ Full Docker gate status:
   received. The new validator remote-fetch checker assertions were not reached because the gateway health
   probe failed first.
 
+Commit and push:
+- `2d6609e Add remote validator tensor fetch`
+- Pushed to `origin/main`; remote head confirmed at
+  `2d6609eb47480dac8c57fd8727e30654b0fcb885` before this follow-up evidence update.
+
 Known remaining gaps:
 - Proposer/block production still needs to move to network-visible receipts and attestations.
 - The current block type and proposer path are still v1; useful-verification PoW over canonical
@@ -322,10 +326,11 @@ Out of scope preserved:
 
 ## Validation Evidence
 
-Latest pushed state:
-- `git status --short --branch`: `## main...origin/main` plus untracked `goal.md`.
-- `git rev-parse HEAD`: `c916b192cb50318b23f9a84370559ef4520c6a37`.
-- `git ls-remote origin refs/heads/main`: `c916b192cb50318b23f9a84370559ef4520c6a37 refs/heads/main`.
+Iteration 10 feature push evidence:
+- `git status --short --branch` after feature push: `## main...origin/main` plus untracked `goal.md`.
+- `git rev-parse HEAD`: `2d6609eb47480dac8c57fd8727e30654b0fcb885`.
+- `git ls-remote origin refs/heads/main`: `2d6609eb47480dac8c57fd8727e30654b0fcb885
+  refs/heads/main`.
 
 Latest full broad validation from Iteration 10:
 - `cargo fmt --check`, `cargo check -p tensor_vm --all-targets`, focused p2p/node/role/status tests,
