@@ -191,6 +191,8 @@ spaghetti around.
   leaving `main/runtime.rs` to own service-loop startup and ticking.
 - Iteration 79 moved miner work observation and receipt submission into `main/miner_role.rs`,
   separating miner role glue from validator role tensor-fetch and attestation logic.
+- Iteration 80 moved validator remote tensor fetch and p2p tensor-response parsing into
+  `main/validator_fetch.rs`, leaving `main/roles.rs` focused on validator observation and submissions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -37,6 +37,9 @@ mod shared;
 #[path = "main/status.rs"]
 mod status;
 
+#[path = "main/validator_fetch.rs"]
+mod validator_fetch;
+
 use block_status::service_block_status;
 use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,

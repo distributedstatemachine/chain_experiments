@@ -2,9 +2,8 @@ use super::miner_role::{
     MinerRoleWorkObservation, miner_role_work_observation, submit_miner_role_receipt,
 };
 use super::roles::{
-    ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
     submit_validator_role_attestation, submit_validator_role_block_vote,
-    validator_remote_tensor_response, validator_role_work_observation,
+    validator_role_work_observation,
 };
 use super::runtime::RoleRuntimeLoop;
 use super::runtime_commands::RoleRunLoop;
@@ -13,6 +12,10 @@ use super::runtime_config::{
     runtime_node_config, runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
 use super::shared::local_cpu_seed_beacon;
+use super::validator_fetch::{
+    ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
+    validator_remote_tensor_response,
+};
 use super::*;
 use std::{
     collections::BTreeSet,

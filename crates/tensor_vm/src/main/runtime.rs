@@ -11,8 +11,8 @@ use super::{
         publish_new_chain_announcements,
     },
     roles::{
-        fetch_validator_role_missing_tensors, submit_validator_role_attestation,
-        submit_validator_role_block_vote, validator_role_work_observation,
+        submit_validator_role_attestation, submit_validator_role_block_vote,
+        validator_role_work_observation,
     },
     runtime_config::{
         RuntimeRole, ServiceRuntimeConfig, runtime_node_config, runtime_role_wallet_registration,
@@ -22,6 +22,7 @@ use super::{
         RuntimeP2pReport, RuntimeStatusSnapshot, format_role_runtime_report,
         write_role_runtime_status,
     },
+    validator_fetch::fetch_validator_role_missing_tensors,
 };
 use tensor_vm::{
     ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NodeRuntimeState, NodeStore, RpcGateway,
