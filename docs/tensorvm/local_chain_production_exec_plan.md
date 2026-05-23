@@ -5,11 +5,11 @@ feature-sized iterations are summarized after validation and push, and older det
 
 ## Current State
 
-- Latest completed feature: Iteration 13, role-owned block vote finality, is implemented, validated, and
-  pushed as `fb0feb02c3cebf6b9e4f0e00f7efb01fec275320`
-  (`Add role-owned block vote finality`) on `origin/main`. This iteration removes synthetic
-  producer-owned finality votes from the runtime path and moves finality to explicit validator role
-  block-vote submissions.
+- Latest completed feature: Iteration 14, validator-owned local timed producer topology, is implemented,
+  validated, and pushed as `1d556efafd1443809406dcaa54bdc3aa63c68b9e`
+  (`Move local producer to validator runtime`) on `origin/main`. This iteration moves the single local
+  timed producer from `miner-00/proposer_run` to `validator-00/validator_run`, makes local timed producer
+  capability validator-only, and keeps full role-owned validator block assembly as the next gap.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
 - Iteration 11 feature and evidence commits are on `origin/main`: `e6129d1915562a1e865579e347d8cfb85855089e`
@@ -34,7 +34,7 @@ feature-sized iterations are summarized after validation and push, and older det
 | Role-owned validator block votes | Implemented/pushed | `fb0feb0`; validator role submits `SubmitBlockVote`, gossips block-vote payloads, and status/checker fields expose submitted/ingested/applied vote counters | Rerun full Docker checker after `/health` blocker clears |
 | Remote tensor availability | Implemented/pushed | `2d6609e`; root-addressed tensor request-response and validator fetch counters | Reuse for block-check evidence; revisit slow-peer bounds later |
 | Network-visible event ingestion | Implemented/pushed | `fb0feb0`; node runtime ingests decoded jobs, receipts, attestations, block payloads, and block-vote payloads; headers/hashes are announcements only | Rerun full Docker checker after `/health` blocker clears |
-| Proposer/block production | Locally canonical core | `chain::proposer` selects registered validators; `produce_block` rejects unknown validators and ignores miner TensorWork | Keep block production separate from role-owned finality votes |
+| Proposer/block production | Validator topology narrowed | `1d556ef`; `validator-00/validator_run` is the only local timed producer, miners and service/proposer surfaces cannot locally produce, and `chain::proposer` still selects registered validators | Replace synthetic round helper with a network-visible validator proposer/block assembly tick |
 | Canonical useful-verification block validity | Partially implemented locally | Blocks carry selected-root/checks-root/beacon/target/nonce; strict vote validation checks state root, beacon, PoW, proposer, selected receipts, checks, attestation, and reward roots | Add exact parent snapshots, child-state apply theorem, challenge openings, retargeting, and fallback |
 | Checker evidence | Updated | `tvmd service block` exposes PoW, canonical blockspace, checks-root, validator-proposer, finality-validation, and block-vote stake/validator evidence; checker asserts all booleans before scan exit | Full Docker checker still awaits `/health` blocker resolution |
 | Restart/recovery matrix | Complete for current storage model | Rolling restart checker covers durable state/common head for current block model | Rerun after block serialization changes |
@@ -139,6 +139,13 @@ Validation passed:
   workspace line coverage (11,559/11,881 lines).
 - `git diff --check`
 - Full Docker checker was not rerun because the standing gateway `/health` blocker remains unresolved.
+
+Push evidence:
+- Feature commit: `1d556efafd1443809406dcaa54bdc3aa63c68b9e`
+  (`Move local producer to validator runtime`).
+- Remote/branch: `origin/main`.
+- Push result: `6e29e14..1d556ef  main -> main`; GitHub also printed the repository-moved notice:
+  `git@github.com:distributedstatemachine/tensor_vm.git`.
 
 ### Iteration 13: Role-Owned Block Vote Finality
 
