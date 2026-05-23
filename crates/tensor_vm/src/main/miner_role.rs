@@ -1,6 +1,12 @@
 use std::collections::BTreeSet;
+
+use super::{
+    network::{chain_announcement_checkpoint, publish_new_chain_announcements},
+    runtime_config::{ServiceRuntimeConfig, runtime_role_wallet_registration},
+};
 use tensor_vm::{
-    Chain, ChainCommand, ChainEngine, JobScheduler, RpcNode, Tensor,
+    Chain, ChainCommand, ChainEngine, JobScheduler, NodeRuntimeState, NodeStore, RpcHttpServer,
+    RpcNode, Tensor, TensorVmLibp2pService,
     hash::hex,
     roles::CpuReferenceMinerRole,
     types::{Address, Hash},
@@ -93,4 +99,61 @@ pub(super) fn submit_miner_role_receipt(
         tensors_inserted,
         served_tensors,
     }))
+}
+
+pub(super) fn tick_miner_role_work_once(
+    config: &ServiceRuntimeConfig,
+    store: &NodeStore,
+    server: &mut RpcHttpServer,
+    p2p_service: &TensorVmLibp2pService,
+    runtime_state: &mut NodeRuntimeState,
+) -> std::result::Result<bool, String> {
+    let Some(miner) = config.role_wallet_address else {
+        return Ok(false);
+    };
+    if runtime_role_wallet_registration(
+        config.role,
+        config.role_wallet_address,
+        &server.gateway().node.chain,
+    ) != "miner"
+    {
+        return Ok(false);
+    }
+    let observation = miner_role_work_observation(&server.gateway().node.chain, miner);
+    let job_to_submit = observation.unreceipted_jobs.iter().next().copied();
+    let mut status_changed = false;
+    if runtime_state
+        .record_miner_work_observation(observation.assigned_jobs, observation.unreceipted_jobs)
+    {
+        status_changed = true;
+    }
+    if let Some(job_id) = job_to_submit {
+        let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
+        if let Some(submission) =
+            submit_miner_role_receipt(&mut server.gateway_mut().node, miner, job_id)?
+        {
+            publish_new_chain_announcements(
+                p2p_service,
+                &announcement_checkpoint,
+                &server.gateway().node.chain,
+            )?;
+            store
+                .persist_chain(&server.gateway().node.chain)
+                .map_err(|error| format!("failed to persist miner receipt state: {error}"))?;
+            runtime_state.record_miner_receipt_submission(
+                submission.receipts_submitted,
+                submission.tensors_inserted,
+            );
+            for tensor in submission.served_tensors {
+                p2p_service.register_tensor(tensor);
+            }
+            let observation = miner_role_work_observation(&server.gateway().node.chain, miner);
+            runtime_state.record_miner_work_observation(
+                observation.assigned_jobs,
+                observation.unreceipted_jobs,
+            );
+            status_changed = true;
+        }
+    }
+    Ok(status_changed)
 }

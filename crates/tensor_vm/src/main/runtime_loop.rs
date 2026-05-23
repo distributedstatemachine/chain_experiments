@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::{
-    miner_role::{miner_role_work_observation, submit_miner_role_receipt},
+    miner_role::tick_miner_role_work_once,
     network::{
         chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
         publish_new_chain_announcements,
@@ -131,67 +131,21 @@ impl RoleRuntimeLoop {
 
     fn tick_role_work_once(&mut self) -> std::result::Result<(), String> {
         match self.config.role {
-            RuntimeRole::Miner => self.tick_miner_role_work_once(),
+            RuntimeRole::Miner => {
+                if tick_miner_role_work_once(
+                    &self.config,
+                    &self.store,
+                    &mut self.server,
+                    &self.p2p_service,
+                    &mut self.runtime_state,
+                )? {
+                    self.write_status()?;
+                }
+                Ok(())
+            }
             RuntimeRole::Validator => self.tick_validator_role_work_once(),
             RuntimeRole::Proposer | RuntimeRole::Service => Ok(()),
         }
-    }
-
-    fn tick_miner_role_work_once(&mut self) -> std::result::Result<(), String> {
-        let Some(miner) = self.config.role_wallet_address else {
-            return Ok(());
-        };
-        if runtime_role_wallet_registration(
-            self.config.role,
-            self.config.role_wallet_address,
-            &self.server.gateway().node.chain,
-        ) != "miner"
-        {
-            return Ok(());
-        }
-        let observation = miner_role_work_observation(&self.server.gateway().node.chain, miner);
-        let job_to_submit = observation.unreceipted_jobs.iter().next().copied();
-        let mut status_changed = false;
-        if self
-            .runtime_state
-            .record_miner_work_observation(observation.assigned_jobs, observation.unreceipted_jobs)
-        {
-            status_changed = true;
-        }
-        if let Some(job_id) = job_to_submit {
-            let announcement_checkpoint =
-                chain_announcement_checkpoint(&self.server.gateway().node.chain);
-            if let Some(submission) =
-                submit_miner_role_receipt(&mut self.server.gateway_mut().node, miner, job_id)?
-            {
-                publish_new_chain_announcements(
-                    &self.p2p_service,
-                    &announcement_checkpoint,
-                    &self.server.gateway().node.chain,
-                )?;
-                self.store
-                    .persist_chain(&self.server.gateway().node.chain)
-                    .map_err(|error| format!("failed to persist miner receipt state: {error}"))?;
-                self.runtime_state.record_miner_receipt_submission(
-                    submission.receipts_submitted,
-                    submission.tensors_inserted,
-                );
-                for tensor in submission.served_tensors {
-                    self.p2p_service.register_tensor(tensor);
-                }
-                let observation =
-                    miner_role_work_observation(&self.server.gateway().node.chain, miner);
-                self.runtime_state.record_miner_work_observation(
-                    observation.assigned_jobs,
-                    observation.unreceipted_jobs,
-                );
-                status_changed = true;
-            }
-        }
-        if status_changed {
-            self.write_status()?;
-        }
-        Ok(())
     }
 
     pub(super) fn tick_validator_role_work_once(&mut self) -> std::result::Result<(), String> {

@@ -215,6 +215,8 @@ spaghetti around.
   `main_tests.rs` as imports and submodule wiring for the split test files.
 - Iteration 91 extracted role runtime service startup and owned p2p report metadata into
   `main/runtime_services.rs`, narrowing `main/runtime_loop.rs` toward loop behavior.
+- Iteration 92 moved miner role runtime ticking into `main/miner_role.rs`, keeping miner
+  observation, receipt submission, persistence, p2p publication, and counters with the miner worker.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
