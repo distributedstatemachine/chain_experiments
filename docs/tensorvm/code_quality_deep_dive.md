@@ -240,6 +240,9 @@ spaghetti around.
 - Iteration 100 added a cached `key=value` status-file reader for `service_status`, so
   `main/status.rs` now reads `local-cpu-ready` and `role-runtime.status` once each instead of
   reparsing the same files for every projected field.
+- Iteration 101 split `NetworkEventIngest` and `NodeRuntimeState` into
+  `node/runtime_state.rs`, keeping the public `node` re-exports unchanged while separating runtime
+  counters from network payload application.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
