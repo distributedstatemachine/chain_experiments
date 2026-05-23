@@ -414,6 +414,19 @@ mod tests {
 
         let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
         let model_id = hash_bytes(b"test", &[b"engine-model"]);
+        let architecture = hash_bytes(b"test", &[b"engine-architecture"]);
+        let config = hash_bytes(b"test", &[b"engine-config"]);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::RegisterModel {
+                    model_id,
+                    architecture_hash: architecture,
+                    weight_root: weights.commitment_root(),
+                    config_hash: config,
+                })
+                .unwrap(),
+            vec![ChainEvent::ModelRegistered(model_id)]
+        );
         let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id,
             step: 0,
@@ -442,6 +455,21 @@ mod tests {
                 ))
                 .unwrap(),
             vec![ChainEvent::ReceiptAccepted(linear_receipt.receipt_id)]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::ApplyModelTransition {
+                    model_id,
+                    step: 0,
+                    weight_root_before: weights.commitment_root(),
+                    weight_root_after: linear_receipt.weight_root_after,
+                })
+                .unwrap(),
+            vec![ChainEvent::ModelTransitionApplied {
+                model_id,
+                step: 0,
+                weight_root_after: linear_receipt.weight_root_after,
+            }]
         );
     }
 

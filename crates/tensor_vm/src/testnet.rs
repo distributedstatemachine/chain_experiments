@@ -3648,7 +3648,13 @@ impl LocalTestnet {
         let weights = Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6])
             .expect("static weights should be valid");
         self.chain
-            .register_model(model_id, architecture, weights.commitment_root(), config);
+            .apply_command(ChainCommand::RegisterModel {
+                model_id,
+                architecture_hash: architecture,
+                weight_root: weights.commitment_root(),
+                config_hash: config,
+            })
+            .expect("testnet linear model should be registered");
         let job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id,
             step: 0,
@@ -3740,12 +3746,12 @@ impl LocalTestnet {
                 .contains(&canonical_receipt.receipt_id)
         );
         self.chain
-            .apply_model_transition(
-                &model_id,
-                0,
-                &weights.commitment_root(),
-                canonical_receipt.weight_root_after,
-            )
+            .apply_command(ChainCommand::ApplyModelTransition {
+                model_id,
+                step: 0,
+                weight_root_before: weights.commitment_root(),
+                weight_root_after: canonical_receipt.weight_root_after,
+            })
             .expect("verified training receipt should advance model state");
         let proposer = self
             .chain

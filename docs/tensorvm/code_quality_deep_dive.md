@@ -44,6 +44,9 @@ spaghetti around.
 - Iteration 6 routed `LocalTestnet` participant registration, job/receipt/attestation submission,
   settlement, block production, and block votes through `ChainCommand`. Model registration and model
   transition remain direct until the command API grows model-specific variants.
+- Iteration 7 added model registration and model transition variants to `ChainCommand`, with matching
+  events, and routed local synthetic linear training, block parent-state preparation, and `LocalTestnet`
+  model updates through that command path.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -191,7 +194,7 @@ through imperative methods on `Chain`.
 
 Remaining examples:
 
-- runtime, RPC test setup, and model-state paths still call direct mutation helpers in several places.
+- runtime, RPC test setup, and lower-level model tests still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
 - `apply_transaction` now rejects txpool-only reference submissions, but the public transaction surface still
   mixes immediate chain mutations with queued reference announcements.

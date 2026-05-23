@@ -114,12 +114,12 @@ pub(super) fn prepare_parent_state(chain: &mut Chain) -> Result<()> {
         else {
             continue;
         };
-        chain.apply_model_transition(
-            &receipt.model_id,
-            receipt.step,
-            &receipt.weight_root_before,
-            receipt.weight_root_after,
-        )?;
+        chain.apply_command(ChainCommand::ApplyModelTransition {
+            model_id: receipt.model_id,
+            step: receipt.step,
+            weight_root_before: receipt.weight_root_before,
+            weight_root_after: receipt.weight_root_after,
+        })?;
     }
     Ok(())
 }

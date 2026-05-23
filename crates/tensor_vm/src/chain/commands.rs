@@ -84,6 +84,33 @@ impl ChainEngine for Chain {
                     hash: block.hash(),
                 }])
             }
+            ChainCommand::RegisterModel {
+                model_id,
+                architecture_hash,
+                weight_root,
+                config_hash,
+            } => {
+                self.register_model(model_id, architecture_hash, weight_root, config_hash);
+                Ok(vec![ChainEvent::ModelRegistered(model_id)])
+            }
+            ChainCommand::ApplyModelTransition {
+                model_id,
+                step,
+                weight_root_before,
+                weight_root_after,
+            } => {
+                self.apply_model_transition(
+                    &model_id,
+                    step,
+                    &weight_root_before,
+                    weight_root_after,
+                )?;
+                Ok(vec![ChainEvent::ModelTransitionApplied {
+                    model_id,
+                    step,
+                    weight_root_after,
+                }])
+            }
         }
     }
 

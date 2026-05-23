@@ -112,7 +112,7 @@ fn produce_synthetic_linear_training_round(
 ) -> Result<Option<SyntheticCpuRoundResult>> {
     let beacon = chain.state.finalized_randomness;
     let weights = SyntheticLocalJobSource::linear_training_weights();
-    register_synthetic_linear_model(chain, &job, &weights);
+    register_synthetic_linear_model(chain, &job, &weights)?;
     let job_state = JobState::LinearTrainingStep(job.clone());
     chain.apply_command(ChainCommand::SubmitJob(job_state.clone()))?;
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
@@ -143,12 +143,12 @@ fn produce_synthetic_linear_training_round(
         ReceiptState::LinearTrainingStep(receipt) => receipt.weight_root_after,
         ReceiptState::TensorOp(_) => unreachable!("linear round must produce linear receipts"),
     };
-    chain.apply_model_transition(
-        &job.model_id,
-        job.step,
-        &job.weight_root_before,
+    chain.apply_command(ChainCommand::ApplyModelTransition {
+        model_id: job.model_id,
+        step: job.step,
+        weight_root_before: job.weight_root_before,
         weight_root_after,
-    )?;
+    })?;
     let proposer = chain.proposer_for_next_epoch(&beacon).unwrap_or_default();
     let timestamp = chain
         .blocks
@@ -201,15 +201,16 @@ fn register_synthetic_linear_model(
     chain: &mut Chain,
     job: &LinearTrainingStepJob,
     weights: &Tensor,
-) {
+) -> Result<()> {
     if !chain.state.model_states.contains_key(&job.model_id) {
-        chain.register_model(
-            job.model_id,
-            SyntheticLocalJobSource::linear_training_architecture_hash(),
-            weights.commitment_root(),
-            SyntheticLocalJobSource::linear_training_config_hash(),
-        );
+        chain.apply_command(ChainCommand::RegisterModel {
+            model_id: job.model_id,
+            architecture_hash: SyntheticLocalJobSource::linear_training_architecture_hash(),
+            weight_root: weights.commitment_root(),
+            config_hash: SyntheticLocalJobSource::linear_training_config_hash(),
+        })?;
     }
+    Ok(())
 }
 
 #[cfg(test)]

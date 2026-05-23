@@ -53,6 +53,18 @@ pub enum ChainCommand {
         proposer: Address,
         timestamp: u64,
     },
+    RegisterModel {
+        model_id: Hash,
+        architecture_hash: Hash,
+        weight_root: Hash,
+        config_hash: Hash,
+    },
+    ApplyModelTransition {
+        model_id: Hash,
+        step: u64,
+        weight_root_before: Hash,
+        weight_root_after: Hash,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -83,6 +95,12 @@ pub enum ChainEvent {
         hash: Hash,
     },
     BlockFinalized(Hash),
+    ModelRegistered(Hash),
+    ModelTransitionApplied {
+        model_id: Hash,
+        step: u64,
+        weight_root_after: Hash,
+    },
 }
 
 pub trait ChainEngine {
