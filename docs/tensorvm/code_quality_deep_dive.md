@@ -237,6 +237,9 @@ spaghetti around.
 - Iteration 99 split runtime status snapshot collection into `main/runtime_status_snapshot.rs`,
   leaving `main/runtime_status.rs` focused on the existing text renderers while preserving the
   status-file and service-report contracts.
+- Iteration 100 added a cached `key=value` status-file reader for `service_status`, so
+  `main/status.rs` now reads `local-cpu-ready` and `role-runtime.status` once each instead of
+  reparsing the same files for every projected field.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
