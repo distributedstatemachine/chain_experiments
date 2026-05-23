@@ -58,7 +58,7 @@ public DA and operator-independence evidence
 | Create formal proofs for MVP core | `mvp_core_sound_kernel.md`, `formal_proof_manifest_v0.md`, `mvp_core_formal_proofs.md` | Partial | Paper proof statements exist for the narrow kernel. No mechanized Lean/TorchLean proof exists. Full consensus proof is blocked. |
 | Keep upgrading core until sound | Current docs and Rust consensus surfaces | Not complete | The user has restricted this pass to Markdown only. The docs identify required implementation gates, but the core itself remains unsound for v2. |
 | Be critical | `bad_assumptions_ledger.md`, `mvp_core_negative_proofs.md`, `mvp_core_data_availability_boundary.md` | Met for docs | The current docs call out false assumptions directly, including finality, proposer eligibility, quorum semantics, public DA, and signatures. |
-| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 24 bad assumptions and wording rules. It should remain open. |
+| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 25 bad assumptions and wording rules. It should remain open. |
 | Create docs only | Git history and current staged policy | Met for this proof-work stream | Recent proof commits are Markdown-only. Dirty code changes in the worktree are not part of this proof-doc audit. |
 | Prove full reviewed MVP core sound | v2 spec plus current chain code | Not complete | Current blocks and finality cannot express the reviewed useful-verification PoW theorem. |
 
@@ -169,6 +169,8 @@ The signature/authentication boundary is specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 The canonical encoding and commitment boundary is specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+The settled-receipt blockspace model is specified in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 The useful-PoW work model is specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 The verifier evidence model is specified in

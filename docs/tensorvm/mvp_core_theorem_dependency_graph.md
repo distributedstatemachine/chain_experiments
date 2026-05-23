@@ -82,6 +82,8 @@ Signature/authentication boundaries live in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 Canonical encoding and commitment boundaries live in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+Settled-receipt blockspace boundaries live in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 Useful-PoW work and economics boundaries live in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 Verifier evidence boundaries live in
@@ -95,8 +97,8 @@ V2 state invariants live in
 
 | Node | Class | Required Dependencies | Current Blocker |
 | --- | --- | --- | --- |
-| `V2-BLK-001 canonical_selected_receipts` | `blocked-v2` | settled-receipt pool, eligibility, expiry, caps, spent/carry-over, deterministic order. | Required consensus state is missing. |
-| `V2-BLK-002 selected_receipt_root_binding` | `blocked-v2` | `V2-BLK-001`, canonical selected receipt leaf encoding, hash binding. | Current block has global `receipt_root`, not selected settled receipt root. |
+| `V2-BLK-001 canonical_selected_receipts` | `blocked-v2` | settled-receipt pool, eligibility, expiry, caps, spent/carry-over, deterministic order, omission theorem. | Required blockspace lifecycle state and cap-policy theorem are missing. |
+| `V2-BLK-002 selected_receipt_root_binding` | `blocked-v2` | `V2-BLK-001`, canonical selected receipt leaf encoding, hash binding. | Current/candidate roots do not yet bind full selected receipt leaves and lifecycle semantics. |
 | `V2-CHK-001 check_leaf_recomputable` | `blocked-v2` | verifier kernel, artifact availability, transcript formats, challenge openings, verifier evidence model. | No committed semantic check leaf format or recomputation/challenge transition. |
 | `V2-CHK-002 block_checks_root_binding` | `blocked-v2` | `V2-BLK-001`, `V2-CHK-001`, canonical check leaf order, verifier evidence model. | Aggregate roots over statements do not prove transcript truth without recomputation or challenge openings. |
 | `V2-POW-001 useful_verification_pow_valid` | `blocked-v2` | `V2-BLK-002`, `V2-CHK-002`, target, nonce, beacon, proposer, hash model, useful-work cost model for economic claims. | Current block has no target/nonce and no useful-PoW predicate; work dominance is also unmodeled. |
@@ -126,6 +128,7 @@ These imports would create false proof claims:
 | `valid nonce -> useful-work dominance` | A nonce proves hash-target success, not that verification work dominated nonce grinding. |
 | `aggregate checks_root -> verifier execution` | A root over signed check claims does not prove the verifier relation without transcript recomputation or challenge openings. |
 | `current-state validation -> parent-state validity` | A block must be validated against its exact parent state, not whatever mutable state exists when a node checks it. |
+| `settled_receipt_ids -> canonical blockspace` | A bare id set lacks eligibility, cap accounting, selected leaf, spent/carry-over, expiry, and omission semantics. |
 
 ## Mechanization Import Rule
 

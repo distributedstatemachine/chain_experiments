@@ -19,6 +19,8 @@ The local dirty v2-block candidate is audited in
 these obligations.
 The parent-state transition model required by V2-STATE and V2-FIN is defined in
 [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
+The settled-receipt blockspace model required by V2-BLK is defined in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 
 ## Current Verdict
 
@@ -112,12 +114,15 @@ Dependencies:
 - data-available-through-challenge-window predicate
 - deterministic ordering `H(beacon || parent_hash || receipt_id)`
 - caps accounting
+- spent/carry-over lifecycle
+- omission theorem for nonselected eligible receipts
 
 Counterexamples killed:
 
 - Receipt map root as blockspace.
 - Validator-selected receipt subset grinding.
 - Discretionary censorship by omission from the canonical set.
+- Double inclusion of a previously selected settled receipt.
 
 Current status: implementation-blocked.
 
@@ -135,11 +140,13 @@ Dependencies:
 - V2-BLK-001
 - canonical receipt leaf encoding
 - hash collision-resistance assumption
+- selected receipt lifecycle fields needed for cap and reward proofs
 
 Counterexamples killed:
 
 - Block says it included one set while validators recompute another.
 - Global receipt root substituted for selected settled-receipt root.
+- Receipt id root omits eligibility, cap accounting, or reward-relevant selected leaf fields.
 
 Current status: implementation-blocked.
 

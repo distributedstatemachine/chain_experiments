@@ -9,6 +9,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core adversary model](mvp_core_adversary_model.md)
 - [MVP core theorem dependency graph](mvp_core_theorem_dependency_graph.md)
 - [MVP core canonical encoding and commitment model](mvp_core_canonical_encoding_commitment_model.md)
+- [MVP core settled-receipt blockspace model](mvp_core_settled_receipt_blockspace_model.md)
 - [MVP core useful-PoW work model](mvp_core_useful_pow_work_model.md)
 - [MVP core verifier evidence model](mvp_core_verifier_evidence_model.md)
 - [MVP core parent-state transition model](mvp_core_parent_state_transition_model.md)

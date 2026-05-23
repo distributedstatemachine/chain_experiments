@@ -26,6 +26,8 @@ Related boundary documents:
   depend on which assumptions and where blocked v2 consensus imports must stop.
 - [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md)
   separates pre-hash canonical encoding, hash/Merkle binding, and consensus-object meaning.
+- [`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md) defines the
+  settled receipt lifecycle, cap policy, selected leaf, and carry-over rules needed for v2 blockspace.
 - [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md) separates structural
   useful-PoW header validity from economic useful-work dominance.
 - [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
@@ -546,6 +548,9 @@ block_receipt_cap
 canonical selector
 spent/carry-over state
 ```
+
+The required blockspace lifecycle and selected leaf model is specified in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 
 ### TVM-BLK-002: Block-Level Checks Root Recomputability
 

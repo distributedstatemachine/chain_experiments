@@ -25,6 +25,8 @@ Signature/authentication boundaries are specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 Canonical encoding and commitment boundaries are specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+Settled-receipt blockspace boundaries are specified in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 Useful-PoW structural and economic boundaries are specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 Verifier evidence boundaries are specified in
@@ -67,8 +69,8 @@ V2 state invariants are tracked in
 
 | Claim ID | Target Claim | Current Rust Surface | Evidence Docs | Status | Why Not Proven | Gate To Upgrade |
 | --- | --- | --- | --- | --- | --- | --- |
-| V2-BLK-001 | Canonical settled-receipt selection is deterministic and cap-respecting. | Current `ChainState` has `settled_receipts: BTreeSet<Hash>`. | `mvp_core_v2_consensus_proof_obligations.md` | Blocked | No settled-receipt pool metadata, eligibility, expiry, spent/carry-over, byte/TWU/count caps. | Add selector state and prove deterministic inclusion/omission. |
-| V2-BLK-002 | Block commits `settled_receipt_set_root` for canonical selected receipts. | Current `TensorBlock` has `receipt_root`, not selected receipt root. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md` | Blocked | Global receipt map root is not deterministic blockspace. | Add selected receipt root and canonical leaf encoding. |
+| V2-BLK-001 | Canonical settled-receipt selection is deterministic and cap-respecting. | Current `ChainState` has `settled_receipts: BTreeSet<Hash>`; candidate selectors still lack full lifecycle semantics. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_settled_receipt_blockspace_model.md` | Blocked | No settled-receipt pool metadata, eligibility, expiry, spent/carry-over, cap policy, or omission theorem is discharged. | Add selector state and prove deterministic inclusion/omission/carry-over. |
+| V2-BLK-002 | Block commits `settled_receipt_set_root` for canonical selected receipts. | Current/candidate roots do not yet bind full selected receipt leaves. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_settled_receipt_blockspace_model.md` | Blocked | Receipt id roots do not prove eligibility, cap accounting, reward fields, or lifecycle state. | Add selected receipt root over canonical selected leaves and prove leaf encoding. |
 | V2-CHK-001 | Validators can recompute check leaves for selected receipts. | Verifier reports and attestation `checks_root` exist, but semantic evidence needs transcript objects or openings. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_verifier_evidence_model.md` | Blocked | No committed check leaf schema, transcript root format, or opening/challenge path discharges semantic evidence. | Define check leaves and transcript recomputation or challenge openings. |
 | V2-CHK-002 | Block-level `checks_root` binds all selected receipt checks. | Block-check roots can aggregate claims, but semantic binding requires recomputable selected receipt check leaves. | `mvp_core_negative_proofs.md`, `mvp_core_verifier_evidence_model.md` | Blocked | Per-attestation roots or aggregate roots over them do not prove verifier execution. | Add block-level checks root with recomputation/challenge validation. |
 | V2-POW-001 | Useful-PoW nonce is bound to parent, selected receipt root, checks root, beacon, proposer, and target. | `chain/blocks.rs::produce` has no PoW predicate. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_useful_pow_work_model.md` | Blocked | Current block has no target or nonce, nonce search is not tied to verification, and useful-work dominance is not modeled. | Add PoW header, difficulty target, nonce predicate, validation, work floor, and cost model. |

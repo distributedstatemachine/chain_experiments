@@ -12,6 +12,8 @@ tested adversarially, and mapped back into the formal proof manifest.
 
 The parent-state transition theorem that this candidate still needs is specified in
 [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
+The settled-receipt lifecycle and blockspace theorem that this candidate still needs is specified in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 
 ## Evidence Scope
 

@@ -49,7 +49,8 @@ Let:
 - `S` be the parent chain state.
 - `B` be a candidate non-fallback v2 block.
 - `R(S, B)` be the deterministic selected settled-receipt list for the parent state, beacon, and blockspace
-  caps.
+  caps, as specified in
+  [`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 - `root_R(S, B)` be the canonical root of `R(S, B)`.
 - `L(S, B)` be the ordered list of recomputable verification check leaves for `R(S, B)`.
 - `root_L(S, B)` be the canonical root of `L(S, B)`.

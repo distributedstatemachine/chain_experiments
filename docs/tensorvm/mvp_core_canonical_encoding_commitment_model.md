@@ -11,6 +11,9 @@ Purpose: separate three things that are easy to conflate:
 The current proof corpus can use existing roots as deterministic local commitments, but not every current
 root commits the object needed by the reviewed v2 MVP theorem.
 
+The selected-receipt object that a future `settled_receipt_set_root` must encode is specified in
+[`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
+
 ## Current Evidence
 
 Current Rust surfaces:
