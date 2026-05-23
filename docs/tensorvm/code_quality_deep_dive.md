@@ -165,6 +165,8 @@ spaghetti around.
   giving the binary service-status reporting code a focused owner behind unchanged CLI dispatch.
 - Iteration 66 extracted service init, peer-add, readiness, and local CPU verification command helpers
   into `main/commands.rs`, leaving `main.rs` closer to dispatch and runtime orchestration.
+- Iteration 67 extracted binary network ingest and gossip-publishing helpers into `main/network.rs`,
+  keeping runtime loop orchestration in `main.rs` while isolating p2p message application glue.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
