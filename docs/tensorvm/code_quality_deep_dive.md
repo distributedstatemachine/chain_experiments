@@ -84,6 +84,8 @@ spaghetti around.
   reporting code on the same read-only boundary as RPC.
 - Iteration 25 moved scheduler and synthetic job-source reads onto the `ChainState` accessors, so assignment
   and local job generation no longer depend on public state fields.
+- Iteration 26 moved local synthetic round production, finality helpers, and localnet tests onto the
+  `ChainState` accessors, extending the read boundary through local CPU harness code.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -40,7 +40,7 @@ fn produce_synthetic_cpu_round_from_source(
     chain: &mut Chain,
     job_source: &mut impl JobSource,
 ) -> Result<Option<SyntheticCpuRoundResult>> {
-    if chain.state.miners.is_empty() || chain.state.validators.is_empty() {
+    if chain.state().miners().is_empty() || chain.state().validators().is_empty() {
         return Ok(None);
     }
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
@@ -58,7 +58,7 @@ fn produce_synthetic_matmul_round(
     scheduler: &JobScheduler,
     job: MatmulJob,
 ) -> Result<Option<SyntheticCpuRoundResult>> {
-    let beacon = chain.state.finalized_randomness;
+    let beacon = chain.state().finalized_randomness();
     let job_state = JobState::TensorOp(job.clone());
     chain.apply_command(ChainCommand::SubmitJob(job_state.clone()))?;
     let miner_assignment = scheduler.assign_miners(chain, job.job_id, &beacon);
@@ -66,7 +66,7 @@ fn produce_synthetic_matmul_round(
     for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
         let receipt = CpuReferenceMinerRole::new(miner_address).execute_job(
             &job_state,
-            chain.state.height,
+            chain.state().height(),
             1 + index as u64,
         )?;
         chain.apply_command(ChainCommand::SubmitReceipt(receipt.receipt.clone()))?;
@@ -100,7 +100,7 @@ fn produce_synthetic_matmul_round(
         timestamp,
     })?;
     Ok(Some(SyntheticCpuRoundResult {
-        height: chain.state.height,
+        height: chain.state().height(),
         tensors: canonical_receipt.served_tensors(),
     }))
 }
@@ -110,7 +110,7 @@ fn produce_synthetic_linear_training_round(
     scheduler: &JobScheduler,
     job: LinearTrainingStepJob,
 ) -> Result<Option<SyntheticCpuRoundResult>> {
-    let beacon = chain.state.finalized_randomness;
+    let beacon = chain.state().finalized_randomness();
     let weights = SyntheticLocalJobSource::linear_training_weights();
     register_synthetic_linear_model(chain, &job, &weights)?;
     let job_state = JobState::LinearTrainingStep(job.clone());
@@ -120,7 +120,7 @@ fn produce_synthetic_linear_training_round(
     for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
         let receipt = CpuReferenceMinerRole::new(miner_address).execute_job(
             &job_state,
-            chain.state.height,
+            chain.state().height(),
             1 + index as u64,
         )?;
         chain.apply_command(ChainCommand::SubmitReceipt(receipt.receipt.clone()))?;
@@ -164,7 +164,7 @@ fn produce_synthetic_linear_training_round(
         timestamp,
     })?;
     Ok(Some(SyntheticCpuRoundResult {
-        height: chain.state.height,
+        height: chain.state().height(),
         tensors: canonical_receipt.served_tensors(),
     }))
 }
@@ -202,7 +202,7 @@ fn register_synthetic_linear_model(
     job: &LinearTrainingStepJob,
     weights: &Tensor,
 ) -> Result<()> {
-    if !chain.state.model_states.contains_key(&job.model_id) {
+    if !chain.state().model_states().contains_key(&job.model_id) {
         chain.apply_command(ChainCommand::RegisterModel {
             model_id: job.model_id,
             architecture_hash: SyntheticLocalJobSource::linear_training_architecture_hash(),
@@ -215,10 +215,16 @@ fn register_synthetic_linear_model(
 
 #[cfg(test)]
 pub fn finalize_local_cpu_block(chain: &mut Chain, block: &TensorBlock) -> Result<()> {
-    for validator_address in chain.state.validators.keys().copied().collect::<Vec<_>>() {
+    for validator_address in chain
+        .state()
+        .validators()
+        .keys()
+        .copied()
+        .collect::<Vec<_>>()
+    {
         let stake = chain
-            .state
-            .validators
+            .state()
+            .validators()
             .get(&validator_address)
             .map(|validator| validator.stake)
             .unwrap_or_default();
@@ -273,9 +279,14 @@ mod tests {
         let first_block = chain.blocks.last().unwrap().clone();
 
         assert_eq!(height, Some(1));
-        assert_eq!(chain.state.height, 1);
-        assert_eq!(chain.state.settled_receipts.len(), 2);
-        assert!(!chain.state.block_votes.contains_key(&first_block.hash()));
+        assert_eq!(chain.state().height(), 1);
+        assert_eq!(chain.state().settled_receipts().len(), 2);
+        assert!(
+            !chain
+                .state()
+                .block_votes()
+                .contains_key(&first_block.hash())
+        );
         assert!(!chain.is_block_finalized(&first_block.hash()));
         finalize_local_cpu_block(&mut chain, &first_block).unwrap();
         assert!(chain.is_block_finalized(&first_block.hash()));
@@ -290,19 +301,27 @@ mod tests {
                 .timestamp
                 .saturating_add(chain.params.block_time_seconds)
         );
-        assert!(!chain.state.block_votes.contains_key(&second_block.hash()));
+        assert!(
+            !chain
+                .state()
+                .block_votes()
+                .contains_key(&second_block.hash())
+        );
         assert!(!chain.is_block_finalized(&second_block.hash()));
         finalize_local_cpu_block(&mut chain, &second_block).unwrap();
         assert!(chain.is_block_finalized(&second_block.hash()));
         assert!(
             chain
-                .state
-                .jobs
+                .state()
+                .jobs()
                 .values()
                 .any(|job| matches!(job, JobState::LinearTrainingStep(_)))
         );
-        assert_eq!(chain.state.model_states.len(), 1);
-        assert_eq!(chain.state.model_states.values().next().unwrap().step, 1);
+        assert_eq!(chain.state().model_states().len(), 1);
+        assert_eq!(
+            chain.state().model_states().values().next().unwrap().step,
+            1
+        );
 
         let height = produce_synthetic_cpu_round(&mut chain).unwrap();
         let third_block = chain.blocks.last().unwrap();
@@ -314,7 +333,12 @@ mod tests {
                 .timestamp
                 .saturating_add(chain.params.block_time_seconds)
         );
-        assert!(!chain.state.block_votes.contains_key(&third_block.hash()));
+        assert!(
+            !chain
+                .state()
+                .block_votes()
+                .contains_key(&third_block.hash())
+        );
         assert!(!chain.is_block_finalized(&third_block.hash()));
         let third_block = third_block.clone();
         finalize_local_cpu_block(&mut chain, &third_block).unwrap();
@@ -362,7 +386,7 @@ mod tests {
             .expect("profile-enabled localnet should produce a round");
 
         assert_eq!(round.height, 1);
-        assert!(chain.state.jobs.values().any(
+        assert!(chain.state().jobs().values().any(
             |job| matches!(job, JobState::TensorOp(job) if (job.m, job.k, job.n) == (2, 3, 4))
         ));
     }
@@ -389,7 +413,7 @@ mod tests {
             None
         );
         assert!(chain.blocks.is_empty());
-        assert!(chain.state.jobs.is_empty());
+        assert!(chain.state().jobs().is_empty());
     }
 
     #[test]
@@ -482,7 +506,7 @@ mod tests {
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
         assert!(chain.blocks.is_empty());
-        assert!(chain.state.settled_receipts.is_empty());
+        assert!(chain.state().settled_receipts().is_empty());
     }
 
     #[test]
@@ -514,8 +538,11 @@ mod tests {
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
         assert!(chain.blocks.is_empty());
-        assert_eq!(chain.state.model_states.len(), 1);
-        assert_eq!(chain.state.model_states.values().next().unwrap().step, 0);
+        assert_eq!(chain.state().model_states().len(), 1);
+        assert_eq!(
+            chain.state().model_states().values().next().unwrap().step,
+            0
+        );
     }
 
     #[test]
@@ -550,7 +577,10 @@ mod tests {
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
         assert!(chain.blocks.is_empty());
-        assert!(chain.state.settled_receipts.is_empty());
-        assert_eq!(chain.state.model_states.values().next().unwrap().step, 0);
+        assert!(chain.state().settled_receipts().is_empty());
+        assert_eq!(
+            chain.state().model_states().values().next().unwrap().step,
+            0
+        );
     }
 }
