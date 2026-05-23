@@ -33,6 +33,6 @@ pub fn claim_reward(chain: &mut Chain, address: Address) -> Result<()> {
         return Err(TvmError::InvalidReceipt("no reward to claim"));
     }
     credit(chain, address, reward);
-    chain.state.rewards.balances.insert(address, 0);
+    chain.state.rewards.clear_balance(address);
     Ok(())
 }

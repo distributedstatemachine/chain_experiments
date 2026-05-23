@@ -328,7 +328,7 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
         .iter()
         .filter(|miner| testnet.chain.state().rewards.balance(miner) > 0)
         .count();
-    let total_reward_balance: u64 = testnet.chain.state().rewards.balances.values().sum();
+    let total_reward_balance = testnet.chain.state().rewards.total_balance();
     let attestation_count: usize = testnet
         .chain
         .state()
@@ -437,7 +437,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let reward_account_count = chain
         .state()
         .rewards
-        .balances
+        .balances()
         .values()
         .filter(|balance| **balance > 0)
         .count();

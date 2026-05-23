@@ -934,8 +934,8 @@ fn explorer_summary(chain: &Chain) -> ExplorerSummary {
         receipt_count: chain.state.receipts.len(),
         settled_receipt_count: chain.state.settled_receipts.len(),
         finalized_block_count: chain.state.finalized_blocks.len(),
-        treasury_balance: chain.state.rewards.treasury,
-        total_reward_balance: chain.state.rewards.balances.values().sum(),
+        treasury_balance: chain.state.rewards.treasury(),
+        total_reward_balance: chain.state.rewards.total_balance(),
     }
 }
 

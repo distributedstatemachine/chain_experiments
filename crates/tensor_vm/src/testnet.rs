@@ -3785,8 +3785,8 @@ impl LocalTestnet {
             receipt_count: self.chain.state.receipts.len(),
             settled_receipt_count: self.chain.state.settled_receipts.len(),
             finalized_block_count: self.chain.state.finalized_blocks.len(),
-            treasury_balance: self.chain.state.rewards.treasury,
-            total_reward_balance: self.chain.state.rewards.balances.values().sum(),
+            treasury_balance: self.chain.state.rewards.treasury(),
+            total_reward_balance: self.chain.state.rewards.total_balance(),
         }
     }
 

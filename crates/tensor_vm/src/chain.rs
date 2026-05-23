@@ -208,11 +208,9 @@ impl Chain {
                 .rewards
                 .credit(proposer, allocation.proposer_reward);
         }
-        self.state.rewards.treasury = self
-            .state
+        self.state
             .rewards
-            .treasury
-            .saturating_add(allocation.treasury_reward);
+            .credit_treasury(allocation.treasury_reward);
     }
 
     pub fn proposer_for_next_epoch(&self, beacon: &Hash) -> Option<Address> {
@@ -561,7 +559,7 @@ mod tests {
             }]
         );
         assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 97);
-        assert_eq!(chain.state.rewards.treasury, 3);
+        assert_eq!(chain.state.rewards.treasury(), 3);
     }
 
     #[test]
@@ -686,7 +684,7 @@ mod tests {
 
         chain.settle_epoch_rewards(allocation, proposer);
         assert_eq!(chain.state.rewards.balance(&proposer), 1_000);
-        assert_eq!(chain.state.rewards.treasury, 500);
+        assert_eq!(chain.state.rewards.treasury(), 500);
     }
 
     #[test]
@@ -1809,7 +1807,7 @@ mod tests {
             .unwrap();
         assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 70);
         assert_eq!(chain.state.miners.get(&miner).unwrap().reputation, -20);
-        assert_eq!(chain.state.rewards.treasury, 30);
+        assert_eq!(chain.state.rewards.treasury(), 30);
     }
 
     #[test]

@@ -60,6 +60,8 @@ spaghetti around.
   so public transaction writes no longer silently discard the typed mutation effects.
 - Iteration 13 added a command/event wrapper for fraud challenge outcomes. Public challenge application now
   enters through `ChainCommand::ApplyChallengeOutcome`, and rejected/slashing outcomes emit typed events.
+- Iteration 14 narrowed `RewardState`'s externally visible fields and added read accessors for balances,
+  total balance, and treasury so runtime/RPC/testnet reporting no longer reaches through reward internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
