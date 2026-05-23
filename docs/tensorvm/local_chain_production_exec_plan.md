@@ -6,7 +6,9 @@ feature-sized iterations are summarized after validation and push, and older det
 ## Current State
 
 - Active feature: Iteration 12, network-visible block payload propagation/admission is implemented and
-  validated in the current worktree; commit/push evidence is recorded after the feature commit lands.
+  validated as feature commit `f6f95074821a1ab5c0e320e0645c330ff88dde7d`
+  (`Add network-visible block payload admission`); push evidence is recorded after this evidence commit
+  lands.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
 - Iteration 11 feature and evidence commits are on `origin/main`: `e6129d1915562a1e865579e347d8cfb85855089e`
@@ -205,6 +207,8 @@ Post-implementation validation currently passed:
 - `cargo fmt --check`, `cargo check`, and `git diff --check` were re-run after the verifier fixes.
 - Full Docker checker was not rerun because the standing gateway `/health` blocker remains unresolved:
   `curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received`.
+- Feature commit after validation:
+  `f6f95074821a1ab5c0e320e0645c330ff88dde7d` (`Add network-visible block payload admission`).
 
 Previous Iteration 11 evidence:
 - Feature commit: `e6129d1915562a1e865579e347d8cfb85855089e`.
