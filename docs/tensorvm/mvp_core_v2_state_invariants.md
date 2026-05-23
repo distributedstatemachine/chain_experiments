@@ -50,7 +50,7 @@ required witness fields and vote admission does not require v2 validation.
 | Useful-PoW block validity | Header, nonce, target, selected root, checks root, beacon, and proposer are validated together. | Missing. |
 | Proposer eligibility | Block proposer is a registered validator that won useful-verification PoW. | Contradicted by current reference path. |
 | Finality safety | Votes and finalized-set mutation are allowed only after v2 block validation. | Missing. |
-| Fallback safety | Empty/timeout fallback has explicit validity and reward restrictions. | Not started. |
+| Fallback safety | Empty/timeout fallback has explicit validity and reward restrictions. | Paper-specified, implementation-blocked. |
 | Public evidence | DA and operator-independence claims are backed by external observations. | Evidence-bound. |
 
 ## Target Invariants
@@ -70,7 +70,7 @@ required witness fields and vote admission does not require v2 validation.
 | INV-011 | State and reward roots are deterministic after valid v2 apply. | parent-state snapshot, v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots; failed admission has no partial mutation. | Current roots are v1/reference global-map roots and no parent-state apply theorem exists. |
 | INV-012 | Vote admission imports parent-state v2 validation. | `validate_block_v2(parent_state, block)` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks or blocks validated against the wrong state are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |
 | INV-013 | Finalized-set mutation implies prior parent-state v2 validation. | finalized block set and validation certificate. | A block enters finalized state only through valid v2 vote quorum or valid fallback path with a certificate for the exact parent state. | Current finality can certify a reference block. |
-| INV-014 | Fallback validity is explicit and reward-safe. | timeout/synchrony state, validator rotation, reduced reward, no miner TWU reward. | Fallback blocks preserve safety and cannot claim useful work. | v2 fallback object is missing. |
+| INV-014 | Fallback validity is explicit and reward-safe. | timeout/synchrony state, no-work evidence, validator rotation, reduced reward, no miner TWU reward, parent-state fallback certificate. | Fallback blocks preserve safety and cannot claim useful work. | Paper model exists in `mvp_core_fallback_liveness_model.md`; v2 fallback object is missing. |
 | INV-015 | Public DA claims are evidence-linked. | retention window, observers, signed measurements, operator identities. | Public claims require enough signed evidence for the window and operator threshold. | Local/remote fetch proves only verification-time retrieval. |
 
 ## Preservation Theorems

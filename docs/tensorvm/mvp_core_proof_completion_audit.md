@@ -58,7 +58,7 @@ public DA and operator-independence evidence
 | Create formal proofs for MVP core | `mvp_core_sound_kernel.md`, `formal_proof_manifest_v0.md`, `mvp_core_formal_proofs.md` | Partial | Paper proof statements exist for the narrow kernel. No mechanized Lean/TorchLean proof exists. Full consensus proof is blocked. |
 | Keep upgrading core until sound | Current docs and Rust consensus surfaces | Not complete | The user has restricted this pass to Markdown only. The docs identify required implementation gates, but the core itself remains unsound for v2. |
 | Be critical | `bad_assumptions_ledger.md`, `mvp_core_negative_proofs.md`, `mvp_core_data_availability_boundary.md` | Met for docs | The current docs call out false assumptions directly, including finality, proposer eligibility, quorum semantics, public DA, and signatures. |
-| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 25 bad assumptions and wording rules. It should remain open. |
+| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 26 bad assumptions and wording rules. It should remain open. |
 | Create docs only | Git history and current staged policy | Met for this proof-work stream | Recent proof commits are Markdown-only. Dirty code changes in the worktree are not part of this proof-doc audit. |
 | Prove full reviewed MVP core sound | v2 spec plus current chain code | Not complete | Current blocks and finality cannot express the reviewed useful-verification PoW theorem. |
 
@@ -84,7 +84,7 @@ public DA and operator-independence evidence
 | Proposer eligibility | `CEX-002`, `chain::blocks::produce` | Contradicted | Current block production can append a block with a caller-supplied proposer. | Produced block does not imply registered validator useful-PoW winner. |
 | TensorWork proposer removal | `CEX-003`, `chain::proposer` | Contradicted | Current selector still uses settled TensorWork when work is nonzero. | v2 says TensorWork must not select proposers. |
 | Finality implies v2 validity | `TVM-FIN-001`, `CEX-001` | Contradicted / implementation-blocked | Current finality proves stake signatures over a known v1 block hash. | It does not prove v2 block validity, useful-PoW, canonical blockspace, or checks-root correctness. |
-| Zero-receipt fallback | `TVM-FALLBACK-001` | Missing / not-started | Existing fallback belongs to v1 proposer model. | v2 PoW-skip fallback with reduced rewards is not specified in code. |
+| Zero-receipt fallback | `TVM-FALLBACK-001`, `mvp_core_fallback_liveness_model.md` | Implementation-blocked | The paper fallback model now defines timeout/no-work evidence, validator rotation, reduced rewards, and no useful-PoW claim. | v2 PoW-skip fallback is not implemented or tested in code. |
 | Public operator independence | `bad_assumptions_ledger.md`, `completion_audit.md` | Missing evidence | Local Compose proves local multi-participant shape. | Independent public operators are not proven. |
 | Public DA | `mvp_core_data_availability_boundary.md`, public evidence docs | Missing evidence | Local/remote fetch paths can be exercised. | Public retention and signed external DA measurements are missing. |
 

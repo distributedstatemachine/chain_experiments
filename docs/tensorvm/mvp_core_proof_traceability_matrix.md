@@ -29,6 +29,8 @@ Settled-receipt blockspace boundaries are specified in
 [`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 Useful-PoW structural and economic boundaries are specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+Fallback liveness boundaries are specified in
+[`mvp_core_fallback_liveness_model.md`](mvp_core_fallback_liveness_model.md).
 Verifier evidence boundaries are specified in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 Parent-state transition boundaries are specified in
@@ -78,7 +80,7 @@ V2 state invariants are tracked in
 | V2-STATE-001 | Valid v2 block transition determines state and reward roots. | Current roots are v1/reference roots over global maps. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_parent_state_transition_model.md` | Blocked | No parent-state `apply_v2_block` theorem, selected-receipt application, spent/carry-over mutation, challenge-window reward semantics, or atomicity proof. | Define parent-state block apply transition and child root checks. |
 | V2-FIN-001 | Vote admission requires `validate_block_v2(parent_state, block)`. | `chain/validation.rs::submit_block_vote` checks voters and known block hash. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_parent_state_transition_model.md` | Blocked | It does not prove complete parent-state validation with state/reward transition roots. | Add parent-state `validate_block_v2` and require it before counting votes. |
 | V2-FIN-002 | Finality implies v2 block validity. | `state.finalized_blocks` can be updated after current stake threshold. | `mvp_core_proof_completion_audit.md`, `mvp_core_parent_state_transition_model.md` | Contradicted / blocked | Current finality lacks a certificate tying finalized hashes to parent-state v2 validation. | Restrict finalized-set mutation to validated v2 votes or validated fallback certificates. |
-| V2-FALLBACK-001 | PoW-skip fallback has explicit timeout, validator rotation, reduced reward, and no miner TWU rewards. | Existing fallback belongs to v1 proposer selection. | `formal_proof_manifest_v0.md`, `mvp_core_v2_consensus_proof_obligations.md` | Missing evidence | v2 fallback state and transition are not started. | Define fallback object, timeout, reward rules, and tests/theorem. |
+| V2-FALLBACK-001 | PoW-skip fallback has explicit timeout/no-work evidence, validator rotation, parent-state validation, reduced reward, and no miner TWU rewards. | Existing fallback belongs to v1 proposer selection; dirty v2 candidate has no fallback path. | `formal_proof_manifest_v0.md`, `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_fallback_liveness_model.md` | Blocked | The paper model exists, but v2 fallback state, transition, timeout evidence, reward rule, and tests are not implemented. | Add disjoint fallback object, timeout/no-work evidence, deterministic rotation, reward rules, parent-state validation, and adversarial tests. |
 
 ## Evidence Class Matrix
 

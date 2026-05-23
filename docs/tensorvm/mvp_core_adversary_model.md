@@ -47,7 +47,7 @@ The verifier evidence boundary is tracked in
 | Verification transcript | Mine over arbitrary, incomplete, or merely signed checks roots. | Per-attestation checks roots exist as statements only. | Block-level checks root, check leaves, recomputation, openings, and challenge-window reward semantics. |
 | Finality | Vote for a known current block that is not a valid v2 useful-PoW block. | Current vote path checks voter syntax and stake. | Finality vote admission must require `validate_block_v2`. |
 | Data availability | Withhold tensors, serve only one peer, drop data after local tests, or serve unavailable artifacts publicly. | Root-matched fetch can reject wrong payloads. | Public retention measurements and independent serving evidence. |
-| Network scheduling | Delay messages, reorder attestations, partition local peers, or exploit timeout ambiguity. | Not modeled in the current proof kernel. | Explicit synchrony/partial-synchrony assumptions and fallback rules. |
+| Network scheduling | Delay messages, reorder attestations, partition local peers, or exploit timeout ambiguity. | Not modeled in the current proof kernel; fallback is paper-specified only. | Explicit synchrony/partial-synchrony assumptions, timeout/no-work evidence, and fallback rules. |
 
 ## Minimum Parameters For Future Theorems
 
@@ -60,7 +60,7 @@ Future proof statements must declare these parameters instead of relying on pros
 | Receipt-lifecycle seed | Non-adaptivity of miner outputs. | Missing as stable consensus object. |
 | Byzantine validator bound or challenge rule | Upgrading quorum from syntactic to semantic. | Missing. |
 | Quorum threshold and stake model | Settlement and finality safety. | Current v1/reference behavior only. |
-| Network synchrony and timeout model | Fallback and liveness claims. | Missing for v2. |
+| Network synchrony and timeout model | Fallback and liveness claims. | Paper-specified in `mvp_core_fallback_liveness_model.md`, not implemented. |
 | DA retention window and observer threshold | Public availability claims. | Missing external evidence. |
 | Signature scheme and domains | Actor authentication. | Reference helper only. |
 | Hash model and security level | Commitment binding and PoW. | Assumed, not parameterized in theorems. |

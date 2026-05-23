@@ -47,6 +47,7 @@ ledger. The local v2-block candidate is tracked separately in
 | BA-023 | "A v2-shaped dirty candidate implementation discharges the proof obligations." | Critical | The local v2-block candidate adds useful fields but fails `cargo check -p tensor_vm --all-targets` and still lacks parent-state validation, semantic check leaves, receipt lifecycle, difficulty economics, and fallback semantics. | Build-failing or partial code can be useful evidence for the next implementation slice, but it cannot prove consensus soundness. | The candidate is directionally aligned but not proof-sound. | Make the implementation build-clean, commit it, add adversarial tests, and discharge each theorem gate; see `mvp_core_candidate_v2_block_audit.md`. |
 | BA-024 | "Validating a block against current state proves it was valid for its parent." | Critical | The proof target requires `valid_v2_block(parent_state, block)`, while candidate validation patterns can recompute roots from mutable chain state unless an exact parent snapshot is modeled. | Current-state validation can accept or reject based on later receipts, attestations, rewards, randomness, or direct state mutation. It does not prove the block transition from its parent. | Parent-state validation is a required theorem, not an implementation detail. | Define parent-state lookup, `apply_v2_block`, child roots, finality certificates, and atomic failure semantics; see `mvp_core_parent_state_transition_model.md`. |
 | BA-025 | "A settled receipt id set is canonical blockspace." | Critical | Current/candidate state can represent settled receipt ids, but the v2 theorem needs eligibility, spent/included state, expiry, DA-through-challenge-window status, cap accounting, and selected receipt leaves. | A set of ids does not prove why receipts are eligible, why omitted receipts were omitted, whether selected receipts were already spent, or how much block capacity they consumed. | Settled ids are at most an input to a future blockspace selector. | Define the settled receipt pool, selection policy, selected leaf schema, carry-over/spent rules, and omission theorem; see `mvp_core_settled_receipt_blockspace_model.md`. |
+| BA-026 | "A zero-receipt or timeout block is useful-verification PoW." | Critical | The v2 spec needs a PoW-skip fallback for zero-receipt or no-PoW periods, but current fallback evidence is v1/local and the dirty v2 candidate has no fallback implementation. | Fallback preserves liveness when useful-PoW is unavailable; it does not prove verification work, cannot reuse normal useful-PoW rewards, and cannot skip parent-state validation. | Fallback is a separate liveness-only proof obligation. | Add a disjoint fallback block kind, timeout/no-work evidence, deterministic validator rotation, reduced rewards, no miner TWU rewards, and parent-state validation; see `mvp_core_fallback_liveness_model.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -74,6 +75,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
     recomputation as equivalent.
 14. Say **settled receipt ids** unless eligibility, cap, carry-over, and selected-leaf semantics are
     actually represented.
+15. Say **PoW-skip fallback** or **liveness fallback**, not useful-verification PoW, for zero-receipt,
+    below-floor, or timeout blocks.
 
 ## Claims We Can Make Today
 
@@ -100,6 +103,7 @@ These are defensible with current docs/code evidence:
   completion.
 - Finality soundness requires validation against the exact parent state and deterministic child roots.
 - Canonical blockspace requires a settled receipt lifecycle model, not only a set of ids.
+- Zero-receipt and no-PoW liveness require a separate fallback transition; fallback is not useful work.
 
 ## Claims We Must Not Make Today
 
@@ -122,6 +126,7 @@ These would overstate the current MVP:
 - "The dirty v2-shaped block candidate proves the MVP core sound."
 - "A block validated against current mutable state was valid for its parent state."
 - "A settled receipt id root proves canonical blockspace."
+- "A zero-receipt, below-floor, or timeout block proves useful-verification PoW."
 
 ## Proof Hygiene Checklist
 

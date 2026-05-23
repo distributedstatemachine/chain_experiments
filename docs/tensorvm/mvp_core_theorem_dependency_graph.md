@@ -106,7 +106,7 @@ V2 state invariants live in
 | `V2-STATE-001 valid_v2_block_transition` | `blocked-v2` | `V2-BLK-*`, `V2-CHK-*`, `V2-POW-001`, parent-state transition model, reward/state root transition. | No v2 parent-state apply transition or child-root theorem. |
 | `V2-FIN-001 vote_admission_requires_validate_block_v2` | `blocked-v2` | complete `validate_block_v2(parent_state, block)`, stake/signature vote checks. | Current votes do not have a committed parent-state validation certificate. |
 | `V2-FIN-002 finality_implies_v2_block_valid` | `blocked-v2` | `V2-FIN-001`, `V2-STATE-001`, stake threshold theorem, finality certificate model. | Current finality can certify a v1/reference block hash or lack parent-state proof. |
-| `V2-FALLBACK-001 pow_skip_fallback_valid` | `blocked-v2` | timeout/synchrony model, validator rotation, reduced rewards, no miner TWU rewards. | v2 fallback object is not implemented. |
+| `V2-FALLBACK-001 pow_skip_fallback_valid` | `blocked-v2` | fallback liveness model, timeout/synchrony model, validator rotation, parent-state fallback validation, reduced rewards, no miner TWU rewards. | Paper model exists; v2 fallback object is not implemented. |
 
 The v2 graph has no honest path to a completed top-level theorem until every row above is backed by code,
 tests, assumptions, and traceability.
@@ -129,6 +129,7 @@ These imports would create false proof claims:
 | `aggregate checks_root -> verifier execution` | A root over signed check claims does not prove the verifier relation without transcript recomputation or challenge openings. |
 | `current-state validation -> parent-state validity` | A block must be validated against its exact parent state, not whatever mutable state exists when a node checks it. |
 | `settled_receipt_ids -> canonical blockspace` | A bare id set lacks eligibility, cap accounting, selected leaf, spent/carry-over, expiry, and omission semantics. |
+| `fallback_block -> useful-PoW` | A fallback block proves only liveness under timeout/no-work assumptions; it must not import useful-work dominance or normal rewards. |
 
 ## Mechanization Import Rule
 

@@ -93,7 +93,7 @@ This theorem must not be stated over the current v1 block type.
 | `PowHeader` | parent hash, selected receipt root, checks root, beacon, proposer | Needed to bind nonce search to useful verification. | Missing. |
 | `DifficultyState` | target, retarget window, floor, ceiling | Needed to prove target validity and liveness bounds. | Missing as v2 state. |
 | `BlockVoteV2` or validation rule | vote over valid v2 block hash after block validation | Needed to prove finality counts valid blocks only. | Missing. |
-| `FallbackBlock` rule | timeout, stake rotation, reduced reward, no miner TWU rewards for empty blockspace | Needed for zero-receipt/no-PoW liveness theorem. | Not started. |
+| `FallbackBlock` rule | timeout, stake rotation, reduced reward, no miner TWU rewards for empty blockspace | Needed for zero-receipt/no-PoW liveness theorem. | Paper-specified in `mvp_core_fallback_liveness_model.md`; implementation not started. |
 
 ## Theorem Spine
 
@@ -338,16 +338,19 @@ blockspace.
 
 Dependencies:
 
-- timeout observation rule
-- fallback proposer rotation
+- fallback liveness model
+- timeout/no-work evidence rule
+- deterministic fallback proposer rotation
 - reduced reward rule
+- parent-state fallback validation
 - telemetry for fallback events
 
 Counterexamples killed:
 
 - Reusing v1 TensorWork fallback as if it were v2 liveness.
+- Counting fallback or empty blocks as useful-verification PoW.
 
-Current status: not-started.
+Current status: paper-specified, implementation-blocked.
 
 ## Validation Predicate Shape
 
@@ -382,6 +385,7 @@ Any path that mutates `finalized_blocks` without this predicate is outside the v
 | Finality validates whatever block exists | Finality must count only votes for blocks that pass `validate_block_v2`. |
 | TensorWork is still acceptable for proposer choice | v2 makes validator useful-PoW the proposer primitive. |
 | Empty blocks can use old fallback | v2 fallback has different reward and eligibility semantics. |
+| Fallback is useful-PoW | v2 fallback is a reduced-reward liveness path and must not claim useful work. |
 
 ## Release Gate For Moving Consensus Out Of Blocked Status
 

@@ -30,6 +30,8 @@ Related boundary documents:
   settled receipt lifecycle, cap policy, selected leaf, and carry-over rules needed for v2 blockspace.
 - [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md) separates structural
   useful-PoW header validity from economic useful-work dominance.
+- [`mvp_core_fallback_liveness_model.md`](mvp_core_fallback_liveness_model.md) specifies the zero-receipt
+  and no-PoW fallback path as a separate liveness-only transition, not useful-PoW.
 - [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
   recomputable/challengeable evidence bridge from signed Valid statements to semantic verifier execution.
 - [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md) defines the
@@ -74,6 +76,7 @@ Related boundary documents:
 | Attestation admission | `local-proof-ready` for syntactic admission, `assumption-bound` for semantic verification | Assigned-validator admission is now in the chain engine; it does not prove the verifier actually ran, and receipt-lifecycle seed stability remains weak. |
 | Settlement | `local-proof-ready` for v1 syntactic-quorum settlement | Settlement/quorum behavior is testable, but semantic verifier execution and v2 blockspace pool semantics are missing. |
 | Useful-verification PoW | `implementation-blocked` | Current block type cannot support the reviewed v2 consensus theorem. |
+| Fallback liveness | `implementation-blocked` | The fallback proof model is now specified, but the v2 fallback object, timeout evidence, rotation, rewards, and tests are missing. |
 | Finality | `reference-only` | Stake-threshold finality exists for current blocks, not for v2 useful-PoW validity. |
 | Verification-time artifact retrieval | `local-proof-ready` for root-matched local fetch, `assumption-bound` for availability | Current worktree can check fetched tensor roots before verifier use; public DA is not proven. |
 | Public availability/operator independence | `assumption-bound` | Local and request-response fetches do not prove public DA or independent operators. |
@@ -645,11 +648,25 @@ If no valid useful-verification PoW block appears within the timeout, a stake-we
 produce a reduced-reward PoW-skip block without miner TensorWork rewards.
 ```
 
-Status: `not-started`
+Status: `implementation-blocked`
 
 Why blocked:
 
 Current fallback is the v1 proposer-selection fallback, not a v2 PoW-skip block rule.
+
+Paper model:
+
+- [`mvp_core_fallback_liveness_model.md`](mvp_core_fallback_liveness_model.md)
+
+Required code surface before proof:
+
+```text
+valid_fallback_block(parent_state, block)
+timeout/no-work evidence root
+deterministic validator fallback rotation
+reduced fallback reward transition
+fallback vote admission gate
+```
 
 ## Bad Assumptions Register
 
@@ -663,6 +680,7 @@ Current fallback is the v1 proposer-selection fallback, not a v2 PoW-skip block 
 | Per-receipt checks_root proves block proposer verified | Blocks do not aggregate or validate a canonical transcript. | Need block-level checks_root and challenge path. |
 | Aggregate checks_root proves verifier execution | A root over signed check claims is still a root over claims. | Need recomputable or challengeable verifier evidence. |
 | Stake finality implies useful-PoW validity | Current votes only check known block hash and signature/stake. | Votes must require v2 block validation. |
+| Fallback or empty blocks prove useful work | Fallback is a liveness transition for zero-receipt, below-floor, or timeout cases. | Keep fallback disjoint from useful-PoW and give it reduced rewards. |
 | Reference signatures imply production authentication | `sign` is a hash helper. | Use real signature assumptions and production crypto. |
 | Local containers are independent operators | They are separate local participants, not independent principals. | Public evidence must prove independent operators. |
 | Local tensor serving is durable DA | It proves a path, not public retention. | DA needs active/retention-window external measurement. |

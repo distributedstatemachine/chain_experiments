@@ -185,7 +185,7 @@ Possible design positions:
 | Shared transcripts allowed | Blocks are PoW over reproducible verification commitments. | Do not claim proposer-local useful work. Measure network-level verification, not winner-local verification. |
 | Proposer-local work desired | The winning proposer performed the verification work. | Requires a mechanism beyond ordinary hash roots, such as non-transferable challenges, proof-carrying verifier execution, trusted hardware, slashing/challenge games with evidence, or an explicit honesty assumption. |
 | Nonce as tie-breaker | Verification is the main candidate-construction cost and nonce search selects among verified candidates. | Keep expected nonce work below a measured fraction of verification work and retarget with floors/ceilings. |
-| Ordinary PoW fallback | Liveness continues when no useful selected set exists. | Use explicit fallback validity and reduced rewards; do not count it as useful-PoW. |
+| Ordinary PoW fallback | Liveness continues when no useful selected set exists. | Use explicit fallback validity and reduced rewards; do not count it as useful-PoW; see `mvp_core_fallback_liveness_model.md`. |
 
 This caveat is not a reason to abandon the model. It is the line between a defensible theorem and marketing
 language.
@@ -267,7 +267,8 @@ Do not classify useful-verification PoW as locally proof-ready until all of thes
 5. The nonce predicate hashes exactly the validated header.
 6. The proposer is a registered validator and TensorWork is excluded from normal proposer eligibility.
 7. Finality vote admission rejects blocks that fail the full v2 validity predicate.
-8. Empty or below-floor selected sets use explicit fallback, not useful-PoW rewards.
+8. Empty or below-floor selected sets use explicit fallback, not useful-PoW rewards; the fallback rules are
+   specified in `mvp_core_fallback_liveness_model.md`.
 9. Cost parameters document the relationship between transcript acquisition, verification work, and nonce
    search.
 10. Public wording says whether the claim is structural PoW over verification commitments, network-level

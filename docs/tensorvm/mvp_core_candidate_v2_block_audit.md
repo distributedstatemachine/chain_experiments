@@ -289,7 +289,7 @@ Required repair:
 | V2-STATE-001 valid transition | Roots exist. | Still blocked: no parent-state apply theorem, spent/carry-over, or reward atomicity. |
 | V2-FIN-001 vote admission validates block | Partial: vote path calls `validate`. | Still blocked: validation predicate incomplete and current-state-based. |
 | V2-FIN-002 finality implies v2 validity | Partial path. | Still blocked until V2-FIN-001 and V2-STATE-001 are complete. |
-| V2-FALLBACK-001 PoW-skip fallback | No candidate evidence. | Missing. |
+| V2-FALLBACK-001 PoW-skip fallback | No candidate evidence; the proof model is documented separately in `mvp_core_fallback_liveness_model.md`. | Still blocked. |
 
 ## Minimum Next Gates
 
