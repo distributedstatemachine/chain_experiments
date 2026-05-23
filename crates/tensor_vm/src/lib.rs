@@ -17,6 +17,7 @@ pub mod jobs;
 pub mod localnet;
 pub mod merkle;
 pub mod miner;
+pub mod node;
 pub mod oracle;
 pub mod p2p;
 pub mod profile;
@@ -57,6 +58,10 @@ pub use localnet::{
     finalize_local_cpu_block, produce_synthetic_cpu_round, produce_synthetic_cpu_round_with_profile,
 };
 pub use miner::MinerNode;
+pub use node::{
+    NetworkEventIngest, NetworkPayloadApply, NetworkPayloadProcessor, NodeRuntimeState,
+    PendingNetworkPayloads,
+};
 pub use p2p::{
     GossipTopic, Libp2pControlPlaneConfig, NetworkStackRecommendation, PeerBookStore, PeerRecord,
     RequestResponseProtocol, TensorVmLibp2pNode, TensorVmLibp2pService, TensorVmLibp2pServiceInfo,

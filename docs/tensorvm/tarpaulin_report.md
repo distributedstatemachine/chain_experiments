@@ -1,6 +1,6 @@
 # TensorVM Tarpaulin Report
 
-Generated on May 20, 2026 from the workspace root with:
+Generated on May 23, 2026 from the workspace root with:
 
 ```bash
 cargo tarpaulin --workspace --offline
@@ -18,16 +18,16 @@ Host notes:
 Result:
 
 ```text
-235 tests passed under instrumentation:
+241 tests passed under instrumentation:
 - 14 experiments library tests
-- 220 tensor_vm library tests
+- 226 tensor_vm library tests
 - 1 tensor_vm_explorer library test
 
-99.23% workspace line coverage
-10573/10655 workspace lines covered
+99.24% workspace line coverage
+10669/10751 workspace lines covered
 
 100.00% tensor_vm crate line coverage
-9728/9728 tensor_vm lines covered
+9824/9824 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
 277/277 tensor_vm_explorer lines covered
 ```

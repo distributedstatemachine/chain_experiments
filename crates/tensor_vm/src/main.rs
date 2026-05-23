@@ -7,8 +7,9 @@ use std::{
 };
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
-    Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NodeConfig, NodeRole, NodeStore,
-    PeerRecord, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
+    Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NetworkEventIngest, NetworkPayloadApply,
+    NetworkPayloadProcessor, NodeConfig, NodeRole, NodeRuntimeState, NodeStore, PeerRecord,
+    PendingNetworkPayloads, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
     TensorVmLibp2pService, TvmError, ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     cli::{
@@ -711,10 +712,15 @@ fn serve_service_with_runtime(
     let block_interval = config.node.synthetic_block_interval();
     let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
     let local_producer = config.node.local_synthetic_producer();
-    let mut runtime_state = ServiceRuntimeState::default();
+    let mut runtime_state = NodeRuntimeState::default();
     write_role_runtime_status(
         &config,
-        &runtime_state.status_snapshot(&server, &p2p_service, local_producer),
+        &RoleRuntimeStatusSnapshot::from_runtime_state(
+            &runtime_state,
+            &server,
+            &p2p_service,
+            local_producer,
+        ),
     )?;
     if block_interval.is_some() {
         server.set_nonblocking(true).map_err(|error| {
@@ -722,7 +728,7 @@ fn serve_service_with_runtime(
         })?;
     }
     loop {
-        if network.max_requests != 0 && runtime_state.served_requests >= network.max_requests {
+        if network.max_requests != 0 && runtime_state.served_requests() >= network.max_requests {
             break;
         }
         if let Some(interval) = block_interval {
@@ -734,7 +740,12 @@ fn serve_service_with_runtime(
                     runtime_state.record_served_request();
                     write_role_runtime_status(
                         &config,
-                        &runtime_state.status_snapshot(&server, &p2p_service, local_producer),
+                        &RoleRuntimeStatusSnapshot::from_runtime_state(
+                            &runtime_state,
+                            &server,
+                            &p2p_service,
+                            local_producer,
+                        ),
                     )?;
                 }
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {}
@@ -744,7 +755,7 @@ fn serve_service_with_runtime(
                 &mut server,
                 &p2p_service,
                 local_producer,
-                &mut runtime_state.pending_network_payloads,
+                runtime_state.pending_payloads_mut(),
             )?;
             if ingested.has_activity() {
                 runtime_state.record_network_ingest(ingested);
@@ -761,7 +772,12 @@ fn serve_service_with_runtime(
                 }
                 write_role_runtime_status(
                     &config,
-                    &runtime_state.status_snapshot(&server, &p2p_service, local_producer),
+                    &RoleRuntimeStatusSnapshot::from_runtime_state(
+                        &runtime_state,
+                        &server,
+                        &p2p_service,
+                        local_producer,
+                    ),
                 )?;
             }
             if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
@@ -779,7 +795,12 @@ fn serve_service_with_runtime(
                     runtime_state.record_produced_block();
                     write_role_runtime_status(
                         &config,
-                        &runtime_state.status_snapshot(&server, &p2p_service, local_producer),
+                        &RoleRuntimeStatusSnapshot::from_runtime_state(
+                            &runtime_state,
+                            &server,
+                            &p2p_service,
+                            local_producer,
+                        ),
                     )?;
                 }
                 next_block_at = Some(Instant::now() + interval);
@@ -795,10 +816,16 @@ fn serve_service_with_runtime(
             runtime_state.record_served_request();
             write_role_runtime_status(
                 &config,
-                &runtime_state.status_snapshot(&server, &p2p_service, local_producer),
+                &RoleRuntimeStatusSnapshot::from_runtime_state(
+                    &runtime_state,
+                    &server,
+                    &p2p_service,
+                    local_producer,
+                ),
             )?;
         }
     }
+    let network_events = runtime_state.network_events();
     Ok(format!(
         "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
@@ -816,74 +843,24 @@ fn serve_service_with_runtime(
         hex(&p2p_service.latest_observed_block_hash()),
         hex_hash_list(&p2p_service.observed_block_hashes()),
         config.node.data_dir().display(),
-        runtime_state.network_events.events,
-        runtime_state.network_events.block_announcements,
-        runtime_state.network_events.block_headers,
-        runtime_state.network_events.jobs,
-        runtime_state.network_events.job_payloads,
-        runtime_state.network_events.job_payloads_applied,
-        runtime_state.network_events.receipts,
-        runtime_state.network_events.receipt_payloads,
-        runtime_state.network_events.receipt_payloads_applied,
-        runtime_state.network_events.attestations,
-        runtime_state.network_events.attestation_payloads,
-        runtime_state.network_events.attestation_payloads_applied,
-        runtime_state.network_events.peers,
-        runtime_state.network_events.invalid_events,
-        served_requests = runtime_state.served_requests,
-        produced_blocks = runtime_state.produced_blocks,
-        network_applied_blocks = runtime_state.network_applied_blocks
+        network_events.events,
+        network_events.block_announcements,
+        network_events.block_headers,
+        network_events.jobs,
+        network_events.job_payloads,
+        network_events.job_payloads_applied,
+        network_events.receipts,
+        network_events.receipt_payloads,
+        network_events.receipt_payloads_applied,
+        network_events.attestations,
+        network_events.attestation_payloads,
+        network_events.attestation_payloads_applied,
+        network_events.peers,
+        network_events.invalid_events,
+        served_requests = runtime_state.served_requests(),
+        produced_blocks = runtime_state.produced_blocks(),
+        network_applied_blocks = runtime_state.network_applied_blocks()
     ))
-}
-
-#[derive(Debug, Default)]
-struct ServiceRuntimeState {
-    served_requests: usize,
-    produced_blocks: usize,
-    network_applied_blocks: usize,
-    network_events: NetworkEventIngest,
-    pending_network_payloads: PendingNetworkPayloads,
-}
-
-impl ServiceRuntimeState {
-    fn record_served_request(&mut self) {
-        self.served_requests = self.served_requests.saturating_add(1);
-    }
-
-    fn record_produced_block(&mut self) {
-        self.produced_blocks = self.produced_blocks.saturating_add(1);
-    }
-
-    fn record_network_ingest(&mut self, ingested: NetworkEventIngest) {
-        self.network_applied_blocks = self
-            .network_applied_blocks
-            .saturating_add(ingested.applied_blocks);
-        self.network_events.accumulate(ingested);
-    }
-
-    fn status_snapshot(
-        &self,
-        server: &RpcHttpServer,
-        p2p_service: &TensorVmLibp2pService,
-        local_producer: bool,
-    ) -> RoleRuntimeStatusSnapshot {
-        RoleRuntimeStatusSnapshot {
-            served_requests: self.served_requests,
-            produced_blocks: self.produced_blocks,
-            network_applied_blocks: self.network_applied_blocks,
-            local_producer,
-            latest_height: server.gateway().node.chain.state.height,
-            p2p_connected_peers: p2p_service.connected_peer_count(),
-            p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
-            p2p_observed_jobs: p2p_service.observed_job_gossip_count(),
-            p2p_observed_receipts: p2p_service.observed_receipt_gossip_count(),
-            p2p_observed_attestations: p2p_service.observed_attestation_gossip_count(),
-            p2p_latest_observed_block_height: p2p_service.latest_observed_block_height(),
-            p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
-            p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
-            network_events: self.network_events,
-        }
-    }
 }
 
 struct RoleRuntimeStatusSnapshot {
@@ -901,6 +878,32 @@ struct RoleRuntimeStatusSnapshot {
     p2p_latest_observed_block_hash: [u8; 32],
     p2p_observed_block_hashes: Vec<[u8; 32]>,
     network_events: NetworkEventIngest,
+}
+
+impl RoleRuntimeStatusSnapshot {
+    fn from_runtime_state(
+        state: &NodeRuntimeState,
+        server: &RpcHttpServer,
+        p2p_service: &TensorVmLibp2pService,
+        local_producer: bool,
+    ) -> Self {
+        Self {
+            served_requests: state.served_requests(),
+            produced_blocks: state.produced_blocks(),
+            network_applied_blocks: state.network_applied_blocks(),
+            local_producer,
+            latest_height: server.gateway().node.chain.state.height,
+            p2p_connected_peers: p2p_service.connected_peer_count(),
+            p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
+            p2p_observed_jobs: p2p_service.observed_job_gossip_count(),
+            p2p_observed_receipts: p2p_service.observed_receipt_gossip_count(),
+            p2p_observed_attestations: p2p_service.observed_attestation_gossip_count(),
+            p2p_latest_observed_block_height: p2p_service.latest_observed_block_height(),
+            p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
+            p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
+            network_events: state.network_events(),
+        }
+    }
 }
 
 fn write_role_runtime_status(
@@ -948,129 +951,6 @@ fn write_role_runtime_status(
             path.display()
         )
     })
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-struct NetworkEventIngest {
-    events: usize,
-    block_announcements: usize,
-    block_headers: usize,
-    jobs: usize,
-    job_payloads: usize,
-    job_payloads_applied: usize,
-    receipts: usize,
-    receipt_payloads: usize,
-    receipt_payloads_applied: usize,
-    attestations: usize,
-    attestation_payloads: usize,
-    attestation_payloads_applied: usize,
-    peers: usize,
-    invalid_events: usize,
-    applied_blocks: usize,
-}
-
-impl NetworkEventIngest {
-    fn has_activity(self) -> bool {
-        self.events > 0
-            || self.job_payloads_applied > 0
-            || self.receipt_payloads_applied > 0
-            || self.attestation_payloads_applied > 0
-            || self.invalid_events > 0
-            || self.applied_blocks > 0
-    }
-
-    fn accumulate(&mut self, other: Self) {
-        self.events = self.events.saturating_add(other.events);
-        self.block_announcements = self
-            .block_announcements
-            .saturating_add(other.block_announcements);
-        self.block_headers = self.block_headers.saturating_add(other.block_headers);
-        self.jobs = self.jobs.saturating_add(other.jobs);
-        self.job_payloads = self.job_payloads.saturating_add(other.job_payloads);
-        self.job_payloads_applied = self
-            .job_payloads_applied
-            .saturating_add(other.job_payloads_applied);
-        self.receipts = self.receipts.saturating_add(other.receipts);
-        self.receipt_payloads = self.receipt_payloads.saturating_add(other.receipt_payloads);
-        self.receipt_payloads_applied = self
-            .receipt_payloads_applied
-            .saturating_add(other.receipt_payloads_applied);
-        self.attestations = self.attestations.saturating_add(other.attestations);
-        self.attestation_payloads = self
-            .attestation_payloads
-            .saturating_add(other.attestation_payloads);
-        self.attestation_payloads_applied = self
-            .attestation_payloads_applied
-            .saturating_add(other.attestation_payloads_applied);
-        self.peers = self.peers.saturating_add(other.peers);
-        self.invalid_events = self.invalid_events.saturating_add(other.invalid_events);
-        self.applied_blocks = self.applied_blocks.saturating_add(other.applied_blocks);
-    }
-}
-
-#[derive(Debug, Default)]
-struct PendingNetworkPayloads {
-    receipts: BTreeMap<Hash, Vec<u8>>,
-    attestations: BTreeMap<Hash, Vec<u8>>,
-}
-
-impl PendingNetworkPayloads {
-    fn queue_receipt(&mut self, receipt_id: Hash, payload: Vec<u8>) {
-        self.receipts.entry(receipt_id).or_insert(payload);
-    }
-
-    fn queue_attestation(&mut self, attestation_id: Hash, payload: Vec<u8>) {
-        self.attestations.entry(attestation_id).or_insert(payload);
-    }
-
-    fn retry(&mut self, server: &mut RpcHttpServer) -> NetworkEventIngest {
-        let mut ingested = NetworkEventIngest::default();
-        loop {
-            let mut progressed = false;
-            for receipt_id in self.receipts.keys().copied().collect::<Vec<_>>() {
-                let Some(payload) = self.receipts.get(&receipt_id).cloned() else {
-                    continue;
-                };
-                match apply_network_receipt_payload(server, receipt_id, &payload) {
-                    NetworkPayloadApply::Applied => {
-                        self.receipts.remove(&receipt_id);
-                        ingested.receipt_payloads_applied =
-                            ingested.receipt_payloads_applied.saturating_add(1);
-                        progressed = true;
-                    }
-                    NetworkPayloadApply::Pending => {}
-                    NetworkPayloadApply::Invalid => {
-                        self.receipts.remove(&receipt_id);
-                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
-                        progressed = true;
-                    }
-                }
-            }
-            for attestation_id in self.attestations.keys().copied().collect::<Vec<_>>() {
-                let Some(payload) = self.attestations.get(&attestation_id).cloned() else {
-                    continue;
-                };
-                match apply_network_attestation_payload(server, attestation_id, &payload) {
-                    NetworkPayloadApply::Applied => {
-                        self.attestations.remove(&attestation_id);
-                        ingested.attestation_payloads_applied =
-                            ingested.attestation_payloads_applied.saturating_add(1);
-                        progressed = true;
-                    }
-                    NetworkPayloadApply::Pending => {}
-                    NetworkPayloadApply::Invalid => {
-                        self.attestations.remove(&attestation_id);
-                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
-                        progressed = true;
-                    }
-                }
-            }
-            if !progressed {
-                break;
-            }
-        }
-        ingested
-    }
 }
 
 struct NetworkCatchup {
@@ -1199,7 +1079,8 @@ fn ingest_network_events(
             }
         }
     }
-    ingested.accumulate(pending_payloads.retry(server));
+    let mut processor = RuntimeNetworkPayloadProcessor { server };
+    ingested.accumulate(pending_payloads.retry_with(&mut processor));
     Ok(ingested)
 }
 
@@ -1215,13 +1096,6 @@ fn is_block_announcement(message: &P2pMessage) -> bool {
         message,
         P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. }
     )
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum NetworkPayloadApply {
-    Applied,
-    Pending,
-    Invalid,
 }
 
 fn apply_network_job_payload(
@@ -1335,6 +1209,20 @@ fn apply_network_attestation_payload(
         Ok(_) => NetworkPayloadApply::Applied,
         Err(TvmError::UnknownValidator | TvmError::UnknownReceipt) => NetworkPayloadApply::Pending,
         Err(_) => NetworkPayloadApply::Invalid,
+    }
+}
+
+struct RuntimeNetworkPayloadProcessor<'a> {
+    server: &'a mut RpcHttpServer,
+}
+
+impl NetworkPayloadProcessor for RuntimeNetworkPayloadProcessor<'_> {
+    fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_receipt_payload(self.server, receipt_id, payload)
+    }
+
+    fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_attestation_payload(self.server, attestation_id, payload)
     }
 }
 
@@ -1972,7 +1860,7 @@ mod tests {
 
     #[test]
     fn service_runtime_state_owns_loop_counters_and_pending_payloads() {
-        let mut state = ServiceRuntimeState::default();
+        let mut state = NodeRuntimeState::default();
         state.record_served_request();
         state.record_produced_block();
         state.record_network_ingest(NetworkEventIngest {
@@ -1983,14 +1871,13 @@ mod tests {
             ..NetworkEventIngest::default()
         });
 
-        assert_eq!(state.served_requests, 1);
-        assert_eq!(state.produced_blocks, 1);
-        assert_eq!(state.network_applied_blocks, 2);
-        assert_eq!(state.network_events.events, 1);
-        assert_eq!(state.network_events.receipt_payloads, 1);
-        assert_eq!(state.network_events.receipt_payloads_applied, 1);
-        assert!(state.pending_network_payloads.receipts.is_empty());
-        assert!(state.pending_network_payloads.attestations.is_empty());
+        assert_eq!(state.served_requests(), 1);
+        assert_eq!(state.produced_blocks(), 1);
+        assert_eq!(state.network_applied_blocks(), 2);
+        assert_eq!(state.network_events().events, 1);
+        assert_eq!(state.network_events().receipt_payloads, 1);
+        assert_eq!(state.network_events().receipt_payloads_applied, 1);
+        assert!(state.pending_payloads().is_empty());
     }
 
     #[test]
@@ -2191,14 +2078,16 @@ mod tests {
         pending.queue_attestation(attestation_id, encode_attestation_payload(&attestation));
 
         apply_network_job_payload(&mut server, job_id, &encode_job_payload(&job)).unwrap();
-        let retried = pending.retry(&mut server);
+        let mut processor = RuntimeNetworkPayloadProcessor {
+            server: &mut server,
+        };
+        let retried = pending.retry_with(&mut processor);
 
         assert!(retried.has_activity());
         assert_eq!(retried.receipt_payloads_applied, 1);
         assert_eq!(retried.attestation_payloads_applied, 1);
         assert_eq!(retried.invalid_events, 0);
-        assert!(pending.receipts.is_empty());
-        assert!(pending.attestations.is_empty());
+        assert!(pending.is_empty());
         assert_eq!(
             server.gateway().node.chain.state.receipts.get(&receipt_id),
             Some(&receipt)
