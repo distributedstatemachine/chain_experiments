@@ -8,6 +8,8 @@ objects and counterexamples; this document turns them into state-transition inva
 
 The receipt-lifecycle seed invariant used by `INV-002` is specified in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+The canonical encoding and commitment model used by `INV-006` and `INV-008` is specified in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
 mechanization.

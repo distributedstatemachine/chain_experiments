@@ -22,6 +22,8 @@ Related boundary documents:
   worlds that current claims are measured against.
 - [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md) shows which theorem nodes
   depend on which assumptions and where blocked v2 consensus imports must stop.
+- [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md)
+  separates pre-hash canonical encoding, hash/Merkle binding, and consensus-object meaning.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
   verifier-local false-accept budgets and the composition rules for receipt volume.
 - [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md) defines the seed

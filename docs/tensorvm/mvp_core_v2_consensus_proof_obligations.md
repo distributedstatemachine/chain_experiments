@@ -8,6 +8,8 @@ proved. It is the target shape that future implementation and mechanization must
 
 The state invariants that these proof obligations must preserve are listed in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
+The canonical encoding and commitment model for selected roots and check roots is defined in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 ## Current Verdict
 

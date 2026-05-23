@@ -13,6 +13,8 @@ Receipt-lifecycle seed requirements are specified in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 Signature/authentication boundaries are specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+Canonical encoding and commitment boundaries are specified in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 This is not a mechanized proof artifact. It is the checklist a mechanized proof package should satisfy
 before any claim moves from "paper proof" to "formal proof."

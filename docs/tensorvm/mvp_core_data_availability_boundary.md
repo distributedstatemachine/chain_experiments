@@ -9,6 +9,9 @@ does not make durable public DA, independent retention, or v2 consensus sound.
 This document is intentionally conservative. It records what the current artifact-availability path can
 support as a proof claim and what must remain an assumption or blocked theorem.
 
+The canonical encoding and commitment model for root binding is specified in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+
 ## Executive Boundary
 
 Allowed claim:

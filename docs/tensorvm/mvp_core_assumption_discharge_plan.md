@@ -15,6 +15,8 @@ The receipt-lifecycle seed model needed to discharge challenge non-adaptivity is
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 The signature/authentication boundary is defined in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+The canonical encoding and commitment boundary is defined in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 ## Discharge Categories
 

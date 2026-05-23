@@ -37,6 +37,7 @@ implementation work.
 | BA-017 | "A Valid attestation means the verifier actually ran." | High | `submit_attestation` accepts an assigned validator's signed `Valid` statement and `checks_root`; it does not recompute tensor verification. | Quorum is syntactic unless verifier evidence is independently bound, recomputed, or challengeable. | Current quorum proves assigned validators signed matching Valid/DataAvailable statements. | Bind attestations to recomputable check leaves, block-level `checks_root`, and challenge openings or direct verification evidence. |
 | BA-018 | "Remote tensor fetch proves public data availability." | High | Current worktree adds root-addressed request-response fetches and validator remote-fetch counters. | A successful fetch proves one runtime retrieved a matching tensor at one time; it does not prove durable retention, public reachability, or independent hosting. | Remote fetch is verification-time artifact availability evidence. | Add signed public DA measurements across active/challenge windows and prove enough independent operators serve required artifacts. |
 | BA-019 | "One Freivalds round over the current 31-bit field is cryptographic-scale soundness." | High | The current field is `2^31 - 1`, default `full_rounds` is `1`, and LinearTrainingStep has two single random-linear equality checks. | The default per-relation false-accept budget is about `1 / 2^31`, and receipt-volume union bounds can make that too weak for broad consensus claims. Validator quorum cannot be multiplied in while quorum is syntactic. | Current verifier checks have explicit finite-field probabilistic bounds under assumptions. | Set a target soundness budget, receipt-volume limit, round count, and random-linear repetition story; see `mvp_core_probabilistic_soundness_budget.md`. |
+| BA-020 | "A hash root automatically proves the intended consensus object." | High | Current roots deterministically hash encoded current-state objects, but current blocks do not contain v2 selected receipt roots or aggregate check roots. | A root binds only the bytes it encodes under a hash assumption; it does not prove eligibility, selection, verifier transcripts, or v2 state transitions unless those fields are encoded. | Current roots are deterministic commitments to their current encoded objects. | Specify canonical leaf schemas, prove pre-hash injectivity, import hash collision resistance, and add v2 selected receipt/check roots; see `mvp_core_canonical_encoding_commitment_model.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -71,6 +72,8 @@ These are defensible with current docs/code evidence:
 - Current root-addressed remote tensor fetch can prove payload/root matching for verifier use, not public DA.
 - Current default probabilistic verifier bounds are finite-field proof budgets, not cryptographic-scale
   consensus soundness across unbounded receipt volume.
+- Current roots commit their encoded objects under hash assumptions; they do not automatically commit the
+  reviewed v2 consensus object.
 
 ## Claims We Must Not Make Today
 
@@ -87,6 +90,7 @@ These would overstate the current MVP:
 - "A quorum of Valid attestations proves validators actually executed the verifier."
 - "Remote tensor fetch counters prove public data availability."
 - "One default Freivalds round over the 31-bit field is enough for all production consensus volume."
+- "A current receipt/state root proves v2 canonical blockspace or block-level verification checks."
 
 ## Proof Hygiene Checklist
 

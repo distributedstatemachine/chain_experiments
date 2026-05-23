@@ -25,6 +25,8 @@ The seed model for delayed attestations and non-adaptive challenges is tracked i
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 The signature/authentication boundary is tracked in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+The canonical encoding and commitment boundary is tracked in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 ## Adversary Capabilities
 

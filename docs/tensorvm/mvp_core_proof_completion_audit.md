@@ -163,6 +163,8 @@ The receipt-lifecycle seed model for non-adaptive verifier challenges is specifi
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 The signature/authentication boundary is specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+The canonical encoding and commitment boundary is specified in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The blocked v2 state invariants are listed in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 The proof-to-implementation claim boundary is summarized in

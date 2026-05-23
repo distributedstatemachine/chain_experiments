@@ -80,6 +80,8 @@ Receipt-lifecycle seed requirements live in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 Signature/authentication boundaries live in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+Canonical encoding and commitment boundaries live in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 V2 state invariants live in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 

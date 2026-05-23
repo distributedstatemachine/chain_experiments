@@ -8,6 +8,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core assumption discharge plan](mvp_core_assumption_discharge_plan.md)
 - [MVP core adversary model](mvp_core_adversary_model.md)
 - [MVP core theorem dependency graph](mvp_core_theorem_dependency_graph.md)
+- [MVP core canonical encoding and commitment model](mvp_core_canonical_encoding_commitment_model.md)
 - [MVP core probabilistic soundness budget](mvp_core_probabilistic_soundness_budget.md)
 - [MVP core receipt-lifecycle seed model](mvp_core_receipt_lifecycle_seed_model.md)
 - [MVP core signature authentication boundary](mvp_core_signature_authentication_boundary.md)

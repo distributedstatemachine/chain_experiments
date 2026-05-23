@@ -17,6 +17,8 @@ The receipt-lifecycle seed model for the hidden-challenge assumption is specifie
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 The signature/authentication boundary is specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
+The canonical encoding and commitment boundary is specified in
+[`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 
 ## Kernel Claim
 
