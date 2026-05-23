@@ -169,6 +169,8 @@ spaghetti around.
   keeping runtime loop orchestration in `main.rs` while isolating p2p message application glue.
 - Iteration 68 moved runtime status snapshot construction and `role-runtime.status` writing into
   `main/status.rs`, consolidating service and role status formatting behind the same module boundary.
+- Iteration 69 extracted miner and validator role-work observation/submission helpers into
+  `main/roles.rs`, leaving `main.rs` focused on CLI dispatch and runtime-loop orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

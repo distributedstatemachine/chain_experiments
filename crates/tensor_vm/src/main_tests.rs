@@ -1,13 +1,19 @@
+use super::roles::{
+    MinerRoleWorkObservation, ValidatorRemoteTensorResponse, validator_remote_tensor_response,
+};
 use super::*;
+use std::collections::BTreeSet;
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, FreivaldsParams,
-    NetworkEventIngest, NetworkPayloadApply, PendingNetworkPayloads, ValidatorAttestation,
-    VerificationResult, encode_attestation_payload, encode_job_payload, encode_receipt_payload,
-    network_ingest_order,
+    JobScheduler, NetworkEventIngest, NetworkPayloadApply, PendingNetworkPayloads, ReceiptState,
+    Tensor, ValidatorAttestation, VerificationResult,
+    api::P2pMessage,
+    encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
     node::{
         apply_network_attestation_payload, apply_network_job_payload,
         apply_network_receipt_payload, attestation_announcement_hash,
     },
+    roles::{CpuReferenceMinerRole, RoleReceiptBundle},
 };
 use tensor_vm::{ChainSnapshot, types::address};
 
