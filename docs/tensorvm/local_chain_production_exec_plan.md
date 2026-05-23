@@ -42,6 +42,104 @@ feature-sized iterations are summarized after validation and push, and older det
 
 ## Recent Iterations
 
+### Iteration 14: Validator-Owned Local Timed Producer
+
+Feature capability:
+Move the single local timed producer away from the miner/proposer shortcut and onto a validator runtime
+running `validator_run`, while preserving the existing shared chain APIs and network-visible block/vote
+surfaces. This is an incremental topology/policy slice; it does not yet replace the remaining synthetic
+round helper with a fully role-owned block assembly tick.
+
+Checkpoint before edits:
+- Canonical owner: `ChainEngine`/chain modules still own settlement, validator proposer checks,
+  useful-verification PoW block production, block admission, and block-vote finality.
+- Adapter callers: role loops may call shared runtime helpers and publish through the existing p2p/event
+  path; `tvmd` must not mark finality or bypass chain validation.
+- Old shortcut narrowed: Compose and checker evidence must stop blessing `miner-00` as a `proposer_run`
+  block producer. The single live local producer should be a registered validator running `validator_run`.
+- Regression tests: miners cannot produce local blocks; validators can only become local producers when the
+  local CPU producer flag and interval are enabled; non-producer roles still ingest block/vote payloads.
+- Local synthetic disabled behavior: inbound network/RPC work remains independent of the local timed
+  producer flag. No new synthetic work is enabled for miners.
+- Producer/non-producer behavior: producer capability controls outbound timed production only. Miners
+  remain non-producers; validators and non-producers continue to vote/apply blocks through role/network
+  paths.
+- Structured evidence source: use existing status fields (`role_loop_role`, `role_wallet_registration`,
+  `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`) and block-view fields
+  (`proposer_role`, `proposer_registered`, `tensorwork_proposer_selection`, `pow_valid`,
+  `canonical_blockspace_valid`, block-vote stake/validators) without adding unsupported ownership claims.
+- Finality source: finality remains signed validator `BlockVote`s admitted through `SubmitBlockVote`, not
+  block append or producer-local synthesis.
+- Wire-size/codec boundary: reuse existing bounded block and block-vote payload codecs.
+
+Files/modules likely touched:
+- `crates/tensor_vm/src/profile.rs`
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `deploy/tensorvm/local-cpu/docker-compose.yml`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- Readiness/status docs.
+
+Parallel subagents launched before implementation:
+- Readiness mapper, codebase explorer, test coverage explorer, and checker/status explorer completed
+  read-only passes and confirmed the current miner/proposer shortcut, status evidence limits, and safest
+  incremental validator-producer scope.
+
+Out of scope:
+- Replacing `produce_synthetic_cpu_round_with_profile` with a clone-and-commit proposer tick.
+- Adding new proposer ownership counters for exact block/wallet correlation.
+- Public deployment evidence, challenge openings, retargeting, CUDA, seven-day run, and the full Docker
+  `/health` blocker.
+
+Validation plan:
+- Focused: profile/main role policy tests, `tvmd_cli` role and service-surface tests, and
+  `local_cpu_compose_bundle_matches_spec_artifact_shape`.
+- Broad before commit: `cargo fmt --check --all`, `cargo check -p tensor_vm --all-targets`,
+  `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test -p tensor_vm local_testnet
+  --release`, `cargo test -p tensor_vm --tests`, Compose config, `cargo tarpaulin --workspace --offline`
+  if coverage remains stable, and `git diff --check`.
+
+Implementation summary:
+- `NodeConfig::can_produce_local_blocks` is validator-only. `service serve`, miners, and the legacy
+  `proposer_run` surface no longer become local timed producers from a block interval.
+- The runtime now requires the explicit `TENSORVM_LOCAL_CPU_ROLE_PRODUCER=true` flag in addition to a local
+  CPU block interval; interval-only service runs remain non-producing.
+- Compose moved the single local timed producer env from `miner-00/proposer_run` to
+  `validator-00/validator_run`. Miners all run `miner_run`; validators all run `validator_run`.
+- Checker and artifact tests now require `validator-00` as the only local producer, miners with no
+  block-production capability, non-producer network application, `local_validator_producer=true`, and
+  `local_proposer_runtime=false`.
+- CLI coverage now proves `service serve` does not produce local blocks even with producer env vars, and
+  `validator run` with the producer flag advances the seeded local CPU chain.
+- Docs now state that this removes the miner/proposer topology shortcut but leaves full role-owned
+  validator block assembly as a remaining gap.
+
+Validation passed:
+- `sh -n deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `cargo fmt --check --all`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- Focused `tvmd` binary tests for role policy, loop config binding, and wallet registration.
+- Focused `tvmd_cli` tests:
+  `local_testnet_service_gateway_does_not_produce_local_blocks`,
+  `validator_run_with_local_producer_advances_cpu_chain`, and
+  `role_run_commands_serve_through_role_specific_surfaces`.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm --test tvmd_cli`: 8 tests passed.
+- `cargo test -p tensor_vm --bin tvmd`: 22 tests passed.
+- `cargo test -p tensor_vm --tests`: 247 library tests, 22 `tvmd` binary tests, 1 local CPU Compose
+  integration test, and 8 `tvmd_cli` integration tests passed.
+- `cargo test -p tensor_vm local_testnet --release`: 5 release local-testnet library tests and the
+  `local_testnet_service_gateway_does_not_produce_local_blocks` CLI integration passed.
+- `cargo test --workspace --release`: 14 `experiments`, 247 `tensor_vm`, 22 `tvmd`, 1 local CPU Compose,
+  8 `tvmd_cli`, 1 `tensor_vm_explorer`, and doc-test targets passed.
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+- `cargo tarpaulin --workspace --offline`: passed with 262 instrumented workspace tests and 97.29%
+  workspace line coverage (11,559/11,881 lines).
+- `git diff --check`
+- Full Docker checker was not rerun because the standing gateway `/health` blocker remains unresolved.
+
 ### Iteration 13: Role-Owned Block Vote Finality
 
 Feature capability:

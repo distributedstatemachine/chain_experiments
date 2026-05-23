@@ -46,10 +46,10 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 
 The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
-requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` to run
-`tvmd proposer run`, the other miners to run `tvmd miner run`, and validators to run
-`tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
-producer, the `local_cpu` chain profile, decoded network-event ingestion, decoded block, job, receipt, and attestation payload application, and
+requires 10 CPU-ready miners and zero CUDA-required miners, requires all miners to run `tvmd miner run`,
+all validators to run `tvmd validator run`, and `validator-00` to be the single local timed producer as
+reported by `runtime_command` and role status, requires live role-loop counters, the `local_cpu` chain
+profile, decoded network-event ingestion, decoded block, job, receipt, and attestation payload application, and
 network-applied block counters for every non-producer, plus observed job/receipt/attestation/block payload gossip
 and block-vote gossip counters for every counted operator, validator-owned block-vote submission, and
 non-producer block-vote ingestion/application, verifies the seeded local CPU
@@ -170,8 +170,8 @@ continues finalizing blocks after restart.
   TCP/TLS/Yamux swarm construction, Gossipsub subscriptions, Identify, Kademlia discovery/address
   registration, JSON request-response protocols, `tvmd service peer add` bootstrap seeding,
   `tvmd service readiness` startup checks for the mandatory libp2p control-plane runtime,
-  `tvmd service serve` startup of the same runtime, `tvmd miner run`, `tvmd validator run`, and
-  `tvmd proposer run` role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
+  `tvmd service serve` startup of the same runtime, `tvmd miner run` and `tvmd validator run`
+  role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
   with peer-ID-preserving DNS/TCP dial multiaddrs and bootstrap redial, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
   `tvmd service status` durable node-store reporting,

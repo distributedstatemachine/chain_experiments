@@ -35,9 +35,6 @@ services:
       TENSORVM_RPC_LISTEN: 0.0.0.0:8545
       TENSORVM_IS_BOOTSTRAP: "true"
       TENSORVM_SEED_LOCAL_TESTNET: "true"
-      TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: "1000"
-      TENSORVM_LOCAL_CPU_ROLE_PRODUCER: "true"
-      TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run
     ports:
       - "127.0.0.1:8545:8545"
       - "127.0.0.1:4001:4001"
@@ -211,6 +208,8 @@ services:
       TENSORVM_NODE_MULTIADDR: /dns4/validator-00/tcp/4001
       TENSORVM_P2P_LISTEN: /ip4/0.0.0.0/tcp/4001
       TENSORVM_RPC_LISTEN: 0.0.0.0:8545
+      TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: "1000"
+      TENSORVM_LOCAL_CPU_ROLE_PRODUCER: "true"
     volumes:
       - validator-00-data:/var/lib/tensorvm
 

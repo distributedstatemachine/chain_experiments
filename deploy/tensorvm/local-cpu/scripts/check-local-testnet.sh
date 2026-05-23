@@ -170,16 +170,8 @@ done
 for service in $MINERS; do
   compose exec -T "$service" grep -q "role=miner" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not marked as a miner"
-  case "$service" in
-    miner-00)
-      compose exec -T "$service" grep -q "runtime_command=proposer_run" /var/lib/tensorvm/local-cpu-ready \
-        || fail "$service is not running the proposer role command"
-      ;;
-    *)
-      compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
-        || fail "$service is not running the miner role command"
-      ;;
-  esac
+  compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
+    || fail "$service is not running the miner role command"
   compose exec -T "$service" grep -q "device=cpu" /var/lib/tensorvm/local-cpu-ready \
     || fail "$service is not using the CPU backend"
 done
@@ -702,15 +694,11 @@ while [ "$attempt" -lt 60 ]; do
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     case "$service" in
-      miner-00) [ "$SERVICE_RUNTIME_COMMAND" = "proposer_run" ] || { STATUS_MISMATCH=true; continue; } ;;
       miner-*) [ "$SERVICE_RUNTIME_COMMAND" = "miner_run" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_RUNTIME_COMMAND" = "validator_run" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     [ "$SERVICE_ROLE_RUNTIME_COMMAND" = "$SERVICE_RUNTIME_COMMAND" ] || { STATUS_MISMATCH=true; continue; }
-    case "$service" in
-      miner-00) [ "$SERVICE_ROLE_LOOP_ROLE" = "proposer" ] || { STATUS_MISMATCH=true; continue; } ;;
-      *) [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; } ;;
-    esac
+    [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; }
     case "$SERVICE_ROLE_LOOP_ROLE" in
       miner) ;;
       *)
@@ -723,7 +711,10 @@ while [ "$attempt" -lt 60 ]; do
     esac
     case "$SERVICE_ROLE_LOOP_ROLE" in
       validator)
-        [ "$SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        case "$service" in
+          validator-00) ;;
+          *) [ "$SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED" -gt 0 ] || { STATUS_MISMATCH=true; continue; } ;;
+        esac
         ;;
       *)
         [ "$SERVICE_ROLE_VALIDATOR_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
@@ -746,13 +737,35 @@ while [ "$attempt" -lt 60 ]; do
     esac
     [ "$SERVICE_ROLE_LOOP_READY" = "true" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
-      miner-00)
+      validator-00)
         [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" = "true" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "true" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
-      *)
+      miner-*)
         [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" = "false" ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "false" ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_RECEIPT_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_RECEIPT_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_RECEIPT_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_ATTESTATION_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_ATTESTATION_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_ATTESTATION_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        ;;
+      validator-*)
+        [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" = "true" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_LOCAL_PRODUCER" = "false" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_PRODUCED_BLOCKS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_APPLIED_BLOCKS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
@@ -940,7 +953,8 @@ all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true
 single_local_producer=true
-local_proposer_runtime=true
+local_proposer_runtime=false
+local_validator_producer=true
 useful_pow_block_evidence=${USEFUL_POW_BLOCK_EVIDENCE}
 canonical_blockspace_evidence=${CANONICAL_BLOCKSPACE_EVIDENCE}
 block_checks_root_evidence=${BLOCK_CHECKS_ROOT_EVIDENCE}

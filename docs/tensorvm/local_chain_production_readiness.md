@@ -102,9 +102,9 @@ The local bundle is useful and should remain the first operational target:
   a non-producer's latest finalized p2p-observed head from the block-payload gossip set, then fails unless
   every operator catches up to that same finalized block hash and state root, with a nonempty block-log root reported from
   every node store.
-- Compose now marks only `miner-00` as the local timed producer. Other counted operators keep the same
-  seeded chain base but only advance live blocks after a p2p block payload is decoded and verified against
-  the shared chain path.
+- Compose now marks only `validator-00` as the local timed producer. Miners are never local block
+  producers, and other counted operators keep the same seeded chain base but only advance live blocks after
+  a p2p block payload is decoded and verified against the shared chain path.
 - `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, block-log
   roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
   keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
@@ -114,10 +114,10 @@ The local bundle is useful and should remain the first operational target:
   matrix.
 - `tvmd service init` validates the complete node store on restart and repairs torn snapshot/block-log
   state from `chain.state` before readiness is allowed.
-- Compose now execs role-specific runtime commands for counted operators: `miner-00` runs
-  `tvmd proposer run` for gateway/proposer duties, the other miners run `tvmd miner run`, validators run
-  `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker fails unless all
-  15 operators report the role command expected for their Compose service.
+- Compose now execs role-specific runtime commands for counted operators: all miners run `tvmd miner run`,
+  all validators run `tvmd validator run`, `validator-00` carries the single local producer flag,
+  `tvmd service status` reports `runtime_command`, and the checker fails unless all 15 operators report the
+  role command expected for their Compose service.
 - Counted role runtimes now derive a chain address from their configured wallet label, persist
   `role_wallet_address`, `role_wallet_registration`, and `role_wallet_registered` in role runtime status,
   and expose those fields through `tvmd service status`. Compose wallet labels now match the deterministic
@@ -164,12 +164,15 @@ The local bundle is useful and should remain the first operational target:
   `role_p2p_observed_blocks`, `role_p2p_observed_block_votes`, `role_p2p_latest_observed_block_height`,
   `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`, and block-payload gossip counters/hashes; the checker fails unless every counted operator reports a live role
-  loop, only `miner-00` reports block-production capability and timed produced-block progress, every other counted operator reports
+  loop, validator operators report block-production capability, only `validator-00` reports timed
+  produced-block progress, miners report no block-production capability, every non-producer reports
   network-applied block progress from decoded block payloads, every non-producer has ingested decoded
   block-payload/header/block-vote/job/receipt/attestation events with zero invalid network events, every non-producer has
   accepted decoded block, block-vote, job, receipt, and attestation payloads through the chain engine, at least one real libp2p
   connection, job/receipt/attestation/block/block-vote announcements observed through Gossipsub, and an observed network
-  announcement for the selected finalized p2p-observed head hash.
+  announcement for the selected finalized p2p-observed head hash. Validator operators report block-production
+  capability, but only `validator-00` reports `role_local_producer=true` and positive timed produced-block
+  progress; miners report no block-production capability.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
@@ -226,9 +229,11 @@ satisfies the local CPU spec as a production-grade local chain.
 
 ### 1. Local Production Is Still Single-Process
 
-Current live production still runs inside `miner-00`'s service loop for settlement and block production.
-Finality votes now come from explicit validator role block-vote submissions, but the full gate still relies
-on deterministic producer orchestration before final block assembly is available to the validator roles.
+Current live production now runs inside `validator-00`'s validator runtime, but still reaches block
+production through the deterministic local synthetic-round helper for job, receipt, attestation,
+settlement, and block assembly. Finality votes now come from explicit validator role block-vote
+submissions, but the full gate still relies on deterministic producer orchestration before final block
+assembly is available as an independent role-owned validator proposer tick.
 The chain core requires registered-validator useful-verification PoW blocks, and block append/finality are
 separate chain commands.
 
@@ -308,7 +313,7 @@ block production now publishes typed
 non-producers validate and apply job payloads through `ChainCommand::SubmitJob`, receipt payloads through
 `ChainCommand::SubmitReceipt`, attestation payloads through `ChainCommand::SubmitAttestation`, and block
 payloads through `ChainCommand::SubmitBlock`. Pending block, receipt, and attestation payloads are retained
-and retried once prerequisite parents, jobs, receipts, or attestations arrive. Only `miner-00` is allowed to drive timed local block production, while the chain block
+and retried once prerequisite parents, jobs, receipts, or attestations arrive. Only `validator-00` is allowed to drive timed local block production, while the chain block
 itself must be proposed by a registered validator and pass useful-verification PoW checks. The role loop processes block
 payload dependencies before block payloads through the reusable node runtime event driver, which also owns
 decoded payload application, pending retry, invalid event accounting, and producer versus non-producer
@@ -593,7 +598,7 @@ collect block votes
 track finality metrics
 ```
 
-In local mode, `miner-00` may be the first proposer for simplicity, but it must still consume network-visible
+In local mode, the single timed local producer is a validator runtime; it must still consume network-visible
 jobs, receipts, attestations, and votes.
 
 ## Proposed Implementation Phases
@@ -653,9 +658,9 @@ smaller chain modules and the existing test module.
 - Then move gossip/request-response ingestion into the node runtime.
 
 Status: started. `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` are long-running
-role-specific command surfaces. Compose uses `tvmd proposer run` for `miner-00`'s local gateway/proposer
-duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` for validators; the local
-checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
+role-specific command surfaces. Compose uses `tvmd miner run` for all counted miners and
+`tvmd validator run` for all validators, with `validator-00` carrying the single local timed producer flag;
+the local checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block/block-payload/block-vote gossip observations, and target-head block-payload gossip
 observations for every counted operator. The service runtime now keeps served-request counts,
@@ -669,15 +674,16 @@ the generic service loop inline. CPU miner execution and validator verification 
 library components, miner receipt submission and validator attestation submission have role-loop paths for
 locally available work, validators can fetch missing receipt tensors over the libp2p request-response path
 before submitting attestations, validators submit explicit block votes for locally valid unfinalized blocks,
-and proposer block assembly still needs to move into its role loop. Runtime role policy now prevents miner
-and validator roles from becoming local block producers even if they inherit local block-interval
-configuration.
+and proposer block assembly still needs to move into a validator-owned role tick. Runtime role policy now
+prevents service, miner, and legacy proposer roles from becoming local block producers even if they inherit
+local block-interval configuration; validators require the explicit producer flag plus interval.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
 - `miner-*` containers run miner role loops.
 - `validator-*` containers run validator role loops.
-- `miner-00` runs gateway/proposer duties, but no longer creates all receipts and attestations locally.
+- `validator-00` runs the single local timed producer duty, but the deterministic synthetic-round helper
+  still creates jobs, receipts, attestations, settlement, and blocks in one path.
 - The checker requires all operators to converge on the same finalized head.
 
 ### Phase 5: Shared Profiles

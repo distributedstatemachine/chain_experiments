@@ -167,8 +167,8 @@ initialize or load its durable node store
 load its stable wallet and libp2p identity
 seed the bootstrap peer book, except for miner-00
 start the mandatory libp2p control plane
-start its role command as `tvmd miner run`, `tvmd validator run`, or the local gateway/proposer
-`tvmd proposer run`
+start its role command as `tvmd miner run` or `tvmd validator run`; `validator-00` is the only service
+with the local timed producer flag
 report readiness only after the role process and libp2p runtime are live
 ```
 
@@ -255,9 +255,9 @@ deployment:
 15 libp2p-ready nodes
 10 CPU-ready miners
 0 CUDA-required miners
-`miner-00` reports `runtime_command=proposer_run` for local gateway/proposer duties
-the other miner operators report `runtime_command=miner_run`
+all miner operators report `runtime_command=miner_run`
 all validator operators report `runtime_command=validator_run`
+`validator-00` reports local timed production while every miner reports no block-production capability
 all operators report `chain_profile=local_cpu` / `role_chain_profile=local_cpu`
 all operators report live role-loop readiness, role command, produced-block counters, and latest role height
 at least one finalized block after startup
@@ -277,8 +277,8 @@ standalone explorer page configured to poll the TensorVM `/explorer/ws` endpoint
 all 15 operator node stores advanced past the seed, reported role status and live chain counters, and
 reported the same first live finalized block hash plus the same finalized common-head block hash at the
 bounded convergence height
-only miner-00 reported local timed production, and every other counted operator reported
-network-applied block progress from decoded p2p block payloads
+only validator-00 reported local timed production, miners reported no local block-production capability, and
+every other counted operator reported network-applied block progress from decoded p2p block payloads
 every non-producer reported decoded network-event ingestion for block headers, jobs, receipts, and
 attestations, with zero invalid network events
 every non-producer reported decoded block, job, receipt, and attestation payload application through the chain engine

@@ -300,13 +300,14 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 - Local CPU Docker Compose deployment bundle under `deploy/tensorvm/local-cpu/`, with a CPU-only
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
-  readiness, role-specific `tvmd proposer run`, `tvmd miner run`, and `tvmd validator run` entrypoints
-  checked through `runtime_command` status, explicit role-run loop wrappers feeding a shared runtime loop
+  readiness, role-specific `tvmd miner run` and `tvmd validator run` Compose entrypoints checked through
+  `runtime_command` status, explicit role-run loop wrappers feeding a shared runtime loop
   boundary, registered role wallet address and role registration status persisted through
-  `role-runtime.status` and checked through `tvmd service status`, runtime policy that
-  prevents miner and validator roles from becoming local block producers, authenticated host gateway route
+  `role-runtime.status` and checked through `tvmd service status`, runtime policy that prevents service,
+  miner, and legacy proposer roles from becoming local block producers while allowing validator runtimes
+  only with the explicit producer flag and interval, authenticated host gateway route
   checks, a seeded local CPU chain exposed through the gateway with settled matmul and LinearTrainingStep
-  receipts, plus live synthetic CPU job production on the bootstrap gateway with typed job, receipt, and
+  receipts, plus live synthetic CPU job production on `validator-00` with typed job, receipt, and
   attestation payloads gossiped, decoded, and applied through `ChainCommand::SubmitJob`,
   `ChainCommand::SubmitReceipt`, and
   `ChainCommand::SubmitAttestation` on non-producers, typed block and block-vote payloads gossiped, decoded,
@@ -393,13 +394,13 @@ preflight, public evidence, or deployment-gated work can count:
   `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
-  catch up to miner-00's finalized local-head checkpoint after that head appears in p2p block gossip with
+  catch up to validator-00's finalized local-head checkpoint after that head appears in p2p block gossip with
   matching finalized block hash and state root via
   `all_operator_network_head_convergence=true`, plus p2p observation of that same network head hash,
   `all_operator_block_log_roots_observed=true`, `all_operator_role_status=true`,
   `all_operator_role_runtime_commands=true`, `all_operator_chain_profiles=true`,
   `all_operator_role_production_policy=true`, `all_operator_role_runtime_counters=true`,
-  `single_local_producer=true`,
+  `single_local_producer=true`, `local_validator_producer=true`,
   `all_non_producer_network_applied_blocks=true`,
   `all_non_producer_network_block_payload_ingestion=true`,
   `all_non_producer_network_block_payload_application=true`,

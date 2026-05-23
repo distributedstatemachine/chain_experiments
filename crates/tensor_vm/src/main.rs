@@ -903,7 +903,6 @@ fn runtime_role_wallet_registration(
                 "unregistered"
             }
         }
-        RuntimeRole::Proposer if chain.state.miners.contains_key(&address) => "miner",
         RuntimeRole::Proposer if chain.state.validators.contains_key(&address) => "validator",
         RuntimeRole::Proposer => "unregistered",
         RuntimeRole::Service => "none",
@@ -2237,7 +2236,7 @@ fn runtime_block_interval() -> Option<Duration> {
 fn runtime_local_block_producer() -> bool {
     match std::env::var("TENSORVM_LOCAL_CPU_ROLE_PRODUCER") {
         Ok(value) => matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"),
-        Err(_) => std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS").is_ok(),
+        Err(_) => false,
     }
 }
 
@@ -2456,14 +2455,14 @@ mod tests {
     }
 
     #[test]
-    fn runtime_role_policy_blocks_miner_and_validator_local_production() {
+    fn runtime_role_policy_allows_only_validator_local_production() {
         let profile = ChainProfile::local_cpu();
         assert!(
-            NodeConfig::new(profile.clone(), RuntimeRole::Service.node_role(), "service")
+            !NodeConfig::new(profile.clone(), RuntimeRole::Service.node_role(), "service")
                 .can_produce_local_blocks()
         );
         assert!(
-            NodeConfig::new(
+            !NodeConfig::new(
                 profile.clone(),
                 RuntimeRole::Proposer.node_role(),
                 "proposer"
@@ -2475,7 +2474,7 @@ mod tests {
                 .can_produce_local_blocks()
         );
         assert!(
-            !NodeConfig::new(profile, RuntimeRole::Validator.node_role(), "validator")
+            NodeConfig::new(profile, RuntimeRole::Validator.node_role(), "validator")
                 .can_produce_local_blocks()
         );
 
@@ -2528,7 +2527,7 @@ mod tests {
             assert_eq!(service_config.node.role, role.node_role());
             assert_eq!(
                 service_config.node.can_produce_local_blocks(),
-                matches!(role, RuntimeRole::Proposer)
+                matches!(role, RuntimeRole::Validator)
             );
             assert!(!service_config.node.local_synthetic_producer());
             assert_eq!(
@@ -2605,11 +2604,20 @@ mod tests {
         ));
         assert_eq!(
             runtime_role_wallet_registration(RuntimeRole::Proposer, Some(miner), &chain),
-            "miner"
+            "unregistered"
+        );
+        assert!(!runtime_role_wallet_registered(
+            RuntimeRole::Proposer,
+            Some(miner),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Proposer, Some(validator), &chain),
+            "validator"
         );
         assert!(runtime_role_wallet_registered(
             RuntimeRole::Proposer,
-            Some(miner),
+            Some(validator),
             &chain
         ));
         assert_eq!(

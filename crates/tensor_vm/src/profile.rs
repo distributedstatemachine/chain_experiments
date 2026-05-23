@@ -227,7 +227,7 @@ impl NodeConfig {
     }
 
     pub fn can_produce_local_blocks(&self) -> bool {
-        matches!(self.role, NodeRole::Gateway | NodeRole::Proposer)
+        matches!(self.role, NodeRole::Validator)
     }
 
     pub fn local_synthetic_producer(&self) -> bool {
@@ -282,10 +282,10 @@ mod tests {
     #[test]
     fn node_config_drives_local_runtime_policy_without_changing_chain_base() {
         let interval = Duration::from_millis(1000);
-        let local_proposer = NodeConfig::new(
+        let local_validator = NodeConfig::new(
             ChainProfile::from_label("local_cpu").unwrap(),
-            NodeRole::Proposer,
-            "local/proposer",
+            NodeRole::Validator,
+            "local/validator",
         )
         .with_network(
             NetworkConfig::new("127.0.0.1:9000", "/ip4/127.0.0.1/tcp/19000")
@@ -296,29 +296,50 @@ mod tests {
         .with_storage(StorageConfig::new("local/proposer-store"))
         .with_block_interval(Some(interval))
         .with_local_producer(true);
+        let local_gateway = NodeConfig::new(
+            ChainProfile::local_cpu(),
+            NodeRole::Gateway,
+            "local/gateway",
+        )
+        .with_block_interval(Some(interval))
+        .with_local_producer(true);
         let local_miner =
             NodeConfig::new(ChainProfile::local_cpu(), NodeRole::Miner, "local/miner")
                 .with_block_interval(Some(interval))
                 .with_local_producer(true);
-        let public_proposer = NodeConfig::new(
-            ChainProfile::public_testnet(),
+        let local_proposer = NodeConfig::new(
+            ChainProfile::local_cpu(),
             NodeRole::Proposer,
-            "testnet/proposer",
+            "local/proposer",
+        )
+        .with_block_interval(Some(interval))
+        .with_local_producer(true);
+        let public_validator = NodeConfig::new(
+            ChainProfile::public_testnet(),
+            NodeRole::Validator,
+            "testnet/validator",
         )
         .with_block_interval(Some(interval))
         .with_local_producer(true);
 
-        assert_eq!(local_proposer.synthetic_block_interval(), Some(interval));
-        assert!(local_proposer.local_synthetic_producer());
-        assert_eq!(local_proposer.data_dir(), Path::new("local/proposer-store"));
-        assert_eq!(local_proposer.network.identity_seed, Some([7; 32]));
-        assert_eq!(local_proposer.network.auth_token, "secret");
-        assert_eq!(local_proposer.network.max_requests, 25);
+        assert_eq!(local_validator.synthetic_block_interval(), Some(interval));
+        assert!(local_validator.local_synthetic_producer());
+        assert_eq!(
+            local_validator.data_dir(),
+            Path::new("local/proposer-store")
+        );
+        assert_eq!(local_validator.network.identity_seed, Some([7; 32]));
+        assert_eq!(local_validator.network.auth_token, "secret");
+        assert_eq!(local_validator.network.max_requests, 25);
+        assert!(!local_gateway.can_produce_local_blocks());
+        assert!(!local_gateway.local_synthetic_producer());
         assert_eq!(local_miner.synthetic_block_interval(), Some(interval));
         assert!(!local_miner.can_produce_local_blocks());
         assert!(!local_miner.local_synthetic_producer());
-        assert_eq!(public_proposer.synthetic_block_interval(), None);
-        assert!(!public_proposer.local_synthetic_producer());
+        assert!(!local_proposer.can_produce_local_blocks());
+        assert!(!local_proposer.local_synthetic_producer());
+        assert_eq!(public_validator.synthetic_block_interval(), None);
+        assert!(!public_validator.local_synthetic_producer());
         assert!(ChainProfile::from_label("staging").is_none());
     }
 

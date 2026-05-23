@@ -143,14 +143,6 @@ fn json_number_field(body: &str, key: &str) -> u64 {
     digits.parse().expect("JSON numeric field must parse")
 }
 
-fn json_string_field(body: &str, key: &str) -> String {
-    let marker = format!("\"{key}\":\"");
-    body.split_once(&marker)
-        .and_then(|(_, tail)| tail.split_once('"'))
-        .map(|(value, _)| value.to_owned())
-        .expect("JSON string field must exist")
-}
-
 fn json_positive_field_count(body: &str, key: &str) -> usize {
     let marker = format!("\"{key}\":");
     body.match_indices(&marker)
@@ -832,7 +824,7 @@ invalid_receipts_rejected=1
 }
 
 #[test]
-fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
+fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     let data_dir = unique_test_dir("local-testnet-seed");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
@@ -868,9 +860,10 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             "--auth-token",
             "service-token",
             "--max-requests",
-            "9",
+            "4",
         ])
         .env("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS", "25")
+        .env("TENSORVM_LOCAL_CPU_ROLE_PRODUCER", "true")
         .current_dir(workspace_root())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -889,41 +882,25 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     let overview = authenticated_get_request(rpc_port, "/explorer/overview");
     assert!(overview.contains("HTTP/1.1 200 OK"));
     let overview_body = response_body(&overview);
-    assert!(json_number_field(overview_body, "job_count") > 2);
-    assert!(json_number_field(overview_body, "receipt_count") > 10);
-    assert!(json_number_field(overview_body, "settled_receipt_count") > 10);
+    assert!(json_number_field(overview_body, "job_count") >= 2);
+    assert!(json_number_field(overview_body, "receipt_count") >= 10);
+    assert!(json_number_field(overview_body, "settled_receipt_count") >= 10);
 
     let receipts = authenticated_get_request(rpc_port, "/explorer/receipts/latest/500");
     assert!(receipts.contains("HTTP/1.1 200 OK"));
     let receipts_body = response_body(&receipts);
     assert!(receipts_body.contains("\"validator_attestations\""));
-    assert!(json_positive_field_count(receipts_body, "attestation_count") > 10);
-
-    let latest_tensor = authenticated_get_request(rpc_port, "/tensor/latest");
-    assert!(latest_tensor.contains("HTTP/1.1 200 OK"));
-    let latest_tensor_body = response_body(&latest_tensor);
-    let tensor_id = json_string_field(latest_tensor_body, "tensor_id");
-    assert!(json_number_field(latest_tensor_body, "tensor_count") > 0);
-
-    let descriptor =
-        authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/descriptor"));
-    assert!(descriptor.contains("HTTP/1.1 200 OK"));
-    assert!(response_body(&descriptor).contains("\"root\""));
-    let row = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/row/0"));
-    assert!(row.contains("HTTP/1.1 200 OK"));
-    assert!(response_body(&row).contains("\"row\""));
-    let chunk = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/chunk/0"));
-    assert!(chunk.contains("HTTP/1.1 200 OK"));
-    assert!(response_body(&chunk).contains("\"bytes\""));
-    let opening = authenticated_get_request(rpc_port, &format!("/tensor/{tensor_id}/opening/0"));
-    assert!(opening.contains("HTTP/1.1 200 OK"));
-    assert!(response_body(&opening).contains("\"proof_len\""));
+    assert!(json_positive_field_count(receipts_body, "attestation_count") >= 10);
 
     let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
-    assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
-    assert!(
-        json_number_field(response_body(&later_chain_head), "block_count") > initial_block_count
+    assert_eq!(
+        json_number_field(response_body(&later_chain_head), "height"),
+        initial_height
+    );
+    assert_eq!(
+        json_number_field(response_body(&later_chain_head), "block_count"),
+        initial_block_count
     );
 
     let output = child.wait_with_output().expect("service process must exit");
@@ -937,13 +914,10 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
     assert!(stdout.contains("command=service_serve"));
     assert!(stdout.contains("chain_profile=local_cpu"));
-    assert!(stdout.contains("served_requests=9"));
-    assert!(
-        stdout_value(&stdout, "produced_blocks")
-            .parse::<usize>()
-            .expect("produced block count must parse")
-            > 0
-    );
+    assert!(stdout.contains("role_can_produce_blocks=false"));
+    assert!(stdout.contains("local_producer=false"));
+    assert!(stdout.contains("served_requests=4"));
+    assert_eq!(stdout_value(&stdout, "produced_blocks"), "0");
 
     let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
     assert!(status.contains("command=service_status"));
@@ -952,44 +926,46 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(status.contains("operator_name=unknown"));
     assert!(status.contains("role=unknown"));
     assert!(status.contains("role_chain_profile=local_cpu"));
+    assert_eq!(stdout_value(&status, "role_can_produce_blocks"), "false");
+    assert_eq!(stdout_value(&status, "role_local_producer"), "false");
+    assert_eq!(stdout_value(&status, "role_produced_blocks"), "0");
     assert_eq!(stdout_value(&status, "registered_miner_count"), "10");
     assert_eq!(stdout_value(&status, "registered_validator_count"), "5");
     assert!(
         stdout_value(&status, "job_count")
             .parse::<u64>()
             .expect("service status job count must parse")
-            > 2
+            >= 2
     );
     assert!(
         stdout_value(&status, "receipt_count")
             .parse::<u64>()
             .expect("service status receipt count must parse")
-            > 10
+            >= 10
     );
     assert!(
         stdout_value(&status, "attestation_count")
             .parse::<u64>()
             .expect("service status attestation count must parse")
-            > 50
+            >= 10
     );
-    assert!(
+    assert_eq!(
         stdout_value(&status, "height")
             .parse::<u64>()
-            .expect("service status height must parse")
-            > initial_height
+            .expect("service status height must parse"),
+        initial_height
     );
-    assert!(
+    assert_eq!(
         stdout_value(&status, "block_count")
             .parse::<u64>()
-            .expect("service status block count must parse")
-            > initial_block_count
+            .expect("service status block count must parse"),
+        initial_block_count
     );
-    assert!(
-        stdout_value(&status, "latest_block_height")
-            .parse::<u64>()
-            .expect("service status latest block height must parse")
-            > 2
-    );
+    let latest_block_height = stdout_value(&status, "latest_block_height")
+        .parse::<u64>()
+        .expect("service status latest block height must parse");
+    assert!(latest_block_height >= 1);
+    let latest_block_height_text = latest_block_height.to_string();
     assert_ne!(stdout_value(&status, "block_log_root"), "0".repeat(64));
     assert!(
         stdout_value(&status, "finalized_block_count")
@@ -997,9 +973,9 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
             .expect("service status finalized block count must parse")
             >= 2
     );
-    assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
+    assert_eq!(stdout_value(&status, "first_live_block_height"), "0");
     let first_live_block_hash = stdout_value(&status, "first_live_block_hash");
-    assert_ne!(first_live_block_hash, "0".repeat(64));
+    assert_eq!(first_live_block_hash, "0".repeat(64));
 
     let block = run_tvmd(&[
         "service",
@@ -1007,11 +983,10 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
         "--data-dir",
         &data_dir_text,
         "--height",
-        stdout_value(&status, "first_live_block_height"),
+        &latest_block_height_text,
     ]);
     assert!(block.contains("command=service_block"));
-    assert_eq!(stdout_value(&block, "height"), "3");
-    assert_eq!(stdout_value(&block, "block_hash"), first_live_block_hash);
+    assert_eq!(stdout_value(&block, "height"), latest_block_height_text);
     assert_eq!(
         stdout_value(&block, "block_validation"),
         "useful_verification_pow"
@@ -1029,10 +1004,15 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(block.contains("pow_hash="));
     assert_eq!(stdout_value(&block, "pow_valid"), "true");
     assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
-    assert_eq!(stdout_value(&block, "finalized"), "false");
-    assert_eq!(stdout_value(&block, "block_vote_count"), "0");
-    assert_eq!(stdout_value(&block, "block_vote_validators"), "none");
-    assert_eq!(stdout_value(&block, "finality_validated_block"), "false");
+    assert_eq!(stdout_value(&block, "finalized"), "true");
+    assert!(
+        stdout_value(&block, "block_vote_count")
+            .parse::<u64>()
+            .expect("service block vote count must parse")
+            > 0
+    );
+    assert_ne!(stdout_value(&block, "block_vote_validators"), "none");
+    assert_eq!(stdout_value(&block, "finality_validated_block"), "true");
     assert!(
         stdout_value(&block, "receipt_count")
             .parse::<u64>()
@@ -1052,36 +1032,123 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
         stdout_value(&block, "latest_height")
             .parse::<u64>()
             .expect("service block latest height must parse")
-            > 2
+            >= 1
     );
-    let first_live_height = stdout_value(&status, "first_live_block_height")
-        .parse::<u64>()
-        .expect("first live block height must parse");
-    let latest_block_height = stdout_value(&status, "latest_block_height")
-        .parse::<u64>()
-        .expect("latest block height must parse");
-    let mut saw_tensor_op_block = false;
-    let mut saw_linear_training_block = false;
-    for height in first_live_height..=latest_block_height.min(first_live_height + 4) {
-        let block = run_tvmd(&[
-            "service",
-            "block",
+
+    std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+}
+
+#[test]
+fn validator_run_with_local_producer_advances_cpu_chain() {
+    let data_dir = unique_test_dir("validator-local-producer");
+    let data_dir_text = data_dir.to_string_lossy().into_owned();
+
+    let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+    assert!(seed.contains("command=local_testnet_seed"));
+
+    let rpc_port = free_local_port();
+    let listen = format!("127.0.0.1:{rpc_port}");
+    let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
+        .args([
+            "validator",
+            "run",
+            "--wallet",
+            "testnet-validator-0",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4002",
+            "--listen",
+            &listen,
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/0",
             "--data-dir",
             &data_dir_text,
-            "--height",
-            &height.to_string(),
-        ]);
-        saw_tensor_op_block |= stdout_value(&block, "tensor_op_receipt_count")
-            .parse::<u64>()
-            .expect("tensor op receipt count must parse")
-            > 0;
-        saw_linear_training_block |= stdout_value(&block, "linear_training_receipt_count")
-            .parse::<u64>()
-            .expect("linear training receipt count must parse")
-            > 0;
-    }
-    assert!(saw_tensor_op_block);
-    assert!(saw_linear_training_block);
+            "--auth-token",
+            "service-token",
+            "--max-requests",
+            "3",
+        ])
+        .env("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS", "25")
+        .env("TENSORVM_LOCAL_CPU_ROLE_PRODUCER", "true")
+        .current_dir(workspace_root())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("tvmd validator run must spawn");
+
+    let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(initial_chain_head.contains("HTTP/1.1 200 OK"));
+    let initial_height = json_number_field(response_body(&initial_chain_head), "height");
+    let initial_block_count = json_number_field(response_body(&initial_chain_head), "block_count");
+    assert!(initial_height >= 2);
+    assert!(initial_block_count >= 2);
+
+    std::thread::sleep(Duration::from_millis(150));
+
+    let overview = authenticated_get_request(rpc_port, "/explorer/overview");
+    assert!(overview.contains("HTTP/1.1 200 OK"));
+    let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
+    assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
+    assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
+    assert!(
+        json_number_field(response_body(&later_chain_head), "block_count") > initial_block_count
+    );
+
+    let output = child
+        .wait_with_output()
+        .expect("validator process must exit");
+    assert!(
+        output.status.success(),
+        "validator run failed with status {:?}\nstdout:\n{}\nstderr:\n{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).expect("validator stdout must be utf8");
+    assert!(stdout.contains("command=validator_run"));
+    assert!(stdout.contains("role=validator"));
+    assert!(stdout.contains("command=service_serve"));
+    assert!(stdout.contains("role_can_produce_blocks=true"));
+    assert!(stdout.contains("role_wallet_registration=validator"));
+    assert!(stdout.contains("role_wallet_registered=true"));
+    assert!(stdout.contains("local_producer=true"));
+    assert!(
+        stdout_value(&stdout, "produced_blocks")
+            .parse::<usize>()
+            .expect("produced block count must parse")
+            > 0
+    );
+
+    let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+    assert_eq!(stdout_value(&status, "role_loop_role"), "validator");
+    assert_eq!(stdout_value(&status, "role_can_produce_blocks"), "true");
+    assert_eq!(
+        stdout_value(&status, "role_wallet_registration"),
+        "validator"
+    );
+    assert_eq!(stdout_value(&status, "role_local_producer"), "true");
+    assert!(
+        stdout_value(&status, "role_produced_blocks")
+            .parse::<usize>()
+            .expect("role produced block count must parse")
+            > 0
+    );
+    assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
+    let block = run_tvmd(&[
+        "service",
+        "block",
+        "--data-dir",
+        &data_dir_text,
+        "--height",
+        "3",
+    ]);
+    assert_eq!(stdout_value(&block, "proposer_role"), "validator");
+    assert_eq!(stdout_value(&block, "proposer_registered"), "true");
+    assert_eq!(
+        stdout_value(&block, "tensorwork_proposer_selection"),
+        "false"
+    );
+    assert_eq!(stdout_value(&block, "pow_valid"), "true");
+    assert!(block.contains("canonical_blockspace_valid="));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
@@ -1100,7 +1167,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         let (wallet, expected_registration) = match role {
             "miner" => ("testnet-miner-0", "miner"),
             "validator" => ("testnet-validator-0", "validator"),
-            "proposer" => ("testnet-miner-0", "miner"),
+            "proposer" => ("testnet-validator-0", "validator"),
             _ => unreachable!("covered role set"),
         };
         if role == "miner" {
@@ -1167,7 +1234,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("role_loop_ready=true"));
         assert!(stdout.contains(&format!("runtime_command={role}_run")));
         assert!(stdout.contains("chain_profile=local_cpu"));
-        let role_can_produce_blocks = if role == "proposer" { "true" } else { "false" };
+        let role_can_produce_blocks = if role == "validator" { "true" } else { "false" };
         let wallet_address = hex(&address(wallet.as_bytes()));
         assert!(stdout.contains(&format!(
             "role_can_produce_blocks={role_can_produce_blocks}"

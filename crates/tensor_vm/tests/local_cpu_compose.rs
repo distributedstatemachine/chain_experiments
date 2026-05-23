@@ -89,9 +89,27 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("/explorer/ws?token=local-cpu-testnet-token"));
     assert!(compose.contains("condition: service_healthy"));
     assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
-    assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
-    assert!(compose.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\""));
-    assert!(compose.contains("TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"));
+    assert_eq!(
+        compose
+            .matches("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\"")
+            .count(),
+        1
+    );
+    assert_eq!(
+        compose
+            .matches("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\"")
+            .count(),
+        1
+    );
+    assert!(!compose.contains("TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"));
+    assert!(
+        compose
+            .split("  validator-00:")
+            .nth(1)
+            .and_then(|section| section.split("  validator-01:").next())
+            .expect("validator-00 section should be present")
+            .contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\"")
+    );
     assert!(compose.contains("TENSORVM_WALLET: testnet-miner-0"));
     assert!(compose.contains("TENSORVM_WALLET: testnet-miner-9"));
     assert!(compose.contains("TENSORVM_WALLET: testnet-validator-0"));
@@ -285,7 +303,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_role_production_policy=true",
         "all_operator_role_runtime_counters=true",
         "single_local_producer=true",
-        "local_proposer_runtime=true",
+        "local_proposer_runtime=false",
+        "local_validator_producer=true",
         "useful_pow_block_evidence=",
         "canonical_blockspace_evidence=",
         "block_checks_root_evidence=",
