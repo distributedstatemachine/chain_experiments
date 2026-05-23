@@ -88,6 +88,8 @@ spaghetti around.
   `ChainState` accessors, extending the read boundary through local CPU harness code.
 - Iteration 27 moved watcher production scans onto the `ChainState` accessors while leaving malformed
   attestation fixture mutations isolated to watcher tests.
+- Iteration 28 moved storage snapshot metadata, chain-state encoding, and storage test temp-name reads
+  onto `ChainState` accessors without changing storage fixture mutations.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

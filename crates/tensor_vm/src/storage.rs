@@ -43,9 +43,9 @@ pub struct ChainSnapshot {
 impl ChainSnapshot {
     pub fn from_chain(chain: &Chain) -> Self {
         Self {
-            height: chain.state.height,
-            epoch: chain.state.epoch,
-            finalized_randomness: chain.state.finalized_randomness,
+            height: chain.state().height(),
+            epoch: chain.state().epoch(),
+            finalized_randomness: chain.state().finalized_randomness(),
             block_count: chain.blocks.len() as u64,
             state_root: chain.state_root(),
             latest_block_hash: chain
@@ -493,7 +493,7 @@ fn decode_chain_state_file(bytes: &[u8]) -> Result<Chain> {
 fn encode_chain_state_payload(chain: &Chain) -> Vec<u8> {
     let mut out = Vec::new();
     encode_chain_params(&mut out, &chain.params);
-    encode_chain_state(&mut out, &chain.state);
+    encode_chain_state(&mut out, chain.state());
     write_len(&mut out, chain.blocks.len());
     for block in &chain.blocks {
         out.extend_from_slice(&encode_block_payload(block));
@@ -1563,7 +1563,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-snapshot-{}-{}.bin",
             std::process::id(),
-            chain.state.height
+            chain.state().height()
         ));
         let store = SnapshotStore::new(path.clone());
         let saved = store.save_chain(&chain).unwrap();
@@ -1591,7 +1591,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-{}-{}.bin",
             std::process::id(),
-            chain.state.height
+            chain.state().height()
         ));
         let store = BlockLogStore::new(path.clone());
         store.append_chain(&chain).unwrap();
@@ -1628,7 +1628,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-sync-{}-{}.bin",
             std::process::id(),
-            chain.state.height
+            chain.state().height()
         ));
         let store = BlockLogStore::new(path.clone());
         assert!(store.load_blocks_or_empty().unwrap().is_empty());
@@ -1685,7 +1685,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-replace-{}-{}.bin",
             std::process::id(),
-            chain.state.height
+            chain.state().height()
         ));
         let store = BlockLogStore::new(path.clone());
         store.append_chain(&chain).unwrap();
@@ -1867,7 +1867,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-state-{}-{}.bin",
             std::process::id(),
-            chain.state.height
+            chain.state().height()
         ));
         let store = ChainStateStore::new(path.clone());
         assert_eq!(store.path(), path.as_path());
