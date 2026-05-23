@@ -151,6 +151,8 @@ Do not mark the formal-proof goal complete until all of the following are true:
 
 The blocked v2 consensus proof obligations are expanded in
 [`mvp_core_v2_consensus_proof_obligations.md`](mvp_core_v2_consensus_proof_obligations.md).
+The proof-to-implementation claim boundary is summarized in
+[`mvp_core_proof_traceability_matrix.md`](mvp_core_proof_traceability_matrix.md).
 
 ## Current Safe Summary
 
