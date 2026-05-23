@@ -84,3 +84,77 @@ Out of scope:
   or trait-object processors.
 - Duplicate network payload IDs keep the first queued payload and ignore later duplicates; this preserves the
   existing `or_insert` behavior and is now covered by a focused unit test.
+
+## Iteration 2: Move Network Payload Application To Node Runtime
+
+Readiness requirement:
+Move decoded job, receipt, and attestation payload application out of the `tvmd` binary and into the reusable
+node runtime boundary so future miner, validator, and proposer loops can apply network-visible role work
+through the shared chain engine without depending on private binary helpers.
+
+Files likely touched:
+- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/src/lib.rs`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Read-only codebase exploration for the payload application extraction.
+- Read-only test/coverage exploration for the payload application extraction.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Move or add unit coverage for decoded network job payload application.
+- Move or add unit coverage for receipt and attestation payload pending/applied/invalid outcomes.
+- Keep binary coverage for out-of-order retry through the service runtime.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --lib node::tests`
+- `cargo test -p tensor_vm --lib payload`
+- `cargo test -p tensor_vm --bin tvmd network_payload`
+- `cargo test -p tensor_vm --bin tvmd network_ingest`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm local_testnet --release`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- `tvmd` delegates decoded network payload application to library node-runtime helpers.
+- Job, receipt, and attestation payload application still use `ChainCommand::SubmitJob`,
+  `ChainCommand::SubmitReceipt`, and `ChainCommand::SubmitAttestation`.
+- Existing out-of-order receipt/attestation retry behavior is preserved.
+
+Out of scope:
+- Moving block catch-up and synthetic replay out of `tvmd`.
+- Creating fully role-owned miner, validator, and proposer loops.
+- Changing consensus semantics or local synthetic production policy.
+
+## Iteration 2 Validation Log
+
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --lib node::tests`: passed; 10 node runtime tests passed.
+- `cargo test -p tensor_vm --lib payload`: passed; 17 filtered library payload tests passed.
+- `cargo test -p tensor_vm --bin tvmd network_payload`: passed; 2 binary network-payload tests passed.
+- `cargo test -p tensor_vm --bin tvmd network_ingest`: passed; 1 binary network-ingest ordering test passed.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 Compose spec-shape test passed.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 tensor_vm library tests and 1 `tvmd_cli`
+  local-testnet seed test passed.
+- `cargo tarpaulin --workspace --offline`: passed; 245 instrumented library tests passed with 99.24%
+  workspace line coverage and 100.00% tensor_vm crate line coverage.
+
+## Iteration 2 Decisions And Notes
+
+- Made payload application chain-centric instead of RPC-server-centric: the reusable helper boundary accepts
+  `LocalChain` and the service runtime adapts with `ChainNetworkPayloadProcessor`.
+- Kept libp2p message draining, event ordering, block catch-up, and persistence decisions inside `tvmd` for
+  this slice.
+- Simplified receipt and attestation application after explicit prechecks so accepted payloads go through
+  `ChainCommand` and unexpected command failures classify as invalid, while missing prerequisites still
+  classify as pending before command application.

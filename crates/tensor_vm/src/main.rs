@@ -6,20 +6,23 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
+    ChainNetworkPayloadProcessor, ChainProfile, CliCommand, Faucet, JobScheduler,
     Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NetworkEventIngest, NetworkPayloadApply,
-    NetworkPayloadProcessor, NodeConfig, NodeRole, NodeRuntimeState, NodeStore, PeerRecord,
-    PendingNetworkPayloads, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor,
-    TensorVmLibp2pService, TvmError, ValidatorAttestation, VerificationResult,
+    NodeConfig, NodeRole, NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads,
+    PrimitiveType, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
+    VerificationResult,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
-    decode_attestation_payload, decode_job_payload, decode_receipt_payload,
     encode_attestation_payload, encode_job_payload, encode_receipt_payload,
     hash::hex,
     localnet::produce_synthetic_cpu_round_with_tensors,
+    node::{
+        apply_network_attestation_payload, apply_network_job_payload,
+        apply_network_receipt_payload, attestation_announcement_hash,
+    },
     parse_cli_args, spawn_libp2p_service,
     testnet::{LocalTestnet, PublicTestnetCriteria, TestnetConfig},
     types::{Hash, hash_bytes},
@@ -1003,7 +1006,11 @@ fn ingest_network_events(
             P2pMessage::NewJobPayload { job_id, payload } => {
                 ingested.jobs = ingested.jobs.saturating_add(1);
                 ingested.job_payloads = ingested.job_payloads.saturating_add(1);
-                match apply_network_job_payload(server, job_id, &payload) {
+                match apply_network_job_payload(
+                    &mut server.gateway_mut().node.chain,
+                    job_id,
+                    &payload,
+                ) {
                     Ok(()) => {
                         ingested.job_payloads_applied =
                             ingested.job_payloads_applied.saturating_add(1);
@@ -1025,7 +1032,11 @@ fn ingest_network_events(
             } => {
                 ingested.receipts = ingested.receipts.saturating_add(1);
                 ingested.receipt_payloads = ingested.receipt_payloads.saturating_add(1);
-                match apply_network_receipt_payload(server, receipt_id, &payload) {
+                match apply_network_receipt_payload(
+                    &mut server.gateway_mut().node.chain,
+                    receipt_id,
+                    &payload,
+                ) {
                     NetworkPayloadApply::Applied => {
                         ingested.receipt_payloads_applied =
                             ingested.receipt_payloads_applied.saturating_add(1);
@@ -1050,7 +1061,11 @@ fn ingest_network_events(
             } => {
                 ingested.attestations = ingested.attestations.saturating_add(1);
                 ingested.attestation_payloads = ingested.attestation_payloads.saturating_add(1);
-                match apply_network_attestation_payload(server, attestation_id, &payload) {
+                match apply_network_attestation_payload(
+                    &mut server.gateway_mut().node.chain,
+                    attestation_id,
+                    &payload,
+                ) {
                     NetworkPayloadApply::Applied => {
                         ingested.attestation_payloads_applied =
                             ingested.attestation_payloads_applied.saturating_add(1);
@@ -1079,7 +1094,7 @@ fn ingest_network_events(
             }
         }
     }
-    let mut processor = RuntimeNetworkPayloadProcessor { server };
+    let mut processor = ChainNetworkPayloadProcessor::new(&mut server.gateway_mut().node.chain);
     ingested.accumulate(pending_payloads.retry_with(&mut processor));
     Ok(ingested)
 }
@@ -1096,134 +1111,6 @@ fn is_block_announcement(message: &P2pMessage) -> bool {
         message,
         P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. }
     )
-}
-
-fn apply_network_job_payload(
-    server: &mut RpcHttpServer,
-    job_id: Hash,
-    payload: &[u8],
-) -> std::result::Result<(), ()> {
-    if job_id == [0; 32] {
-        return Err(());
-    }
-    let job = decode_job_payload(payload).map_err(|_| ())?;
-    if job.job_id() != job_id {
-        return Err(());
-    }
-    if let Some(existing) = server.gateway().node.chain.state.jobs.get(&job_id) {
-        if existing == &job {
-            return Ok(());
-        }
-        return Err(());
-    }
-    server
-        .gateway_mut()
-        .node
-        .chain
-        .apply_command(ChainCommand::SubmitJob(job))
-        .map_err(|_| ())?;
-    Ok(())
-}
-
-fn apply_network_receipt_payload(
-    server: &mut RpcHttpServer,
-    receipt_id: Hash,
-    payload: &[u8],
-) -> NetworkPayloadApply {
-    if receipt_id == [0; 32] {
-        return NetworkPayloadApply::Invalid;
-    }
-    let Ok(receipt) = decode_receipt_payload(payload) else {
-        return NetworkPayloadApply::Invalid;
-    };
-    if receipt.receipt_id() != receipt_id {
-        return NetworkPayloadApply::Invalid;
-    }
-    let chain = &server.gateway().node.chain;
-    if let Some(existing) = chain.state.receipts.get(&receipt_id) {
-        if existing == &receipt {
-            return NetworkPayloadApply::Applied;
-        }
-        return NetworkPayloadApply::Invalid;
-    }
-    if !chain.state.jobs.contains_key(&receipt.job_id())
-        || !chain.state.miners.contains_key(&receipt.miner())
-    {
-        return NetworkPayloadApply::Pending;
-    }
-    match server
-        .gateway_mut()
-        .node
-        .chain
-        .apply_command(ChainCommand::SubmitReceipt(receipt))
-    {
-        Ok(_) => NetworkPayloadApply::Applied,
-        Err(TvmError::InvalidReceipt("unknown job") | TvmError::UnknownMiner) => {
-            NetworkPayloadApply::Pending
-        }
-        Err(_) => NetworkPayloadApply::Invalid,
-    }
-}
-
-fn apply_network_attestation_payload(
-    server: &mut RpcHttpServer,
-    attestation_id: Hash,
-    payload: &[u8],
-) -> NetworkPayloadApply {
-    if attestation_id == [0; 32] {
-        return NetworkPayloadApply::Invalid;
-    }
-    let Ok(attestation) = decode_attestation_payload(payload) else {
-        return NetworkPayloadApply::Invalid;
-    };
-    if attestation_announcement_hash(&attestation) != attestation_id {
-        return NetworkPayloadApply::Invalid;
-    }
-    let chain = &server.gateway().node.chain;
-    if let Some(existing) = chain
-        .state
-        .attestations
-        .get(&attestation.receipt_id)
-        .and_then(|items| {
-            items
-                .iter()
-                .find(|existing| existing.validator == attestation.validator)
-        })
-    {
-        if existing == &attestation {
-            return NetworkPayloadApply::Applied;
-        }
-        return NetworkPayloadApply::Invalid;
-    }
-    if !chain.state.validators.contains_key(&attestation.validator)
-        || !chain.state.receipts.contains_key(&attestation.receipt_id)
-    {
-        return NetworkPayloadApply::Pending;
-    }
-    match server
-        .gateway_mut()
-        .node
-        .chain
-        .apply_command(ChainCommand::SubmitAttestation(attestation))
-    {
-        Ok(_) => NetworkPayloadApply::Applied,
-        Err(TvmError::UnknownValidator | TvmError::UnknownReceipt) => NetworkPayloadApply::Pending,
-        Err(_) => NetworkPayloadApply::Invalid,
-    }
-}
-
-struct RuntimeNetworkPayloadProcessor<'a> {
-    server: &'a mut RpcHttpServer,
-}
-
-impl NetworkPayloadProcessor for RuntimeNetworkPayloadProcessor<'_> {
-    fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
-        apply_network_receipt_payload(self.server, receipt_id, payload)
-    }
-
-    fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
-        apply_network_attestation_payload(self.server, attestation_id, payload)
-    }
 }
 
 fn catch_up_to_announced_block(
@@ -1494,19 +1381,6 @@ fn attestation_announcement_hashes(chain: &LocalChain) -> impl Iterator<Item = H
         .flat_map(|attestations| attestations.iter().map(attestation_announcement_hash))
 }
 
-fn attestation_announcement_hash(attestation: &ValidatorAttestation) -> Hash {
-    hash_bytes(
-        b"tensor-vm-attestation-announcement-v1",
-        &[
-            &attestation.validator,
-            &attestation.receipt_id,
-            &attestation.job_id,
-            &attestation.checks_root,
-            &attestation.signature,
-        ],
-    )
-}
-
 fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
     if hashes.is_empty() {
         return "none".to_owned();
@@ -1569,6 +1443,7 @@ fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tensor_vm::{ChainCommand, ChainEngine};
     use tensor_vm::{ChainSnapshot, types::address};
 
     fn workspace_manifest_path(relative_path: &str) -> String {
@@ -1962,7 +1837,7 @@ mod tests {
         let mut missing_job_server = test_rpc_server(missing_job_chain);
         assert_eq!(
             apply_network_receipt_payload(
-                &mut missing_job_server,
+                &mut missing_job_server.gateway_mut().node.chain,
                 receipt_id,
                 &encode_receipt_payload(&receipt),
             ),
@@ -1975,7 +1850,7 @@ mod tests {
         let mut receipt_server = test_rpc_server(receipt_chain);
         assert_eq!(
             apply_network_receipt_payload(
-                &mut receipt_server,
+                &mut receipt_server.gateway_mut().node.chain,
                 receipt_id,
                 &encode_receipt_payload(&receipt),
             ),
@@ -1994,7 +1869,7 @@ mod tests {
         let mut missing_receipt_server = test_rpc_server(missing_receipt_chain);
         assert_eq!(
             apply_network_attestation_payload(
-                &mut missing_receipt_server,
+                &mut missing_receipt_server.gateway_mut().node.chain,
                 attestation_id,
                 &encode_attestation_payload(&attestation),
             ),
@@ -2009,7 +1884,7 @@ mod tests {
         let mut attestation_server = test_rpc_server(attestation_chain);
         assert_eq!(
             apply_network_attestation_payload(
-                &mut attestation_server,
+                &mut attestation_server.gateway_mut().node.chain,
                 attestation_id,
                 &encode_attestation_payload(&attestation),
             ),
@@ -2060,7 +1935,7 @@ mod tests {
 
         assert_eq!(
             apply_network_receipt_payload(
-                &mut server,
+                &mut server.gateway_mut().node.chain,
                 receipt_id,
                 &encode_receipt_payload(&receipt)
             ),
@@ -2069,7 +1944,7 @@ mod tests {
         pending.queue_receipt(receipt_id, encode_receipt_payload(&receipt));
         assert_eq!(
             apply_network_attestation_payload(
-                &mut server,
+                &mut server.gateway_mut().node.chain,
                 attestation_id,
                 &encode_attestation_payload(&attestation),
             ),
@@ -2077,10 +1952,13 @@ mod tests {
         );
         pending.queue_attestation(attestation_id, encode_attestation_payload(&attestation));
 
-        apply_network_job_payload(&mut server, job_id, &encode_job_payload(&job)).unwrap();
-        let mut processor = RuntimeNetworkPayloadProcessor {
-            server: &mut server,
-        };
+        apply_network_job_payload(
+            &mut server.gateway_mut().node.chain,
+            job_id,
+            &encode_job_payload(&job),
+        )
+        .unwrap();
+        let mut processor = ChainNetworkPayloadProcessor::new(&mut server.gateway_mut().node.chain);
         let retried = pending.retry_with(&mut processor);
 
         assert!(retried.has_activity());

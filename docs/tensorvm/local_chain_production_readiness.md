@@ -154,6 +154,9 @@ The first chain-core cleanup slices are already in the tree:
 - `NodeRuntimeState`, `NetworkEventIngest`, `PendingNetworkPayloads`, and `NetworkPayloadProcessor` now
   live behind a reusable node runtime boundary instead of being private `tvmd` binary state, so role-owned
   loops can share the same counters and out-of-order payload retry semantics.
+- Decoded network job, receipt, and attestation payload application now lives behind chain-centric node
+  runtime helpers, so future role loops can apply accepted payloads through `ChainCommand` without depending
+  on private `tvmd` helpers.
 
 These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
 state transitions before it satisfies the local CPU spec as a production-grade local chain.
@@ -589,8 +592,9 @@ checker verifies those runtime commands through ready files and `tvmd service st
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
 observations for every counted operator. The service runtime now keeps served-request counts,
-produced-block counts, network-applied block counts, aggregate network-event counters, and pending
-out-of-order network payloads in a reusable node runtime state object instead of private binary state. CPU
+produced-block counts, network-applied block counts, aggregate network-event counters, pending
+out-of-order network payloads, and decoded job/receipt/attestation payload application in reusable
+node runtime helpers instead of private binary state. CPU
 miner execution and validator verification now live behind role-owned library components used by the local
 producer, but the long-running commands still delegate to the shared service runtime internally. Runtime
 role policy now prevents miner and validator roles from becoming local block producers even if they inherit

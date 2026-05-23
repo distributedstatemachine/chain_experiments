@@ -1,4 +1,9 @@
-use crate::types::Hash;
+use crate::{
+    chain::{ChainCommand, ChainEngine, LocalChain},
+    p2p::{decode_attestation_payload, decode_job_payload, decode_receipt_payload},
+    types::{Hash, hash_bytes},
+    verify::ValidatorAttestation,
+};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -122,6 +127,134 @@ pub trait NetworkPayloadProcessor {
     fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply;
 }
 
+pub fn apply_network_job_payload(
+    chain: &mut LocalChain,
+    job_id: Hash,
+    payload: &[u8],
+) -> std::result::Result<(), ()> {
+    if job_id == [0; 32] {
+        return Err(());
+    }
+    let job = decode_job_payload(payload).map_err(|_| ())?;
+    if job.job_id() != job_id {
+        return Err(());
+    }
+    if let Some(existing) = chain.state.jobs.get(&job_id) {
+        if existing == &job {
+            return Ok(());
+        }
+        return Err(());
+    }
+    chain
+        .apply_command(ChainCommand::SubmitJob(job))
+        .map_err(|_| ())?;
+    Ok(())
+}
+
+pub fn apply_network_receipt_payload(
+    chain: &mut LocalChain,
+    receipt_id: Hash,
+    payload: &[u8],
+) -> NetworkPayloadApply {
+    if receipt_id == [0; 32] {
+        return NetworkPayloadApply::Invalid;
+    }
+    let Ok(receipt) = decode_receipt_payload(payload) else {
+        return NetworkPayloadApply::Invalid;
+    };
+    if receipt.receipt_id() != receipt_id {
+        return NetworkPayloadApply::Invalid;
+    }
+    if let Some(existing) = chain.state.receipts.get(&receipt_id) {
+        if existing == &receipt {
+            return NetworkPayloadApply::Applied;
+        }
+        return NetworkPayloadApply::Invalid;
+    }
+    if !chain.state.jobs.contains_key(&receipt.job_id())
+        || !chain.state.miners.contains_key(&receipt.miner())
+    {
+        return NetworkPayloadApply::Pending;
+    }
+    chain
+        .apply_command(ChainCommand::SubmitReceipt(receipt))
+        .map(|_| NetworkPayloadApply::Applied)
+        .unwrap_or(NetworkPayloadApply::Invalid)
+}
+
+pub fn apply_network_attestation_payload(
+    chain: &mut LocalChain,
+    attestation_id: Hash,
+    payload: &[u8],
+) -> NetworkPayloadApply {
+    if attestation_id == [0; 32] {
+        return NetworkPayloadApply::Invalid;
+    }
+    let Ok(attestation) = decode_attestation_payload(payload) else {
+        return NetworkPayloadApply::Invalid;
+    };
+    if attestation_announcement_hash(&attestation) != attestation_id {
+        return NetworkPayloadApply::Invalid;
+    }
+    if let Some(existing) = chain
+        .state
+        .attestations
+        .get(&attestation.receipt_id)
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|existing| existing.validator == attestation.validator)
+        })
+    {
+        if existing == &attestation {
+            return NetworkPayloadApply::Applied;
+        }
+        return NetworkPayloadApply::Invalid;
+    }
+    if !chain.state.validators.contains_key(&attestation.validator)
+        || !chain.state.receipts.contains_key(&attestation.receipt_id)
+    {
+        return NetworkPayloadApply::Pending;
+    }
+    chain
+        .apply_command(ChainCommand::SubmitAttestation(attestation))
+        .map(|_| NetworkPayloadApply::Applied)
+        .unwrap_or(NetworkPayloadApply::Invalid)
+}
+
+pub struct ChainNetworkPayloadProcessor<'a> {
+    chain: &'a mut LocalChain,
+}
+
+impl<'a> ChainNetworkPayloadProcessor<'a> {
+    pub fn new(chain: &'a mut LocalChain) -> Self {
+        Self { chain }
+    }
+}
+
+impl NetworkPayloadProcessor for ChainNetworkPayloadProcessor<'_> {
+    fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_receipt_payload(self.chain, receipt_id, payload)
+    }
+
+    fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_attestation_payload(self.chain, attestation_id, payload)
+    }
+}
+
+pub fn attestation_announcement_hash(attestation: &ValidatorAttestation) -> Hash {
+    hash_bytes(
+        b"tensor-vm-attestation-announcement-v1",
+        &[
+            &attestation.validator,
+            &attestation.receipt_id,
+            &attestation.job_id,
+            &attestation.checks_root,
+            &attestation.signature,
+        ],
+    )
+}
+
 #[derive(Debug, Default)]
 pub struct PendingNetworkPayloads {
     receipts: BTreeMap<Hash, Vec<u8>>,
@@ -209,6 +342,12 @@ impl PendingNetworkPayloads {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        chain::{JobState, ReceiptState},
+        p2p::{encode_attestation_payload, encode_job_payload, encode_receipt_payload},
+        scheduler::JobScheduler,
+        testnet::{LocalTestnet, TestnetConfig},
+    };
 
     struct RetryProcessor {
         receipt_result: NetworkPayloadApply,
@@ -409,5 +548,274 @@ mod tests {
         assert_eq!(processor.receipt_payloads, vec![vec![70]]);
         assert_eq!(processor.attestation_payloads, vec![vec![80]]);
         assert!(pending.is_empty());
+    }
+
+    fn local_matmul_round(seed_label: &[u8]) -> LocalTestnet {
+        let mut testnet = LocalTestnet::new(
+            TestnetConfig::default(),
+            hash_bytes(b"tensor-vm-node-payload-test", &[seed_label]),
+        );
+        let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+        testnet.run_matmul_round(&scheduler);
+        testnet
+    }
+
+    #[test]
+    fn job_payload_application_validates_submit_duplicates_and_invalid_edges() {
+        let testnet = local_matmul_round(b"job");
+        let job = testnet
+            .chain
+            .state
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
+        let job_id = job.job_id();
+        let payload = encode_job_payload(&job);
+        let mut chain = testnet.chain.clone();
+        chain.state.jobs.remove(&job_id);
+
+        assert_eq!(
+            apply_network_job_payload(&mut chain, job_id, &payload),
+            Ok(())
+        );
+        assert_eq!(chain.state.jobs.get(&job_id), Some(&job));
+        assert_eq!(
+            apply_network_job_payload(&mut chain, job_id, &payload),
+            Ok(())
+        );
+        assert_eq!(
+            apply_network_job_payload(&mut chain, [0; 32], &payload),
+            Err(())
+        );
+        assert_eq!(
+            apply_network_job_payload(&mut chain, hash_bytes(b"test", &[b"wrong-job"]), &payload),
+            Err(())
+        );
+        assert_eq!(
+            apply_network_job_payload(&mut chain, job_id, &[1, 2, 3]),
+            Err(())
+        );
+
+        let mut conflicting = job.clone();
+        match &mut conflicting {
+            JobState::TensorOp(job) => job.reward_weight = job.reward_weight.saturating_add(1),
+            JobState::LinearTrainingStep(job) => {
+                job.reward_weight = job.reward_weight.saturating_add(1)
+            }
+        }
+        assert_eq!(
+            apply_network_job_payload(&mut chain, job_id, &encode_job_payload(&conflicting)),
+            Err(())
+        );
+    }
+
+    #[test]
+    fn receipt_payload_application_reports_pending_applied_and_invalid_edges() {
+        let testnet = local_matmul_round(b"receipt");
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let payload = encode_receipt_payload(&receipt);
+
+        let mut missing_job_chain = testnet.chain.clone();
+        missing_job_chain.state.jobs.remove(&receipt.job_id());
+        missing_job_chain.state.receipts.remove(&receipt_id);
+        assert_eq!(
+            apply_network_receipt_payload(&mut missing_job_chain, receipt_id, &payload),
+            NetworkPayloadApply::Pending
+        );
+
+        let mut apply_chain = testnet.chain.clone();
+        apply_chain.state.receipts.remove(&receipt_id);
+        apply_chain.state.attestations.remove(&receipt_id);
+        assert_eq!(
+            apply_network_receipt_payload(&mut apply_chain, receipt_id, &payload),
+            NetworkPayloadApply::Applied
+        );
+        assert_eq!(apply_chain.state.receipts.get(&receipt_id), Some(&receipt));
+        assert_eq!(
+            apply_network_receipt_payload(&mut testnet.chain.clone(), receipt_id, &payload),
+            NetworkPayloadApply::Applied
+        );
+        assert_eq!(
+            apply_network_receipt_payload(&mut apply_chain, [0; 32], &payload),
+            NetworkPayloadApply::Invalid
+        );
+        assert_eq!(
+            apply_network_receipt_payload(
+                &mut apply_chain,
+                hash_bytes(b"test", &[b"wrong-receipt"]),
+                &payload,
+            ),
+            NetworkPayloadApply::Invalid
+        );
+        assert_eq!(
+            apply_network_receipt_payload(&mut apply_chain, receipt_id, &[1, 2, 3]),
+            NetworkPayloadApply::Invalid
+        );
+
+        let mut conflicting = receipt.clone();
+        match &mut conflicting {
+            ReceiptState::TensorOp(receipt) => {
+                receipt.execution_time_ms = receipt.execution_time_ms.saturating_add(1)
+            }
+            ReceiptState::LinearTrainingStep(receipt) => {
+                receipt.execution_time_ms = receipt.execution_time_ms.saturating_add(1)
+            }
+        }
+        assert_eq!(
+            apply_network_receipt_payload(
+                &mut testnet.chain.clone(),
+                receipt_id,
+                &encode_receipt_payload(&conflicting),
+            ),
+            NetworkPayloadApply::Invalid
+        );
+    }
+
+    #[test]
+    fn attestation_payload_application_reports_pending_applied_and_invalid_edges() {
+        let testnet = local_matmul_round(b"attestation");
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+        let payload = encode_attestation_payload(&attestation);
+
+        let mut missing_receipt_chain = testnet.chain.clone();
+        missing_receipt_chain
+            .state
+            .receipts
+            .remove(&attestation.receipt_id);
+        missing_receipt_chain
+            .state
+            .attestations
+            .remove(&attestation.receipt_id);
+        assert_eq!(
+            apply_network_attestation_payload(&mut missing_receipt_chain, attestation_id, &payload,),
+            NetworkPayloadApply::Pending
+        );
+
+        let mut apply_chain = testnet.chain.clone();
+        apply_chain
+            .state
+            .attestations
+            .remove(&attestation.receipt_id);
+        assert_eq!(
+            apply_network_attestation_payload(&mut apply_chain, attestation_id, &payload),
+            NetworkPayloadApply::Applied
+        );
+        assert_eq!(
+            apply_chain
+                .state
+                .attestations
+                .get(&attestation.receipt_id)
+                .and_then(|items| items.first()),
+            Some(&attestation)
+        );
+        assert_eq!(
+            apply_network_attestation_payload(&mut testnet.chain.clone(), attestation_id, &payload,),
+            NetworkPayloadApply::Applied
+        );
+        assert_eq!(
+            apply_network_attestation_payload(&mut apply_chain, [0; 32], &payload),
+            NetworkPayloadApply::Invalid
+        );
+        assert_eq!(
+            apply_network_attestation_payload(
+                &mut apply_chain,
+                hash_bytes(b"test", &[b"wrong-attestation"]),
+                &payload,
+            ),
+            NetworkPayloadApply::Invalid
+        );
+        assert_eq!(
+            apply_network_attestation_payload(&mut apply_chain, attestation_id, &[1, 2, 3]),
+            NetworkPayloadApply::Invalid
+        );
+
+        let mut conflicting = attestation.clone();
+        conflicting.checks_root = hash_bytes(b"test", &[b"conflicting-attestation"]);
+        let conflicting_id = attestation_announcement_hash(&conflicting);
+        assert_eq!(
+            apply_network_attestation_payload(
+                &mut testnet.chain.clone(),
+                conflicting_id,
+                &encode_attestation_payload(&conflicting),
+            ),
+            NetworkPayloadApply::Invalid
+        );
+    }
+
+    #[test]
+    fn chain_payload_processor_retries_against_chain_state() {
+        let testnet = local_matmul_round(b"processor");
+        let job = testnet
+            .chain
+            .state
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
+        let job_id = job.job_id();
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+
+        let mut chain = testnet.chain.clone();
+        chain.state.jobs.remove(&job_id);
+        chain.state.receipts.remove(&receipt_id);
+        chain.state.attestations.remove(&receipt_id);
+        let mut pending = PendingNetworkPayloads::default();
+        pending.queue_receipt(receipt_id, encode_receipt_payload(&receipt));
+        pending.queue_attestation(attestation_id, encode_attestation_payload(&attestation));
+
+        apply_network_job_payload(&mut chain, job_id, &encode_job_payload(&job)).unwrap();
+        let mut processor = ChainNetworkPayloadProcessor::new(&mut chain);
+        let ingested = pending.retry_with(&mut processor);
+
+        assert_eq!(ingested.receipt_payloads_applied, 1);
+        assert_eq!(ingested.attestation_payloads_applied, 1);
+        assert!(pending.is_empty());
+        assert_eq!(chain.state.receipts.get(&receipt_id), Some(&receipt));
+        assert_eq!(
+            chain
+                .state
+                .attestations
+                .get(&receipt_id)
+                .and_then(|items| items.first()),
+            Some(&attestation)
+        );
     }
 }

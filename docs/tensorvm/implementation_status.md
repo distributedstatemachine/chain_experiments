@@ -122,9 +122,10 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   reports
 - Role-specific long-running `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` command
   surfaces that validate the role config, start the mandatory libp2p-backed service runtime, write live
-  role-loop counters from a reusable node runtime state object, and report role runtime readiness plus
-  local-producer mode, network-applied block counters, and observed job/receipt/attestation/block gossip
-  counters through `tvmd service status`
+  role-loop counters from a reusable node runtime state object, apply decoded job/receipt/attestation
+  payloads through chain-centric node runtime helpers, and report role runtime readiness plus local-producer
+  mode, network-applied block counters, and observed job/receipt/attestation/block gossip counters through
+  `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -383,10 +384,10 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 241 passing library tests under Tarpaulin:
+The workspace currently has 245 passing library tests under Tarpaulin:
 
 - 14 in `experiments`
-- 226 in `tensor_vm`
+- 230 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
 `cargo test --workspace --release` also runs 13 `tvmd` binary unit tests, 1 local CPU Compose integration
@@ -415,9 +416,9 @@ The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
 - 99.24% workspace line coverage
-- 10669/10751 workspace lines covered
+- 10738/10820 workspace lines covered
 - 100.00% `tensor_vm` crate line coverage
-- 9824/9824 `tensor_vm` lines covered
+- 9893/9893 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 
