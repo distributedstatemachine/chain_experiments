@@ -149,6 +149,9 @@ Do not mark the formal-proof goal complete until all of the following are true:
     soundness claim.
 12. Every public-facing summary uses the language rules from `bad_assumptions_ledger.md`.
 
+The blocked v2 consensus proof obligations are expanded in
+[`mvp_core_v2_consensus_proof_obligations.md`](mvp_core_v2_consensus_proof_obligations.md).
+
 ## Current Safe Summary
 
 The strongest safe statement today is:

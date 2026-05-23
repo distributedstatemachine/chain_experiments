@@ -15,6 +15,8 @@ Related boundary documents:
   requirement by requirement and records the current completion verdict.
 - [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md) maps the sound-kernel
   theorem set to future Lean/TorchLean modules, assumptions, and proof dependencies.
+- [`mvp_core_v2_consensus_proof_obligations.md`](mvp_core_v2_consensus_proof_obligations.md) defines the
+  blocked v2 consensus theorem spine and the objects required before those theorems can be proved.
 - [`mvp_core_sound_kernel.md`](mvp_core_sound_kernel.md) defines the narrow proof kernel that is defensible
   today.
 - [`mvp_core_data_availability_boundary.md`](mvp_core_data_availability_boundary.md) separates
