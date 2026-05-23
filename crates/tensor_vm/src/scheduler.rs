@@ -38,28 +38,28 @@ impl SyntheticLocalJobSource {
 
     pub fn next_matmul_job(&mut self, chain: &Chain) -> MatmulJob {
         self.scheduler.generate_small_matmul(
-            chain.state.epoch,
-            chain.state.height,
-            &chain.state.finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
-                .state
-                .height
+                .state()
+                .height()
                 .saturating_add(chain.params.receipt_submission_window),
         )
     }
 
     pub fn next_linear_training_job(&mut self, chain: &Chain) -> LinearTrainingStepJob {
         let weights = Self::linear_training_weights();
-        let height = chain.state.height.to_le_bytes();
+        let height = chain.state().height().to_le_bytes();
         LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id: hash_bytes(
                 b"tensor-vm-local-linear-model-v1",
-                &[&chain.state.finalized_randomness, &height],
+                &[&chain.state().finalized_randomness(), &height],
             ),
             step: 0,
             batch_seed: hash_bytes(
                 b"tensor-vm-local-linear-batch-v1",
-                &[&chain.state.finalized_randomness, &height],
+                &[&chain.state().finalized_randomness(), &height],
             ),
             weight_root_before: weights.commitment_root(),
             input_shape: vec![4, 3],
@@ -67,8 +67,8 @@ impl SyntheticLocalJobSource {
             target_shape: vec![4, 2],
             lr: 2,
             deadline_block: chain
-                .state
-                .height
+                .state()
+                .height()
                 .saturating_add(chain.params.receipt_submission_window),
         })
     }
@@ -95,7 +95,7 @@ impl Default for SyntheticLocalJobSource {
 
 impl JobSource for SyntheticLocalJobSource {
     fn next_job(&mut self, chain: &Chain) -> Option<JobState> {
-        if chain.state.height.is_multiple_of(2) {
+        if chain.state().height().is_multiple_of(2) {
             Some(JobState::TensorOp(self.next_matmul_job(chain)))
         } else {
             Some(JobState::LinearTrainingStep(
@@ -139,7 +139,7 @@ impl JobScheduler {
         receipt_id: Hash,
         seed: &Hash,
     ) -> ValidatorAssignment {
-        let mut validators: Vec<_> = chain.state.validators.keys().copied().collect();
+        let mut validators: Vec<_> = chain.state().validators().keys().copied().collect();
         validators.sort_by_key(|validator| {
             let draw = hash_bytes(
                 b"tensor-vm-validator-assignment-v1",
@@ -161,7 +161,7 @@ impl JobScheduler {
     }
 
     pub fn assign_miners(&self, chain: &Chain, job_id: Hash, seed: &Hash) -> MinerAssignment {
-        let mut candidates: Vec<_> = chain.state.miners.values().collect();
+        let mut candidates: Vec<_> = chain.state().miners().values().collect();
         candidates.sort_by_key(|miner| {
             let draw = hash_bytes(
                 b"tensor-vm-miner-assignment-v1",
@@ -376,7 +376,7 @@ mod tests {
         let operators: BTreeSet<_> = assignment
             .miners
             .iter()
-            .map(|miner| chain.state.miners.get(miner).unwrap().operator_id)
+            .map(|miner| chain.state().miners().get(miner).unwrap().operator_id)
             .collect();
 
         assert_eq!(assignment.miners.len(), 4);
@@ -405,7 +405,7 @@ mod tests {
         let operators: BTreeSet<_> = assignment
             .miners
             .iter()
-            .map(|miner| chain.state.miners.get(miner).unwrap().operator_id)
+            .map(|miner| chain.state().miners().get(miner).unwrap().operator_id)
             .collect();
 
         assert_eq!(assignment.miners.len(), 3);

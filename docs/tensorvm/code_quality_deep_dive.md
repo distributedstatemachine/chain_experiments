@@ -82,6 +82,8 @@ spaghetti around.
   service surface's dependence on public state fields.
 - Iteration 24 moved telemetry snapshot and metric calculations onto the `ChainState` accessors, keeping
   reporting code on the same read-only boundary as RPC.
+- Iteration 25 moved scheduler and synthetic job-source reads onto the `ChainState` accessors, so assignment
+  and local job generation no longer depend on public state fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
