@@ -10,6 +10,8 @@ The receipt-lifecycle seed invariant used by `INV-002` is specified in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 The canonical encoding and commitment model used by `INV-006` and `INV-008` is specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+The useful-PoW work model used by `INV-009` is specified in
+[`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
 This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
 mechanization.
@@ -57,7 +59,7 @@ required witness fields and vote admission does not require v2 validation.
 | INV-006 | Selected receipt root binds the canonical selected set. | `settled_receipt_set_root` and canonical leaf encoding. | Recompute root from selected leaves and reject mismatches before votes count. | Current `receipt_root` binds global map content, not selected blockspace. |
 | INV-007 | Check leaves are recomputable. | check leaf schema, verifier transcript roots, DA proof root, challenge openings. | Every selected receipt has a recomputable leaf under parent state and block beacon. | Per-attestation `checks_root` is arbitrary statement evidence. |
 | INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root and selected order. | Recompute aggregate root from all check leaves and reject mismatches. | Current block has no aggregate `checks_root`. |
-| INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce. | Nonce target is checked over exactly the fields validated by block validity. | Current block has no target/nonce predicate. |
+| INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce, parameter version. | Nonce target is checked over exactly the fields validated by block validity; economic useful-work claims separately satisfy the work model. | Current block has no target/nonce predicate, and useful-work dominance is unmodeled. |
 | INV-010 | Proposer is v2 eligible. | validator registry, eligibility rules, useful-PoW result. | Block admission rejects arbitrary proposers and excludes TensorWork proposer selection. | Current production accepts a supplied proposer and current selector can use TensorWork. |
 | INV-011 | State and reward roots are deterministic after valid v2 apply. | v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots. | Current roots are v1/reference global-map roots. |
 | INV-012 | Vote admission imports v2 validation. | `validate_block_v2` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |

@@ -24,6 +24,8 @@ Related boundary documents:
   depend on which assumptions and where blocked v2 consensus imports must stop.
 - [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md)
   separates pre-hash canonical encoding, hash/Merkle binding, and consensus-object meaning.
+- [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md) separates structural
+  useful-PoW header validity from economic useful-work dominance.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
   verifier-local false-accept budgets and the composition rules for receipt volume.
 - [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md) defines the seed
@@ -592,6 +594,8 @@ Adding a nonce to the current block hash proves useful verification.
 Correct requirement:
 
 The nonce must be bound to the canonical settled-receipt set and recomputable verification transcript.
+Useful-work dominance is a separate economic assumption; see
+[`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
 ### TVM-FIN-001: Finality Implies v2 Block Validity
 

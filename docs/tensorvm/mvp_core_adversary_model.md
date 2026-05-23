@@ -27,6 +27,8 @@ The signature/authentication boundary is tracked in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 The canonical encoding and commitment boundary is tracked in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+The useful-PoW work and economics boundary is tracked in
+[`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
 ## Adversary Capabilities
 
@@ -38,6 +40,7 @@ The canonical encoding and commitment boundary is tracked in
 | Signatures | Forge statements, replay statements, or claim another actor's authority. | Current code exercises a reference signature relation. | Production signature scheme, replay domains, and key-ownership model. |
 | Validator behavior | Sign `Valid` without running the verifier, withhold attestations, duplicate attempts, or disagree. | Admission prevents duplicates and enforces current assignment syntax. | Semantic verifier-execution evidence, Byzantine stake bound, slashing/challenge rule, or explicit honesty assumption. |
 | Block proposal | Produce blocks with arbitrary proposers or superseded TensorWork selection. | None for reviewed v2; current behavior is reference-only. | v2 proposer eligibility and useful-PoW validation. |
+| Useful-PoW economics | Grind nonces over cheap, empty, cached, or shared verification commitments and still claim useful work. | None for reviewed v2; current behavior has no useful-PoW predicate. | Work floor, target validation, retarget bounds, transcript-acquisition model, and conservative wording. |
 | Blockspace | Omit, reorder, or substitute settled receipts. | None for reviewed v2. | Canonical selected-receipt pool, caps, expiry, spent/carry-over rules, and selected root. |
 | Verification transcript | Mine over arbitrary or incomplete checks roots. | Per-attestation checks roots exist as statements only. | Block-level checks root, check leaves, recomputation, and openings. |
 | Finality | Vote for a known current block that is not a valid v2 useful-PoW block. | Current vote path checks voter syntax and stake. | Finality vote admission must require `validate_block_v2`. |
@@ -59,6 +62,7 @@ Future proof statements must declare these parameters instead of relying on pros
 | DA retention window and observer threshold | Public availability claims. | Missing external evidence. |
 | Signature scheme and domains | Actor authentication. | Reference helper only. |
 | Hash model and security level | Commitment binding and PoW. | Assumed, not parameterized in theorems. |
+| Verification, transcript acquisition, and nonce costs | Useful-work dominance claims. | Missing as a discharged model. |
 
 ## Claims The Current Model Supports
 

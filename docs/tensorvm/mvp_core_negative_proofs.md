@@ -265,6 +265,37 @@ Repair gate:
 
 Keep the current signature theorem assumption-bound until production cryptography is wired and modeled.
 
+### CEX-008: A Valid Nonce Does Not Prove Useful-Work Dominance
+
+Witness construction for an insufficient future repair:
+
+```text
+Add difficulty_target and nonce to a v2-like block.
+Let checks_root be valid but already known, cached, shared, empty, or cheap to compute.
+Set difficulty so expected nonce search dominates transcript acquisition.
+Mine H(pow_header || nonce) < difficulty_target.
+```
+
+Accepted by the insufficient repair:
+
+- The hash predicate can be true for the committed header.
+- The `checks_root` can be a valid commitment to verification evidence.
+- The proposer may still have spent most of its resource on ordinary nonce grinding, or may have obtained
+  the transcript from another party.
+
+Why this disproves the useful-work-dominance theorem:
+
+The nonce proves target success over bytes. It does not prove that useful verification was the dominant
+block-production cost, and it does not prove the winning proposer personally performed verification. That
+stronger claim needs an explicit work model, target bounds, transcript-acquisition assumptions, and
+conservative wording.
+
+Repair gate:
+
+Separate structural useful-PoW validity from economic useful-work dominance. Add a nonfallback work floor,
+parent-state target validation, retarget bounds, and measured cost assumptions as specified in
+[`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+
 ## Manifest Corrections Required
 
 The formal manifest should interpret current claims this way:
@@ -278,6 +309,7 @@ The formal manifest should interpret current claims this way:
 | Attestation quorum | Quorum counts assigned signed Valid/DataAvailable statements. | Quorum proves validators actually ran the verifier. |
 | Validation seed | Assignment is deterministic from current finalized randomness. | Assignment is stable for the receipt lifecycle. |
 | Signatures | Reference signing tests message-flow shape. | Reference signing proves production authentication. |
+| Useful-PoW work | A valid nonce can prove hash-target success over a validated header. | A valid nonce proves useful-work dominance or proposer-local verification. |
 
 ## Proof Upgrade Order
 
@@ -290,6 +322,7 @@ The minimum proof repair order is:
 5. Store a receipt-lifecycle validation seed or equivalent immutable assignment anchor.
 6. Downgrade quorum theorem language to syntactic until verifier evidence is recomputable or challengeable.
 7. Replace reference signatures with a production signature scheme before making authentication claims.
+8. Discharge the useful-PoW work model before claiming useful-work dominance.
 
 ## Current Judgment
 

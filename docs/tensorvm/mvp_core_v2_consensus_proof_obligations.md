@@ -10,6 +10,8 @@ The state invariants that these proof obligations must preserve are listed in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 The canonical encoding and commitment model for selected roots and check roots is defined in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+The useful-PoW work model that separates structural header validity from economic work dominance is defined
+in [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
 ## Current Verdict
 
@@ -198,6 +200,7 @@ Dependencies:
 - V2-CHK-002
 - registered-validator proposer eligibility
 - difficulty target validity
+- nonfallback verification-work floor and useful-work cost model
 - hash model
 
 Counterexamples killed:
@@ -205,6 +208,7 @@ Counterexamples killed:
 - Adding a nonce to a v1 block and calling it useful PoW.
 - Nonce search independent of verification work.
 - Miner TensorWork proposer selection.
+- Claiming useful-work dominance from a valid hash target alone.
 
 Current status: implementation-blocked.
 
