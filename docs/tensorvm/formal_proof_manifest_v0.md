@@ -9,6 +9,13 @@ object is missing.
 This is not a Lean/TorchLean artifact. It is the manifest that a later mechanized proof package should be
 checked against.
 
+Related boundary documents:
+
+- [`mvp_core_sound_kernel.md`](mvp_core_sound_kernel.md) defines the narrow proof kernel that is defensible
+  today.
+- [`mvp_core_negative_proofs.md`](mvp_core_negative_proofs.md) records current counterexamples to the full
+  reviewed v2 consensus theorem.
+
 ## Status Legend
 
 | Status | Meaning |
