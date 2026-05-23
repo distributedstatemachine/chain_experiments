@@ -9,6 +9,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core adversary model](mvp_core_adversary_model.md)
 - [MVP core theorem dependency graph](mvp_core_theorem_dependency_graph.md)
 - [MVP core probabilistic soundness budget](mvp_core_probabilistic_soundness_budget.md)
+- [MVP core v2 state invariants](mvp_core_v2_state_invariants.md)
 - [MVP core proof completion audit](mvp_core_proof_completion_audit.md)
 - [MVP core proof traceability matrix](mvp_core_proof_traceability_matrix.md)
 - [MVP core mechanization checklist](mvp_core_mechanization_checklist.md)

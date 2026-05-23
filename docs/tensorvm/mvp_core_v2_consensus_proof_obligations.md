@@ -6,6 +6,9 @@ Purpose: define the exact objects and proof obligations that must exist before T
 the reviewed v2 MVP consensus theorem. This document does not implement code and does not mark the theorem
 proved. It is the target shape that future implementation and mechanization must satisfy.
 
+The state invariants that these proof obligations must preserve are listed in
+[`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
+
 ## Current Verdict
 
 The v2 consensus theorem is still **implementation-blocked**.

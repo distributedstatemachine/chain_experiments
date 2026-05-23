@@ -15,6 +15,8 @@ The theorem dependency graph is maintained in
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 Verifier-local probability budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
+V2 state invariants are tracked in
+[`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 
 ## Status Key
 

@@ -1,0 +1,120 @@
+# TensorVM MVP Core v2 State Invariants
+
+Status: documentation-only invariant map for the blocked v2 consensus proof.
+
+Purpose: state the invariants that must be preserved before TensorVM can honestly prove that finality
+implies valid useful-verification PoW over canonical blockspace. The existing proof docs list target
+objects and counterexamples; this document turns them into state-transition invariants.
+
+This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
+mechanization.
+
+## Current Verdict
+
+The current chain state does not satisfy the v2 invariant set. Some invariants are not representable, and
+some are contradicted by the current reference block path.
+
+The core missing proof shape is:
+
+```text
+Init(S0)
+forall valid_v2_block(B, S):
+  Inv(S) -> apply_v2_block(S, B) = S' -> Inv(S')
+finalized(B, S') -> valid_v2_block(B, parent(S'))
+```
+
+Current Rust can support narrower syntactic invariants over receipt admission, attestation admission, and
+v1/reference settlement. It cannot support the v2 finality invariant because current blocks do not carry the
+required witness fields and vote admission does not require v2 validation.
+
+## Invariant Classes
+
+| Class | Meaning | Current Status |
+| --- | --- | --- |
+| Receipt lifecycle | Receipt commitments, seeds, eligibility, and challenge windows are immutable where needed. | Partially represented, seed lifecycle is weak. |
+| Canonical blockspace | Eligible settled receipts have deterministic inclusion, omission, spent, and carry-over semantics. | Missing. |
+| Verification transcript | Every selected receipt has recomputable check leaves and block-level aggregate binding. | Missing. |
+| Useful-PoW block validity | Header, nonce, target, selected root, checks root, beacon, and proposer are validated together. | Missing. |
+| Proposer eligibility | Block proposer is a registered validator that won useful-verification PoW. | Contradicted by current reference path. |
+| Finality safety | Votes and finalized-set mutation are allowed only after v2 block validation. | Missing. |
+| Fallback safety | Empty/timeout fallback has explicit validity and reward restrictions. | Not started. |
+| Public evidence | DA and operator-independence claims are backed by external observations. | Evidence-bound. |
+
+## Target Invariants
+
+| ID | Invariant | Required State | Preservation Obligation | Current Failure |
+| --- | --- | --- | --- | --- |
+| INV-001 | Receipt identity is stable after admission. | receipt id, receipt hash, job id, primitive, roots, miner, TWU, submitted height. | No later transition mutates fields included in the receipt id or verifier transcript. | Partially present, but v2 selected receipt metadata is incomplete. |
+| INV-002 | Receipt validation seed is lifecycle-stable. | receipt-lifecycle seed or immutable assignment anchor. | Delayed attestations and v2 check leaves use the same seed fixed at receipt admission or settlement. | Assignment can depend on current finalized randomness. |
+| INV-003 | Settled receipt eligibility is deterministic. | settled height, expiry, DA status, spent/included marker, challenge-window status. | Every node derives the same eligible set from the same parent state. | Current `settled_receipts` is a bare id set. |
+| INV-004 | Canonical selected receipt set is deterministic and cap-respecting. | settled receipt pool, TWU cap, byte cap, count cap, deterministic order. | Applying a v2 block either selects exactly `canonical_selected_receipts(S, beacon, caps)` or rejects. | Current block has no selected receipt root. |
+| INV-005 | Nonselected eligible receipts carry over unless expired or invalidated. | carry-over state and expiry rules. | Block application marks selected receipts spent and preserves unselected eligible receipts according to the rule. | No v2 carry-over transition exists. |
+| INV-006 | Selected receipt root binds the canonical selected set. | `settled_receipt_set_root` and canonical leaf encoding. | Recompute root from selected leaves and reject mismatches before votes count. | Current `receipt_root` binds global map content, not selected blockspace. |
+| INV-007 | Check leaves are recomputable. | check leaf schema, verifier transcript roots, DA proof root, challenge openings. | Every selected receipt has a recomputable leaf under parent state and block beacon. | Per-attestation `checks_root` is arbitrary statement evidence. |
+| INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root and selected order. | Recompute aggregate root from all check leaves and reject mismatches. | Current block has no aggregate `checks_root`. |
+| INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce. | Nonce target is checked over exactly the fields validated by block validity. | Current block has no target/nonce predicate. |
+| INV-010 | Proposer is v2 eligible. | validator registry, eligibility rules, useful-PoW result. | Block admission rejects arbitrary proposers and excludes TensorWork proposer selection. | Current production accepts a supplied proposer and current selector can use TensorWork. |
+| INV-011 | State and reward roots are deterministic after valid v2 apply. | v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots. | Current roots are v1/reference global-map roots. |
+| INV-012 | Vote admission imports v2 validation. | `validate_block_v2` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |
+| INV-013 | Finalized-set mutation implies prior v2 validation. | finalized block set and validation certificate. | A block enters finalized state only through valid v2 vote quorum or valid fallback path. | Current finality can certify a reference block. |
+| INV-014 | Fallback validity is explicit and reward-safe. | timeout/synchrony state, validator rotation, reduced reward, no miner TWU reward. | Fallback blocks preserve safety and cannot claim useful work. | v2 fallback object is missing. |
+| INV-015 | Public DA claims are evidence-linked. | retention window, observers, signed measurements, operator identities. | Public claims require enough signed evidence for the window and operator threshold. | Local/remote fetch proves only verification-time retrieval. |
+
+## Preservation Theorems
+
+Future proof work should name these preservation theorems explicitly:
+
+```text
+receipt_admission_preserves_receipt_identity
+receipt_admission_fixes_validation_seed
+settlement_preserves_eligible_receipt_pool
+canonical_selection_is_deterministic
+apply_v2_block_spends_only_selected_receipts
+selected_receipt_root_matches_canonical_selection
+check_leaf_recomputes_for_selected_receipt
+checks_root_matches_all_selected_leaves
+valid_useful_pow_binds_validated_header
+valid_v2_block_implies_proposer_eligible
+apply_v2_block_roots_are_deterministic
+vote_admission_requires_validate_block_v2
+finalized_block_has_validity_certificate
+fallback_block_preserves_v2_safety
+public_da_claim_requires_external_evidence
+```
+
+Do not collapse these into a single `valid_block` theorem until each dependency is separately testable and
+traceable.
+
+## Current Counterexample Coverage
+
+| Counterexample | Killed By Invariants |
+| --- | --- |
+| CEX-001 finalized block with no useful-PoW witness | INV-006, INV-008, INV-009, INV-012, INV-013 |
+| CEX-002 produced block does not imply proposer eligibility | INV-010, INV-012, INV-013 |
+| CEX-003 TensorWork proposer selection contradicts v2 | INV-010 |
+| CEX-004 receipt map root is not canonical blockspace | INV-003, INV-004, INV-005, INV-006 |
+| CEX-005 quorum is syntactic unless evidence is bound | INV-007, INV-008, INV-012 |
+| CEX-006 assignment uses current beacon, not receipt-lifecycle seed | INV-002 |
+| CEX-007 reference signatures are not production auth | INV-012 plus production signature assumption |
+
+If a counterexample still constructs after an implementation change, the related invariant is not
+discharged.
+
+## Proof Review Gates
+
+Before any v2 consensus claim moves from `blocked-v2` to `local-proof-ready`, require:
+
+1. The invariant is representable in committed code.
+2. The transition that preserves it is named.
+3. Honest and adversarial tests cover the transition.
+4. The theorem statement appears in `formal_proof_manifest_v0.md`.
+5. The traceability matrix links the theorem to code and evidence.
+6. Any remaining cryptographic, randomness, economic, or public-evidence assumption is still visible.
+7. The negative proof ledger no longer has a live counterexample for the claim.
+
+## Current Judgment
+
+The v2 consensus proof is blocked at the invariant layer, not just at theorem wording. Until these
+invariants are implemented and preserved by block admission, block application, vote admission, and finality
+mutation, the only defensible core proof remains the narrow verifier-local and syntactic current-chain
+kernel.

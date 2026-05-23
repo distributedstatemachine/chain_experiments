@@ -159,6 +159,8 @@ The theorem import/dependency cut line is documented in
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 Verifier-local probability budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
+The blocked v2 state invariants are listed in
+[`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 The proof-to-implementation claim boundary is summarized in
 [`mvp_core_proof_traceability_matrix.md`](mvp_core_proof_traceability_matrix.md).
 

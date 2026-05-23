@@ -7,6 +7,9 @@ still admits states that contradict the reviewed MVP theorem. This document reco
 constructions that are accepted by the current reference core but cannot satisfy the v2 useful-verification
 PoW consensus claim.
 
+The target invariants that would kill these counterexamples are mapped in
+[`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
+
 This is not a code change and not a mechanized proof. It is a negative proof ledger for the formal manifest.
 
 ## Target Theorem Under Test
