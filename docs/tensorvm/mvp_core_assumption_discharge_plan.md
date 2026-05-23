@@ -13,6 +13,8 @@ Verifier-local probability budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 The receipt-lifecycle seed model needed to discharge challenge non-adaptivity is defined in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+The signature/authentication boundary is defined in
+[`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 
 ## Discharge Categories
 

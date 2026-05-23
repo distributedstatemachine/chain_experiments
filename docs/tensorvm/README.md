@@ -10,6 +10,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core theorem dependency graph](mvp_core_theorem_dependency_graph.md)
 - [MVP core probabilistic soundness budget](mvp_core_probabilistic_soundness_budget.md)
 - [MVP core receipt-lifecycle seed model](mvp_core_receipt_lifecycle_seed_model.md)
+- [MVP core signature authentication boundary](mvp_core_signature_authentication_boundary.md)
 - [MVP core v2 state invariants](mvp_core_v2_state_invariants.md)
 - [MVP core proof completion audit](mvp_core_proof_completion_audit.md)
 - [MVP core proof traceability matrix](mvp_core_proof_traceability_matrix.md)

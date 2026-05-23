@@ -17,6 +17,8 @@ Verifier-local probability budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 Receipt-lifecycle seed requirements are specified in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+Signature/authentication boundaries are specified in
+[`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 V2 state invariants are tracked in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 
