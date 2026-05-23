@@ -195,6 +195,8 @@ spaghetti around.
   `main/validator_fetch.rs`, leaving `main/roles.rs` focused on validator observation and submissions.
 - Iteration 81 moved runtime status snapshots, role-runtime status writing, and runtime report
   formatting into `main/runtime_status.rs`, leaving `main/status.rs` focused on service status reads.
+- Iteration 82 moved `RoleRuntimeLoop` into `main/runtime_loop.rs`, leaving `main/runtime.rs`
+  as the service runtime entrypoint and preserving the existing test-facing loop handle.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
