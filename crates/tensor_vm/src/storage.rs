@@ -1434,18 +1434,22 @@ mod tests {
         let model_id = hash_bytes(b"test", &[b"durable-model"]);
         let weights =
             Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
-        chain.register_model(
-            model_id,
-            hash_bytes(b"test", &[b"architecture"]),
-            weights.commitment_root(),
-            hash_bytes(b"test", &[b"config"]),
-        );
-        chain.register_model(
-            hash_bytes(b"test", &[b"durable-model-with-optimizer"]),
-            hash_bytes(b"test", &[b"architecture-2"]),
-            weights.commitment_root(),
-            hash_bytes(b"test", &[b"config-2"]),
-        );
+        chain
+            .register_model(
+                model_id,
+                hash_bytes(b"test", &[b"architecture"]),
+                weights.commitment_root(),
+                hash_bytes(b"test", &[b"config"]),
+            )
+            .unwrap();
+        chain
+            .register_model(
+                hash_bytes(b"test", &[b"durable-model-with-optimizer"]),
+                hash_bytes(b"test", &[b"architecture-2"]),
+                weights.commitment_root(),
+                hash_bytes(b"test", &[b"config-2"]),
+            )
+            .unwrap();
         chain
             .state
             .model_states

@@ -8,7 +8,10 @@ pub fn register(
     architecture_hash: Hash,
     weight_root: Hash,
     config_hash: Hash,
-) {
+) -> Result<()> {
+    if chain.state.model_states.contains_key(&model_id) {
+        return Err(TvmError::InvalidReceipt("duplicate model"));
+    }
     chain.state.model_states.insert(
         model_id,
         ModelState {
@@ -20,6 +23,7 @@ pub fn register(
             config_hash,
         },
     );
+    Ok(())
 }
 
 pub fn apply_transition(

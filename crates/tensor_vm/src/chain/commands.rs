@@ -90,7 +90,7 @@ impl ChainEngine for Chain {
                 weight_root,
                 config_hash,
             } => {
-                self.register_model(model_id, architecture_hash, weight_root, config_hash);
+                self.register_model(model_id, architecture_hash, weight_root, config_hash)?;
                 Ok(vec![ChainEvent::ModelRegistered(model_id)])
             }
             ChainCommand::ApplyModelTransition {

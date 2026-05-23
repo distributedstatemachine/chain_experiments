@@ -47,6 +47,8 @@ spaghetti around.
 - Iteration 7 added model registration and model transition variants to `ChainCommand`, with matching
   events, and routed local synthetic linear training, block parent-state preparation, and `LocalTestnet`
   model updates through that command path.
+- Iteration 8 made model registration duplicate-safe. `register_model` now returns an error for an existing
+  model ID, and the `ChainCommand::RegisterModel` path propagates that instead of overwriting model state.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

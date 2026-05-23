@@ -167,8 +167,8 @@ impl Chain {
         architecture_hash: Hash,
         weight_root: Hash,
         config_hash: Hash,
-    ) {
-        models::register(self, model_id, architecture_hash, weight_root, config_hash);
+    ) -> Result<()> {
+        models::register(self, model_id, architecture_hash, weight_root, config_hash)
     }
 
     pub fn apply_model_transition(
@@ -426,6 +426,20 @@ mod tests {
                 })
                 .unwrap(),
             vec![ChainEvent::ModelRegistered(model_id)]
+        );
+        let registered_model = chain.state.model_states.get(&model_id).unwrap().clone();
+        assert_eq!(
+            chain.apply_command(ChainCommand::RegisterModel {
+                model_id,
+                architecture_hash: architecture,
+                weight_root: weights.commitment_root(),
+                config_hash: config,
+            }),
+            Err(TvmError::InvalidReceipt("duplicate model"))
+        );
+        assert_eq!(
+            chain.state.model_states.get(&model_id),
+            Some(&registered_model)
         );
         let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id,
@@ -1635,7 +1649,9 @@ mod tests {
         let after = hash_bytes(b"test", &[b"weights-after"]);
         let conflicting = hash_bytes(b"test", &[b"conflicting"]);
 
-        chain.register_model(model_id, architecture, before, config);
+        chain
+            .register_model(model_id, architecture, before, config)
+            .unwrap();
         let before_optimizer_root = chain.state_root();
         chain
             .state
@@ -1648,6 +1664,15 @@ mod tests {
             .apply_model_transition(&model_id, 0, &before, after)
             .unwrap();
         assert_eq!(chain.state.model_states.get(&model_id).unwrap().step, 1);
+        let transitioned_model = chain.state.model_states.get(&model_id).unwrap().clone();
+        assert_eq!(
+            chain.register_model(model_id, architecture, before, config),
+            Err(TvmError::InvalidReceipt("duplicate model"))
+        );
+        assert_eq!(
+            chain.state.model_states.get(&model_id),
+            Some(&transitioned_model)
+        );
         assert_eq!(
             chain.apply_model_transition(&model_id, 0, &before, conflicting),
             Err(TvmError::InvalidReceipt("model step mismatch"))
