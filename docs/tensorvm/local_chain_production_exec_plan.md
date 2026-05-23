@@ -5,11 +5,11 @@ feature-sized iterations are summarized after validation and push, and older det
 
 ## Current State
 
-- Active feature: Iteration 13, role-owned block vote finality, is implemented and locally validated in
-  the current worktree. The current `origin/main` contains network-visible block payload and block-vote
-  payload plumbing through `27d9bf8afb555d3c3c95ae2fd24524a62272fe6b` (`feat: refactor`); this iteration
-  removes synthetic producer-owned finality votes from the runtime path and moves finality to explicit
-  validator role block-vote submissions.
+- Latest completed feature: Iteration 13, role-owned block vote finality, is implemented, validated, and
+  pushed as `fb0feb02c3cebf6b9e4f0e00f7efb01fec275320`
+  (`Add role-owned block vote finality`) on `origin/main`. This iteration removes synthetic
+  producer-owned finality votes from the runtime path and moves finality to explicit validator role
+  block-vote submissions.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
 - Iteration 11 feature and evidence commits are on `origin/main`: `e6129d1915562a1e865579e347d8cfb85855089e`
@@ -31,16 +31,16 @@ feature-sized iterations are summarized after validation and push, and older det
 | Shared chain engine/profile-neutral API | Complete for current core | Shared `ChainEngine`, `ChainCommand`, profile tests, local-testnet Gate 0 | Keep one transition engine while replacing block validity |
 | Role-owned miner receipts | Started | Miner role submits receipts through `ChainCommand::SubmitReceipt` and publishes receipt announcements | Require positive live counters after service-owned timed production is removed |
 | Role-owned validator attestations | Started | Validator role verifies assigned receipts, fetches missing tensors remotely, and submits attestations | Keep as input path for canonical blockspace |
-| Role-owned validator block votes | Implemented in current worktree | Validator role submits `SubmitBlockVote`, gossips block-vote payloads, and status/checker fields expose submitted/ingested/applied vote counters | Commit/push and rerun full Docker checker after `/health` blocker clears |
+| Role-owned validator block votes | Implemented/pushed | `fb0feb0`; validator role submits `SubmitBlockVote`, gossips block-vote payloads, and status/checker fields expose submitted/ingested/applied vote counters | Rerun full Docker checker after `/health` blocker clears |
 | Remote tensor availability | Implemented/pushed | `2d6609e`; root-addressed tensor request-response and validator fetch counters | Reuse for block-check evidence; revisit slow-peer bounds later |
-| Network-visible event ingestion | Implemented in current worktree | Node runtime ingests decoded jobs, receipts, attestations, block payloads, and block-vote payloads; headers/hashes are announcements only | Commit/push and rerun full Docker checker after `/health` blocker clears |
+| Network-visible event ingestion | Implemented/pushed | `fb0feb0`; node runtime ingests decoded jobs, receipts, attestations, block payloads, and block-vote payloads; headers/hashes are announcements only | Rerun full Docker checker after `/health` blocker clears |
 | Proposer/block production | Locally canonical core | `chain::proposer` selects registered validators; `produce_block` rejects unknown validators and ignores miner TensorWork | Keep block production separate from role-owned finality votes |
 | Canonical useful-verification block validity | Partially implemented locally | Blocks carry selected-root/checks-root/beacon/target/nonce; strict vote validation checks state root, beacon, PoW, proposer, selected receipts, checks, attestation, and reward roots | Add exact parent snapshots, child-state apply theorem, challenge openings, retargeting, and fallback |
 | Checker evidence | Updated | `tvmd service block` exposes PoW, canonical blockspace, checks-root, validator-proposer, finality-validation, and block-vote stake/validator evidence; checker asserts all booleans before scan exit | Full Docker checker still awaits `/health` blocker resolution |
 | Restart/recovery matrix | Complete for current storage model | Rolling restart checker covers durable state/common head for current block model | Rerun after block serialization changes |
 | Public deployment evidence | Not started | Public evidence fields still report incomplete independently-checkable status | Keep out of scope until local canonical path is stable |
 
-## Active Feature Iteration
+## Recent Iterations
 
 ### Iteration 13: Role-Owned Block Vote Finality
 
@@ -125,7 +125,12 @@ Validation passed:
   coverage (11,559/11,881 lines).
 - `git diff --check`
 
-## Recent Iterations
+Push evidence:
+- Feature commit: `fb0feb02c3cebf6b9e4f0e00f7efb01fec275320`
+  (`Add role-owned block vote finality`).
+- Remote/branch: `origin/main`.
+- Push result: `27d9bf8..fb0feb0  main -> main`; GitHub also printed the repository-moved notice:
+  `git@github.com:distributedstatemachine/tensor_vm.git`.
 
 ### Iteration 12: Network-Visible Block Payload Admission
 
@@ -226,6 +231,10 @@ Iteration 13 post-implementation validation passed:
 - `git diff --check`
 - Full Docker checker was not rerun because the standing gateway `/health` blocker remains unresolved:
   `curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received`.
+- Feature commit after validation:
+  `fb0feb02c3cebf6b9e4f0e00f7efb01fec275320` (`Add role-owned block vote finality`).
+- Feature push result: `origin/main` accepted `27d9bf8..fb0feb0  main -> main`; remote printed a
+  repository-moved notice pointing to `git@github.com:distributedstatemachine/tensor_vm.git`.
 
 Resumed Iteration 12 checkpoint:
 - `git status --short --branch`: `## main...origin/main` plus untracked `goal.md`.
