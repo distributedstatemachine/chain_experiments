@@ -98,6 +98,7 @@ pub struct NodeRuntimeState {
     validator_artifact_ready_receipts: BTreeSet<Hash>,
     validator_artifact_missing_receipts: BTreeSet<Hash>,
     validator_attestations_submitted: usize,
+    validator_block_votes_submitted: usize,
     validator_remote_tensor_fetch_attempts: usize,
     validator_remote_tensor_fetch_successes: usize,
     validator_remote_tensor_fetch_failures: usize,
@@ -172,6 +173,10 @@ impl NodeRuntimeState {
 
     pub fn validator_attestations_submitted(&self) -> usize {
         self.validator_attestations_submitted
+    }
+
+    pub fn validator_block_votes_submitted(&self) -> usize {
+        self.validator_block_votes_submitted
     }
 
     pub fn validator_remote_tensor_fetch_attempts(&self) -> usize {
@@ -256,6 +261,12 @@ impl NodeRuntimeState {
             .saturating_add(attestations_submitted);
     }
 
+    pub fn record_validator_block_vote_submission(&mut self, block_votes_submitted: usize) {
+        self.validator_block_votes_submitted = self
+            .validator_block_votes_submitted
+            .saturating_add(block_votes_submitted);
+    }
+
     pub fn record_validator_remote_tensor_fetch(
         &mut self,
         attempts: usize,
@@ -286,6 +297,11 @@ impl NodeRuntimeState {
 pub enum NetworkPayloadApply {
     Applied,
     Pending,
+    Invalid,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NetworkPayloadError {
     Invalid,
 }
 
@@ -421,7 +437,7 @@ pub fn ingest_network_messages<C: NetworkEventContext + ?Sized>(
                         ingested.job_payloads_applied =
                             ingested.job_payloads_applied.saturating_add(1);
                     }
-                    Err(()) => {
+                    Err(NetworkPayloadError::Invalid) => {
                         ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                     }
                 }
@@ -532,23 +548,23 @@ pub fn apply_network_job_payload(
     chain: &mut LocalChain,
     job_id: Hash,
     payload: &[u8],
-) -> std::result::Result<(), ()> {
+) -> std::result::Result<(), NetworkPayloadError> {
     if job_id == [0; 32] {
-        return Err(());
+        return Err(NetworkPayloadError::Invalid);
     }
-    let job = decode_job_payload(payload).map_err(|_| ())?;
+    let job = decode_job_payload(payload).map_err(|_| NetworkPayloadError::Invalid)?;
     if job.job_id() != job_id {
-        return Err(());
+        return Err(NetworkPayloadError::Invalid);
     }
     if let Some(existing) = chain.state.jobs.get(&job_id) {
         if existing == &job {
             return Ok(());
         }
-        return Err(());
+        return Err(NetworkPayloadError::Invalid);
     }
     chain
         .apply_command(ChainCommand::SubmitJob(job))
-        .map_err(|_| ())?;
+        .map_err(|_| NetworkPayloadError::Invalid)?;
     Ok(())
 }
 
@@ -619,13 +635,16 @@ pub fn apply_network_block_vote_payload(
     if vote.block_hash != block_hash || vote.validator != validator {
         return NetworkPayloadApply::Invalid;
     }
-    if chain
-        .state
-        .block_votes
-        .get(&block_hash)
-        .is_some_and(|votes| votes.iter().any(|existing| existing.validator == validator))
-    {
-        return NetworkPayloadApply::Applied;
+    if let Some(existing) = chain.state.block_votes.get(&block_hash).and_then(|votes| {
+        votes
+            .iter()
+            .find(|existing| existing.validator == validator)
+    }) {
+        return if existing == &vote {
+            NetworkPayloadApply::Applied
+        } else {
+            NetworkPayloadApply::Invalid
+        };
     }
     if !chain
         .blocks
@@ -1123,6 +1142,8 @@ mod tests {
         assert!(!state.validator_work_ready());
         state.record_validator_attestation_submission(1);
         assert_eq!(state.validator_attestations_submitted(), 1);
+        state.record_validator_block_vote_submission(1);
+        assert_eq!(state.validator_block_votes_submitted(), 1);
         state.record_validator_remote_tensor_fetch(3, 2, 1, 128, 2);
         assert_eq!(state.validator_remote_tensor_fetch_attempts(), 3);
         assert_eq!(state.validator_remote_tensor_fetch_successes(), 2);
@@ -1513,15 +1534,15 @@ mod tests {
         );
         assert_eq!(
             apply_network_job_payload(&mut chain, [0; 32], &payload),
-            Err(())
+            Err(NetworkPayloadError::Invalid)
         );
         assert_eq!(
             apply_network_job_payload(&mut chain, hash_bytes(b"test", &[b"wrong-job"]), &payload),
-            Err(())
+            Err(NetworkPayloadError::Invalid)
         );
         assert_eq!(
             apply_network_job_payload(&mut chain, job_id, &[1, 2, 3]),
-            Err(())
+            Err(NetworkPayloadError::Invalid)
         );
 
         let mut conflicting = job.clone();
@@ -1533,7 +1554,7 @@ mod tests {
         }
         assert_eq!(
             apply_network_job_payload(&mut chain, job_id, &encode_job_payload(&conflicting)),
-            Err(())
+            Err(NetworkPayloadError::Invalid)
         );
     }
 
@@ -1578,6 +1599,26 @@ mod tests {
         );
         assert!(consumer.state.finalized_blocks.contains(&block_hash));
         assert!(consumer.has_block_finality(&block_hash));
+        assert_eq!(
+            apply_network_block_vote_payload(
+                &mut consumer,
+                block_hash,
+                vote.validator,
+                &encode_block_vote_payload(&vote),
+            ),
+            NetworkPayloadApply::Applied
+        );
+        let mut conflicting_vote = vote.clone();
+        conflicting_vote.signature = [8; 32];
+        assert_eq!(
+            apply_network_block_vote_payload(
+                &mut consumer,
+                block_hash,
+                conflicting_vote.validator,
+                &encode_block_vote_payload(&conflicting_vote),
+            ),
+            NetworkPayloadApply::Invalid
+        );
         assert_eq!(
             apply_network_block_payload(&mut consumer, block.height, block_hash, &payload),
             NetworkBlockPayloadApply::Applied { appended: 0 }

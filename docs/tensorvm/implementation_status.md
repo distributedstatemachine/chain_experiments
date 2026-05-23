@@ -6,9 +6,11 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 The reviewed MVP consensus model is partially implemented locally. The reference core now uses
 validator-owned block production with useful-verification PoW fields over deterministic settled-receipt
 blockspace, selected receipts are marked included once, and block votes validate the known block with strict
-parent-root checks before counting stake. Remaining consensus gaps are exact parent-state snapshots and
-child-state apply semantics, selected-receipt lifecycle/opening metadata, `checks_root` challenge openings,
-difficulty retargeting, zero-receipt skip fallback, and live validator proposer networking. See
+parent-root checks before counting stake. Long-running validator roles can now submit and gossip explicit
+block votes for unfinalized valid blocks, so block append is separated from finality in the runtime path.
+Remaining consensus gaps are exact parent-state snapshots and child-state apply semantics,
+selected-receipt lifecycle/opening metadata, `checks_root` challenge openings, difficulty retargeting,
+zero-receipt skip fallback, and live validator proposer/block-assembly networking. See
 [`mvp_core_formal_proofs.md`](../formal/mvp_core_formal_proofs.md).
 
 ## Implemented In `crates/tensor_vm`
@@ -93,6 +95,9 @@ difficulty retargeting, zero-receipt skip fallback, and live validator proposer 
   prerequisite job, receipt, attestation, settlement, and model-transition state is locally available.
   `NewBlockHeader` remains an announcement/locator and no longer satisfies non-producer block-application
   evidence.
+- Network block-vote catch-up now accepts decoded `BlockVote` payloads through
+  `ChainCommand::SubmitBlockVote`, persists vote-only state changes, rejects conflicting duplicate
+  validator votes, and exposes ingested/applied block-vote counters for service and role runtimes.
 - `CpuReferenceMinerRole`, `ReferenceValidatorRole`, and `RoleReceiptBundle` boundaries for CPU role work,
   so local synthetic production drives miner execution and validator verification through role-owned
   components before submitting receipts and attestations through the shared chain engine
@@ -105,8 +110,9 @@ difficulty retargeting, zero-receipt skip fallback, and live validator proposer 
 - End-to-end local matmul round: schedule, mine, serve tensors, verify via tensor server, attest, settle, and produce block
 - End-to-end local LinearTrainingStep round: register model, mine, verify, attest, settle, update model state, and produce block
 - Library-owned local CPU synthetic round producer that schedules matmul and LinearTrainingStep jobs,
-  executes CPU miner work, verifies, settles, finalizes, advances model state for training jobs, and
-  advances blocks; `tvmd service serve` now calls this shared protocol path
+  executes CPU miner work, verifies, settles, advances model state for training jobs, and appends blocks
+  without synthesizing finality votes in the runtime path; `tvmd service serve` now calls this shared
+  protocol path
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
@@ -114,13 +120,14 @@ difficulty retargeting, zero-receipt skip fallback, and live validator proposer 
   `tvmd service peer add` bootstrap seeding, `tvmd service readiness` short startup checks for the
   mandatory libp2p control-plane runtime, `tvmd service serve` long-running startup of the same runtime,
   DNS/TCP bootstrap dialing with redial after disconnect, service-level bounded request-response calls,
-  local tensor registration for request serving, local job/receipt/attestation/block-payload announcements
-  and height-bearing block-header announcement publishing over Gossipsub, decoded inbound message queues
+  local tensor registration for request serving, local job/receipt/attestation/block/block-vote payload
+  announcements and height-bearing block-header announcement publishing over Gossipsub, decoded inbound message queues
   consumed by the role runtime,
-  pending block/receipt/attestation payload retry when gossip arrives before prerequisite parents, jobs, or
-  receipts,
+  pending block/block-vote/receipt/attestation payload retry when gossip arrives before prerequisite parents,
+  jobs, receipts, or blocks,
   runtime-observed consensus-gossip counters, latest observed block heights, bounded observed block-hash
   sets, network-event ingestion counters, and network-applied block counters exposed through role status,
+  fixed-size bounded block and block-vote payload decoding, bounded tensor-row response lengths,
   and durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>` dial
   multiaddr loading
 - Validator role remote tensor fetch: assigned validator role loops can request missing receipt tensor
@@ -143,10 +150,12 @@ difficulty retargeting, zero-receipt skip fallback, and live validator proposer 
 - Role-specific long-running `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` command
   surfaces that validate the role config, start the mandatory libp2p-backed service runtime, write live
   role-loop counters from a reusable node runtime state object, delegate decoded network message ordering,
-  invalid event accounting, block/job/receipt/attestation payload application, pending payload retry, and
-  producer versus non-producer block-payload dispatch through a shared node runtime event driver, and report
-  role runtime readiness plus local-producer mode, network-applied block counters, and observed
-  job/receipt/attestation/block/block-payload gossip counters through `tvmd service status`
+  invalid event accounting, block/job/receipt/attestation/block-vote payload application, pending payload
+  retry, and producer versus non-producer block-payload dispatch through a shared node runtime event driver,
+  submit validator-owned block votes for unvoted valid local blocks, and report role runtime readiness plus
+  local-producer mode, network-applied block counters, validator block-vote submissions,
+  ingested/applied network block-vote counters, and observed job/receipt/attestation/block/block-payload/
+  block-vote gossip counters through `tvmd service status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -300,12 +309,15 @@ difficulty retargeting, zero-receipt skip fallback, and live validator proposer 
   receipts, plus live synthetic CPU job production on the bootstrap gateway with typed job, receipt, and
   attestation payloads gossiped, decoded, and applied through `ChainCommand::SubmitJob`,
   `ChainCommand::SubmitReceipt`, and
-  `ChainCommand::SubmitAttestation` on non-producers, so post-startup blocks advance through receipts,
-  attestations, settlement, validator block production, and finality instead of a static snapshot, miner role loops
+  `ChainCommand::SubmitAttestation` on non-producers, typed block and block-vote payloads gossiped, decoded,
+  and applied through `ChainCommand::SubmitBlock` and `ChainCommand::SubmitBlockVote`, so post-startup
+  blocks advance through receipts, attestations, settlement, validator block production, and role-owned
+  block-vote finality instead of a static snapshot, miner role loops
   that report assigned-job and unreceipted-job readiness from loaded chain state and can submit assigned
   unreceipted receipts through the shared chain engine while inserting served tensor artifacts locally,
   validator role loops that can submit assigned attestations through the shared chain engine when local tensor
-  artifacts are available, miner rewards, finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
+  artifacts are available and submit block votes for unvoted valid blocks, miner rewards, finality, data
+  availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
   WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
   durable status checks, an all-operator finalized common-head checkpoint queried through
@@ -391,6 +403,9 @@ preflight, public evidence, or deployment-gated work can count:
   `all_non_producer_network_applied_blocks=true`,
   `all_non_producer_network_block_payload_ingestion=true`,
   `all_non_producer_network_block_payload_application=true`,
+  `live_validator_block_vote_networking=true`,
+  `all_non_producer_network_block_vote_ingestion=true`,
+  `all_non_producer_network_block_vote_application=true`,
   `all_non_producer_network_event_ingestion=true`,
   `all_non_producer_network_payload_announcements=true`,
   `all_non_producer_network_job_payload_application=true`,
@@ -398,15 +413,18 @@ preflight, public evidence, or deployment-gated work can count:
   `all_non_producer_network_attestation_payload_application=true`,
   `all_operator_p2p_connected_peers=true`, `all_operator_p2p_block_gossip=true`,
   `all_operator_p2p_block_payload_gossip=true`, `all_operator_p2p_block_payload_head_observed=true`,
+  `all_operator_p2p_block_vote_gossip=true`,
   `all_operator_p2p_job_gossip=true`, `all_operator_p2p_receipt_gossip=true`,
   `all_operator_p2p_attestation_gossip=true`,
   `all_operator_p2p_target_head_observed=true`, `all_operator_p2p_latest_head_observed=true`, and
   `all_operator_chain_counters=true`, proving each operator status surface reports its role, runtime
   command, active chain profile, live role-loop counters, one block-production-capable runtime, one local timed producer,
-  network-applied block progress from decoded block payloads on every non-producer, decoded
+  network-applied block progress from decoded block payloads on every non-producer, validator-owned block
+  vote submission, network block-vote ingestion/application on every non-producer, decoded
   job/receipt/attestation event ingestion plus decoded block/job/receipt/attestation payload application on
   every non-producer, real libp2p connected-peer count,
-  observed consensus gossip including block-payload gossip for the target convergence head, live chain counters,
+  observed consensus gossip including block-payload gossip for the target convergence head and block-vote
+  gossip, live chain counters,
   and durable block-log root;
   `check-rolling-restart-continuity.sh` is now the full local restart gate and runs the same continuity
   check one service at a time across every counted operator, proving each
@@ -415,13 +433,13 @@ preflight, public evidence, or deployment-gated work can count:
   continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
-The workspace currently has 260 passing tests under Tarpaulin:
+The workspace currently has 262 passing tests under Tarpaulin:
 
 - 14 in `experiments`
-- 245 in `tensor_vm`
+- 247 in `tensor_vm`
 - 1 in `tensor_vm_explorer`
 
-`cargo test -p tensor_vm --tests` also runs 21 `tvmd` binary unit tests, 1 local CPU Compose integration
+`cargo test -p tensor_vm --tests` also runs 22 `tvmd` binary unit tests, 1 local CPU Compose integration
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
@@ -429,7 +447,7 @@ that persists a settled two-block local chain, a role-run command test that prov
 `tvmd validator run`, and `tvmd proposer run` serve through role-specific loop wrappers and runtime
 surfaces with mandatory libp2p startup, then proves registered local-testnet role wallet addresses are
 exposed through role-run stdout and `tvmd service status`, bounded service startup can generate live
-synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
+synthetic CPU jobs and append unfinalized live blocks when no validator role loop has voted, plus a supervised
 `tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
 lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
@@ -448,10 +466,10 @@ loopback listen address instead of counting local service startup as public netw
 The current instrumented Tarpaulin line coverage is documented in
 [`tarpaulin_report.md`](tarpaulin_report.md):
 
-- 98.14% workspace line coverage
-- 11495/11713 workspace lines covered
-- 98.74% `tensor_vm` crate line coverage
-- 10650/10786 `tensor_vm` lines covered
+- 97.29% workspace line coverage
+- 11559/11881 workspace lines covered
+- 97.81% `tensor_vm` crate line coverage
+- 10696/10936 `tensor_vm` lines covered
 - 100.00% `tensor_vm_explorer` crate line coverage
 - 277/277 `tensor_vm_explorer` lines covered
 

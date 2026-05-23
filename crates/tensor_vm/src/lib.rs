@@ -55,9 +55,9 @@ pub use jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
     PrimitiveType, TensorOpReceipt,
 };
-pub use localnet::{
-    finalize_local_cpu_block, produce_synthetic_cpu_round, produce_synthetic_cpu_round_with_profile,
-};
+#[cfg(test)]
+pub use localnet::finalize_local_cpu_block;
+pub use localnet::{produce_synthetic_cpu_round, produce_synthetic_cpu_round_with_profile};
 pub use miner::MinerNode;
 pub use node::{
     ChainNetworkPayloadProcessor, NetworkEventContext, NetworkEventIngest, NetworkPayloadApply,

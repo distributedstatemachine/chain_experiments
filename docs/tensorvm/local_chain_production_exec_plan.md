@@ -5,11 +5,11 @@ feature-sized iterations are summarized after validation and push, and older det
 
 ## Current State
 
-- Active feature: Iteration 12, network-visible block payload propagation/admission is implemented and
-  validated as feature commit `f6f95074821a1ab5c0e320e0645c330ff88dde7d`
-  (`Add network-visible block payload admission`) with evidence commit
-  `133fbcb6e1471261214d273415574cf9febef199` (`Record iteration 12 validation evidence`) pushed to
-  `origin/main`.
+- Active feature: Iteration 13, role-owned block vote finality, is implemented and locally validated in
+  the current worktree. The current `origin/main` contains network-visible block payload and block-vote
+  payload plumbing through `27d9bf8afb555d3c3c95ae2fd24524a62272fe6b` (`feat: refactor`); this iteration
+  removes synthetic producer-owned finality votes from the runtime path and moves finality to explicit
+  validator role block-vote submissions.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
 - Iteration 11 feature and evidence commits are on `origin/main`: `e6129d1915562a1e865579e347d8cfb85855089e`
@@ -31,96 +31,112 @@ feature-sized iterations are summarized after validation and push, and older det
 | Shared chain engine/profile-neutral API | Complete for current core | Shared `ChainEngine`, `ChainCommand`, profile tests, local-testnet Gate 0 | Keep one transition engine while replacing block validity |
 | Role-owned miner receipts | Started | Miner role submits receipts through `ChainCommand::SubmitReceipt` and publishes receipt announcements | Require positive live counters after service-owned timed production is removed |
 | Role-owned validator attestations | Started | Validator role verifies assigned receipts, fetches missing tensors remotely, and submits attestations | Keep as input path for canonical blockspace |
+| Role-owned validator block votes | Implemented in current worktree | Validator role submits `SubmitBlockVote`, gossips block-vote payloads, and status/checker fields expose submitted/ingested/applied vote counters | Commit/push and rerun full Docker checker after `/health` blocker clears |
 | Remote tensor availability | Implemented/pushed | `2d6609e`; root-addressed tensor request-response and validator fetch counters | Reuse for block-check evidence; revisit slow-peer bounds later |
-| Network-visible event ingestion | Implemented in current worktree | Node runtime ingests decoded jobs, receipts, attestations, and block payloads; headers/hashes are announcements only | Commit/push and rerun full Docker checker after `/health` blocker clears |
-| Proposer/block production | Locally canonical core | `chain::proposer` selects registered validators; `produce_block` rejects unknown validators and ignores miner TensorWork | Wire live validator proposer networking in a later feature |
+| Network-visible event ingestion | Implemented in current worktree | Node runtime ingests decoded jobs, receipts, attestations, block payloads, and block-vote payloads; headers/hashes are announcements only | Commit/push and rerun full Docker checker after `/health` blocker clears |
+| Proposer/block production | Locally canonical core | `chain::proposer` selects registered validators; `produce_block` rejects unknown validators and ignores miner TensorWork | Keep block production separate from role-owned finality votes |
 | Canonical useful-verification block validity | Partially implemented locally | Blocks carry selected-root/checks-root/beacon/target/nonce; strict vote validation checks state root, beacon, PoW, proposer, selected receipts, checks, attestation, and reward roots | Add exact parent snapshots, child-state apply theorem, challenge openings, retargeting, and fallback |
-| Checker evidence | Updated | `tvmd service block` exposes PoW, canonical blockspace, checks-root, validator-proposer, and finality-validation evidence; checker asserts all booleans before scan exit | Full Docker checker still awaits `/health` blocker resolution |
+| Checker evidence | Updated | `tvmd service block` exposes PoW, canonical blockspace, checks-root, validator-proposer, finality-validation, and block-vote stake/validator evidence; checker asserts all booleans before scan exit | Full Docker checker still awaits `/health` blocker resolution |
 | Restart/recovery matrix | Complete for current storage model | Rolling restart checker covers durable state/common head for current block model | Rerun after block serialization changes |
 | Public deployment evidence | Not started | Public evidence fields still report incomplete independently-checkable status | Keep out of scope until local canonical path is stable |
 
 ## Active Feature Iteration
 
-### Iteration 12: Network-Visible Block Payload Admission
+### Iteration 13: Role-Owned Block Vote Finality
 
 Feature capability:
-Replace non-producer block progress from header-triggered deterministic replay with full `TensorBlock`
-payload gossip and strict chain admission through the shared node/chain boundary.
+Separate block payload append from finality by removing synthetic producer-owned finality votes from the
+runtime path and adding validator role-owned block vote submission/gossip/evidence.
 
-Readiness requirements covered:
-- Blocks observed over libp2p must carry the exact validator-proposed useful-verification block payload.
-- Non-producers must append received blocks only after validating parent linkage, registered validator
-  proposer, proposer signature, aggregate signature, useful PoW, canonical settled-receipt selection,
-  `checks_root`, attestation root, state root, reward root, and beacon.
-- Runtime and checker evidence must distinguish block payload ingestion/application from header/hash
-  announcements; header replay must not satisfy `role_network_applied_blocks`.
+Checkpoint before edits:
+- Canonical owner: `ChainEngine` owns `SubmitBlock` append and `SubmitBlockVote` vote/finality admission.
+- Adapter callers: p2p/node runtime and role loops may submit block/vote commands and publish payloads;
+  they must not mark finality directly.
+- Old shortcut removed: local synthetic production must stop fabricating validator `BlockVote`s as part of
+  block production. `finalize_local_cpu_block` may remain only as a test helper.
+- Regression tests: block append remains unfinalized until enough explicit votes arrive; validator role
+  submits a block vote for an unvoted valid block; network vote payloads finalize after quorum.
+- Local synthetic disabled behavior: inbound block/vote ingest still works; no jobs, blocks, or votes are
+  synthesized.
+- Producer/non-producer behavior: producer capability only controls outbound block creation. Producers and
+  non-producers both ingest blocks/votes; validators vote from role state.
+- Structured evidence source: role runtime/status counters expose local validator block-vote submissions
+  and network block-vote ingestion/application.
+- Finality source: signed validator `BlockVote`s admitted by `SubmitBlockVote` and stake-weighted by
+  `has_block_finality`, not block append or aggregate payload admission.
+- Wire-size/codec boundary: existing bounded `NewBlockVotePayload`/`encode_block_vote_payload` codec is
+  reused; this iteration adds evidence/tests rather than a new wire format.
 
 Files/modules likely touched:
-- `crates/tensor_vm/src/api.rs`
-- `crates/tensor_vm/src/p2p.rs`
-- `crates/tensor_vm/src/chain/engine.rs`
-- `crates/tensor_vm/src/chain/commands.rs`
-- `crates/tensor_vm/src/chain/blocks.rs`
-- `crates/tensor_vm/src/chain.rs`
-- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/localnet.rs`
 - `crates/tensor_vm/src/main.rs`
-- `crates/tensor_vm/src/lib.rs`
-- `crates/tensor_vm/tests/tvmd_cli.rs`
-- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/p2p.rs`
 - `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
-- Readiness/exec-plan docs.
+- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- Readiness/status docs.
 
-Parallel subagents completed before edits and verification:
-- Readiness mapper: confirmed full block payload admission as the next useful slice and named required
-  counters/checker evidence.
-- Test coverage explorer: mapped existing header-replay coverage and proposed p2p, chain, node, CLI, and
-  checker tests for block payload admission.
-- Code-path explorer: identified p2p message/codec, node admission, runtime publish, and checker/status
-  update points.
-- Checker/docs explorer: identified status/checker fields required to prove block payload ingestion and
-  application.
-- Read-only verifier: reported invalid semantic block payloads could remain pending forever, remote
-  admission bypassed modeled block-vote finality, the dormant header replay hook remained callable, and docs
-  overclaimed full Docker status. The code/docs fixes are included in this iteration.
+Parallel subagents launched before implementation:
+- Readiness mapper completed and mapped canonical owner/finality/evidence requirements.
+- Codebase explorer, test coverage explorer, and p2p/checker explorer completed and mapped the current
+  producer-owned finality shortcut, coverage needs, and p2p/checker evidence updates.
 
-Implementation boundary:
-- Add a canonical block payload codec/message and route it on the blocks gossip topic.
-- Add a chain command/admission helper equivalent to `SubmitBlock(TensorBlock)` for strict external block
-  append, including idempotent duplicate handling and rejection of conflicting/future/invalid payloads.
-- Expand the MVP block aggregate certificate into local `BlockVote` records during remote admission so
-  `is_block_finalized` remains backed by `has_block_finality`.
-- Classify malformed or same-height semantic block payload failures as invalid instead of leaving them in
-  pending retry forever; only missing-parent block payloads remain pending.
-- Teach node event ingestion to count `block_payloads` and `block_payloads_applied`, apply payloads for
-  non-producers, and keep `NewBlock`/`NewBlockHeader` as announcements only.
-- Publish full block payloads after local production alongside the existing hash/header announcements.
-- Surface role/status/checker evidence requiring positive non-producer block payload application and zero
-  invalid network events.
-- Remove the dormant runtime header-replay catch-up hook.
+Out of scope:
+- Moving proposer block assembly fully out of the local synthetic producer.
+- Public deployment evidence, CUDA, seven-day run, challenge openings, retargeting, and zero-receipt
+  fallback.
 
-Out of scope for this iteration:
-- Full validator/proposer role-owned block assembly.
-- Public testnet evidence, TLS/DNS, seven-day run, CUDA, independent operators, or challenge-window
-  economics.
-- Retarget tuning and fallback liveness beyond the existing local useful-PoW target.
+Validation plan:
+- Focused: `cargo fmt --check`, `cargo check -p tensor_vm --all-targets`,
+  `cargo test -p tensor_vm --lib localnet::tests`, `cargo test -p tensor_vm --lib node::tests`,
+  `cargo test -p tensor_vm --lib p2p::tests`, `cargo test -p tensor_vm --test tvmd_cli
+  role_run_commands_serve_through_role_specific_surfaces`, and
+  `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`.
+- Broad before commit: `cargo test -p tensor_vm local_testnet --release`, `cargo test -p tensor_vm --tests`,
+  `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`, `cargo tarpaulin
+  --workspace --offline` if coverage changes are stable, and `git diff --check`.
 
-Narrow validation commands:
-- `cargo fmt --check`
+Implementation summary:
+- Local synthetic production now appends blocks without runtime-synthesized block votes; the old
+  `finalize_local_cpu_block` shortcut is test-only.
+- Validator role loops submit and gossip explicit block votes for locally valid unfinalized blocks, persist
+  vote-only state changes, and expose `validator_block_votes_submitted`,
+  `network_block_votes_ingested`, `network_block_votes_applied`, and p2p observed block-vote counters.
+- Block-vote p2p payloads are covered by bounded codec tests, duplicate conflicting validator votes are
+  rejected, and `TensorRowResponse` rejects oversized row lengths before allocation.
+- Local Compose checker artifacts now require block-vote finality evidence, non-producer vote
+  ingestion/application, and observed block-vote gossip.
+
+Validation passed:
+- `cargo fmt --check --all`
 - `cargo check -p tensor_vm --all-targets`
-- `cargo test -p tensor_vm --lib p2p::tests`
-- `cargo test -p tensor_vm --lib node::tests`
-- `cargo test -p tensor_vm --lib chain::tests`
-- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
-- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
-
-Broad validation before commit:
-- `cargo test -p tensor_vm local_testnet --release`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- Focused localnet/node/p2p library tests, the role-run CLI integration, and the local CPU Compose artifact
+  test.
+- `cargo test -p tensor_vm --tests`: 247 library tests, 22 `tvmd` binary tests, 1 local CPU Compose
+  integration test, and 7 `tvmd_cli` integration tests.
+- `cargo test -p tensor_vm local_testnet --release`: 5 release local-testnet library tests and the seed
+  CLI integration test.
+- `cargo test --workspace --release`: 14 `experiments`, 247 `tensor_vm`, 22 `tvmd`, 1 local CPU Compose,
+  7 `tvmd_cli`, 1 `tensor_vm_explorer`, and doc-test targets passed.
 - `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
-- `cargo tarpaulin --workspace --offline` if targeted gates are clean and runtime is not blocked.
+- `cargo tarpaulin --workspace --offline`: 262 instrumented workspace tests, 97.29% workspace line
+  coverage (11,559/11,881 lines).
 - `git diff --check`
-- Attempt the full Docker checker only if the known gateway `/health` blocker is clear.
 
 ## Recent Iterations
+
+### Iteration 12: Network-Visible Block Payload Admission
+
+- Feature: replaced header-triggered deterministic replay with full `TensorBlock` payload gossip and
+  strict chain admission through `SubmitBlock`.
+- Follow-up on `origin/main`: `27d9bf8afb555d3c3c95ae2fd24524a62272fe6b` added block-vote payload
+  plumbing, typed block admission outcomes, and removed remote-admission vote synthesis.
+- Follow-up gap resolved by Iteration 13: local synthetic production no longer finalizes blocks by
+  generating validator votes inside the producer path.
+- Validation recorded: Gate 0, focused p2p/node/chain tests, workspace tests, Compose config, Tarpaulin,
+  and `git diff --check`; full Docker checker remains blocked at gateway `/health`.
 
 ### Iteration 11: Canonical Useful-Verification Block Validity
 
@@ -178,6 +194,39 @@ Broad validation before commit:
 
 ## Validation Evidence
 
+Resumed Iteration 13 checkpoint:
+- Starting `HEAD`/`origin/main`: `27d9bf8afb555d3c3c95ae2fd24524a62272fe6b`.
+- `git status --short`: untracked `docs/tensorvm/code_quality_deep_dive.md` was present before this
+  iteration and was left untouched.
+- First executable gate before exploration or edits:
+  `cargo test -p tensor_vm local_testnet --release` passed with 5 release local-testnet library tests and
+  the seed CLI integration test.
+- Subagents completed: readiness mapper, code-path explorer, test coverage explorer, and p2p/checker
+  explorer.
+
+Iteration 13 post-implementation validation passed:
+- `cargo fmt --check --all`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test -p tensor_vm --lib localnet::tests`: 9 tests passed.
+- `cargo test -p tensor_vm --lib node::tests`: 17 tests passed.
+- `cargo test -p tensor_vm --lib p2p::tests`: 28 tests passed.
+- `cargo test -p tensor_vm --lib`: 247 tests passed.
+- `cargo test -p tensor_vm --tests`: 247 library tests, 22 `tvmd` binary tests, 1 local CPU Compose
+  integration test, and 7 `tvmd_cli` integration tests passed.
+- `cargo test -p tensor_vm local_testnet --release`: 5 release local-testnet library tests and the seed
+  CLI integration test passed.
+- `cargo test --workspace --release`: 14 `experiments`, 247 `tensor_vm`, 22 `tvmd`, 1 local CPU Compose,
+  7 `tvmd_cli`, 1 `tensor_vm_explorer`, and doc-test targets passed.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+- `cargo tarpaulin --workspace --offline`: passed with 262 instrumented workspace tests and 97.29%
+  workspace line coverage (11,559/11,881 lines).
+- `git diff --check`
+- Full Docker checker was not rerun because the standing gateway `/health` blocker remains unresolved:
+  `curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received`.
+
 Resumed Iteration 12 checkpoint:
 - `git status --short --branch`: `## main...origin/main` plus untracked `goal.md`.
 - Starting `HEAD`/`origin/main`: `800b031edea9b0b268cfe1fb487c9628cb2c782c`.
@@ -190,7 +239,7 @@ Resumed Iteration 12 checkpoint:
   remote block admission records modeled `BlockVote`s before finalization; dormant header replay mutation was
   removed; docs now keep the full Docker `/health` blocker visible.
 
-Post-implementation validation currently passed:
+Iteration 12 post-implementation validation passed:
 - `cargo fmt --check`
 - `cargo check -p tensor_vm --all-targets`
 - `git diff --check`

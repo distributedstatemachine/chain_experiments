@@ -51,7 +51,8 @@ requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` 
 `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
 producer, the `local_cpu` chain profile, decoded network-event ingestion, decoded block, job, receipt, and attestation payload application, and
 network-applied block counters for every non-producer, plus observed job/receipt/attestation/block payload gossip
-counters for every counted operator, verifies the seeded local CPU
+and block-vote gossip counters for every counted operator, validator-owned block-vote submission, and
+non-producer block-vote ingestion/application, verifies the seeded local CPU
 chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
 miners, full finality and data availability,
 checks that the host gateway exposes the seeded chain head, checks the host gateway routes with the local
@@ -67,7 +68,8 @@ descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 fro
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
 common-head block hash through `tvmd service block`, selects a non-producer's latest finalized p2p-observed
 block-payload head from the block-payload gossip set and requires every operator to return the matching finalized block hash and state
-root while reporting a nonempty block-log root, and uses
+root while reporting block-vote finality evidence, a nonempty block-log root, and observed block-vote
+gossip, and uses
 `check-rolling-restart-continuity.sh` to run the restart-continuity gate one service at a time across every
 counted operator, proving each restarted service keeps its libp2p peer ID, preserves the pre-restart
 finalized common head and state root, advances height/block-count/state-root/block-log-root evidence, and
@@ -80,7 +82,7 @@ continues finalizing blocks after restart.
 | 1 | Miners execute deterministic tensor jobs. | `miner::tests::miner_solves_matmul_and_serves_tensors`, `miner::tests::miner_solves_linear_step_and_serves_intermediates`, `runtime::tests::cpu_and_gpu_backends_match_canonical_matmul` |
 | 2 | Validators verify block-eligible matmul jobs with full-output Freivalds or bounded equivalent. | `verify::full_freivalds`, `verify::tests::full_freivalds_accepts_honest_and_rejects_corruption`, `verify::tests::tensor_op_verifier_rejects_metadata_and_shape_mismatches`, `validator::tests::validator_verifies_matmul_from_tensor_server` |
 | 3 | Row-sampled checks are audits unless false-accept bounds are documented. | `verify::row_sample_detection_probability`, `study::row_sampling_study`, `study::tests::row_sampling_study_blocks_sparse_row_sampled_only_acceptance` |
-| 4 | Blocks are produced by validators winning useful-verification PoW over deterministic settled-receipt blockspace. | Partially implemented locally. `TensorBlock` now commits `settled_receipt_set_root`, block-level `checks_root`, beacon, difficulty target, and nonce; `chain::proposer` selects registered validators and ignores miner TensorWork; selected receipts are marked included once; `submit_block_vote` validates known blocks with strict parent-root checks before counting votes. Evidence: `chain::tests::proposer_selection_ignores_tensorwork`, `chain::tests::block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values`, `chain::tests::block_votes_reject_invalid_useful_pow_and_checks_root`, `chain::tests::produced_blocks_mark_selected_settled_receipts_included_once`, `storage::tests::block_log_store_appends_loads_and_detects_tampering`, `localnet::tests::synthetic_cpu_round_settles_work_and_advances_finalized_chain`, and service-block evidence fields. Remaining gaps: exact parent-state snapshots and child-state apply theorem, selected-receipt lifecycle/opening metadata, challenge openings for `checks_root`, difficulty retargeting, and live validator proposer networking. |
+| 4 | Blocks are produced by validators winning useful-verification PoW over deterministic settled-receipt blockspace. | Partially implemented locally. `TensorBlock` now commits `settled_receipt_set_root`, block-level `checks_root`, beacon, difficulty target, and nonce; `chain::proposer` selects registered validators and ignores miner TensorWork; selected receipts are marked included once; `submit_block_vote` validates known blocks with strict parent-root checks before counting votes; validator role loops submit and gossip explicit block votes so append and finality are separate runtime events. Evidence: `chain::tests::proposer_selection_ignores_tensorwork`, `chain::tests::block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values`, `chain::tests::block_votes_reject_invalid_useful_pow_and_checks_root`, `chain::tests::produced_blocks_mark_selected_settled_receipts_included_once`, `node::tests::block_payload_application_admits_next_head_and_rejects_bad_edges`, `p2p::tests::block_vote_payloads_roundtrip_and_reject_malformed_edges`, `tvmd` binary `tests::validator_role_block_vote_submission_finalizes_only_through_votes`, `storage::tests::block_log_store_appends_loads_and_detects_tampering`, `localnet::tests::synthetic_cpu_round_settles_work_and_advances_finalized_chain`, and service-block evidence fields. Remaining gaps: exact parent-state snapshots and child-state apply theorem, selected-receipt lifecycle/opening metadata, challenge openings for `checks_root`, difficulty retargeting, and live validator proposer/block-assembly networking. |
 | 5 | Rewards are distributed by verified settled TensorWork. | `chain::tests::chain_settles_valid_tensorwork_and_rewards_participants`, `chain::tests::reward_allocation_matches_mvp_split_and_credits_proposer_and_treasury` |
 | 6 | Validation randomness is unbiasable after receipt roots are committed. | `chain::LocalChain::validation_seed`, `study::assess_randomness`, `chain::tests::validation_seed_is_bound_to_finalized_randomness_and_receipt` |
 | 7 | Invalid tensor outputs are rejected in dense and sparse corruption tests. | `verify::tests::tensor_op_verifier_rejects_bad_output`, `verify::tests::full_freivalds_accepts_honest_and_rejects_corruption` |
@@ -180,7 +182,8 @@ continues finalizing blocks after restart.
   directory with consistency-checked snapshot, append-only block-log, full-chain state, and peer-book
   persistence. The local CPU checker now also requires all 15 operator node stores to report role status,
   runtime command, live role-loop counters, local-producer mode, decoded network-event ingestion, decoded
-  job/receipt/attestation payload application, network-applied block counters for non-producers, real libp2p
+  job/receipt/attestation/block-vote payload application, network-applied block counters for non-producers,
+  validator block-vote submission, block-vote ingestion/application for non-producers, real libp2p
   connected-peer counts, active chain profile, live chain counters,
   advancement past the shared seed, finalized live TensorOp and LinearTrainingStep block-view evidence,
   the same first live finalized block hash, and the same finalized common-head block hash through

@@ -329,6 +329,7 @@ CANONICAL_BLOCKSPACE_EVIDENCE=false
 BLOCK_CHECKS_ROOT_EVIDENCE=false
 VALIDATOR_PROPOSER_EVIDENCE=false
 FINALITY_REQUIRES_USEFUL_POW=false
+BLOCK_FINALITY_VOTE_EVIDENCE=false
 BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))
 [ "$BLOCK_SCAN_START" -gt 2 ] || BLOCK_SCAN_START=3
 BLOCK_SCAN_HEIGHT="$BLOCK_SCAN_START"
@@ -348,6 +349,10 @@ while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
     BLOCK_PROPOSER_REGISTERED=$(status_value proposer_registered "$BLOCK_STATUS")
     BLOCK_TENSORWORK_PROPOSER_SELECTION=$(status_value tensorwork_proposer_selection "$BLOCK_STATUS")
     BLOCK_FINALITY_VALIDATED=$(status_value finality_validated_block "$BLOCK_STATUS")
+    BLOCK_VOTE_COUNT=$(status_value block_vote_count "$BLOCK_STATUS")
+    BLOCK_VOTE_VALIDATORS=$(status_value block_vote_validators "$BLOCK_STATUS")
+    BLOCK_VOTE_STAKE=$(status_value block_vote_stake "$BLOCK_STATUS")
+    BLOCK_FINALITY_THRESHOLD_STAKE=$(status_value finality_threshold_stake "$BLOCK_STATUS")
     BLOCK_SELECTED_RECEIPT_COUNT=$(status_value selected_receipt_count "$BLOCK_STATUS")
     BLOCK_CHECK_LEAF_COUNT=$(status_value check_leaf_count "$BLOCK_STATUS")
     BLOCK_NONCE=$(status_value nonce "$BLOCK_STATUS")
@@ -382,6 +387,16 @@ while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
       FINALITY_REQUIRES_USEFUL_POW=true
     fi
     if [ "$BLOCK_FINALIZED" = "true" ] \
+      && is_u64 "$BLOCK_VOTE_COUNT" \
+      && [ "$BLOCK_VOTE_COUNT" -gt 0 ] \
+      && [ -n "$BLOCK_VOTE_VALIDATORS" ] \
+      && [ "$BLOCK_VOTE_VALIDATORS" != "none" ] \
+      && is_u64 "$BLOCK_VOTE_STAKE" \
+      && is_u64 "$BLOCK_FINALITY_THRESHOLD_STAKE" \
+      && [ "$BLOCK_VOTE_STAKE" -ge "$BLOCK_FINALITY_THRESHOLD_STAKE" ]; then
+      BLOCK_FINALITY_VOTE_EVIDENCE=true
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] \
       && [ -n "$BLOCK_RECEIPT_IDS" ] \
       && [ "$BLOCK_RECEIPT_IDS" != "none" ] \
       && [ "${BLOCK_TENSOR_OP_RECEIPTS:-0}" -gt 0 ]; then
@@ -401,7 +416,8 @@ while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
       && [ "$CANONICAL_BLOCKSPACE_EVIDENCE" = "true" ] \
       && [ "$BLOCK_CHECKS_ROOT_EVIDENCE" = "true" ] \
       && [ "$VALIDATOR_PROPOSER_EVIDENCE" = "true" ] \
-      && [ "$FINALITY_REQUIRES_USEFUL_POW" = "true" ]; then
+      && [ "$FINALITY_REQUIRES_USEFUL_POW" = "true" ] \
+      && [ "$BLOCK_FINALITY_VOTE_EVIDENCE" = "true" ]; then
       break
     fi
   fi
@@ -415,6 +431,7 @@ done
 [ "$BLOCK_CHECKS_ROOT_EVIDENCE" = "true" ] || fail "service block view did not expose finalized block checks-root evidence"
 [ "$VALIDATOR_PROPOSER_EVIDENCE" = "true" ] || fail "service block view did not expose validator proposer evidence"
 [ "$FINALITY_REQUIRES_USEFUL_POW" = "true" ] || fail "service block view did not expose useful-PoW finality validation evidence"
+[ "$BLOCK_FINALITY_VOTE_EVIDENCE" = "true" ] || fail "service block view did not expose stake-weighted block vote finality evidence"
 
 ALL_OPERATOR_NETWORK_HEAD_HEIGHT=""
 ALL_OPERATOR_NETWORK_HEAD_HASH=""
@@ -439,13 +456,16 @@ while [ "$attempt" -lt 30 ]; do
       NETWORK_BLOCK_HASH=$(status_value block_hash "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_STATE_ROOT=$(status_value state_root "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_FINALIZED=$(status_value finalized "$NETWORK_BLOCK_STATUS")
+      NETWORK_BLOCK_VOTE_COUNT=$(status_value block_vote_count "$NETWORK_BLOCK_STATUS")
       if [ -n "$NETWORK_BLOCK_HEIGHT" ] \
         && [ "$NETWORK_BLOCK_HEIGHT" = "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
         && [ "$NETWORK_BLOCK_HEIGHT" -gt 2 ] \
         && [ "$NETWORK_BLOCK_HASH" = "$CANDIDATE_NETWORK_HEAD_HASH" ] \
         && [ -n "$NETWORK_BLOCK_STATE_ROOT" ] \
         && [ "$NETWORK_BLOCK_STATE_ROOT" != "$ZERO_HASH" ] \
-        && [ "$NETWORK_BLOCK_FINALIZED" = "true" ]; then
+        && [ "$NETWORK_BLOCK_FINALIZED" = "true" ] \
+        && is_u64 "$NETWORK_BLOCK_VOTE_COUNT" \
+        && [ "$NETWORK_BLOCK_VOTE_COUNT" -gt 0 ]; then
         ALL_OPERATOR_NETWORK_HEAD_HEIGHT="$NETWORK_BLOCK_HEIGHT"
         ALL_OPERATOR_NETWORK_HEAD_HASH="$NETWORK_BLOCK_HASH"
         ALL_OPERATOR_NETWORK_STATE_ROOT="$NETWORK_BLOCK_STATE_ROOT"
@@ -525,6 +545,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES=$(status_value role_validator_remote_tensor_fetch_bytes "$STATUS")
     SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED=$(status_value role_validator_remote_tensors_inserted "$STATUS")
     SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED=$(status_value role_validator_attestations_submitted "$STATUS")
+    SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED=$(status_value role_validator_block_votes_submitted "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
@@ -533,6 +554,8 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_NETWORK_BLOCK_HEADERS=$(status_value role_network_block_headers_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS=$(status_value role_network_block_payloads_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED=$(status_value role_network_block_payloads_applied "$STATUS")
+    SERVICE_ROLE_NETWORK_BLOCK_VOTES=$(status_value role_network_block_votes_ingested "$STATUS")
+    SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED=$(status_value role_network_block_votes_applied "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_EVENTS=$(status_value role_network_job_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_PAYLOADS=$(status_value role_network_job_payloads_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED=$(status_value role_network_job_payloads_applied "$STATUS")
@@ -548,6 +571,7 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS=$(status_value role_p2p_observed_block_payloads "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_BLOCK_VOTES=$(status_value role_p2p_observed_block_votes "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_JOBS=$(status_value role_p2p_observed_jobs "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_RECEIPTS=$(status_value role_p2p_observed_receipts "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS=$(status_value role_p2p_observed_attestations "$STATUS")
@@ -601,6 +625,7 @@ while [ "$attempt" -lt 60 ]; do
     is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED" || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
@@ -616,6 +641,10 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_BLOCK_VOTES" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_JOB_EVENTS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
@@ -646,6 +675,8 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_VOTES" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_VOTES" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_JOBS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" ] || { STATUS_MISMATCH=true; continue; }
@@ -691,7 +722,9 @@ while [ "$attempt" -lt 60 ]; do
         ;;
     esac
     case "$SERVICE_ROLE_LOOP_ROLE" in
-      validator) ;;
+      validator)
+        [ "$SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        ;;
       *)
         [ "$SERVICE_ROLE_VALIDATOR_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_ASSIGNED_RECEIPTS_SEEN" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
@@ -704,6 +737,7 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
     esac
     case "$service" in
@@ -727,6 +761,8 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
@@ -755,6 +791,7 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_VOTES" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" -le 0 ] \
@@ -910,10 +947,14 @@ block_checks_root_evidence=${BLOCK_CHECKS_ROOT_EVIDENCE}
 validator_proposer_evidence=${VALIDATOR_PROPOSER_EVIDENCE}
 tensorwork_proposer_selection_removed=true
 finality_requires_useful_pow=${FINALITY_REQUIRES_USEFUL_POW}
+block_vote_finality_evidence=${BLOCK_FINALITY_VOTE_EVIDENCE}
 live_validator_proposer_networking=false
+live_validator_block_vote_networking=true
 all_non_producer_network_applied_blocks=true
 all_non_producer_network_block_payload_ingestion=true
 all_non_producer_network_block_payload_application=true
+all_non_producer_network_block_vote_ingestion=true
+all_non_producer_network_block_vote_application=true
 all_non_producer_network_event_ingestion=true
 all_non_producer_network_payload_announcements=true
 all_non_producer_network_job_payload_application=true
@@ -922,6 +963,7 @@ all_non_producer_network_attestation_payload_application=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
 all_operator_p2p_block_payload_gossip=true
+all_operator_p2p_block_vote_gossip=true
 all_operator_p2p_block_payload_head_observed=true
 all_operator_p2p_job_gossip=true
 all_operator_p2p_receipt_gossip=true

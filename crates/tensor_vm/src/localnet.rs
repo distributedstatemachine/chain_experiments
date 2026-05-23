@@ -1,6 +1,6 @@
-use crate::chain::{
-    BlockVote, Chain, ChainCommand, ChainEngine, JobState, ReceiptState, TensorBlock,
-};
+#[cfg(test)]
+use crate::chain::{BlockVote, TensorBlock};
+use crate::chain::{Chain, ChainCommand, ChainEngine, JobState, ReceiptState};
 use crate::error::Result;
 use crate::jobs::{LinearTrainingStepJob, MatmulJob};
 use crate::profile::ChainProfile;
@@ -95,8 +95,7 @@ fn produce_synthetic_matmul_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    let block = chain.produce_block(proposer, timestamp)?;
-    finalize_local_cpu_block(chain, &block)?;
+    chain.produce_block(proposer, timestamp)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
         tensors: canonical_receipt.served_tensors(),
@@ -157,8 +156,7 @@ fn produce_synthetic_linear_training_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    let block = chain.produce_block(proposer, timestamp)?;
-    finalize_local_cpu_block(chain, &block)?;
+    chain.produce_block(proposer, timestamp)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
         tensors: canonical_receipt.served_tensors(),
@@ -208,6 +206,7 @@ fn register_synthetic_linear_model(
     }
 }
 
+#[cfg(test)]
 pub fn finalize_local_cpu_block(chain: &mut Chain, block: &TensorBlock) -> Result<()> {
     for validator_address in chain.state.validators.keys().copied().collect::<Vec<_>>() {
         let stake = chain
@@ -265,6 +264,9 @@ mod tests {
         assert_eq!(height, Some(1));
         assert_eq!(chain.state.height, 1);
         assert_eq!(chain.state.settled_receipts.len(), 2);
+        assert!(!chain.state.block_votes.contains_key(&first_block.hash()));
+        assert!(!chain.is_block_finalized(&first_block.hash()));
+        finalize_local_cpu_block(&mut chain, &first_block).unwrap();
         assert!(chain.is_block_finalized(&first_block.hash()));
 
         let height = produce_synthetic_cpu_round(&mut chain).unwrap();
@@ -277,6 +279,9 @@ mod tests {
                 .timestamp
                 .saturating_add(chain.params.block_time_seconds)
         );
+        assert!(!chain.state.block_votes.contains_key(&second_block.hash()));
+        assert!(!chain.is_block_finalized(&second_block.hash()));
+        finalize_local_cpu_block(&mut chain, &second_block).unwrap();
         assert!(chain.is_block_finalized(&second_block.hash()));
         assert!(
             chain
@@ -298,6 +303,10 @@ mod tests {
                 .timestamp
                 .saturating_add(chain.params.block_time_seconds)
         );
+        assert!(!chain.state.block_votes.contains_key(&third_block.hash()));
+        assert!(!chain.is_block_finalized(&third_block.hash()));
+        let third_block = third_block.clone();
+        finalize_local_cpu_block(&mut chain, &third_block).unwrap();
         assert!(chain.is_block_finalized(&third_block.hash()));
     }
 

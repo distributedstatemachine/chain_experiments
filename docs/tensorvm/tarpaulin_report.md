@@ -18,24 +18,24 @@ Host notes:
 Result:
 
 ```text
-260 tests passed under instrumentation:
+262 tests passed under instrumentation:
 - 14 experiments library tests
-- 245 tensor_vm library tests
+- 247 tensor_vm library tests
 - 1 tensor_vm_explorer library test
 
-98.14% workspace line coverage
-11495/11713 workspace lines covered
+97.29% workspace line coverage
+11559/11881 workspace lines covered
 
-98.74% tensor_vm crate line coverage
-10650/10786 tensor_vm lines covered
+97.81% tensor_vm crate line coverage
+10696/10936 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
 277/277 tensor_vm_explorer lines covered
 ```
 
 The remaining uncovered `tensor_vm` lines are concentrated in block-admission rejection branches, pending
-block-payload retry edges, and p2p request/response unhappy paths. Focused node and p2p tests cover the
-main block-payload happy path, malformed payload rejection, invalid signature/root rejection, and duplicate
-admission behavior.
+block and block-vote payload retry edges, and p2p request/response unhappy paths. Focused node and p2p
+tests cover the main block/block-vote payload happy paths, malformed payload rejection, invalid
+signature/root rejection, duplicate admission behavior, and bounded wire-length rejection.
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps
 the portable default feature set:

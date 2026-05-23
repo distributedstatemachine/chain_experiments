@@ -143,6 +143,11 @@ The local bundle is useful and should remain the first operational target:
   failures, bytes, and inserted tensor counters through role status. Network block payload admission can
   still apply already-attested receipts before validators see unhandled live work, so live Compose
   validators are not required to report positive validator-owned submissions yet.
+- Validator role loops now also submit explicit block votes for unfinalized valid blocks through
+  `ChainCommand::SubmitBlockVote`, publish block-vote payloads through the shared p2p announcement path,
+  and report `role_validator_block_votes_submitted`, `role_network_block_votes_ingested`,
+  `role_network_block_votes_applied`, and `role_p2p_observed_block_votes`. Local synthetic block production
+  appends blocks but no longer fabricates finality votes in the runtime path.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
@@ -156,14 +161,14 @@ The local bundle is useful and should remain the first operational target:
   `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
   `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
-  `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_height`,
+  `role_p2p_observed_blocks`, `role_p2p_observed_block_votes`, `role_p2p_latest_observed_block_height`,
   `role_p2p_latest_observed_block_hash`, and
   `role_p2p_observed_block_hashes`, and block-payload gossip counters/hashes; the checker fails unless every counted operator reports a live role
   loop, only `miner-00` reports block-production capability and timed produced-block progress, every other counted operator reports
   network-applied block progress from decoded block payloads, every non-producer has ingested decoded
-  block-payload/header/job/receipt/attestation events with zero invalid network events, every non-producer has
-  accepted decoded block, job, receipt, and attestation payloads through the chain engine, at least one real libp2p
-  connection, job/receipt/attestation/block announcements observed through Gossipsub, and an observed network
+  block-payload/header/block-vote/job/receipt/attestation events with zero invalid network events, every non-producer has
+  accepted decoded block, block-vote, job, receipt, and attestation payloads through the chain engine, at least one real libp2p
+  connection, job/receipt/attestation/block/block-vote announcements observed through Gossipsub, and an observed network
   announcement for the selected finalized p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
@@ -198,6 +203,10 @@ The first chain-core cleanup slices are already in the tree:
   block-payload admission now live in the reusable node runtime driver. `NewBlockHeader` remains an
   announcement/locator; non-producers apply block progress from decoded `TensorBlock` payloads through the
   shared chain engine.
+- Block-vote payload admission now also lives in the reusable node runtime driver. Validators submit
+  explicit role-owned block votes for locally valid unfinalized blocks, non-producers ingest and apply
+  decoded block-vote payloads through `ChainCommand::SubmitBlockVote`, and vote-only finality progress is
+  persisted to the node store.
 - Role runtimes now bind their configured wallet to a deterministic chain address and report whether that
   address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
   wallet labels for counted miner and validator operators, and the checker requires those registrations
@@ -208,19 +217,20 @@ The first chain-core cleanup slices are already in the tree:
   submission, and optional local production, preserving current consensus behavior while narrowing the
   remaining proposer/block-assembly gap.
 
-These are foundation pieces, not completion. Miner receipts and validator attestations now have role-owned
-submission paths for locally available work, and validators can fetch missing tensors remotely. The local
-runtime still needs network-visible validator proposer/block assembly before it satisfies the local CPU spec
-as a production-grade local chain.
+These are foundation pieces, not completion. Miner receipts, validator attestations, and validator block
+votes now have role-owned submission paths for locally available work, and validators can fetch missing
+tensors remotely. The local runtime still needs network-visible validator proposer/block assembly before it
+satisfies the local CPU spec as a production-grade local chain.
 
 ## Highest-Priority Gaps
 
 ### 1. Local Production Is Still Single-Process
 
-Current live production still runs inside `miner-00`'s service loop for settlement, block production, and
-finality votes. The chain core now requires registered-validator useful-verification PoW blocks, but the
-full gate still relies on deterministic producer orchestration before final block assembly and finality are
-applied against one `Chain`.
+Current live production still runs inside `miner-00`'s service loop for settlement and block production.
+Finality votes now come from explicit validator role block-vote submissions, but the full gate still relies
+on deterministic producer orchestration before final block assembly is available to the validator roles.
+The chain core requires registered-validator useful-verification PoW blocks, and block append/finality are
+separate chain commands.
 
 This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
 propagation, local-only networking shims, and single-participant shortcuts.
@@ -602,11 +612,12 @@ receipts, per-receipt validator-attestation details, live tensor descriptor/row/
 15 operator node stores reporting role status, live chain counters, finalized live TensorOp and
 LinearTrainingStep block-view evidence, the single local producer, network
 applied block progress on every non-producer, accepted job, receipt, and attestation payload application
-through the shared chain engine on every non-producer, pending receipt/attestation retry for out-of-order
+through the shared chain engine on every non-producer, validator-owned block-vote submission,
+non-producer block-vote ingestion/application, pending receipt/attestation/block-vote retry for out-of-order
 p2p payloads, the same first live finalized block hash, the same finalized common-head block hash, and a
 finalized local-head checkpoint/state root that was also observed through p2p block gossip via
 `tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
-connected-peer counts, job/receipt/attestation/block gossip observations from every role runtime, and
+connected-peer counts, job/receipt/attestation/block/block-vote gossip observations from every role runtime, and
 nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
 selected restart gates, and the rolling wrapper applies that gate to every counted operator by default.
@@ -646,10 +657,10 @@ role-specific command surfaces. Compose uses `tvmd proposer run` for `miner-00`'
 duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` for validators; the local
 checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
-connected-peer counts, job/receipt/attestation/block/block-payload gossip observations, and target-head block-payload gossip
+connected-peer counts, job/receipt/attestation/block/block-payload/block-vote gossip observations, and target-head block-payload gossip
 observations for every counted operator. The service runtime now keeps served-request counts,
 produced-block counts, network-applied block counts, aggregate network-event counters, pending
-out-of-order network payloads, and decoded block/job/receipt/attestation payload application in reusable
+out-of-order network payloads, and decoded block/job/receipt/attestation/block-vote payload application in reusable
 node runtime helpers instead of private binary state. Message ordering, invalid network-event accounting,
 pending retry integration, and block-payload application dispatch now also go through the shared node runtime
 event driver. The role
@@ -657,9 +668,10 @@ commands now enter explicit role-run loop wrappers and a named runtime loop boun
 the generic service loop inline. CPU miner execution and validator verification now live behind role-owned
 library components, miner receipt submission and validator attestation submission have role-loop paths for
 locally available work, validators can fetch missing receipt tensors over the libp2p request-response path
-before submitting attestations, and proposer block assembly still needs to move into its role loop. Runtime
-role policy now prevents miner and validator roles from becoming local block producers even if they inherit
-local block-interval configuration.
+before submitting attestations, validators submit explicit block votes for locally valid unfinalized blocks,
+and proposer block assembly still needs to move into its role loop. Runtime role policy now prevents miner
+and validator roles from becoming local block producers even if they inherit local block-interval
+configuration.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
@@ -724,6 +736,7 @@ jobs are delivered through libp2p or the shared node event path
 receipts are produced by miner containers
 attestations are produced by validator containers
 blocks are produced from network-visible receipts and attestations
+block finality votes are produced by validator containers and gossiped/applied by non-producers
 TensorOp and LinearTrainingStep live jobs both settle after startup
 tensor rows/chunks/openings are fetched through the local tensor-server path
 live rewards accrue to miners and validators

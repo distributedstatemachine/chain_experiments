@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
+    BlockVote, ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
     Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole,
     NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads, PrimitiveType, ReceiptState,
     RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, SyntheticLocalJobSource, Tensor,
@@ -441,7 +441,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_block_payloads_ingested={}\nrole_network_block_payloads_applied={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_block_payloads={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nrole_p2p_latest_observed_block_payload_height={}\nrole_p2p_latest_observed_block_payload_hash={}\nrole_p2p_observed_block_payload_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_validator_block_votes_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_block_payloads_ingested={}\nrole_network_block_payloads_applied={}\nrole_network_block_votes_ingested={}\nrole_network_block_votes_applied={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_block_payloads={}\nrole_p2p_observed_block_votes={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nrole_p2p_latest_observed_block_payload_height={}\nrole_p2p_latest_observed_block_payload_hash={}\nrole_p2p_observed_block_payload_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -471,6 +471,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_validator_remote_tensor_fetch_bytes"),
         role_runtime_status_field(data_dir, "role_validator_remote_tensors_inserted"),
         role_runtime_status_field(data_dir, "role_validator_attestations_submitted"),
+        role_runtime_status_field(data_dir, "role_validator_block_votes_submitted"),
         role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
         role_runtime_status_field(data_dir, "role_produced_blocks"),
@@ -480,6 +481,8 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_network_block_headers_ingested"),
         role_runtime_status_field(data_dir, "role_network_block_payloads_ingested"),
         role_runtime_status_field(data_dir, "role_network_block_payloads_applied"),
+        role_runtime_status_field(data_dir, "role_network_block_votes_ingested"),
+        role_runtime_status_field(data_dir, "role_network_block_votes_applied"),
         role_runtime_status_field(data_dir, "role_network_job_events_ingested"),
         role_runtime_status_field(data_dir, "role_network_job_payloads_ingested"),
         role_runtime_status_field(data_dir, "role_network_job_payloads_applied"),
@@ -495,6 +498,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_p2p_connected_peers"),
         role_runtime_status_field(data_dir, "role_p2p_observed_blocks"),
         role_runtime_status_field(data_dir, "role_p2p_observed_block_payloads"),
+        role_runtime_status_field(data_dir, "role_p2p_observed_block_votes"),
         role_runtime_status_field(data_dir, "role_p2p_observed_jobs"),
         role_runtime_status_field(data_dir, "role_p2p_observed_receipts"),
         role_runtime_status_field(data_dir, "role_p2p_observed_attestations"),
@@ -549,6 +553,34 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let proposer_registered = chain.state.validators.contains_key(&block.proposer);
     let pow_hash = block.pow_hash();
     let pow_header_hash = block.pow_header_hash();
+    let block_votes = chain
+        .state
+        .block_votes
+        .get(&block_hash)
+        .cloned()
+        .unwrap_or_default();
+    let total_validator_stake = chain
+        .state
+        .validators
+        .values()
+        .map(|validator| validator.stake)
+        .sum::<u64>();
+    let finality_threshold_stake = finality_threshold_stake(&chain, total_validator_stake);
+    let mut seen_vote_validators = BTreeSet::new();
+    let mut valid_vote_validators = Vec::new();
+    let mut valid_vote_stake = 0_u64;
+    for vote in &block_votes {
+        let Some(validator) = chain.state.validators.get(&vote.validator) else {
+            continue;
+        };
+        if validator.stake != vote.stake || !vote.verify_signature() {
+            continue;
+        }
+        if seen_vote_validators.insert(vote.validator) {
+            valid_vote_validators.push(vote.validator);
+            valid_vote_stake = valid_vote_stake.saturating_add(vote.stake);
+        }
+    }
     let mut receipt_ids = Vec::new();
     let mut tensor_op_receipt_ids = Vec::new();
     let mut linear_training_receipt_ids = Vec::new();
@@ -570,7 +602,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         }
     }
     Ok(format!(
-        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nblock_validation=useful_verification_pow\nparent_hash={}\nproposer={}\nproposer_role=validator\nproposer_registered={}\ntensorwork_proposer_selection=false\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nsettled_receipt_set_root={}\nselected_receipt_ids={}\nselected_receipt_count={}\nselected_receipt_twu={}\nselected_receipt_bytes={}\nblock_twu_cap={}\nblock_byte_cap={}\nblock_receipt_cap={}\nchecks_root={}\ncheck_leaf_count={}\nchecks_root_recomputed={}\ndifficulty_target={}\nnonce={}\npow_header_hash={}\npow_hash={}\npow_valid={}\ncanonical_blockspace_valid={}\nfinality_validated_block={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
+        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nblock_validation=useful_verification_pow\nparent_hash={}\nproposer={}\nproposer_role=validator\nproposer_registered={}\ntensorwork_proposer_selection=false\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nsettled_receipt_set_root={}\nselected_receipt_ids={}\nselected_receipt_count={}\nselected_receipt_twu={}\nselected_receipt_bytes={}\nblock_twu_cap={}\nblock_byte_cap={}\nblock_receipt_cap={}\nchecks_root={}\ncheck_leaf_count={}\nchecks_root_recomputed={}\ndifficulty_target={}\nnonce={}\npow_header_hash={}\npow_hash={}\npow_valid={}\ncanonical_blockspace_valid={}\nblock_vote_count={}\nblock_vote_validators={}\nblock_vote_stake={}\nfinality_threshold_stake={}\nfinality_validated_block={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
         hex(&block_hash),
         hex(&block.parent_hash),
         hex(&block.proposer),
@@ -596,6 +628,10 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         hex(&pow_hash),
         block.pow_valid(),
         block_valid,
+        valid_vote_validators.len(),
+        hex_hash_list(&valid_vote_validators),
+        valid_vote_stake,
+        finality_threshold_stake,
         chain.is_block_finalized(&block_hash) && block_valid,
         receipt_ids.len(),
         hex_hash_list(&receipt_ids),
@@ -606,6 +642,15 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         settled_receipt_ids.len(),
         hex_hash_list(&settled_receipt_ids),
     ))
+}
+
+fn finality_threshold_stake(chain: &LocalChain, total_validator_stake: u64) -> u64 {
+    let numerator = chain.params.finality_stake_numerator;
+    let denominator = chain.params.finality_stake_denominator.max(1);
+    total_validator_stake
+        .saturating_mul(numerator)
+        .saturating_add(denominator.saturating_sub(1))
+        / denominator
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1015,6 +1060,11 @@ struct ValidatorRoleAttestationSubmission {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct ValidatorRoleBlockVoteSubmission {
+    block_votes_submitted: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ValidatorRemoteTensorFetchReport {
     attempts: usize,
     successes: usize,
@@ -1206,6 +1256,51 @@ fn submit_validator_role_attestation(
     Ok(Some(ValidatorRoleAttestationSubmission {
         attestations_submitted: 1,
     }))
+}
+
+fn submit_validator_role_block_vote(
+    node: &mut RpcNode,
+    validator: Address,
+) -> std::result::Result<Option<ValidatorRoleBlockVoteSubmission>, String> {
+    let Some(validator_state) = node.chain.state.validators.get(&validator) else {
+        return Ok(None);
+    };
+    let validator_stake = validator_state.stake;
+    let Some(block) = node
+        .chain
+        .blocks
+        .iter()
+        .rev()
+        .find(|block| {
+            let block_hash = block.hash();
+            !node.chain.is_block_finalized(&block_hash)
+                && !validator_has_block_vote(&node.chain, validator, block_hash)
+                && node.chain.validate_block(block).is_ok()
+        })
+        .cloned()
+    else {
+        return Ok(None);
+    };
+    let vote = BlockVote::new(validator, validator_stake, &block);
+    node.chain
+        .apply_command(ChainCommand::SubmitBlockVote(vote))
+        .map_err(|error| {
+            format!(
+                "validator role failed to submit block vote {}: {error}",
+                hex(&block.hash())
+            )
+        })?;
+    Ok(Some(ValidatorRoleBlockVoteSubmission {
+        block_votes_submitted: 1,
+    }))
+}
+
+fn validator_has_block_vote(chain: &LocalChain, validator: Address, block_hash: Hash) -> bool {
+    chain
+        .state
+        .block_votes
+        .get(&block_hash)
+        .is_some_and(|votes| votes.iter().any(|vote| vote.validator == validator))
 }
 
 fn role_receipt_bundle_from_local_tensors(
@@ -1424,7 +1519,8 @@ impl RoleRuntimeLoop {
         let should_persist = ingested.applied_blocks > 0
             || ingested.job_payloads_applied > 0
             || ingested.receipt_payloads_applied > 0
-            || ingested.attestation_payloads_applied > 0;
+            || ingested.attestation_payloads_applied > 0
+            || ingested.block_votes_applied > 0;
         self.runtime_state.record_network_ingest(ingested);
         if should_persist {
             self.store
@@ -1591,6 +1687,25 @@ impl RoleRuntimeLoop {
                 status_changed = true;
             }
         }
+        let announcement_checkpoint =
+            chain_announcement_checkpoint(&self.server.gateway().node.chain);
+        if let Some(submission) =
+            submit_validator_role_block_vote(&mut self.server.gateway_mut().node, validator)?
+        {
+            publish_new_chain_announcements(
+                &self.p2p_service,
+                &announcement_checkpoint,
+                &self.server.gateway().node.chain,
+            )?;
+            self.store
+                .persist_chain(&self.server.gateway().node.chain)
+                .map_err(|error| {
+                    format!("failed to persist validator block vote state: {error}")
+                })?;
+            self.runtime_state
+                .record_validator_block_vote_submission(submission.block_votes_submitted);
+            status_changed = true;
+        }
         if status_changed {
             self.write_status()?;
         }
@@ -1601,9 +1716,9 @@ impl RoleRuntimeLoop {
         let Some(interval) = self.block_interval else {
             return Ok(());
         };
-        if !self
+        if self
             .next_block_at
-            .is_some_and(|deadline| Instant::now() >= deadline)
+            .is_none_or(|deadline| Instant::now() < deadline)
         {
             return Ok(());
         }
@@ -1643,7 +1758,7 @@ impl RoleRuntimeLoop {
         let network = &self.config.node.network;
         let network_events = self.runtime_state.network_events();
         format!(
-            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_remote_tensor_fetch_attempts={}\nvalidator_remote_tensor_fetch_successes={}\nvalidator_remote_tensor_fetch_failures={}\nvalidator_remote_tensor_fetch_bytes={}\nvalidator_remote_tensors_inserted={}\nvalidator_attestations_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_block_payload_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_latest_observed_block_payload_height={}\np2p_latest_observed_block_payload_hash={}\np2p_observed_block_payload_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_block_payloads_ingested={}\nnetwork_block_payloads_applied={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_remote_tensor_fetch_attempts={}\nvalidator_remote_tensor_fetch_successes={}\nvalidator_remote_tensor_fetch_failures={}\nvalidator_remote_tensor_fetch_bytes={}\nvalidator_remote_tensors_inserted={}\nvalidator_attestations_submitted={}\nvalidator_block_votes_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_block_payload_gossip_count={}\np2p_observed_block_vote_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_latest_observed_block_payload_height={}\np2p_latest_observed_block_payload_hash={}\np2p_observed_block_payload_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_block_payloads_ingested={}\nnetwork_block_payloads_applied={}\nnetwork_block_votes_ingested={}\nnetwork_block_votes_applied={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
             self.config.runtime_command,
             self.config.role.label(),
             self.config.node.profile.label(),
@@ -1675,11 +1790,13 @@ impl RoleRuntimeLoop {
             self.runtime_state.validator_remote_tensor_fetch_bytes(),
             self.runtime_state.validator_remote_tensors_inserted(),
             self.runtime_state.validator_attestations_submitted(),
+            self.runtime_state.validator_block_votes_submitted(),
             network.rpc_listen,
             network.p2p_listen,
             self.p2p_service.connected_peer_count(),
             self.p2p_service.observed_block_gossip_count(),
             self.p2p_service.observed_block_payload_gossip_count(),
+            self.p2p_service.observed_block_vote_gossip_count(),
             self.p2p_service.observed_job_gossip_count(),
             self.p2p_service.observed_receipt_gossip_count(),
             self.p2p_service.observed_attestation_gossip_count(),
@@ -1695,6 +1812,8 @@ impl RoleRuntimeLoop {
             network_events.block_headers,
             network_events.block_payloads,
             network_events.block_payloads_applied,
+            network_events.block_votes,
+            network_events.block_votes_applied,
             network_events.jobs,
             network_events.job_payloads,
             network_events.job_payloads_applied,
@@ -1732,6 +1851,7 @@ struct RuntimeStatusSnapshot {
     p2p_connected_peers: usize,
     p2p_observed_blocks: usize,
     p2p_observed_block_payloads: usize,
+    p2p_observed_block_votes: usize,
     p2p_observed_jobs: usize,
     p2p_observed_receipts: usize,
     p2p_observed_attestations: usize,
@@ -1761,6 +1881,7 @@ struct RuntimeStatusSnapshot {
     validator_remote_tensor_fetch_bytes: usize,
     validator_remote_tensors_inserted: usize,
     validator_attestations_submitted: usize,
+    validator_block_votes_submitted: usize,
 }
 
 impl RuntimeStatusSnapshot {
@@ -1782,6 +1903,7 @@ impl RuntimeStatusSnapshot {
             p2p_connected_peers: p2p_service.connected_peer_count(),
             p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
             p2p_observed_block_payloads: p2p_service.observed_block_payload_gossip_count(),
+            p2p_observed_block_votes: p2p_service.observed_block_vote_gossip_count(),
             p2p_observed_jobs: p2p_service.observed_job_gossip_count(),
             p2p_observed_receipts: p2p_service.observed_receipt_gossip_count(),
             p2p_observed_attestations: p2p_service.observed_attestation_gossip_count(),
@@ -1822,6 +1944,7 @@ impl RuntimeStatusSnapshot {
             validator_remote_tensor_fetch_bytes: state.validator_remote_tensor_fetch_bytes(),
             validator_remote_tensors_inserted: state.validator_remote_tensors_inserted(),
             validator_attestations_submitted: state.validator_attestations_submitted(),
+            validator_block_votes_submitted: state.validator_block_votes_submitted(),
         }
     }
 }
@@ -1832,7 +1955,7 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_block_payloads_ingested={}\nrole_network_block_payloads_applied={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_block_payloads={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nrole_p2p_latest_observed_block_payload_height={}\nrole_p2p_latest_observed_block_payload_hash={}\nrole_p2p_observed_block_payload_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_validator_block_votes_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_block_payloads_ingested={}\nrole_network_block_payloads_applied={}\nrole_network_block_votes_ingested={}\nrole_network_block_votes_applied={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_block_payloads={}\nrole_p2p_observed_block_votes={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nrole_p2p_latest_observed_block_payload_height={}\nrole_p2p_latest_observed_block_payload_hash={}\nrole_p2p_observed_block_payload_hashes={}\n",
         config.runtime_command,
         config.role.label(),
         config.node.profile.label(),
@@ -1856,6 +1979,7 @@ fn write_role_runtime_status(
         snapshot.validator_remote_tensor_fetch_bytes,
         snapshot.validator_remote_tensors_inserted,
         snapshot.validator_attestations_submitted,
+        snapshot.validator_block_votes_submitted,
         snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
@@ -1865,6 +1989,8 @@ fn write_role_runtime_status(
         snapshot.network_events.block_headers,
         snapshot.network_events.block_payloads,
         snapshot.network_events.block_payloads_applied,
+        snapshot.network_events.block_votes,
+        snapshot.network_events.block_votes_applied,
         snapshot.network_events.jobs,
         snapshot.network_events.job_payloads,
         snapshot.network_events.job_payloads_applied,
@@ -1880,6 +2006,7 @@ fn write_role_runtime_status(
         snapshot.p2p_connected_peers,
         snapshot.p2p_observed_blocks,
         snapshot.p2p_observed_block_payloads,
+        snapshot.p2p_observed_block_votes,
         snapshot.p2p_observed_jobs,
         snapshot.p2p_observed_receipts,
         snapshot.p2p_observed_attestations,
@@ -2324,6 +2451,8 @@ mod tests {
         assert_eq!(state.network_events().receipt_payloads, 1);
         assert_eq!(state.network_events().receipt_payloads_applied, 1);
         assert!(state.pending_payloads().is_empty());
+        state.record_validator_block_vote_submission(1);
+        assert_eq!(state.validator_block_votes_submitted(), 1);
     }
 
     #[test]
@@ -2852,6 +2981,55 @@ mod tests {
         assert!(observation.unattested_receipts.is_empty());
         assert!(observation.artifact_ready_receipts.is_empty());
         assert!(observation.artifact_missing_receipts.is_empty());
+    }
+
+    #[test]
+    fn validator_role_block_vote_submission_finalizes_only_through_votes() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-block-vote"]));
+        let validators = [
+            address(b"validator-block-vote-a"),
+            address(b"validator-block-vote-b"),
+            address(b"validator-block-vote-c"),
+        ];
+        for validator in validators {
+            chain
+                .register_validator(validator, chain.params.validator_min_stake)
+                .unwrap();
+        }
+        let block = chain.produce_block(validators[0], 1_000).unwrap();
+        let block_hash = block.hash();
+        let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+
+        assert!(!node.chain.is_block_finalized(&block_hash));
+        assert!(!node.chain.state.block_votes.contains_key(&block_hash));
+        assert!(
+            submit_validator_role_block_vote(&mut node, address(b"unknown-block-voter"))
+                .unwrap()
+                .is_none()
+        );
+
+        let first = submit_validator_role_block_vote(&mut node, validators[0])
+            .unwrap()
+            .expect("registered validator should vote on an unfinalized block");
+        assert_eq!(first.block_votes_submitted, 1);
+        assert!(!node.chain.is_block_finalized(&block_hash));
+        assert_eq!(node.chain.state.block_votes[&block_hash].len(), 1);
+        assert!(
+            submit_validator_role_block_vote(&mut node, validators[0])
+                .unwrap()
+                .is_none()
+        );
+
+        let second = submit_validator_role_block_vote(&mut node, validators[1])
+            .unwrap()
+            .expect("second validator should reach the finality threshold");
+        assert_eq!(second.block_votes_submitted, 1);
+        assert!(node.chain.is_block_finalized(&block_hash));
+        assert!(
+            submit_validator_role_block_vote(&mut node, validators[2])
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

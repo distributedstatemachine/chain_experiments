@@ -995,7 +995,7 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
         stdout_value(&status, "finalized_block_count")
             .parse::<u64>()
             .expect("service status finalized block count must parse")
-            > 2
+            >= 2
     );
     assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
     let first_live_block_hash = stdout_value(&status, "first_live_block_hash");
@@ -1029,7 +1029,10 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(block.contains("pow_hash="));
     assert_eq!(stdout_value(&block, "pow_valid"), "true");
     assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
-    assert_eq!(stdout_value(&block, "finalized"), "true");
+    assert_eq!(stdout_value(&block, "finalized"), "false");
+    assert_eq!(stdout_value(&block, "block_vote_count"), "0");
+    assert_eq!(stdout_value(&block, "block_vote_validators"), "none");
+    assert_eq!(stdout_value(&block, "finality_validated_block"), "false");
     assert!(
         stdout_value(&block, "receipt_count")
             .parse::<u64>()
@@ -1188,11 +1191,13 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("validator_remote_tensor_fetch_bytes="));
         assert!(stdout.contains("validator_remote_tensors_inserted="));
         assert!(stdout.contains("validator_attestations_submitted="));
+        assert!(stdout.contains("validator_block_votes_submitted="));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
         assert!(stdout.contains("p2p_observed_block_gossip_count="));
         assert!(stdout.contains("p2p_observed_block_payload_gossip_count="));
+        assert!(stdout.contains("p2p_observed_block_vote_gossip_count="));
         assert!(stdout.contains("p2p_observed_job_gossip_count="));
         assert!(stdout.contains("p2p_observed_receipt_gossip_count="));
         assert!(stdout.contains("p2p_observed_attestation_gossip_count="));
@@ -1207,6 +1212,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("network_events_ingested=0"));
         assert!(stdout.contains("network_block_payloads_ingested=0"));
         assert!(stdout.contains("network_block_payloads_applied=0"));
+        assert!(stdout.contains("network_block_votes_ingested=0"));
+        assert!(stdout.contains("network_block_votes_applied=0"));
         assert!(stdout.contains("network_invalid_events=0"));
 
         let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
@@ -1236,6 +1243,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_validator_remote_tensor_fetch_bytes="));
         assert!(status.contains("role_validator_remote_tensors_inserted="));
         assert!(status.contains("role_validator_attestations_submitted="));
+        assert!(status.contains("role_validator_block_votes_submitted="));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));
@@ -1244,6 +1252,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_network_block_headers_ingested=0"));
         assert!(status.contains("role_network_block_payloads_ingested=0"));
         assert!(status.contains("role_network_block_payloads_applied=0"));
+        assert!(status.contains("role_network_block_votes_ingested=0"));
+        assert!(status.contains("role_network_block_votes_applied=0"));
         assert!(status.contains("role_network_job_events_ingested=0"));
         assert!(status.contains("role_network_job_payloads_ingested=0"));
         assert!(status.contains("role_network_job_payloads_applied=0"));
@@ -1258,6 +1268,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_p2p_connected_peers="));
         assert!(status.contains("role_p2p_observed_blocks="));
         assert!(status.contains("role_p2p_observed_block_payloads="));
+        assert!(status.contains("role_p2p_observed_block_votes="));
         assert!(status.contains("role_p2p_observed_jobs="));
         assert!(status.contains("role_p2p_observed_receipts="));
         assert!(status.contains("role_p2p_observed_attestations="));

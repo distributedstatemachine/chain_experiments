@@ -170,6 +170,7 @@ pub struct TensorVmLibp2pService {
     connected_peer_count: Arc<AtomicUsize>,
     observed_block_gossip_count: Arc<AtomicUsize>,
     observed_block_payload_gossip_count: Arc<AtomicUsize>,
+    observed_block_vote_gossip_count: Arc<AtomicUsize>,
     observed_job_gossip_count: Arc<AtomicUsize>,
     observed_receipt_gossip_count: Arc<AtomicUsize>,
     observed_attestation_gossip_count: Arc<AtomicUsize>,
@@ -222,6 +223,11 @@ impl TensorVmLibp2pService {
 
     pub fn observed_block_payload_gossip_count(&self) -> usize {
         self.observed_block_payload_gossip_count
+            .load(Ordering::Relaxed)
+    }
+
+    pub fn observed_block_vote_gossip_count(&self) -> usize {
+        self.observed_block_vote_gossip_count
             .load(Ordering::Relaxed)
     }
 
@@ -422,6 +428,8 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let observed_block_payload_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_block_payload_gossip_count =
         Arc::clone(&observed_block_payload_gossip_count);
+    let observed_block_vote_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_block_vote_gossip_count = Arc::clone(&observed_block_vote_gossip_count);
     let observed_job_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_job_gossip_count = Arc::clone(&observed_job_gossip_count);
     let observed_receipt_gossip_count = Arc::new(AtomicUsize::new(0));
@@ -481,6 +489,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 observed_block_gossip_count: worker_observed_block_gossip_count.as_ref(),
                 observed_block_payload_gossip_count: worker_observed_block_payload_gossip_count
                     .as_ref(),
+                observed_block_vote_gossip_count: worker_observed_block_vote_gossip_count.as_ref(),
                 observed_job_gossip_count: worker_observed_job_gossip_count.as_ref(),
                 observed_receipt_gossip_count: worker_observed_receipt_gossip_count.as_ref(),
                 observed_attestation_gossip_count: worker_observed_attestation_gossip_count
@@ -566,6 +575,7 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             connected_peer_count,
             observed_block_gossip_count,
             observed_block_payload_gossip_count,
+            observed_block_vote_gossip_count,
             observed_job_gossip_count,
             observed_receipt_gossip_count,
             observed_attestation_gossip_count,
@@ -594,6 +604,7 @@ struct ServiceEventMetrics<'a> {
     connected_peer_count: &'a AtomicUsize,
     observed_block_gossip_count: &'a AtomicUsize,
     observed_block_payload_gossip_count: &'a AtomicUsize,
+    observed_block_vote_gossip_count: &'a AtomicUsize,
     observed_job_gossip_count: &'a AtomicUsize,
     observed_receipt_gossip_count: &'a AtomicUsize,
     observed_attestation_gossip_count: &'a AtomicUsize,
@@ -693,6 +704,11 @@ fn handle_swarm_event(
                     if let Ok(mut block_hashes) = metrics.observed_block_payload_hashes.lock() {
                         remember_observed_block_hash(&mut block_hashes, *block_hash);
                     }
+                }
+                if matches!(&message, P2pMessage::NewBlockVotePayload { .. }) {
+                    metrics
+                        .observed_block_vote_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
                 }
                 if matches!(
                     &message,
@@ -1261,7 +1277,7 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         18 => {
             let height = reader.read_u64()?;
             let block_hash = reader.read_hash()?;
-            let payload = reader.read_bytes()?;
+            let payload = reader.read_bytes_with_max(BLOCK_PAYLOAD_LEN)?;
             let block = decode_block_payload(&payload)?;
             if block.height != height || block.hash() != block_hash {
                 return Err(TvmError::InvalidReceipt(
@@ -1277,7 +1293,7 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         19 => {
             let block_hash = reader.read_hash()?;
             let validator = reader.read_hash()?;
-            let payload = reader.read_bytes()?;
+            let payload = reader.read_bytes_with_max(BLOCK_VOTE_PAYLOAD_LEN)?;
             let vote = decode_block_vote_payload(&payload)?;
             if vote.block_hash != block_hash || vote.validator != validator {
                 return Err(TvmError::InvalidReceipt(
@@ -1321,7 +1337,11 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         8 => {
             let tensor_id = reader.read_hash()?;
             let row_index = reader.read_u64()?;
-            let len = reader.read_u64()? as usize;
+            let len = usize::try_from(reader.read_u64()?)
+                .map_err(|_| TvmError::InvalidReceipt("tensor row length overflow"))?;
+            if len > MAX_TENSOR_VALUES {
+                return Err(TvmError::InvalidReceipt("tensor row response too large"));
+            }
             let mut values = Vec::with_capacity(len);
             for _ in 0..len {
                 values.push(reader.read_u64()?);
@@ -1939,9 +1959,13 @@ impl<'a> Reader<'a> {
     }
 
     fn read_bytes(&mut self) -> TvmResult<Vec<u8>> {
+        self.read_bytes_with_max(MAX_WIRE_BYTES)
+    }
+
+    fn read_bytes_with_max(&mut self, max_len: usize) -> TvmResult<Vec<u8>> {
         let len = usize::try_from(self.read_u64()?)
             .map_err(|_| TvmError::InvalidReceipt("p2p byte length overflow"))?;
-        if len > MAX_WIRE_BYTES {
+        if len > max_len {
             return Err(TvmError::InvalidReceipt("p2p byte payload too large"));
         }
         Ok(self.read_exact(len)?.to_vec())
@@ -2242,6 +2266,47 @@ mod tests {
         assert!(decode_message(&wrong_hash).is_err());
         wrong_hash.pop();
         assert!(decode_message(&wrong_hash).is_err());
+    }
+
+    #[test]
+    fn block_vote_payloads_roundtrip_and_reject_malformed_edges() {
+        let block = wire_test_block(b"block-vote-payload-codec", 10);
+        let vote = BlockVote::new(address(b"block-vote-codec-validator"), 10_000, &block);
+        let payload = encode_block_vote_payload(&vote);
+
+        assert_eq!(decode_block_vote_payload(&payload).unwrap(), vote);
+        assert!(decode_block_vote_payload(&payload[..payload.len() - 1]).is_err());
+
+        let mut trailing = payload.clone();
+        trailing.push(0);
+        assert!(decode_block_vote_payload(&trailing).is_err());
+
+        let mut wrong_hash = encode_message(&P2pMessage::NewBlockVotePayload {
+            block_hash: hash_bytes(b"test", &[b"wrong-block-vote-hash"]),
+            validator: vote.validator,
+            payload: payload.clone(),
+        });
+        assert!(decode_message(&wrong_hash).is_err());
+        wrong_hash.pop();
+        assert!(decode_message(&wrong_hash).is_err());
+
+        let wrong_validator = encode_message(&P2pMessage::NewBlockVotePayload {
+            block_hash: vote.block_hash,
+            validator: address(b"wrong-block-vote-validator"),
+            payload,
+        });
+        assert!(decode_message(&wrong_validator).is_err());
+    }
+
+    #[test]
+    fn tensor_row_response_rejects_oversized_len_before_allocation() {
+        let mut payload = Vec::new();
+        payload.push(8);
+        write_hash(&mut payload, &hash_bytes(b"test", &[b"oversized-row"]));
+        write_u64(&mut payload, 0);
+        write_u64(&mut payload, (MAX_TENSOR_VALUES + 1) as u64);
+
+        assert!(decode_message(&payload).is_err());
     }
 
     #[test]
@@ -2858,6 +2923,12 @@ mod tests {
         );
         let block_payload = wire_test_block(b"libp2p-service-observed-block-payload", 8);
         wait_for_observed_block_payload(&service_a, &service_b, &block_payload);
+        let block_vote = BlockVote::new(
+            address(b"libp2p-observed-vote-validator"),
+            10_000,
+            &block_payload,
+        );
+        wait_for_observed_block_vote(&service_a, &service_b, &block_vote);
         wait_for_observed_consensus_gossip(&service_a, &service_b);
         let observed_messages = service_b.drain_observed_messages();
         assert!(
@@ -2874,6 +2945,11 @@ mod tests {
             observed_messages
                 .iter()
                 .any(|message| matches!(message, P2pMessage::NewBlockPayload { height: 8, .. }))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewBlockVotePayload { .. }))
         );
         assert!(
             observed_messages
@@ -3194,6 +3270,26 @@ mod tests {
                 .observed_block_payload_hashes()
                 .contains(&block_hash)
         );
+    }
+
+    fn wait_for_observed_block_vote(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        vote: &BlockVote,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline && observer.observed_block_vote_gossip_count() == 0 {
+            publisher
+                .publish_gossip(P2pMessage::NewBlockVotePayload {
+                    block_hash: vote.block_hash,
+                    validator: vote.validator,
+                    payload: encode_block_vote_payload(vote),
+                })
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert!(observer.observed_block_vote_gossip_count() > 0);
     }
 
     fn wait_for_stale_block_announcements_to_preserve_latest_header(
