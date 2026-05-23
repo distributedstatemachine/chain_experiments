@@ -491,6 +491,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     ))
 }
 
+#[derive(Clone, Copy, Debug)]
 struct RoleServiceConfig<'a> {
     wallet: &'a str,
     device: Option<&'a str>,
@@ -504,67 +505,108 @@ struct RoleServiceConfig<'a> {
 }
 
 fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        runtime_command: "miner_run",
-        role: RuntimeRole::Miner,
-        role_wallet_address: Some(role_wallet_address(config.wallet)?),
-        node: runtime_node_config(
-            config.data_dir,
-            RuntimeRole::Miner,
-            config.listen,
-            config.p2p_listen,
-            config.identity_seed,
-            config.auth_token,
-            config.max_requests,
-        )?,
-    })?;
-    let device = config.device.unwrap_or("unknown");
-    Ok(format!(
-        "command=miner_run\nrole=miner\nwallet={}\ndevice={device}\nnode={}\nrole_runtime_ready=true\n{service_report}",
-        config.wallet, config.node
-    ))
+    RoleRunLoop::miner().run(config)
 }
 
 fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        runtime_command: "validator_run",
-        role: RuntimeRole::Validator,
-        role_wallet_address: Some(role_wallet_address(config.wallet)?),
-        node: runtime_node_config(
-            config.data_dir,
-            RuntimeRole::Validator,
-            config.listen,
-            config.p2p_listen,
-            config.identity_seed,
-            config.auth_token,
-            config.max_requests,
-        )?,
-    })?;
-    Ok(format!(
-        "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
-        config.wallet, config.node
-    ))
+    RoleRunLoop::validator().run(config)
 }
 
 fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
-        runtime_command: "proposer_run",
-        role: RuntimeRole::Proposer,
-        role_wallet_address: Some(role_wallet_address(config.wallet)?),
-        node: runtime_node_config(
-            config.data_dir,
-            RuntimeRole::Proposer,
-            config.listen,
-            config.p2p_listen,
-            config.identity_seed,
-            config.auth_token,
-            config.max_requests,
-        )?,
-    })?;
-    Ok(format!(
-        "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
-        config.wallet, config.node
-    ))
+    RoleRunLoop::proposer().run(config)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RoleRunLoopKind {
+    Miner,
+    Validator,
+    Proposer,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RoleRunLoop {
+    kind: RoleRunLoopKind,
+}
+
+impl RoleRunLoop {
+    fn miner() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Miner,
+        }
+    }
+
+    fn validator() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Validator,
+        }
+    }
+
+    fn proposer() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Proposer,
+        }
+    }
+
+    fn runtime_command(self) -> &'static str {
+        match self.kind {
+            RoleRunLoopKind::Miner => "miner_run",
+            RoleRunLoopKind::Validator => "validator_run",
+            RoleRunLoopKind::Proposer => "proposer_run",
+        }
+    }
+
+    fn runtime_role(self) -> RuntimeRole {
+        match self.kind {
+            RoleRunLoopKind::Miner => RuntimeRole::Miner,
+            RoleRunLoopKind::Validator => RuntimeRole::Validator,
+            RoleRunLoopKind::Proposer => RuntimeRole::Proposer,
+        }
+    }
+
+    fn service_runtime_config(
+        self,
+        config: RoleServiceConfig<'_>,
+    ) -> std::result::Result<ServiceRuntimeConfig, String> {
+        let role = self.runtime_role();
+        Ok(ServiceRuntimeConfig {
+            runtime_command: self.runtime_command(),
+            role,
+            role_wallet_address: Some(role_wallet_address(config.wallet)?),
+            node: runtime_node_config(
+                config.data_dir,
+                role,
+                config.listen,
+                config.p2p_listen,
+                config.identity_seed,
+                config.auth_token,
+                config.max_requests,
+            )?,
+        })
+    }
+
+    fn run(self, config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
+        let service_report = run_role_runtime_loop(self.service_runtime_config(config)?)?;
+        Ok(self.format_report(config, &service_report))
+    }
+
+    fn format_report(self, config: RoleServiceConfig<'_>, service_report: &str) -> String {
+        match self.kind {
+            RoleRunLoopKind::Miner => format!(
+                "command=miner_run\nrole=miner\nwallet={}\ndevice={}\nnode={}\nrole_runtime_ready=true\n{service_report}",
+                config.wallet,
+                config.device.unwrap_or("unknown"),
+                config.node
+            ),
+            RoleRunLoopKind::Validator => format!(
+                "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
+                config.wallet, config.node
+            ),
+            RoleRunLoopKind::Proposer => format!(
+                "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
+                config.wallet, config.node
+            ),
+        }
+    }
 }
 
 fn serve_service(
@@ -575,7 +617,7 @@ fn serve_service(
     auth_token: &str,
     max_requests: usize,
 ) -> std::result::Result<String, String> {
-    serve_service_with_runtime(ServiceRuntimeConfig {
+    run_role_runtime_loop(ServiceRuntimeConfig {
         runtime_command: "service_serve",
         role: RuntimeRole::Service,
         role_wallet_address: None,
@@ -654,8 +696,9 @@ fn runtime_node_config(
     )
 }
 
-struct ServiceRuntimeConfig<'a> {
-    runtime_command: &'a str,
+#[derive(Debug)]
+struct ServiceRuntimeConfig {
+    runtime_command: &'static str,
     role: RuntimeRole,
     role_wallet_address: Option<Address>,
     node: NodeConfig,
@@ -716,234 +759,284 @@ fn runtime_role_wallet_registered(
     )
 }
 
-fn serve_service_with_runtime(
-    config: ServiceRuntimeConfig<'_>,
-) -> std::result::Result<String, String> {
-    let network = &config.node.network;
-    let store = NodeStore::open(config.node.data_dir());
-    let chain = store.load_chain().map_err(|error| {
-        format!(
-            "failed to load node store {}: {error}",
-            config.node.data_dir().display()
-        )
-    })?;
-    let bootstrap_addresses = if store.peer_book_store().path().exists() {
-        store
-            .peer_book_store()
-            .load_bootstrap_addresses()
-            .map_err(|error| {
-                format!(
-                    "failed to load libp2p peer book {}: {error}",
-                    config.node.data_dir().display()
-                )
-            })?
-    } else {
-        Vec::new()
-    };
-    let bootstrap_peer_count = bootstrap_addresses.len();
-    let p2p_config = Libp2pControlPlaneConfig {
-        listen_addresses: vec![network.p2p_listen.clone()],
-        bootstrap_addresses,
-        identity_seed: network.identity_seed,
-        ..Libp2pControlPlaneConfig::default()
-    };
-    let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
-    let request_timeout_seconds = p2p_config.request_timeout_seconds;
-    let max_concurrent_streams = p2p_config.max_concurrent_request_streams;
-    let idle_timeout_seconds = p2p_config.idle_connection_timeout_seconds;
-    let p2p_service = spawn_libp2p_service(p2p_config)
-        .map_err(|error| format!("failed to start mandatory libp2p service: {error}"))?;
-    let p2p_peer_id = p2p_service.peer_id().to_string();
-    let p2p_topics = p2p_service.info().subscribed_topics.len();
-    let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
-    let identity = p2p_identity_report(network.identity_seed);
-    let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
-    let gateway = RpcGateway::new(
-        node,
-        RpcPolicy {
-            auth_token: Some(network.auth_token.clone()),
-            ..RpcPolicy::default()
-        },
-    );
-    let mut server = RpcHttpServer::bind(&network.rpc_listen, gateway).map_err(|error| {
-        format!(
-            "failed to bind service listener {}: {error}",
-            network.rpc_listen
-        )
-    })?;
-    let block_interval = config.node.synthetic_block_interval();
-    let mut next_block_at = block_interval.map(|interval| Instant::now() + interval);
-    let local_producer = config.node.local_synthetic_producer();
-    let mut runtime_state = NodeRuntimeState::default();
-    write_role_runtime_status(
-        &config,
-        &RoleRuntimeStatusSnapshot::from_runtime_state(
-            &runtime_state,
-            &server,
-            &p2p_service,
-            local_producer,
-            config.role,
-            config.role_wallet_address,
-        ),
-    )?;
-    if block_interval.is_some() {
-        server.set_nonblocking(true).map_err(|error| {
-            format!("failed to configure nonblocking service listener: {error}")
+fn run_role_runtime_loop(config: ServiceRuntimeConfig) -> std::result::Result<String, String> {
+    let mut runtime = RoleRuntimeLoop::start(config)?;
+    runtime.run_until_max_requests()?;
+    Ok(runtime.report())
+}
+
+struct RoleRuntimeLoop {
+    config: ServiceRuntimeConfig,
+    store: NodeStore,
+    server: RpcHttpServer,
+    p2p_service: TensorVmLibp2pService,
+    local_producer: bool,
+    block_interval: Option<Duration>,
+    next_block_at: Option<Instant>,
+    runtime_state: NodeRuntimeState,
+    p2p_peer_id: String,
+    p2p_topics: usize,
+    p2p_request_response_protocols: usize,
+    bootstrap_peer_count: usize,
+    identity: String,
+    max_transmit_bytes: usize,
+    request_timeout_seconds: u64,
+    max_concurrent_streams: usize,
+    idle_timeout_seconds: u64,
+}
+
+impl RoleRuntimeLoop {
+    fn start(config: ServiceRuntimeConfig) -> std::result::Result<Self, String> {
+        let network = &config.node.network;
+        let store = NodeStore::open(config.node.data_dir());
+        let chain = store.load_chain().map_err(|error| {
+            format!(
+                "failed to load node store {}: {error}",
+                config.node.data_dir().display()
+            )
         })?;
-    }
-    loop {
-        if network.max_requests != 0 && runtime_state.served_requests() >= network.max_requests {
-            break;
-        }
-        if let Some(interval) = block_interval {
-            match server.serve_next() {
-                Ok(()) => {
-                    store
-                        .persist_chain(&server.gateway().node.chain)
-                        .map_err(|error| format!("failed to persist service state: {error}"))?;
-                    runtime_state.record_served_request();
-                    write_role_runtime_status(
-                        &config,
-                        &RoleRuntimeStatusSnapshot::from_runtime_state(
-                            &runtime_state,
-                            &server,
-                            &p2p_service,
-                            local_producer,
-                            config.role,
-                            config.role_wallet_address,
-                        ),
-                    )?;
-                }
-                Err(error) if error.kind() == ErrorKind::WouldBlock => {}
-                Err(error) => return Err(format!("service request failed: {error}")),
-            }
-            let ingested = ingest_network_events(
-                &mut server,
-                &p2p_service,
-                local_producer,
-                runtime_state.pending_payloads_mut(),
-            )?;
-            if ingested.has_activity() {
-                runtime_state.record_network_ingest(ingested);
-                if ingested.applied_blocks > 0
-                    || ingested.job_payloads_applied > 0
-                    || ingested.receipt_payloads_applied > 0
-                    || ingested.attestation_payloads_applied > 0
-                {
-                    store
-                        .persist_chain(&server.gateway().node.chain)
-                        .map_err(|error| {
-                            format!("failed to persist network-applied state: {error}")
-                        })?;
-                }
-                write_role_runtime_status(
-                    &config,
-                    &RoleRuntimeStatusSnapshot::from_runtime_state(
-                        &runtime_state,
-                        &server,
-                        &p2p_service,
-                        local_producer,
-                        config.role,
-                        config.role_wallet_address,
-                    ),
-                )?;
-            }
-            if next_block_at.is_some_and(|deadline| Instant::now() >= deadline) {
-                if local_producer
-                    && produce_and_publish_synthetic_round(
-                        &mut server,
-                        &p2p_service,
-                        &config.node.profile,
-                    )?
-                    .is_some()
-                {
-                    store
-                        .persist_chain(&server.gateway().node.chain)
-                        .map_err(|error| format!("failed to persist produced block: {error}"))?;
-                    runtime_state.record_produced_block();
-                    write_role_runtime_status(
-                        &config,
-                        &RoleRuntimeStatusSnapshot::from_runtime_state(
-                            &runtime_state,
-                            &server,
-                            &p2p_service,
-                            local_producer,
-                            config.role,
-                            config.role_wallet_address,
-                        ),
-                    )?;
-                }
-                next_block_at = Some(Instant::now() + interval);
-            }
-            thread::sleep(Duration::from_millis(25));
+        let bootstrap_addresses = if store.peer_book_store().path().exists() {
+            store
+                .peer_book_store()
+                .load_bootstrap_addresses()
+                .map_err(|error| {
+                    format!(
+                        "failed to load libp2p peer book {}: {error}",
+                        config.node.data_dir().display()
+                    )
+                })?
         } else {
-            server
+            Vec::new()
+        };
+        let bootstrap_peer_count = bootstrap_addresses.len();
+        let p2p_config = Libp2pControlPlaneConfig {
+            listen_addresses: vec![network.p2p_listen.clone()],
+            bootstrap_addresses,
+            identity_seed: network.identity_seed,
+            ..Libp2pControlPlaneConfig::default()
+        };
+        let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
+        let request_timeout_seconds = p2p_config.request_timeout_seconds;
+        let max_concurrent_streams = p2p_config.max_concurrent_request_streams;
+        let idle_timeout_seconds = p2p_config.idle_connection_timeout_seconds;
+        let p2p_service = spawn_libp2p_service(p2p_config)
+            .map_err(|error| format!("failed to start mandatory libp2p service: {error}"))?;
+        let p2p_peer_id = p2p_service.peer_id().to_string();
+        let p2p_topics = p2p_service.info().subscribed_topics.len();
+        let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
+        let identity = p2p_identity_report(network.identity_seed);
+        let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+        let gateway = RpcGateway::new(
+            node,
+            RpcPolicy {
+                auth_token: Some(network.auth_token.clone()),
+                ..RpcPolicy::default()
+            },
+        );
+        let server = RpcHttpServer::bind(&network.rpc_listen, gateway).map_err(|error| {
+            format!(
+                "failed to bind service listener {}: {error}",
+                network.rpc_listen
+            )
+        })?;
+        let block_interval = config.node.synthetic_block_interval();
+        let next_block_at = block_interval.map(|interval| Instant::now() + interval);
+        let local_producer = config.node.local_synthetic_producer();
+        Ok(Self {
+            config,
+            store,
+            server,
+            p2p_service,
+            local_producer,
+            block_interval,
+            next_block_at,
+            runtime_state: NodeRuntimeState::default(),
+            p2p_peer_id,
+            p2p_topics,
+            p2p_request_response_protocols,
+            bootstrap_peer_count,
+            identity,
+            max_transmit_bytes,
+            request_timeout_seconds,
+            max_concurrent_streams,
+            idle_timeout_seconds,
+        })
+    }
+
+    fn run_until_max_requests(&mut self) -> std::result::Result<(), String> {
+        self.write_status()?;
+        if self.block_interval.is_some() {
+            self.server.set_nonblocking(true).map_err(|error| {
+                format!("failed to configure nonblocking service listener: {error}")
+            })?;
+        }
+        loop {
+            if self.max_requests_reached() {
+                break;
+            }
+            self.serve_rpc_once()?;
+            if self.block_interval.is_some() {
+                self.ingest_network_once()?;
+                self.produce_local_round_if_due()?;
+                thread::sleep(Duration::from_millis(25));
+            }
+        }
+        Ok(())
+    }
+
+    fn max_requests_reached(&self) -> bool {
+        let max_requests = self.config.node.network.max_requests;
+        max_requests != 0 && self.runtime_state.served_requests() >= max_requests
+    }
+
+    fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
+        if self.block_interval.is_some() {
+            match self.server.serve_next() {
+                Ok(()) => self.record_served_request(),
+                Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(()),
+                Err(error) => Err(format!("service request failed: {error}")),
+            }
+        } else {
+            self.server
                 .serve_next()
                 .map_err(|error| format!("service request failed: {error}"))?;
-            store
-                .persist_chain(&server.gateway().node.chain)
-                .map_err(|error| format!("failed to persist service state: {error}"))?;
-            runtime_state.record_served_request();
-            write_role_runtime_status(
-                &config,
-                &RoleRuntimeStatusSnapshot::from_runtime_state(
-                    &runtime_state,
-                    &server,
-                    &p2p_service,
-                    local_producer,
-                    config.role,
-                    config.role_wallet_address,
-                ),
-            )?;
+            self.record_served_request()
         }
     }
-    let network_events = runtime_state.network_events();
-    Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
-        config.runtime_command,
-        config.role.label(),
-        config.node.profile.label(),
-        config.node.can_produce_local_blocks(),
-        runtime_role_wallet_address_text(config.role_wallet_address),
-        runtime_role_wallet_registration(
-            config.role,
-            config.role_wallet_address,
-            &server.gateway().node.chain
-        ),
-        runtime_role_wallet_registered(
-            config.role,
-            config.role_wallet_address,
-            &server.gateway().node.chain
-        ),
-        network.rpc_listen,
-        network.p2p_listen,
-        p2p_service.connected_peer_count(),
-        p2p_service.observed_block_gossip_count(),
-        p2p_service.observed_job_gossip_count(),
-        p2p_service.observed_receipt_gossip_count(),
-        p2p_service.observed_attestation_gossip_count(),
-        p2p_service.latest_observed_block_height(),
-        hex(&p2p_service.latest_observed_block_hash()),
-        hex_hash_list(&p2p_service.observed_block_hashes()),
-        config.node.data_dir().display(),
-        network_events.events,
-        network_events.block_announcements,
-        network_events.block_headers,
-        network_events.jobs,
-        network_events.job_payloads,
-        network_events.job_payloads_applied,
-        network_events.receipts,
-        network_events.receipt_payloads,
-        network_events.receipt_payloads_applied,
-        network_events.attestations,
-        network_events.attestation_payloads,
-        network_events.attestation_payloads_applied,
-        network_events.peers,
-        network_events.invalid_events,
-        served_requests = runtime_state.served_requests(),
-        produced_blocks = runtime_state.produced_blocks(),
-        network_applied_blocks = runtime_state.network_applied_blocks()
-    ))
+
+    fn record_served_request(&mut self) -> std::result::Result<(), String> {
+        self.store
+            .persist_chain(&self.server.gateway().node.chain)
+            .map_err(|error| format!("failed to persist service state: {error}"))?;
+        self.runtime_state.record_served_request();
+        self.write_status()
+    }
+
+    fn ingest_network_once(&mut self) -> std::result::Result<(), String> {
+        let ingested = ingest_network_events(
+            &mut self.server,
+            &self.p2p_service,
+            self.local_producer,
+            self.runtime_state.pending_payloads_mut(),
+        )?;
+        if !ingested.has_activity() {
+            return Ok(());
+        }
+        let should_persist = ingested.applied_blocks > 0
+            || ingested.job_payloads_applied > 0
+            || ingested.receipt_payloads_applied > 0
+            || ingested.attestation_payloads_applied > 0;
+        self.runtime_state.record_network_ingest(ingested);
+        if should_persist {
+            self.store
+                .persist_chain(&self.server.gateway().node.chain)
+                .map_err(|error| format!("failed to persist network-applied state: {error}"))?;
+        }
+        self.write_status()
+    }
+
+    fn produce_local_round_if_due(&mut self) -> std::result::Result<(), String> {
+        let Some(interval) = self.block_interval else {
+            return Ok(());
+        };
+        if !self
+            .next_block_at
+            .is_some_and(|deadline| Instant::now() >= deadline)
+        {
+            return Ok(());
+        }
+        if self.local_producer
+            && produce_and_publish_synthetic_round(
+                &mut self.server,
+                &self.p2p_service,
+                &self.config.node.profile,
+            )?
+            .is_some()
+        {
+            self.store
+                .persist_chain(&self.server.gateway().node.chain)
+                .map_err(|error| format!("failed to persist produced block: {error}"))?;
+            self.runtime_state.record_produced_block();
+            self.write_status()?;
+        }
+        self.next_block_at = Some(Instant::now() + interval);
+        Ok(())
+    }
+
+    fn write_status(&self) -> std::result::Result<(), String> {
+        write_role_runtime_status(
+            &self.config,
+            &RoleRuntimeStatusSnapshot::from_runtime_state(
+                &self.runtime_state,
+                &self.server,
+                &self.p2p_service,
+                self.local_producer,
+                self.config.role,
+                self.config.role_wallet_address,
+            ),
+        )
+    }
+
+    fn report(&self) -> String {
+        let network = &self.config.node.network;
+        let network_events = self.runtime_state.network_events();
+        format!(
+            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+            self.config.runtime_command,
+            self.config.role.label(),
+            self.config.node.profile.label(),
+            self.config.node.can_produce_local_blocks(),
+            runtime_role_wallet_address_text(self.config.role_wallet_address),
+            runtime_role_wallet_registration(
+                self.config.role,
+                self.config.role_wallet_address,
+                &self.server.gateway().node.chain
+            ),
+            runtime_role_wallet_registered(
+                self.config.role,
+                self.config.role_wallet_address,
+                &self.server.gateway().node.chain
+            ),
+            network.rpc_listen,
+            network.p2p_listen,
+            self.p2p_service.connected_peer_count(),
+            self.p2p_service.observed_block_gossip_count(),
+            self.p2p_service.observed_job_gossip_count(),
+            self.p2p_service.observed_receipt_gossip_count(),
+            self.p2p_service.observed_attestation_gossip_count(),
+            self.p2p_service.latest_observed_block_height(),
+            hex(&self.p2p_service.latest_observed_block_hash()),
+            hex_hash_list(&self.p2p_service.observed_block_hashes()),
+            self.config.node.data_dir().display(),
+            network_events.events,
+            network_events.block_announcements,
+            network_events.block_headers,
+            network_events.jobs,
+            network_events.job_payloads,
+            network_events.job_payloads_applied,
+            network_events.receipts,
+            network_events.receipt_payloads,
+            network_events.receipt_payloads_applied,
+            network_events.attestations,
+            network_events.attestation_payloads,
+            network_events.attestation_payloads_applied,
+            network_events.peers,
+            network_events.invalid_events,
+            local_producer = self.local_producer,
+            p2p_peer_id = self.p2p_peer_id,
+            p2p_topics = self.p2p_topics,
+            p2p_request_response_protocols = self.p2p_request_response_protocols,
+            bootstrap_peer_count = self.bootstrap_peer_count,
+            identity = self.identity,
+            max_transmit_bytes = self.max_transmit_bytes,
+            request_timeout_seconds = self.request_timeout_seconds,
+            max_concurrent_streams = self.max_concurrent_streams,
+            idle_timeout_seconds = self.idle_timeout_seconds,
+            served_requests = self.runtime_state.served_requests(),
+            produced_blocks = self.runtime_state.produced_blocks(),
+            network_applied_blocks = self.runtime_state.network_applied_blocks()
+        )
+    }
 }
 
 struct RoleRuntimeStatusSnapshot {
@@ -1007,7 +1100,7 @@ impl RoleRuntimeStatusSnapshot {
 }
 
 fn write_role_runtime_status(
-    config: &ServiceRuntimeConfig<'_>,
+    config: &ServiceRuntimeConfig,
     snapshot: &RoleRuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
@@ -1772,6 +1865,93 @@ mod tests {
         assert_eq!(RuntimeRole::Miner.label(), "miner");
         assert_eq!(RuntimeRole::Validator.label(), "validator");
         assert_eq!(RuntimeRole::Proposer.label(), "proposer");
+    }
+
+    #[test]
+    fn role_loop_configs_bind_expected_runtime_roles_and_wallets() {
+        let cases = [
+            (
+                RoleRunLoop::miner(),
+                "miner_run",
+                RuntimeRole::Miner,
+                "miner",
+            ),
+            (
+                RoleRunLoop::validator(),
+                "validator_run",
+                RuntimeRole::Validator,
+                "validator",
+            ),
+            (
+                RoleRunLoop::proposer(),
+                "proposer_run",
+                RuntimeRole::Proposer,
+                "proposer",
+            ),
+        ];
+
+        for (loop_config, runtime_command, role, wallet) in cases {
+            let service_config = loop_config
+                .service_runtime_config(RoleServiceConfig {
+                    wallet,
+                    device: Some("cpu"),
+                    node: "/ip4/127.0.0.1/tcp/4001",
+                    listen: "127.0.0.1:0",
+                    p2p_listen: "/ip4/127.0.0.1/tcp/0",
+                    data_dir: "role-loop-config-test",
+                    identity_seed: None,
+                    auth_token: "token",
+                    max_requests: 1,
+                })
+                .unwrap();
+
+            assert_eq!(service_config.runtime_command, runtime_command);
+            assert_eq!(service_config.role, role);
+            assert_eq!(service_config.node.role, role.node_role());
+            assert_eq!(
+                service_config.node.can_produce_local_blocks(),
+                matches!(role, RuntimeRole::Proposer)
+            );
+            assert!(!service_config.node.local_synthetic_producer());
+            assert_eq!(
+                service_config.role_wallet_address,
+                Some(address(wallet.as_bytes()))
+            );
+        }
+    }
+
+    #[test]
+    fn role_loop_reports_keep_role_specific_readiness_lines() {
+        let config = RoleServiceConfig {
+            wallet: "testnet-miner-0",
+            device: Some("cpu"),
+            node: "/ip4/127.0.0.1/tcp/4001",
+            listen: "127.0.0.1:0",
+            p2p_listen: "/ip4/127.0.0.1/tcp/0",
+            data_dir: "role-loop-report-test",
+            identity_seed: None,
+            auth_token: "token",
+            max_requests: 1,
+        };
+
+        let miner_report = RoleRunLoop::miner().format_report(config, "service_report=true");
+        assert!(miner_report.contains("command=miner_run"));
+        assert!(miner_report.contains("role=miner"));
+        assert!(miner_report.contains("device=cpu"));
+        assert!(miner_report.contains("role_runtime_ready=true"));
+
+        let validator_report =
+            RoleRunLoop::validator().format_report(config, "service_report=true");
+        assert!(validator_report.contains("command=validator_run"));
+        assert!(validator_report.contains("role=validator"));
+        assert!(validator_report.contains("reference_verifier_ready=true"));
+        assert!(validator_report.contains("role_runtime_ready=true"));
+
+        let proposer_report = RoleRunLoop::proposer().format_report(config, "service_report=true");
+        assert!(proposer_report.contains("command=proposer_run"));
+        assert!(proposer_report.contains("role=proposer"));
+        assert!(proposer_report.contains("proposer_ready=true"));
+        assert!(proposer_report.contains("role_runtime_ready=true"));
     }
 
     #[test]

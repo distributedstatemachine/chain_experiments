@@ -169,6 +169,10 @@ The first chain-core cleanup slices are already in the tree:
   address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
   wallet labels for counted miner and validator operators, and the checker requires those registrations
   before accepting operator readiness.
+- `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` now construct explicit role-run loop
+  wrappers before entering the shared runtime. The runtime loop has named steps for status writes, RPC
+  serving, network ingestion, and optional local production, preserving current consensus behavior while
+  creating a narrower boundary for future miner-owned receipt and validator-owned attestation loops.
 
 These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
 state transitions before it satisfies the local CPU spec as a production-grade local chain.
@@ -611,12 +615,13 @@ produced-block counts, network-applied block counts, aggregate network-event cou
 out-of-order network payloads, and decoded job/receipt/attestation payload application in reusable
 node runtime helpers instead of private binary state. Message ordering, invalid network-event accounting,
 pending retry integration, and block-header application dispatch now also go through the shared node runtime
-event driver, with `tvmd` retaining only the service-specific deterministic catch-up callback. CPU
-miner execution and validator verification now live behind role-owned library components used by the local
-producer, but the long-running commands still delegate to the shared service runtime internally. Runtime
-role policy now prevents miner and validator roles from becoming local block producers even if they inherit
-local block-interval configuration; process-level miner/validator/proposer ownership still needs to be split
-further.
+event driver, with `tvmd` retaining only the service-specific deterministic catch-up callback. The role
+commands now enter explicit role-run loop wrappers and a named runtime loop boundary instead of constructing
+the generic service loop inline. CPU miner execution and validator verification now live behind role-owned
+library components used by the local producer, but independent miner receipt production, validator
+attestation production, and proposer block assembly still need to move into their role loops. Runtime role
+policy now prevents miner and validator roles from becoming local block producers even if they inherit local
+block-interval configuration.
 
 ### Phase 4: Make Compose Participants Actually Participate
 

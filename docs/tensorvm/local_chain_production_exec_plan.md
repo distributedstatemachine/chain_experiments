@@ -349,3 +349,107 @@ Decision notes:
   checked as a seeded miner address because the Compose service remains a miner operator.
 - The missing workflow document remains the standing blocker and is not treated as satisfied by this
   checkpoint.
+
+## Iteration 5: Extract Role Runtime Loop Boundary
+
+Readiness requirement:
+Split the current `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` internals into an
+explicit role-runtime loop boundary without changing consensus semantics. This should make the role command
+path own the loop structure and role configuration while preserving the existing shared node runtime,
+network ingest, persistence, deterministic catch-up, and local synthetic production behavior.
+
+Files likely touched:
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Goal-supervisor-style read-only check before editing.
+- Read-only codebase exploration for role runtime loop boundary extraction.
+- Read-only test/coverage exploration for role runtime loop boundary extraction.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Focused binary coverage proving role loop configuration selects the expected runtime command, runtime
+  role, wallet binding, and local-producer policy.
+- Process-level role-run/status coverage proving the externally visible command/status contract remains
+  unchanged after the loop extraction.
+- Keep Compose/checker behavior unchanged unless a new surfaced status field is intentionally added.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --bin tvmd role`
+- `cargo test -p tensor_vm --bin tvmd role_loop`
+- `cargo test -p tensor_vm --bin tvmd network_ingest`
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm local_testnet --release`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- `miner run`, `validator run`, and `proposer run` construct role-owned loop wrappers instead of directly
+  entering the generic service runtime function.
+- The extracted loop boundary has named methods for status writes, RPC serving, network ingestion, and
+  optional local production while preserving existing persistence points and counters.
+- Existing `role-runtime.status`, direct role-run stdout, and `tvmd service status` fields remain compatible
+  with the local checker.
+
+Out of scope:
+- Producing receipts in miner containers.
+- Producing attestations in validator containers.
+- Replacing deterministic proposer block replay or synthetic local production.
+- Changing Compose runtime commands or the local checker contract.
+- Treating the missing `docs/tensorvm/codex_5_5_local_chain_workflow.md` requirement as satisfied; the file
+  remains absent from tracked files and Git history, and the standing blocker remains active.
+
+## Iteration 5 Validation Log
+
+Result: implemented and locally validated, with the full Docker runtime gate deferred for this structural
+loop-boundary slice.
+
+Changes made:
+- Added role-run loop wrappers for `miner run`, `validator run`, and `proposer run`, so each role command
+  owns its runtime command, runtime role, wallet binding, and role-specific readiness report before entering
+  the shared node runtime.
+- Extracted the shared runtime loop into a `RoleRuntimeLoop` boundary with named steps for status writes,
+  RPC serving, network ingestion, optional local production, and final report generation.
+- Preserved existing consensus behavior, persistence points, role status fields, local-producer policy,
+  network ingestion, deterministic catch-up, and synthetic local production.
+- Added focused binary tests for role-loop runtime config selection and role-specific readiness report
+  preservation.
+
+Validation evidence:
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --bin tvmd role`: passed; 4 binary unit tests.
+- `cargo test -p tensor_vm --bin tvmd role_loop`: passed; 2 binary unit tests.
+- `cargo test -p tensor_vm --bin tvmd network_ingest`: passed; 1 binary unit test.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 integration test.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 integration test.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 library tests plus the local CPU seed CLI
+  test.
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`: passed.
+- `cargo tarpaulin --workspace --offline`: passed; 250 instrumented tests, 99.21% workspace coverage
+  (`10814/10900` lines), 99.96% `tensor_vm` coverage (`9969/9973` lines).
+
+Not run:
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh`
+
+Decision notes:
+- Kept this iteration behavior-preserving so later commits can move miner receipt production and validator
+  attestation production into the role-loop boundary without also changing loop mechanics.
+- Kept Compose and checker fields unchanged; existing role runtime command, loop readiness, wallet
+  registration, network counter, and local-producer checks continue to apply.
+- The missing workflow document remains the standing blocker and is not treated as satisfied by this
+  checkpoint.
