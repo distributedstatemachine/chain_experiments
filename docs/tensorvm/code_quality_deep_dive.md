@@ -203,6 +203,8 @@ spaghetti around.
   `main_tests/miner_role.rs`, reducing the binary test module's mixed role-test surface.
 - Iteration 85 moved validator role observation, attestation, block-vote, and remote tensor-fetch
   tests into `main_tests/validator_role.rs`, keeping role-specific binary tests with their behavior.
+- Iteration 86 moved network payload ordering/retry tests and their local chain helpers into
+  `main_tests/network_payloads.rs`, further shrinking the binary test parent module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
