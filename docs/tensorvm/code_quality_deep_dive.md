@@ -207,6 +207,8 @@ spaghetti around.
   `main_tests/network_payloads.rs`, further shrinking the binary test parent module.
 - Iteration 87 moved runtime role policy, role-loop config/report, wallet-registration, and profile
   parsing tests into `main_tests/runtime_roles.rs`.
+- Iteration 88 moved binary service command tests for public manifests and service-store recovery into
+  `main_tests/service_commands.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
