@@ -13,6 +13,9 @@ mod block_status;
 #[path = "main/commands.rs"]
 mod commands;
 
+#[path = "main/miner_role.rs"]
+mod miner_role;
+
 #[path = "main/network.rs"]
 mod network;
 

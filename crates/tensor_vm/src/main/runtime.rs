@@ -5,13 +5,13 @@ use std::{
 };
 
 use super::{
+    miner_role::{miner_role_work_observation, submit_miner_role_receipt},
     network::{
         chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
         publish_new_chain_announcements,
     },
     roles::{
-        fetch_validator_role_missing_tensors, miner_role_work_observation,
-        submit_miner_role_receipt, submit_validator_role_attestation,
+        fetch_validator_role_missing_tensors, submit_validator_role_attestation,
         submit_validator_role_block_vote, validator_role_work_observation,
     },
     runtime_config::{

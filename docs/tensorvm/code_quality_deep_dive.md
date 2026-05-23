@@ -189,6 +189,8 @@ spaghetti around.
   node-store inspection separate from service and runtime status reporting.
 - Iteration 78 moved miner/validator/proposer run-command wrappers into `main/runtime_commands.rs`,
   leaving `main/runtime.rs` to own service-loop startup and ticking.
+- Iteration 79 moved miner work observation and receipt submission into `main/miner_role.rs`,
+  separating miner role glue from validator role tensor-fetch and attestation logic.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

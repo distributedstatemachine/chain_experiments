@@ -1,8 +1,10 @@
+use super::miner_role::{
+    MinerRoleWorkObservation, miner_role_work_observation, submit_miner_role_receipt,
+};
 use super::roles::{
-    MinerRoleWorkObservation, ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
-    miner_role_work_observation, submit_miner_role_receipt, submit_validator_role_attestation,
-    submit_validator_role_block_vote, validator_remote_tensor_response,
-    validator_role_work_observation,
+    ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
+    submit_validator_role_attestation, submit_validator_role_block_vote,
+    validator_remote_tensor_response, validator_role_work_observation,
 };
 use super::runtime::RoleRuntimeLoop;
 use super::runtime_commands::RoleRunLoop;
