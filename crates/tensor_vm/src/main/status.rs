@@ -1,13 +1,45 @@
 use super::{
-    RuntimeRole, ServiceRuntimeConfig, hex_hash_list, ready_file_field, role_runtime_status_field,
-    runtime_role_wallet_address_text, runtime_role_wallet_registered,
-    runtime_role_wallet_registration,
+    RuntimeRole, ServiceRuntimeConfig, runtime_role_wallet_address_text,
+    runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, path::Path};
 use tensor_vm::{
     Chain, NetworkEventIngest, NodeRuntimeState, NodeStore, PrimitiveType, RpcHttpServer,
     TensorVmLibp2pService, hash::hex, types::Address,
 };
+
+pub(super) fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
+    if hashes.is_empty() {
+        return "none".to_owned();
+    }
+    hashes
+        .iter()
+        .map(|hash| hex(hash))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn ready_file_field(data_dir: &str, key: &str) -> String {
+    let path = Path::new(data_dir).join("local-cpu-ready");
+    status_file_field(&path, key)
+}
+
+fn role_runtime_status_field(data_dir: &str, key: &str) -> String {
+    let path = Path::new(data_dir).join("role-runtime.status");
+    status_file_field(&path, key)
+}
+
+fn status_file_field(path: &Path, key: &str) -> String {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|contents| {
+            contents.lines().find_map(|line| {
+                let value = line.strip_prefix(key)?.strip_prefix('=')?;
+                Some(value.to_owned())
+            })
+        })
+        .unwrap_or_else(|| "unknown".to_owned())
+}
 
 pub(super) fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let store = NodeStore::open(data_dir);

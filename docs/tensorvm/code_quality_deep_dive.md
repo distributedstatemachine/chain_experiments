@@ -175,6 +175,8 @@ spaghetti around.
   entrypoint responsible for command dispatch and runtime configuration construction.
 - Iteration 71 moved local-testnet seeding into `main/commands.rs`, keeping command-specific
   testnet and storage dependencies out of the binary entrypoint.
+- Iteration 72 moved status-file parsing and hash-list report formatting into `main/status.rs`,
+  removing the remaining status helper ownership from `main.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::{
-    RuntimeRole, ServiceRuntimeConfig, hex_hash_list,
+    RuntimeRole, ServiceRuntimeConfig,
     network::{
         chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
         publish_new_chain_announcements,
@@ -18,7 +18,7 @@ use super::{
     },
     runtime_role_wallet_address_text, runtime_role_wallet_registered,
     runtime_role_wallet_registration,
-    status::{RuntimeStatusSnapshot, write_role_runtime_status},
+    status::{RuntimeStatusSnapshot, hex_hash_list, write_role_runtime_status},
 };
 use tensor_vm::{
     ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NodeRuntimeState, NodeStore, RpcGateway,

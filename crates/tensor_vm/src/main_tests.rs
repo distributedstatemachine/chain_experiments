@@ -6,7 +6,7 @@ use super::roles::{
 };
 use super::runtime::RoleRuntimeLoop;
 use super::*;
-use std::{collections::BTreeSet, thread, time::Instant};
+use std::{collections::BTreeSet, path::Path, thread, time::Instant};
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, Faucet, FreivaldsParams,
     JobScheduler, Libp2pControlPlaneConfig, NetworkEventIngest, NetworkPayloadApply,

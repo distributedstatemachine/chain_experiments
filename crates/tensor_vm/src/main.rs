@@ -1,4 +1,4 @@
-use std::{path::Path, time::Duration};
+use std::time::Duration;
 use tensor_vm::{
     Chain, ChainProfile, CliCommand, NetworkConfig, NodeConfig, NodeRole,
     cli::{
@@ -457,17 +457,6 @@ fn runtime_role_wallet_registered(
     )
 }
 
-fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
-    if hashes.is_empty() {
-        return "none".to_owned();
-    }
-    hashes
-        .iter()
-        .map(|hash| hex(hash))
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
 fn runtime_block_interval() -> Option<Duration> {
     std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS")
         .ok()
@@ -485,28 +474,6 @@ fn runtime_local_block_producer() -> bool {
 
 fn local_cpu_seed_beacon() -> [u8; 32] {
     hash_bytes(b"tensor-vm-local-cpu-compose-seed", &[b"shared-chain-base"])
-}
-
-fn ready_file_field(data_dir: &str, key: &str) -> String {
-    let path = Path::new(data_dir).join("local-cpu-ready");
-    status_file_field(&path, key)
-}
-
-fn role_runtime_status_field(data_dir: &str, key: &str) -> String {
-    let path = Path::new(data_dir).join("role-runtime.status");
-    status_file_field(&path, key)
-}
-
-fn status_file_field(path: &Path, key: &str) -> String {
-    std::fs::read_to_string(path)
-        .ok()
-        .and_then(|contents| {
-            contents.lines().find_map(|line| {
-                let value = line.strip_prefix(key)?.strip_prefix('=')?;
-                Some(value.to_owned())
-            })
-        })
-        .unwrap_or_else(|| "unknown".to_owned())
 }
 
 fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {
