@@ -1,6 +1,6 @@
 use super::{
     BlockAdmission, Chain, ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState,
-    ReceiptState, TensorBlock, settlement,
+    ReceiptState, TensorBlock, accounts, settlement,
 };
 use crate::error::{Result, TvmError};
 
@@ -14,6 +14,15 @@ impl ChainEngine for Chain {
             ChainCommand::RegisterValidator { address, stake } => {
                 self.register_validator(address, stake)?;
                 Ok(vec![ChainEvent::ValidatorRegistered(address)])
+            }
+            ChainCommand::Transfer { from, to, amount } => {
+                self.transfer(from, to, amount)?;
+                Ok(vec![ChainEvent::AccountTransferred { from, to, amount }])
+            }
+            ChainCommand::ClaimReward(address) => {
+                let amount = self.state.rewards.balance(&address);
+                accounts::claim_reward(self, address)?;
+                Ok(vec![ChainEvent::RewardClaimed { address, amount }])
             }
             ChainCommand::SubmitJob(job) => {
                 let job_id = job.job_id();

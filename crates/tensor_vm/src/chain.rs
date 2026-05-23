@@ -306,6 +306,7 @@ mod tests {
         let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"engine-miner");
         let validator = address(b"engine-validator");
+        let receiver = address(b"engine-receiver");
 
         assert_eq!(chain.params().agreement_quorum, 1);
         assert_eq!(
@@ -326,6 +327,34 @@ mod tests {
                 .unwrap(),
             vec![ChainEvent::ValidatorRegistered(validator)]
         );
+        chain.credit_account(miner, 50);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::Transfer {
+                    from: miner,
+                    to: receiver,
+                    amount: 12,
+                })
+                .unwrap(),
+            vec![ChainEvent::AccountTransferred {
+                from: miner,
+                to: receiver,
+                amount: 12,
+            }]
+        );
+        assert_eq!(chain.state.accounts.get(&receiver).unwrap().balance, 12);
+        chain.state.rewards.credit(miner, 7);
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::ClaimReward(miner))
+                .unwrap(),
+            vec![ChainEvent::RewardClaimed {
+                address: miner,
+                amount: 7,
+            }]
+        );
+        assert_eq!(chain.state.rewards.balance(&miner), 0);
+        assert_eq!(chain.state.accounts.get(&miner).unwrap().balance, 45);
 
         let matmul_job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
         let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&matmul_job, miner, 0, 3).unwrap();

@@ -49,6 +49,8 @@ spaghetti around.
   model updates through that command path.
 - Iteration 8 made model registration duplicate-safe. `register_model` now returns an error for an existing
   model ID, and the `ChainCommand::RegisterModel` path propagates that instead of overwriting model state.
+- Iteration 9 added command variants and events for account transfer and reward claim, then routed
+  non-reference `apply_transaction` writes through `ChainCommand` instead of direct imperative helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -198,8 +200,9 @@ Remaining examples:
 
 - runtime, RPC test setup, and lower-level model tests still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
-- `apply_transaction` now rejects txpool-only reference submissions, but the public transaction surface still
-  mixes immediate chain mutations with queued reference announcements.
+- `apply_transaction` now routes non-reference writes through `ChainCommand` and rejects txpool-only
+  reference submissions, but the public transaction surface still mixes immediate mutations with queued
+  reference announcements.
 
 This violates single responsibility and interface segregation: callers must know which mutation path emits
 events, which one finalizes, and which one silently mutates.

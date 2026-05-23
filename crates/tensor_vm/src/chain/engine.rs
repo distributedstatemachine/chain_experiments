@@ -40,6 +40,12 @@ pub enum ChainCommand {
         address: Address,
         stake: u64,
     },
+    Transfer {
+        from: Address,
+        to: Address,
+        amount: u64,
+    },
+    ClaimReward(Address),
     SubmitJob(JobState),
     SubmitReceipt(ReceiptState),
     SubmitAttestation(ValidatorAttestation),
@@ -71,6 +77,15 @@ pub enum ChainCommand {
 pub enum ChainEvent {
     MinerRegistered(Address),
     ValidatorRegistered(Address),
+    AccountTransferred {
+        from: Address,
+        to: Address,
+        amount: u64,
+    },
+    RewardClaimed {
+        address: Address,
+        amount: u64,
+    },
     JobAccepted(Hash),
     ReceiptAccepted(Hash),
     AttestationAccepted {
