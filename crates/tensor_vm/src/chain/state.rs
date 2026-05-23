@@ -172,20 +172,24 @@ pub struct AccountState {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct RewardState {
-    pub(crate) balances: BTreeMap<Address, u64>,
-    pub(crate) treasury: u64,
+    pub(in crate::chain) balances: BTreeMap<Address, u64>,
+    pub(in crate::chain) treasury: u64,
 }
 
 impl RewardState {
+    pub(crate) fn from_parts(balances: BTreeMap<Address, u64>, treasury: u64) -> Self {
+        Self { balances, treasury }
+    }
+
     pub fn credit(&mut self, address: Address, amount: u64) {
         *self.balances.entry(address).or_default() += amount;
     }
 
-    pub(crate) fn clear_balance(&mut self, address: Address) {
+    pub(in crate::chain) fn clear_balance(&mut self, address: Address) {
         self.balances.insert(address, 0);
     }
 
-    pub(crate) fn credit_treasury(&mut self, amount: u64) {
+    pub(in crate::chain) fn credit_treasury(&mut self, amount: u64) {
         self.treasury = self.treasury.saturating_add(amount);
     }
 

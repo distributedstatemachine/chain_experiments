@@ -62,6 +62,8 @@ spaghetti around.
   enters through `ChainCommand::ApplyChallengeOutcome`, and rejected/slashing outcomes emit typed events.
 - Iteration 14 narrowed `RewardState`'s externally visible fields and added read accessors for balances,
   total balance, and treasury so runtime/RPC/testnet reporting no longer reaches through reward internals.
+- Iteration 15 made `RewardState` balances and treasury visible only inside the `chain` module, while storage
+  decodes rewards through an explicit constructor and encodes them through read accessors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -999,12 +999,12 @@ fn decode_model_states(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Mo
 }
 
 fn encode_rewards(out: &mut Vec<u8>, rewards: &RewardState) {
-    write_len(out, rewards.balances.len());
-    for (address, balance) in &rewards.balances {
+    write_len(out, rewards.balances().len());
+    for (address, balance) in rewards.balances() {
         write_hash(out, address);
         write_u64(out, *balance);
     }
-    write_u64(out, rewards.treasury);
+    write_u64(out, rewards.treasury());
 }
 
 fn decode_rewards(reader: &mut StateReader<'_>) -> Result<RewardState> {
@@ -1012,10 +1012,7 @@ fn decode_rewards(reader: &mut StateReader<'_>) -> Result<RewardState> {
     for _ in 0..reader.read_len()? {
         balances.insert(reader.read_hash()?, reader.read_u64()?);
     }
-    Ok(RewardState {
-        balances,
-        treasury: reader.read_u64()?,
-    })
+    Ok(RewardState::from_parts(balances, reader.read_u64()?))
 }
 
 fn encode_hash_set(out: &mut Vec<u8>, items: &BTreeSet<Hash>) {
@@ -1477,7 +1474,7 @@ mod tests {
             .data_unavailable_receipts
             .insert(linear_receipt.receipt_id);
         chain.state.rewards.credit(miner, 77);
-        chain.state.rewards.treasury = 11;
+        chain.state.rewards = RewardState::from_parts(chain.state.rewards.balances().clone(), 11);
 
         let block = chain.produce_block(validator, 1_000).unwrap();
         chain
