@@ -14,6 +14,8 @@ The useful-PoW work model used by `INV-009` is specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 The verifier evidence model used by `INV-007` and `INV-008` is specified in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+The parent-state transition model used by `INV-011`, `INV-012`, and `INV-013` is specified in
+[`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
 
 This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
 mechanization.
@@ -63,9 +65,9 @@ required witness fields and vote admission does not require v2 validation.
 | INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root, selected order, evidence schema version. | Recompute aggregate root from all selected check leaves or validate openings against it; reject mismatches before semantic claims. | Aggregate roots over signed claims do not prove transcript truth. |
 | INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce, parameter version. | Nonce target is checked over exactly the fields validated by block validity; economic useful-work claims separately satisfy the work model. | Current block has no target/nonce predicate, and useful-work dominance is unmodeled. |
 | INV-010 | Proposer is v2 eligible. | validator registry, eligibility rules, useful-PoW result. | Block admission rejects arbitrary proposers and excludes TensorWork proposer selection. | Current production accepts a supplied proposer and current selector can use TensorWork. |
-| INV-011 | State and reward roots are deterministic after valid v2 apply. | v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots. | Current roots are v1/reference global-map roots. |
-| INV-012 | Vote admission imports v2 validation. | `validate_block_v2` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |
-| INV-013 | Finalized-set mutation implies prior v2 validation. | finalized block set and validation certificate. | A block enters finalized state only through valid v2 vote quorum or valid fallback path. | Current finality can certify a reference block. |
+| INV-011 | State and reward roots are deterministic after valid v2 apply. | parent-state snapshot, v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots; failed admission has no partial mutation. | Current roots are v1/reference global-map roots and no parent-state apply theorem exists. |
+| INV-012 | Vote admission imports parent-state v2 validation. | `validate_block_v2(parent_state, block)` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks or blocks validated against the wrong state are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |
+| INV-013 | Finalized-set mutation implies prior parent-state v2 validation. | finalized block set and validation certificate. | A block enters finalized state only through valid v2 vote quorum or valid fallback path with a certificate for the exact parent state. | Current finality can certify a reference block. |
 | INV-014 | Fallback validity is explicit and reward-safe. | timeout/synchrony state, validator rotation, reduced reward, no miner TWU reward. | Fallback blocks preserve safety and cannot claim useful work. | v2 fallback object is missing. |
 | INV-015 | Public DA claims are evidence-linked. | retention window, observers, signed measurements, operator identities. | Public claims require enough signed evidence for the window and operator threshold. | Local/remote fetch proves only verification-time retrieval. |
 

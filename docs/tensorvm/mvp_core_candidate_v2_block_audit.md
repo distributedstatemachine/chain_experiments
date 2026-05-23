@@ -10,6 +10,9 @@ This document deliberately treats the dirty Rust files as candidate evidence onl
 commit any code. Existing proof statuses remain conservative until the code is committed, build-clean,
 tested adversarially, and mapped back into the formal proof manifest.
 
+The parent-state transition theorem that this candidate still needs is specified in
+[`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
+
 ## Evidence Scope
 
 Observed dirty files:

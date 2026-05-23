@@ -86,6 +86,8 @@ Useful-PoW work and economics boundaries live in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 Verifier evidence boundaries live in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+Parent-state transition boundaries live in
+[`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
 V2 state invariants live in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 
@@ -99,9 +101,9 @@ V2 state invariants live in
 | `V2-CHK-002 block_checks_root_binding` | `blocked-v2` | `V2-BLK-001`, `V2-CHK-001`, canonical check leaf order, verifier evidence model. | Aggregate roots over statements do not prove transcript truth without recomputation or challenge openings. |
 | `V2-POW-001 useful_verification_pow_valid` | `blocked-v2` | `V2-BLK-002`, `V2-CHK-002`, target, nonce, beacon, proposer, hash model, useful-work cost model for economic claims. | Current block has no target/nonce and no useful-PoW predicate; work dominance is also unmodeled. |
 | `V2-PROP-001 proposer_eligible` | `blocked-v2` | validator registry, `V2-POW-001`, removal of TensorWork proposer path. | Current path can use caller-supplied proposer or TensorWork selection. |
-| `V2-STATE-001 valid_v2_block_transition` | `blocked-v2` | `V2-BLK-*`, `V2-CHK-*`, `V2-POW-001`, reward/state root transition. | No v2 selected-receipt apply transition. |
-| `V2-FIN-001 vote_admission_requires_validate_block_v2` | `blocked-v2` | complete `validate_block_v2`, stake/signature vote checks. | Current votes check known current block hash and voter stake. |
-| `V2-FIN-002 finality_implies_v2_block_valid` | `blocked-v2` | `V2-FIN-001`, `V2-STATE-001`, stake threshold theorem. | Current finality can certify a v1/reference block hash. |
+| `V2-STATE-001 valid_v2_block_transition` | `blocked-v2` | `V2-BLK-*`, `V2-CHK-*`, `V2-POW-001`, parent-state transition model, reward/state root transition. | No v2 parent-state apply transition or child-root theorem. |
+| `V2-FIN-001 vote_admission_requires_validate_block_v2` | `blocked-v2` | complete `validate_block_v2(parent_state, block)`, stake/signature vote checks. | Current votes do not have a committed parent-state validation certificate. |
+| `V2-FIN-002 finality_implies_v2_block_valid` | `blocked-v2` | `V2-FIN-001`, `V2-STATE-001`, stake threshold theorem, finality certificate model. | Current finality can certify a v1/reference block hash or lack parent-state proof. |
 | `V2-FALLBACK-001 pow_skip_fallback_valid` | `blocked-v2` | timeout/synchrony model, validator rotation, reduced rewards, no miner TWU rewards. | v2 fallback object is not implemented. |
 
 The v2 graph has no honest path to a completed top-level theorem until every row above is backed by code,
@@ -123,6 +125,7 @@ These imports would create false proof claims:
 | `V2-FIN-002 -> current submit_block_vote` | Current vote admission does not require v2 block validation. |
 | `valid nonce -> useful-work dominance` | A nonce proves hash-target success, not that verification work dominated nonce grinding. |
 | `aggregate checks_root -> verifier execution` | A root over signed check claims does not prove the verifier relation without transcript recomputation or challenge openings. |
+| `current-state validation -> parent-state validity` | A block must be validated against its exact parent state, not whatever mutable state exists when a node checks it. |
 
 ## Mechanization Import Rule
 

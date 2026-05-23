@@ -17,6 +17,8 @@ The verifier evidence model for recomputable or challengeable check leaves is de
 The local dirty v2-block candidate is audited in
 [`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md); it does not yet discharge
 these obligations.
+The parent-state transition model required by V2-STATE and V2-FIN is defined in
+[`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
 
 ## Current Verdict
 
@@ -261,11 +263,13 @@ Dependencies:
 - reward allocation after challenge-window semantics
 - no double inclusion
 - deterministic state root encoding
+- exact parent-state validation and child-state apply theorem
 
 Counterexamples killed:
 
 - Finalizing a block whose roots do not match the deterministic transition.
 - Paying miner/proposer rewards before required challenge semantics.
+- Validating a block against mutable current state instead of its parent state.
 
 Current status: implementation-blocked for v2.
 
@@ -280,6 +284,7 @@ SubmitBlockVoteV2(vote, B) succeeds -> validate_block_v2(parent_state, B) = true
 Dependencies:
 
 - `validate_block_v2`
+- parent-state lookup for `B.parent_hash`
 - vote signature relation
 - validator stake registry
 - duplicate-vote rejection
@@ -305,10 +310,12 @@ Dependencies:
 - unique validator counting
 - stake-threshold theorem
 - no direct mutation of finalized set except through validated votes
+- finality certificate that records parent-state validation
 
 Counterexamples killed:
 
 - Current `finalized_blocks` containing hashes whose v2 validity was never checked.
+- Finalized hashes whose validation was against the wrong state.
 
 Current status: implementation-blocked.
 

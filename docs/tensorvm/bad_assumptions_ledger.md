@@ -45,6 +45,7 @@ ledger. The local v2-block candidate is tracked separately in
 | BA-021 | "A nonce over a verification commitment proves useful-work dominance." | High | Current blocks have no v2 nonce/target predicate, and even a future predicate would prove only hash success unless transcript cost, target validity, and sharing/caching assumptions are modeled. | A valid nonce can be ordinary PoW over bytes. It does not prove verification work dominated nonce grinding, or that the winning proposer personally performed the verification. | Useful-verification PoW is a target theorem plus an economic assumption. | Add the structural v2 PoW predicate, validate target/difficulty from parent state, bind checks to selected receipts, and document cost parameters; see `mvp_core_useful_pow_work_model.md`. |
 | BA-022 | "Aggregating signed checks roots proves verifier execution." | High | Attestations can carry `checks_root` values, and block-level roots can aggregate those values, but the chain still needs recomputation or challenge openings to prove transcript truth. | A root over signed claims is still a root over claims. It does not prove the underlying verifier relation unless every leaf is recomputable, directly verified, or challengeable. | Aggregated check roots can be evidence commitments, not semantic verifier-execution proof. | Define `CheckLeaf`, transcript, opening, challenge-window, and reward-finality semantics; see `mvp_core_verifier_evidence_model.md`. |
 | BA-023 | "A v2-shaped dirty candidate implementation discharges the proof obligations." | Critical | The local v2-block candidate adds useful fields but fails `cargo check -p tensor_vm --all-targets` and still lacks parent-state validation, semantic check leaves, receipt lifecycle, difficulty economics, and fallback semantics. | Build-failing or partial code can be useful evidence for the next implementation slice, but it cannot prove consensus soundness. | The candidate is directionally aligned but not proof-sound. | Make the implementation build-clean, commit it, add adversarial tests, and discharge each theorem gate; see `mvp_core_candidate_v2_block_audit.md`. |
+| BA-024 | "Validating a block against current state proves it was valid for its parent." | Critical | The proof target requires `valid_v2_block(parent_state, block)`, while candidate validation patterns can recompute roots from mutable chain state unless an exact parent snapshot is modeled. | Current-state validation can accept or reject based on later receipts, attestations, rewards, randomness, or direct state mutation. It does not prove the block transition from its parent. | Parent-state validation is a required theorem, not an implementation detail. | Define parent-state lookup, `apply_v2_block`, child roots, finality certificates, and atomic failure semantics; see `mvp_core_parent_state_transition_model.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -68,6 +69,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
     challengeable.
 12. Say **candidate v2 block surface** for dirty or build-failing v2-shaped code, not completed v2
     consensus.
+13. Say **parent-state validation** when discussing v2 block validity; do not treat current-state root
+    recomputation as equivalent.
 
 ## Claims We Can Make Today
 
@@ -92,6 +95,7 @@ These are defensible with current docs/code evidence:
 - Semantic verifier execution requires recomputable or challengeable evidence, not only signed Valid bits.
 - A local dirty v2-block candidate currently demonstrates implementation direction but not proof
   completion.
+- Finality soundness requires validation against the exact parent state and deterministic child roots.
 
 ## Claims We Must Not Make Today
 
@@ -112,6 +116,7 @@ These would overstate the current MVP:
 - "A nonce over `checks_root` proves useful-work dominance."
 - "An aggregate root over signed `checks_root` values proves validators executed the verifier."
 - "The dirty v2-shaped block candidate proves the MVP core sound."
+- "A block validated against current mutable state was valid for its parent state."
 
 ## Proof Hygiene Checklist
 

@@ -30,6 +30,8 @@ Related boundary documents:
   useful-PoW header validity from economic useful-work dominance.
 - [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
   recomputable/challengeable evidence bridge from signed Valid statements to semantic verifier execution.
+- [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md) defines the
+  required parent-state validation and child-state transition theorem for v2 finality.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
   verifier-local false-accept budgets and the composition rules for receipt volume.
 - [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md) defines the seed
