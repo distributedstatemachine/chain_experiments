@@ -171,6 +171,8 @@ spaghetti around.
   `main/status.rs`, consolidating service and role status formatting behind the same module boundary.
 - Iteration 69 extracted miner and validator role-work observation/submission helpers into
   `main/roles.rs`, leaving `main.rs` focused on CLI dispatch and runtime-loop orchestration.
+- Iteration 70 moved `RoleRuntimeLoop` orchestration into `main/runtime.rs`, keeping the
+  entrypoint responsible for command dispatch and runtime configuration construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

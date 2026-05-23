@@ -1,12 +1,17 @@
 use super::roles::{
-    MinerRoleWorkObservation, ValidatorRemoteTensorResponse, validator_remote_tensor_response,
+    MinerRoleWorkObservation, ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
+    miner_role_work_observation, submit_miner_role_receipt, submit_validator_role_attestation,
+    submit_validator_role_block_vote, validator_remote_tensor_response,
+    validator_role_work_observation,
 };
+use super::runtime::RoleRuntimeLoop;
 use super::*;
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, thread, time::Instant};
 use tensor_vm::{
-    ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, FreivaldsParams,
-    JobScheduler, NetworkEventIngest, NetworkPayloadApply, PendingNetworkPayloads, ReceiptState,
-    Tensor, ValidatorAttestation, VerificationResult,
+    ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, Faucet, FreivaldsParams,
+    JobScheduler, Libp2pControlPlaneConfig, NetworkEventIngest, NetworkPayloadApply,
+    NodeRuntimeState, PendingNetworkPayloads, ReceiptState, RpcGateway, RpcHttpServer, RpcNode,
+    RpcPolicy, Tensor, TensorVmLibp2pService, ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
     node::{
@@ -14,6 +19,7 @@ use tensor_vm::{
         apply_network_receipt_payload, attestation_announcement_hash,
     },
     roles::{CpuReferenceMinerRole, RoleReceiptBundle},
+    spawn_libp2p_service,
 };
 use tensor_vm::{ChainSnapshot, types::address};
 
