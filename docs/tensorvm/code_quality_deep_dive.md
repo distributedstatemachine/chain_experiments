@@ -113,6 +113,8 @@ spaghetti around.
   verification-result codecs, then routed storage, p2p, and chain roots through them.
 - Iteration 40 moved fixed-length block and block-vote payload codecs behind shared crate-internal
   helpers while preserving storage and p2p error boundaries.
+- Iteration 41 moved telemetry's remaining top-level `Chain` params/block reads onto the public
+  accessors, keeping reporting off raw chain fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

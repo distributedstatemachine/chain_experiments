@@ -35,17 +35,17 @@ pub struct TelemetrySnapshot {
 
 impl TelemetrySnapshot {
     pub fn from_chain(chain: &Chain) -> Self {
-        let block_count = chain.blocks.len();
+        let block_count = chain.blocks().len();
         let average_block_time = if block_count <= 1 {
             0.0
         } else {
             let first = chain
-                .blocks
+                .blocks()
                 .first()
                 .map(|block| block.timestamp)
                 .unwrap_or(0);
             let last = chain
-                .blocks
+                .blocks()
                 .last()
                 .map(|block| block.timestamp)
                 .unwrap_or(first);
@@ -248,9 +248,13 @@ fn average_verification_cost_ratio(chain: &Chain) -> f64 {
         else {
             continue;
         };
-        total_ratio +=
-            matmul_verification_cost_study(job.m, job.k, job.n, chain.params.freivalds.full_rounds)
-                .verification_to_execution_ratio;
+        total_ratio += matmul_verification_cost_study(
+            job.m,
+            job.k,
+            job.n,
+            chain.params().freivalds.full_rounds,
+        )
+        .verification_to_execution_ratio;
         counted += 1;
     }
     if counted == 0 {
@@ -267,7 +271,7 @@ fn estimated_bandwidth_per_validator(chain: &Chain) -> f64 {
         .values()
         .map(|receipt| estimate_receipt_verification_bytes(chain, receipt))
         .sum::<u64>()
-        .saturating_mul(chain.params.freivalds.validators_per_job as u64);
+        .saturating_mul(chain.params().freivalds.validators_per_job as u64);
     ratio_u64(total_bytes, chain.state().validators().len() as u64)
 }
 
@@ -388,8 +392,8 @@ fn estimated_cost_to_attack_one_epoch(chain: &Chain) -> u64 {
     if total_stake == 0 {
         return 0;
     }
-    let numerator = chain.params.finality_stake_numerator;
-    let denominator = chain.params.finality_stake_denominator.max(1);
+    let numerator = chain.params().finality_stake_numerator;
+    let denominator = chain.params().finality_stake_denominator.max(1);
     total_stake.saturating_mul(numerator).div_ceil(denominator)
 }
 
