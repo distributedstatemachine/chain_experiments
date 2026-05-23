@@ -17,6 +17,8 @@ pub fn apply(chain: &mut Chain, from: Option<Address>, tx: Transaction) -> Resul
         Transaction::ClaimReward(address) => accounts::claim_reward(chain, address),
         Transaction::SubmitTensorOpReceipt(_)
         | Transaction::SubmitLinearTrainingStepReceipt(_)
-        | Transaction::SubmitAttestation(_) => Ok(()),
+        | Transaction::SubmitAttestation(_) => Err(TvmError::InvalidReceipt(
+            "reference submissions must enter the transaction pool",
+        )),
     }
 }

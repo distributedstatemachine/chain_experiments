@@ -292,6 +292,17 @@ pub enum Transaction {
     ClaimReward(Address),
 }
 
+impl Transaction {
+    pub fn is_reference_submission(&self) -> bool {
+        matches!(
+            self,
+            Self::SubmitTensorOpReceipt(_)
+                | Self::SubmitLinearTrainingStepReceipt(_)
+                | Self::SubmitAttestation(_)
+        )
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TensorBlock {
     pub height: u64,

@@ -35,6 +35,9 @@ spaghetti around.
 - Iteration 3 moved local synthetic block production and the localnet test finality helper onto
   `ChainCommand::ProduceBlock` and `ChainCommand::SubmitBlockVote`. The local CPU round now uses the
   command boundary for jobs, receipts, attestations, settlement, block production, and block votes.
+- Iteration 4 removed the silent `apply_transaction` success path for receipt and attestation reference
+  submissions. Those transaction variants are now explicitly txpool-only via `Transaction::is_reference_submission`,
+  and direct chain application returns an error instead of pretending to mutate state.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -184,7 +187,8 @@ Remaining examples:
 
 - runtime, public-testnet, and RPC test setup paths still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
-- `apply_transaction` has variants that are no-ops.
+- `apply_transaction` now rejects txpool-only reference submissions, but the public transaction surface still
+  mixes immediate chain mutations with queued reference announcements.
 
 This violates single responsibility and interface segregation: callers must know which mutation path emits
 events, which one finalizes, and which one silently mutates.

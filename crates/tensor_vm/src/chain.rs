@@ -637,33 +637,28 @@ mod tests {
             .unwrap();
         assert_eq!(chain.state.rewards.balance(&miner), 0);
         assert_eq!(chain.state.accounts.get(&miner).unwrap().balance, 417);
-        assert_eq!(
-            chain.apply_transaction(
-                None,
-                Transaction::SubmitTensorOpReceipt(hash_bytes(
-                    b"test",
-                    &[b"queued-tensor-receipt"]
+    }
+
+    #[test]
+    fn reference_submission_transactions_are_txpool_only() {
+        let beacon = hash_bytes(b"test", &[b"reference-submission-txpool-only"]);
+        let mut chain = Chain::new(beacon);
+        for tx in [
+            Transaction::SubmitTensorOpReceipt(hash_bytes(b"test", &[b"queued-tensor-receipt"])),
+            Transaction::SubmitLinearTrainingStepReceipt(hash_bytes(
+                b"test",
+                &[b"queued-linear-receipt"],
+            )),
+            Transaction::SubmitAttestation(hash_bytes(b"test", &[b"queued-attestation"])),
+        ] {
+            assert!(tx.is_reference_submission());
+            assert_eq!(
+                chain.apply_transaction(None, tx),
+                Err(TvmError::InvalidReceipt(
+                    "reference submissions must enter the transaction pool"
                 ))
-            ),
-            Ok(())
-        );
-        assert_eq!(
-            chain.apply_transaction(
-                None,
-                Transaction::SubmitLinearTrainingStepReceipt(hash_bytes(
-                    b"test",
-                    &[b"queued-linear-receipt"]
-                ))
-            ),
-            Ok(())
-        );
-        assert_eq!(
-            chain.apply_transaction(
-                None,
-                Transaction::SubmitAttestation(hash_bytes(b"test", &[b"queued-attestation"]))
-            ),
-            Ok(())
-        );
+            );
+        }
     }
 
     #[test]

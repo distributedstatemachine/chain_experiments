@@ -1,4 +1,4 @@
-use crate::chain::{Chain, HardwareClass, JobState, Transaction};
+use crate::chain::{Chain, HardwareClass, JobState};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -453,12 +453,7 @@ impl RpcNode {
             Ok(envelope) => envelope,
             Err(error) => return self.bad_request(&error.to_string()),
         };
-        if matches!(
-            envelope.transaction,
-            Transaction::SubmitTensorOpReceipt(_)
-                | Transaction::SubmitLinearTrainingStepReceipt(_)
-                | Transaction::SubmitAttestation(_)
-        ) {
+        if envelope.transaction.is_reference_submission() {
             return if self.txpool.submit_envelope(&envelope) {
                 self.accepted()
             } else {
@@ -1793,6 +1788,50 @@ mod tests {
         });
         assert_eq!(response.status, 202);
         assert_eq!(rpc.chain.state.accounts.get(&receiver).unwrap().balance, 70);
+
+        let tx_receipt = hash_bytes(b"test", &[b"tx-receipt"]);
+        let response = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_tensor_receipt {}", hex(&tx_receipt)).into_bytes(),
+        });
+        assert_eq!(response.status, 202);
+        let duplicate = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_tensor_receipt {}", hex(&tx_receipt)).into_bytes(),
+        });
+        assert_eq!(duplicate.status, 409);
+
+        let linear_receipt = hash_bytes(b"test", &[b"tx-linear-receipt"]);
+        let response = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_linear_receipt {}", hex(&linear_receipt)).into_bytes(),
+        });
+        assert_eq!(response.status, 202);
+        let duplicate = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_linear_receipt {}", hex(&linear_receipt)).into_bytes(),
+        });
+        assert_eq!(duplicate.status, 409);
+
+        let tx_attestation = hash_bytes(b"test", &[b"tx-attestation"]);
+        let response = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_attestation {}", hex(&tx_attestation)).into_bytes(),
+        });
+        assert_eq!(response.status, 202);
+        let duplicate = rpc.handle_mut(&RpcRequest {
+            method: "POST".to_owned(),
+            path: "/tx".to_owned(),
+            body: format!("submit_attestation {}", hex(&tx_attestation)).into_bytes(),
+        });
+        assert_eq!(duplicate.status, 202);
+        assert!(rpc.chain.state.receipts.is_empty());
+        assert!(rpc.chain.state.attestations.is_empty());
 
         let receipt = hash_bytes(b"test", &[b"receipt"]);
         let response = rpc.handle_mut(&RpcRequest {
