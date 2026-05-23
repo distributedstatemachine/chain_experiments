@@ -211,6 +211,8 @@ spaghetti around.
   `main_tests/service_commands.rs`.
 - Iteration 89 moved runtime network-ingest and loop-counter state tests into
   `main_tests/runtime_state.rs`, leaving `main_tests.rs` as module wiring plus shared helpers.
+- Iteration 90 extracted shared binary test helpers into `main_tests/support.rs`, leaving
+  `main_tests.rs` as imports and submodule wiring for the split test files.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
