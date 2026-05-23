@@ -7,9 +7,10 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Mutex, mpsc};
 
+use super::RequestResponseProtocol;
+use super::behaviour::{TensorVmNetworkBehaviour, TensorVmNetworkBehaviourEvent};
 use super::request_response::{PendingRequestKey, handle_request_response_event};
 use super::wire::decode_message;
-use super::{RequestResponseProtocol, TensorVmNetworkBehaviour, TensorVmNetworkBehaviourEvent};
 
 const OBSERVED_BLOCK_HASH_LIMIT: usize = 256;
 

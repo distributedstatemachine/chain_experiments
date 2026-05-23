@@ -7,14 +7,13 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::{Mutex, mpsc};
 use std::time::Duration;
 
+use super::behaviour::TensorVmNetworkBehaviour;
+use super::service_events::ServiceEventMetrics;
 use super::wire::{
     encode_tensor_payload, is_request_response_request, request_response_protocol_for_message,
     request_response_stream_protocol,
 };
-use super::{
-    Libp2pControlPlaneConfig, RequestResponseProtocol, ServiceEventMetrics,
-    TensorVmNetworkBehaviour,
-};
+use super::{Libp2pControlPlaneConfig, RequestResponseProtocol};
 
 pub type P2pRequestResponseBehaviour =
     libp2p::request_response::json::Behaviour<P2pMessage, P2pMessage>;
