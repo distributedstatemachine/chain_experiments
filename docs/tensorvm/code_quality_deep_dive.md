@@ -135,6 +135,8 @@ spaghetti around.
   construction, protocol dispatch, and behavior construction into `p2p/request_response.rs`.
 - Iteration 51 moved libp2p connection accounting, observed gossip metrics, request-response event
   routing, and bounded observed-block hash tracking into `p2p/service_events.rs`.
+- Iteration 52 moved the derived libp2p network behaviour and gossipsub/identify/kademlia
+  behaviour construction into `p2p/behaviour.rs`, leaving node and service startup in the facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -533,7 +535,7 @@ Several files are far past a healthy size boundary:
 | --- | --- |
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
-| `crates/tensor_vm/src/p2p.rs` | libp2p service construction, worker loop, service tests |
+| `crates/tensor_vm/src/p2p.rs` | libp2p node startup facade, worker loop, service tests |
 | `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
