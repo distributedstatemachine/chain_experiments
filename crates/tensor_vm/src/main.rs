@@ -22,6 +22,9 @@ mod roles;
 #[path = "main/runtime.rs"]
 mod runtime;
 
+#[path = "main/runtime_commands.rs"]
+mod runtime_commands;
+
 #[path = "main/runtime_config.rs"]
 mod runtime_config;
 
@@ -36,7 +39,8 @@ use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
 };
-use runtime::{run_miner_service, run_proposer_service, run_validator_service, serve_service};
+use runtime::serve_service;
+use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 use runtime_config::RoleServiceConfig;
 use status::service_status;
 

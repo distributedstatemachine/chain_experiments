@@ -187,6 +187,8 @@ spaghetti around.
   runtime status snapshot so `main/runtime.rs` no longer owns the long report string contract.
 - Iteration 77 moved service block status reporting into `main/block_status.rs`, keeping block-level
   node-store inspection separate from service and runtime status reporting.
+- Iteration 78 moved miner/validator/proposer run-command wrappers into `main/runtime_commands.rs`,
+  leaving `main/runtime.rs` to own service-loop startup and ticking.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
