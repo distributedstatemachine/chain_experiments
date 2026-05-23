@@ -1,13 +1,8 @@
 use std::collections::BTreeSet;
 
-use super::{
-    network::{chain_announcement_checkpoint, publish_new_chain_announcements},
-    runtime_config::{ServiceRuntimeConfig, runtime_role_wallet_registration},
-    validator_fetch::fetch_validator_role_missing_tensors,
-};
 use tensor_vm::{
-    BlockVote, Chain, ChainCommand, ChainEngine, JobScheduler, NodeRuntimeState, NodeStore,
-    ReceiptState, RpcHttpServer, RpcNode, SyntheticLocalJobSource, TensorVmLibp2pService,
+    BlockVote, Chain, ChainCommand, ChainEngine, JobScheduler, ReceiptState, RpcNode,
+    SyntheticLocalJobSource,
     hash::hex,
     jobs::LinearTrainingStepOutput,
     roles::{ReferenceValidatorRole, RoleReceiptArtifacts, RoleReceiptBundle},
@@ -174,114 +169,6 @@ fn validator_has_block_vote(chain: &Chain, validator: Address, block_hash: Hash)
         .block_votes()
         .get(&block_hash)
         .is_some_and(|votes| votes.iter().any(|vote| vote.validator == validator))
-}
-
-pub(super) fn tick_validator_role_work_once(
-    config: &ServiceRuntimeConfig,
-    store: &NodeStore,
-    server: &mut RpcHttpServer,
-    p2p_service: &TensorVmLibp2pService,
-    runtime_state: &mut NodeRuntimeState,
-) -> std::result::Result<bool, String> {
-    let Some(validator) = config.role_wallet_address else {
-        return Ok(false);
-    };
-    if runtime_role_wallet_registration(
-        config.role,
-        config.role_wallet_address,
-        &server.gateway().node.chain,
-    ) != "validator"
-    {
-        return Ok(false);
-    }
-    let observation = validator_role_work_observation(&server.gateway().node, validator);
-    let receipt_to_fetch = observation.artifact_missing_receipts.iter().next().copied();
-    let mut receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
-    let mut status_changed = false;
-    if runtime_state.record_validator_work_observation(
-        observation.assigned_receipts,
-        observation.unattested_receipts,
-        observation.artifact_ready_receipts,
-        observation.artifact_missing_receipts,
-    ) {
-        status_changed = true;
-    }
-    if receipt_to_submit.is_none()
-        && let Some(receipt_id) = receipt_to_fetch
-    {
-        let fetch_report = fetch_validator_role_missing_tensors(
-            &mut server.gateway_mut().node,
-            p2p_service,
-            receipt_id,
-        )?;
-        if fetch_report.attempts > 0
-            || fetch_report.successes > 0
-            || fetch_report.failures > 0
-            || fetch_report.tensors_inserted > 0
-        {
-            runtime_state.record_validator_remote_tensor_fetch(
-                fetch_report.attempts,
-                fetch_report.successes,
-                fetch_report.failures,
-                fetch_report.bytes,
-                fetch_report.tensors_inserted,
-            );
-            let observation = validator_role_work_observation(&server.gateway().node, validator);
-            receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
-            runtime_state.record_validator_work_observation(
-                observation.assigned_receipts,
-                observation.unattested_receipts,
-                observation.artifact_ready_receipts,
-                observation.artifact_missing_receipts,
-            );
-            status_changed = true;
-        }
-    }
-    if let Some(receipt_id) = receipt_to_submit {
-        let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
-        if let Some(submission) = submit_validator_role_attestation(
-            &mut server.gateway_mut().node,
-            validator,
-            receipt_id,
-        )? {
-            publish_new_chain_announcements(
-                p2p_service,
-                &announcement_checkpoint,
-                &server.gateway().node.chain,
-            )?;
-            store
-                .persist_chain(&server.gateway().node.chain)
-                .map_err(|error| {
-                    format!("failed to persist validator attestation state: {error}")
-                })?;
-            runtime_state
-                .record_validator_attestation_submission(submission.attestations_submitted);
-            let observation = validator_role_work_observation(&server.gateway().node, validator);
-            runtime_state.record_validator_work_observation(
-                observation.assigned_receipts,
-                observation.unattested_receipts,
-                observation.artifact_ready_receipts,
-                observation.artifact_missing_receipts,
-            );
-            status_changed = true;
-        }
-    }
-    let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
-    if let Some(submission) =
-        submit_validator_role_block_vote(&mut server.gateway_mut().node, validator)?
-    {
-        publish_new_chain_announcements(
-            p2p_service,
-            &announcement_checkpoint,
-            &server.gateway().node.chain,
-        )?;
-        store
-            .persist_chain(&server.gateway().node.chain)
-            .map_err(|error| format!("failed to persist validator block vote state: {error}"))?;
-        runtime_state.record_validator_block_vote_submission(submission.block_votes_submitted);
-        status_changed = true;
-    }
-    Ok(status_changed)
 }
 
 fn role_receipt_bundle_from_local_tensors(

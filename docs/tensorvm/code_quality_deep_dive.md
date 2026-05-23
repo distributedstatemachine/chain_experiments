@@ -225,6 +225,9 @@ spaghetti around.
   and status writes.
 - Iteration 95 moved validator role worker implementation into `main/validator_role.rs` and
   updated runtime callers and binary tests to use that focused module directly.
+- Iteration 96 split validator runtime ticking into `main/runtime_validator.rs`, leaving
+  `main/validator_role.rs` focused on role observation, artifact assembly, attestation submission,
+  and block-vote submission.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -9,7 +9,7 @@ use super::{
     runtime_status::{
         RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
     },
-    validator_role::tick_validator_role_work_once as tick_validator_role_worker_once,
+    runtime_validator::tick_validator_role_work_once as tick_validator_role_worker_once,
 };
 use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
