@@ -76,6 +76,11 @@ pub struct NodeRuntimeState {
     miner_unreceipted_jobs: BTreeSet<Hash>,
     miner_receipts_submitted: usize,
     miner_tensors_inserted: usize,
+    validator_assigned_receipts_seen: BTreeSet<Hash>,
+    validator_unattested_receipts: BTreeSet<Hash>,
+    validator_artifact_ready_receipts: BTreeSet<Hash>,
+    validator_artifact_missing_receipts: BTreeSet<Hash>,
+    validator_attestations_submitted: usize,
 }
 
 impl NodeRuntimeState {
@@ -123,6 +128,30 @@ impl NodeRuntimeState {
         self.miner_tensors_inserted
     }
 
+    pub fn validator_assigned_receipts_seen(&self) -> usize {
+        self.validator_assigned_receipts_seen.len()
+    }
+
+    pub fn validator_unattested_receipts(&self) -> usize {
+        self.validator_unattested_receipts.len()
+    }
+
+    pub fn validator_artifact_ready_receipts(&self) -> usize {
+        self.validator_artifact_ready_receipts.len()
+    }
+
+    pub fn validator_artifact_missing_receipts(&self) -> usize {
+        self.validator_artifact_missing_receipts.len()
+    }
+
+    pub fn validator_work_ready(&self) -> bool {
+        !self.validator_artifact_ready_receipts.is_empty()
+    }
+
+    pub fn validator_attestations_submitted(&self) -> usize {
+        self.validator_attestations_submitted
+    }
+
     pub fn record_served_request(&mut self) {
         self.served_requests = self.served_requests.saturating_add(1);
     }
@@ -159,6 +188,30 @@ impl NodeRuntimeState {
             .miner_receipts_submitted
             .saturating_add(receipts_submitted);
         self.miner_tensors_inserted = self.miner_tensors_inserted.saturating_add(tensors_inserted);
+    }
+
+    pub fn record_validator_work_observation(
+        &mut self,
+        assigned_receipts: BTreeSet<Hash>,
+        unattested_receipts: BTreeSet<Hash>,
+        artifact_ready_receipts: BTreeSet<Hash>,
+        artifact_missing_receipts: BTreeSet<Hash>,
+    ) -> bool {
+        let changed = self.validator_assigned_receipts_seen != assigned_receipts
+            || self.validator_unattested_receipts != unattested_receipts
+            || self.validator_artifact_ready_receipts != artifact_ready_receipts
+            || self.validator_artifact_missing_receipts != artifact_missing_receipts;
+        self.validator_assigned_receipts_seen = assigned_receipts;
+        self.validator_unattested_receipts = unattested_receipts;
+        self.validator_artifact_ready_receipts = artifact_ready_receipts;
+        self.validator_artifact_missing_receipts = artifact_missing_receipts;
+        changed
+    }
+
+    pub fn record_validator_attestation_submission(&mut self, attestations_submitted: usize) {
+        self.validator_attestations_submitted = self
+            .validator_attestations_submitted
+            .saturating_add(attestations_submitted);
     }
 }
 
@@ -626,6 +679,28 @@ mod tests {
         state.record_miner_receipt_submission(1, 3);
         assert_eq!(state.miner_receipts_submitted(), 1);
         assert_eq!(state.miner_tensors_inserted(), 3);
+        assert!(state.record_validator_work_observation(
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::new(),
+        ));
+        assert_eq!(state.validator_assigned_receipts_seen(), 1);
+        assert_eq!(state.validator_unattested_receipts(), 1);
+        assert_eq!(state.validator_artifact_ready_receipts(), 1);
+        assert_eq!(state.validator_artifact_missing_receipts(), 0);
+        assert!(state.validator_work_ready());
+        assert!(state.record_validator_work_observation(
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::new(),
+            BTreeSet::from([[8; 32]]),
+        ));
+        assert_eq!(state.validator_artifact_ready_receipts(), 0);
+        assert_eq!(state.validator_artifact_missing_receipts(), 1);
+        assert!(!state.validator_work_ready());
+        state.record_validator_attestation_submission(1);
+        assert_eq!(state.validator_attestations_submitted(), 1);
     }
 
     #[test]

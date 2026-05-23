@@ -677,3 +677,224 @@ Decision notes:
   unreceipted jobs need original-beacon assignment reconstruction.
 - The missing workflow document remains the standing blocker and is not treated as satisfied by this
   checkpoint.
+
+## Iteration 8: Submit Validator Attestations From Role Loop
+
+Readiness requirement:
+Move the first validator-owned mutating work step into the validator role loop: when a registered validator
+role sees a receipt assigned to that validator in its loaded/shared chain state and has enough local tensor
+data to verify it, validate the receipt with the existing reference validator role, submit the attestation
+through `ChainCommand::SubmitAttestation`, persist the updated chain, and publish attestation announcements
+through the existing libp2p/shared node event path. Keep remote tensor request-response, deterministic local
+production, and proposer/block assembly semantics unchanged for this slice.
+
+Files likely touched:
+- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/tarpaulin_report.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Read-only codebase exploration for validator attestation production, local tensor availability, and
+  attestation gossip paths.
+- Read-only test/coverage exploration for focused validator-role attestation tests and checker/status
+  coverage.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Focused binary/unit coverage proving a validator role step submits exactly one attestation for an assigned
+  receipt through `ChainCommand::SubmitAttestation` when required local tensors are available.
+- Negative coverage proving unregistered, unassigned, already-attested, or tensor-unavailable receipts do
+  not produce duplicate attestations.
+- Runtime-state/status coverage for validator attestation submission counters.
+- Process-level role-run/status coverage proving validator attestation counters are surfaced without
+  changing the existing role command contract.
+- Static Compose/checker coverage for any new validator attestation status fields parsed by the checker.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --lib node::tests`
+- `cargo test -p tensor_vm --bin tvmd role`
+- `cargo test -p tensor_vm --bin tvmd role_loop`
+- `cargo test -p tensor_vm --bin tvmd validator_role`
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm local_testnet --release`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- Validator role code can mutate local chain state by submitting its own attestation through the shared chain
+  engine and not through private local-only shortcuts.
+- Validator role attestation submission only runs when the validator is registered, assigned, not already
+  attested for that receipt, and local tensor data is available for verification.
+- Direct role-run stdout, `role-runtime.status`, and `tvmd service status` expose validator attestation
+  submission counters.
+- Existing local synthetic producer, miner receipt production, settlement, and proposer block production
+  continue to behave as before.
+
+Out of scope:
+- Fetching miner-produced tensors over remote request-response when the validator's local node lacks tensor
+  artifacts.
+- Requiring live Compose validators to report positive validator-owned attestation submission while
+  deterministic block-header catch-up can still replay already-attested receipts first.
+- Replacing deterministic proposer block replay or synthetic local production.
+- Treating the missing `docs/tensorvm/codex_5_5_local_chain_workflow.md` requirement as satisfied; the file
+  remains absent from tracked files and Git history, and the standing blocker remains active.
+
+Validation so far:
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --bin tvmd validator_role`: passed; 2 binary validator-role tests.
+- `cargo test -p tensor_vm --lib node::tests`: passed; 15 node runtime tests.
+- `git diff --check`: passed.
+Validation log:
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --lib node::tests`: passed; 15 node runtime tests.
+- `cargo test -p tensor_vm --lib rpc::tests::tensor_rpc_serves_descriptor_rows_chunks_and_openings`: passed; 1
+  RPC tensor lookup/API test.
+- `cargo test -p tensor_vm --bin tvmd validator_role`: passed; 2 validator-role tests covering assigned
+  unattested observation, missing local artifacts, unregistered/unassigned skips, submission, and duplicate
+  skip behavior.
+- `cargo test -p tensor_vm --bin tvmd role`: passed; 10 binary role tests.
+- `cargo test -p tensor_vm --bin tvmd role_loop`: passed; 2 binary role-loop tests.
+- `cargo test -p tensor_vm --bin tvmd miner_role`: passed; 4 binary miner-role tests.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 process-level role/status test.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 static Compose/checker spec-shape test.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 library local-testnet tests plus the local CPU
+  seed CLI test.
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`: passed.
+- `cargo tarpaulin --workspace --offline`: passed; 250 instrumented tests, 99.21% workspace coverage
+  (`10865/10952` lines), 99.95% `tensor_vm` coverage (`10020/10025` lines).
+
+Full Docker gate status:
+- `/bin/bash -lc "TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh"`:
+  failed against the already-running Compose cluster at the bounded gateway health probe:
+
+```text
+curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received
+local CPU testnet check failed: gateway route is not reachable: /rpc/health
+```
+
+- This remains the live Compose gateway-health blocker for the full local Docker gate. The Docker Compose
+  config and static checker shape gates passed, but this iteration does not claim the full Docker gate
+  passed.
+
+Decision notes:
+- Implemented validator-owned attestation submission inside the role loop for the first assigned unattested
+  receipt with local tensor artifacts, using `ReferenceValidatorRole` for verification and
+  `ChainCommand::SubmitAttestation` for chain mutation.
+- Added local tensor lookup on `RpcNode` so validator role code can verify from locally stored artifacts
+  without reaching into private RPC state or re-executing miner work.
+- Missing local artifacts are reported through validator role counters and skipped; this slice deliberately
+  does not submit `Unavailable` attestations or fetch tensors over remote request-response.
+- Surfaced validator work and attestation counters through direct role-run stdout, `role-runtime.status`,
+  `tvmd service status`, and the local checker.
+- The missing workflow document remains the standing blocker and is not treated as satisfied by this
+  checkpoint.
+
+
+## Iteration 9: Formalize MVP Core Soundness Boundary
+
+Feature capability:
+Create a formal proof/audit document for the MVP core and harden the attestation admission invariant exposed
+by that proof work: validator assignment must be receipt-bound and enforced by the shared chain engine, not
+only by role-loop callers.
+
+Readiness requirements covered:
+- Validator attestations are accepted only from the deterministic assigned validator set.
+- Validator assignment randomness is bound to the receipt ID as well as the finalized beacon.
+- The documentation separates proven local invariants, explicit cryptographic/probabilistic assumptions,
+  and still-unsound consensus gaps under the reviewed useful-verification PoW MVP.
+
+Files/modules likely touched:
+- `crates/tensor_vm/src/scheduler.rs`
+- `crates/tensor_vm/src/chain/validation.rs`
+- `crates/tensor_vm/src/chain.rs`
+- `docs/tensorvm/mvp_core_formal_proofs.md`
+- `docs/tensorvm/README.md`
+- `docs/tensorvm/coverage_matrix.md`
+- `docs/tensorvm/completion_audit.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Parallel subagents to run:
+- Read-only codebase explorer for useful-verification PoW/spec contradictions and proof assumptions.
+- Read-only test coverage explorer for existing proof evidence and superseded tests.
+
+Parallelizable implementation workstreams:
+- Parent owns code changes and proof docs to avoid write collisions with the in-progress validator-role
+  iteration.
+- Explorer subagents remain read-only and report risks/gaps.
+
+Tests/checkers/docs to add or update:
+- Scheduler coverage proving validator assignment is receipt-bound.
+- Chain coverage proving unassigned validators cannot submit attestations through `ChainCommand`.
+- Formal proof boundary document with theorem statements, assumptions, evidence, and gaps.
+- Coverage/completion docs corrected for the v2 useful-verification PoW gap.
+
+Narrow validation commands:
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --lib scheduler::tests`
+- `cargo test -p tensor_vm --lib chain::tests::unassigned_validator_attestations_are_rejected`
+- `cargo test -p tensor_vm --bin tvmd validator_role`
+
+Broad validation commands before commit:
+- `cargo test -p tensor_vm local_testnet --release`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `git diff --check`
+
+Expected observable evidence:
+- Unassigned validators are rejected by the chain engine even if they bypass role-loop logic.
+- Assignment ordering uses `receipt_id` in the validator draw.
+- Docs clearly say useful-verification PoW, canonical settled-receipt blockspace, challenge windows, and
+  PoW-skip fallback are not implemented yet.
+
+Out of scope:
+- Implementing useful-verification PoW block production and difficulty retargeting.
+- Replacing the existing `TensorBlock` v1 fields with v2 blockspace/checks-root fields.
+- Fetching validator tensor artifacts over remote request-response.
+
+Validation log:
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --lib scheduler::tests`: passed; 9 scheduler tests.
+- `cargo test -p tensor_vm --lib chain::tests::unassigned_validator_attestations_are_rejected`:
+  passed; 1 focused chain admission test.
+- `cargo test -p tensor_vm --lib chain::tests`: passed; 27 chain tests.
+- `cargo test -p tensor_vm --bin tvmd validator_role`: passed; 2 validator-role tests.
+- `cargo test -p tensor_vm --bin tvmd role`: passed; 10 role/runtime tests.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 CLI integration test.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 static Compose artifact test.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 release library local-testnet tests plus
+  the local CPU seed CLI test.
+- `git diff --check`: passed.
+
+Changes made:
+- Validator assignment now includes `receipt_id` in the assignment draw.
+- `ChainCommand::SubmitAttestation` rejects validators not assigned to the receipt.
+- Added proof/audit document [`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md) with locally proved
+  verifier/attestation claims, explicit assumptions, and current unsound consensus gaps.
+- Updated status/audit/coverage docs so the superseded settled-TensorWork proposer path is no longer counted
+  as v2 MVP proof evidence.
+
+Known remaining blockers:
+- The current block type and proposer path are still v1. Useful-verification PoW over canonical
+  settled-receipt blockspace is the next coherent core feature.
+- Validator assignment is receipt-bound but still uses the current finalized randomness at attestation
+  admission rather than a stored receipt-lifecycle seed.
+- The full Docker runtime gate was not rerun in this iteration.

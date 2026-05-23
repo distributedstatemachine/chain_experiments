@@ -3,6 +3,11 @@
 This tracks the implementation of [`mvp_spec.md`](mvp_spec.md). The
 acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 
+The reviewed v2 MVP consensus model is not fully implemented yet. The reference core still has the old
+settled-TensorWork proposer path and v1 block fields; useful-verification PoW over canonical
+settled-receipt blockspace remains an open core upgrade. See
+[`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md).
+
 ## Implemented In `crates/tensor_vm`
 
 - Deterministic finite-field tensors and TensorVM operations
@@ -21,7 +26,8 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Random-linear checks for `dY = Y - T` and `W_next = W - lr * grad_W`
 - Sparse-corruption rejection tests for TensorOp outputs, `dY`, and `W_next`
 - Receipt digest/signature checks and trace-root recomputation
-- Validator attestations with registered-stake quorum enforcement
+- Validator attestations with registered-stake quorum enforcement and deterministic assigned-validator
+  admission checks
 - Block assembly through the internal `chain::blocks` boundary, stake-weighted block-finality votes,
   duplicate-vote rejection, finalized block tracking, and finality-rate telemetry
 - Duplicate registration, duplicate receipt, and duplicate validator-attestation rejection
@@ -32,8 +38,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 - Receipt settlement in the internal `chain::settlement` boundary, 70/20/5/5 reward allocation,
   proposer/treasury rewards, reward accounting without repeated payout, and no-quorum rejection
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations
-- Settled prior-epoch TensorWork proposer selection through the internal `chain::proposer` boundary,
-  pending-work exclusion, and zero-work fallback
+- Superseded v1 settled prior-epoch TensorWork proposer selection through the internal `chain::proposer`
+  boundary, pending-work exclusion, and zero-work fallback. This remains as reference behavior and test
+  coverage, not as completion evidence for the reviewed v2 useful-verification PoW consensus model.
 - Chain parameters, chain state, block/vote, job/receipt, account, miner, validator, reward, model, and
   transaction domain types through the internal `chain::state` boundary
 - Genesis chain construction through the internal `chain::genesis` boundary
@@ -283,8 +290,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   `ChainCommand::SubmitAttestation` on non-producers, so post-startup blocks advance through receipts,
   attestations, settlement, proposer selection, and finality instead of a static snapshot, miner role loops
   that report assigned-job and unreceipted-job readiness from loaded chain state and can submit assigned
-  unreceipted receipts through the shared chain engine while inserting served tensor artifacts locally, miner
-  rewards, finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
+  unreceipted receipts through the shared chain engine while inserting served tensor artifacts locally,
+  validator role loops that can submit assigned attestations through the shared chain engine when local tensor
+  artifacts are available, miner rewards, finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
   WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
   durable status checks, an all-operator finalized common-head checkpoint queried through

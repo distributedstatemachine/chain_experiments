@@ -1,5 +1,16 @@
 # Local Chain Production Readiness And Chain-Core Refactor Plan
 
+## Superseded Assumptions (v2)
+
+The MVP spec now uses useful-verification PoW with deterministic blockspace. Gaps tied to
+TensorWork-weighted proposer selection or job-rooted blocks are obsolete. New gaps:
+
+- Implement `useful_verification_pow` puzzle and difficulty retargeting.
+- Implement settled-receipt pool and deterministic canonical selection.
+- Implement verification challenge window with cross-validator dispute path.
+- Remove `proposer_eligibility` from ChainState and migrate tests.
+- Update local checker to assert PoW block validity and BFT finality independently.
+
 This document records the current local-chain readiness gaps and the refactor path for making TensorVM's
 local chain production-grade while keeping it local-only. It combines the local setup review with an
 architecture plan for using one shared chain base across local, testnet, and mainnet profiles.
@@ -120,6 +131,13 @@ The local bundle is useful and should remain the first operational target:
   `role_miner_tensors_inserted`. Deterministic block-header catch-up can still replay already-receipted
   jobs before miners see unreceipted live work, so the full local runtime still does not require every miner
   to report positive receipt submission yet.
+- Validator role loops now scan the loaded chain state for receipts assigned to their registered validator
+  wallet, distinguish unattested receipts with local tensor artifacts from receipts still missing local
+  artifacts, submit assigned attestations through `ChainCommand::SubmitAttestation`, publish attestation
+  announcements through the existing p2p announcement path, and report `role_validator_work_ready`,
+  `role_validator_artifact_ready_receipts`, `role_validator_artifact_missing_receipts`, and
+  `role_validator_attestations_submitted`. Remote tensor request-response is still out of scope for this
+  slice, so live Compose validators are not required to report positive validator-owned submissions yet.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
@@ -180,19 +198,23 @@ The first chain-core cleanup slices are already in the tree:
   before accepting operator readiness.
 - `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` now construct explicit role-run loop
   wrappers before entering the shared runtime. The runtime loop has named steps for status writes, RPC
-  serving, network ingestion, and optional local production, preserving current consensus behavior while
-  creating a narrower boundary for future miner-owned receipt and validator-owned attestation loops.
+  serving, network ingestion, role-owned miner receipt submission, role-owned validator attestation
+  submission, and optional local production, preserving current consensus behavior while narrowing the
+  remaining proposer/block-assembly gap.
 
-These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
-state transitions before it satisfies the local CPU spec as a production-grade local chain.
+These are foundation pieces, not completion. Miner receipts and validator attestations now have role-owned
+submission paths for locally available work, but the local runtime still needs remote tensor fetching and
+network-visible proposer/block assembly before it satisfies the local CPU spec as a production-grade local
+chain.
 
 ## Highest-Priority Gaps
 
 ### 1. Local Production Is Still Single-Process
 
-Current live production still runs inside `miner-00`'s service loop. It now calls shared library role
-components for CPU miner execution and validator verification, but those components are still orchestrated
-inside one local producer process before settlement, block production, and finality votes are applied
+Current live production still runs inside `miner-00`'s service loop for settlement, block production, and
+finality votes. Miner receipt submission and validator attestation submission now have role-loop paths for
+locally available work, but the full gate still relies on deterministic producer orchestration before final
+block assembly and finality are applied
 against one `Chain`.
 
 This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
@@ -367,7 +389,7 @@ chain::settlement
   epoch settlement, reward accounting, model-state transition settlement
 
 chain::proposer
-  proposer eligibility and settled-prior-epoch TensorWork selection
+  v1 proposer compatibility path; v2 useful-verification PoW block validation should replace this surface
 
 node::runtime
   event loop joining network, store, txpool, chain engine, clock, and role services
@@ -548,9 +570,10 @@ track validation metrics
 Responsibilities:
 
 ```text
-watch settled receipts and prior-epoch TensorWork
-select eligible proposer with finalized randomness
-assemble blocks from accepted state
+watch the canonical settled-receipt blockspace
+verify the selected receipt set and derive checks_root
+search or validate useful-verification PoW over the v2 block header
+assemble blocks from accepted state and canonical blockspace
 publish blocks
 collect block votes
 track finality metrics
@@ -628,8 +651,8 @@ pending retry integration, and block-header application dispatch now also go thr
 event driver, with `tvmd` retaining only the service-specific deterministic catch-up callback. The role
 commands now enter explicit role-run loop wrappers and a named runtime loop boundary instead of constructing
 the generic service loop inline. CPU miner execution and validator verification now live behind role-owned
-library components used by the local producer, but independent miner receipt production, validator
-attestation production, and proposer block assembly still need to move into their role loops. Runtime role
+library components, miner receipt submission and validator attestation submission have role-loop paths for
+locally available work, and proposer block assembly still needs to move into its role loop. Runtime role
 policy now prevents miner and validator roles from becoming local block producers even if they inherit local
 block-interval configuration.
 
@@ -707,12 +730,10 @@ local evidence remains explicitly non-public
 
 Keep this incremental:
 
-1. Split the current `tvmd miner run` and `tvmd validator run` internals into role-owned loops and add a
-   proposer/node run surface while keeping current tests green.
-2. Wire miner receipt production through role processes.
-3. Wire validator attestation production through role processes.
-4. Wire proposer/block production through network-visible state.
-5. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
+1. Add remote tensor request-response fetching so validator-owned attestations are not limited to local
+   tensor artifacts.
+2. Wire proposer/block production through network-visible state.
+3. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

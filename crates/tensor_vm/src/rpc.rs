@@ -227,6 +227,16 @@ impl RpcNode {
         id
     }
 
+    pub fn tensor_by_commitment_root(&self, commitment_root: &Hash) -> Option<&Tensor> {
+        self.tensors
+            .values()
+            .find(|tensor| tensor.commitment_root() == *commitment_root)
+    }
+
+    pub fn contains_tensor_commitment_root(&self, commitment_root: &Hash) -> bool {
+        self.tensor_by_commitment_root(commitment_root).is_some()
+    }
+
     pub fn produce_synthetic_cpu_round(&mut self) -> Result<Option<u64>> {
         let Some(round) = produce_synthetic_cpu_round_with_tensors(&mut self.chain)? else {
             return Ok(None);
@@ -2367,7 +2377,14 @@ mod tests {
 
         let tensor =
             Tensor::from_vec(vec![2, 3], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
+        let commitment_root = tensor.commitment_root();
         let tensor_id = rpc.insert_tensor(tensor);
+        assert!(rpc.contains_tensor_commitment_root(&commitment_root));
+        assert_eq!(
+            rpc.tensor_by_commitment_root(&commitment_root)
+                .map(Tensor::tensor_id),
+            Some(tensor_id)
+        );
 
         for path in [
             "/tensor/latest".to_owned(),

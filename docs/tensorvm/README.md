@@ -3,6 +3,7 @@
 TensorVM (TVM) specification, implementation, verification, and operations notes.
 
 - [MVP spec](mvp_spec.md)
+- [MVP core formal proof boundary](mvp_core_formal_proofs.md)
 - [Local CPU testnet spec](local_cpu_testnet_spec.md)
 - [Local chain production readiness](local_chain_production_readiness.md)
 - [Implementation status](implementation_status.md)

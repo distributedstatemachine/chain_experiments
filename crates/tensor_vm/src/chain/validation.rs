@@ -1,6 +1,7 @@
 use super::{BlockVote, LocalChain};
 use crate::error::{Result, TvmError};
-use crate::types::{Hash, hash_bytes};
+use crate::scheduler::JobScheduler;
+use crate::types::{Address, Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
 use std::collections::BTreeSet;
 
@@ -16,6 +17,11 @@ pub fn submit_attestation(chain: &mut LocalChain, attestation: ValidatorAttestat
     }
     if !attestation.verify_signature() {
         return Err(TvmError::InvalidReceipt("bad attestation signature"));
+    }
+    if !is_assigned_validator(chain, attestation.validator, attestation.receipt_id) {
+        return Err(TvmError::InvalidReceipt(
+            "validator not assigned to receipt",
+        ));
     }
     let (receipt_job_id, receipt_primitive_type, receipt_miner) = {
         let receipt = chain
@@ -80,13 +86,16 @@ pub fn has_attestation_quorum(chain: &LocalChain, receipt_id: &Hash) -> bool {
     let mut valid_count = 0_usize;
     let mut valid_stake = 0_u64;
     let mut seen_validators = BTreeSet::new();
-    let assigned_stake: u64 = chain
-        .state
-        .validators
-        .values()
+    let assigned_validators = assigned_validators(chain, *receipt_id);
+    let assigned_stake: u64 = assigned_validators
+        .iter()
+        .filter_map(|validator| chain.state.validators.get(validator))
         .map(|validator| validator.stake)
         .sum();
     for attestation in attestations {
+        if !assigned_validators.contains(&attestation.validator) {
+            continue;
+        }
         if !seen_validators.insert(attestation.validator) {
             continue;
         }
@@ -104,6 +113,18 @@ pub fn has_attestation_quorum(chain: &LocalChain, receipt_id: &Hash) -> bool {
     let stake_den = chain.params.freivalds.minimum_stake_denominator.max(1);
     valid_count >= chain.params.freivalds.minimum_validators
         && valid_stake.saturating_mul(stake_den) >= assigned_stake.saturating_mul(stake_num)
+}
+
+fn is_assigned_validator(chain: &LocalChain, validator: Address, receipt_id: Hash) -> bool {
+    assigned_validators(chain, receipt_id).contains(&validator)
+}
+
+fn assigned_validators(chain: &LocalChain, receipt_id: Hash) -> BTreeSet<Address> {
+    JobScheduler::default()
+        .assign_validators(chain, receipt_id, &chain.state.finalized_randomness)
+        .validators
+        .into_iter()
+        .collect()
 }
 
 pub fn submit_block_vote(chain: &mut LocalChain, vote: BlockVote) -> Result<()> {

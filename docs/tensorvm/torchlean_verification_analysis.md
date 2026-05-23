@@ -75,7 +75,8 @@ The local TensorVM spec is already a reviewed draft. Its important design choice
 - random-linear checks for full-tensor elementwise relations,
 - full-output Freivalds for block-eligible receipts,
 - row sampling only as audit coverage unless soundness is explicitly bounded,
-- settled prior-epoch TensorWork for proposer selection,
+- validator useful-verification PoW over deterministic settled-receipt blockspace, with the older settled
+  prior-epoch TensorWork proposer path now treated as superseded reference behavior,
 - validation randomness from a finalized beacon or commit-reveal protocol,
 - data availability only as verification availability unless durable DA is later added.
 

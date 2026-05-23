@@ -14,7 +14,9 @@ The crate implements the deterministic local/testnet core:
 - full-output and row-sampled Freivalds checks
 - TensorOp receipts and validator attestations
 - LinearTrainingStep execution and verification
-- settled TensorWork proposer selection and reward settlement
+- reward settlement from verified settled TensorWork
+- current reference block production, with the reviewed useful-verification PoW block model tracked as an
+  open consensus-core upgrade in the TensorVM docs
 - operator identity on miner state with operator-separated replication assignment
 - miner hardware-class and GPU utilization telemetry
 - deterministic local-chain execution harness for adversarial tests

@@ -141,7 +141,10 @@ impl JobScheduler {
     ) -> ValidatorAssignment {
         let mut validators: Vec<_> = chain.state.validators.keys().copied().collect();
         validators.sort_by_key(|validator| {
-            let draw = hash_bytes(b"tensor-vm-validator-assignment-v1", &[seed, validator]);
+            let draw = hash_bytes(
+                b"tensor-vm-validator-assignment-v1",
+                &[seed, &receipt_id, validator],
+            );
             hash_to_u128(&draw)
         });
         validators.truncate(
@@ -293,6 +296,36 @@ mod tests {
         assert_eq!(
             first.validators.len(),
             chain.params.freivalds.validators_per_job
+        );
+        assert_eq!(first.receipt_id, receipt);
+    }
+
+    #[test]
+    fn validator_assignment_is_bound_to_receipt_id() {
+        let beacon = hash_bytes(b"test", &[b"beacon"]);
+        let mut chain = LocalChain::new(beacon);
+        chain.params.freivalds.validators_per_job = 4;
+        for i in 0..32 {
+            chain
+                .register_validator(address(format!("validator-{i}").as_bytes()), 10_000)
+                .unwrap();
+        }
+        let scheduler = JobScheduler::default();
+        let first =
+            scheduler.assign_validators(&chain, hash_bytes(b"test", &[b"receipt-0"]), &beacon);
+        let mut receipt_bound_assignment = None;
+        for i in 1..100 {
+            let receipt = hash_bytes(b"test", &[format!("receipt-{i}").as_bytes()]);
+            let assignment = scheduler.assign_validators(&chain, receipt, &beacon);
+            if assignment.validators != first.validators {
+                receipt_bound_assignment = Some(assignment);
+                break;
+            }
+        }
+
+        assert!(
+            receipt_bound_assignment.is_some(),
+            "receipt id must affect validator assignment ordering"
         );
     }
 

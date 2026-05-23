@@ -20,9 +20,10 @@ The spec below keeps the architecture but tightens the MVP around these constrai
 
 ## 0.1 One-Line Definition
 
-TensorVM (TVM) is a blockchain testnet where **probabilistically verified tensor computation** is the native
-block-production primitive. The MVP begins with deterministic tensor operations and introduces a minimal
-forward/backward training-step primitive so the network can test verifiable learning state transitions.
+TensorVM (TVM) is a blockchain testnet where **validator-side useful verification of miner tensor work** is
+the native proof-of-work primitive. Miners produce deterministic tensor receipts, validators verify settled
+receipts with reproducible algebraic checks, and the winning validator proves that verification work by
+mining a block over the checked receipt set.
 
 ---
 
@@ -43,8 +44,8 @@ The MVP should test the smallest verifiable version of this idea:
 
 ```text
 A decentralized network can generate deterministic tensor jobs, have miners execute them, have validators
-verify them with cheaper-than-recompute checks, and use settled valid tensor work to assign block-production
-eligibility and rewards.
+verify them with cheaper-than-recompute checks, and use validator-side useful verification of settled
+receipt blockspace as the block-production proof of work.
 ```
 
 The MVP should not attempt full decentralized LLM training immediately. It should build the verification and
@@ -55,7 +56,7 @@ until slashing, unbiasable randomness, and data availability are implemented.
 
 ## 2. Reviewed MVP Scope
 
-The final MVP has two execution primitives:
+The final MVP has two execution primitives and one consensus primitive:
 
 1. **TensorOp Primitive**
    - deterministic tensor operation verification
@@ -69,7 +70,16 @@ The final MVP has two execution primitives:
    - minimal optimizer update
    - validates an actual learning step without full Transformer complexity
 
-The MVP should use these two primitives to produce blocks, reward miners, and test validator verification.
+3. **Useful-Verification Proof-of-Work**
+   - miners submit receipts for completed tensor work
+   - settled receipts form deterministic blockspace
+   - validators verify the canonical receipt set, commit to the resulting `checks_root`, and search for a
+     proof-of-work nonce over that verification commitment
+   - stake-weighted validator finality confirms the winning PoW block
+
+The MVP should use TensorOp and LinearTrainingStep receipts to reward miners, test validator verification,
+and produce blocks through validator useful-verification PoW. Jobs no longer advance blocks directly, and
+TensorWork no longer selects proposers.
 
 ---
 
@@ -257,7 +267,7 @@ Gate 0 local CPU multi-participant testnet passes without simulations, local-onl
 single-participant shortcuts
 explicit threat model for miners, validators, proposers, and data servers
 unbiasable validation randomness from a finalized beacon or commit-reveal protocol
-settled-epoch TensorWork only for proposer eligibility
+useful-verification PoW over deterministic settled-receipt blockspace
 full-output Freivalds for block-eligible matmul receipts, or a documented row-sampling soundness bound
 random-linear checks for full elementwise training relations
 bounded verifier bandwidth per job shape
@@ -274,13 +284,14 @@ testnet, not as an economically secure proof-of-work chain.
 
 ### 5.1 Miner
 
-A miner provides tensor compute.
+A miner provides tensor compute. Miners do not produce blocks in the v2 MVP. Their consensus-facing output is
+a signed execution receipt plus enough tensor data availability for validators to verify that receipt.
 
 Responsibilities:
 
 ```text
 register on-chain
-listen for tensor jobs
+listen for tensor workload requests
 execute TensorVM programs
 commit to output tensors
 serve tensor chunks to validators
@@ -299,7 +310,8 @@ GPU recommended for competitive mining
 
 ### 5.2 Validator
 
-A validator verifies tensor work and finalizes blocks.
+A validator verifies tensor work, performs useful-verification proof-of-work, proposes winning blocks, and
+finalizes blocks through stake-weighted voting.
 
 Responsibilities:
 
@@ -310,6 +322,9 @@ request tensor chunks/openings
 perform Freivalds checks
 perform sampled row/cell checks
 verify training-step consistency
+derive checks_root for the canonical settled-receipt set
+search for a proof-of-work nonce over the verification commitment
+propose the winning block when the PoW target is met
 submit attestations
 vote on block validity
 earn validator rewards
@@ -317,21 +332,24 @@ earn validator rewards
 
 ---
 
-### 5.3 Block Proposer
+### 5.3 Proposer (Validator-Elected By Useful-Verification PoW)
 
-A proposer assembles blocks from valid tensor receipts.
+A proposer is the validator that first publishes a valid proof-of-work block for the current parent and
+canonical settled-receipt set. This is not a separate miner role, and it is not selected by TensorWork score.
 
 Responsibilities:
 
 ```text
-collect receipts
-collect validator attestations
-compute reward updates
+select the canonical settled-receipt set from deterministic blockspace
+verify that receipt set and commit to checks_root
+find nonce such that H(header || nonce) < difficulty_target
 propose block
-include settled TensorWork score
+collect stake-weighted finality votes
+earn the validator proposer reward
 ```
 
-In the MVP, proposers are selected from miners according to settled prior-epoch TensorWork score.
+In the MVP, all registered validators may attempt useful-verification PoW. Miner TensorWork affects miner
+rewards and blockspace accounting only; it does not grant block-production eligibility.
 
 ---
 
@@ -354,14 +372,14 @@ MVP v0 can include watcher tooling without full slashing-based fraud games.
 
 ## 6. Chain Architecture
 
-The MVP has five layers:
+The MVP has six layers:
 
 ```text
 Application Layer
-  synthetic tensor jobs, linear training steps
+  synthetic tensor workload requests, linear training steps
 
 Tensor Job Layer
-  job generation, assignment, deadlines, fees/rewards
+  workload generation, assignment, deadlines, miner rewards
 
 TensorVM Layer
   deterministic tensor execution semantics
@@ -369,8 +387,11 @@ TensorVM Layer
 Verification Layer
   Freivalds checks, sampled checks, redundant agreement
 
+Blockspace Layer
+  settled receipt pool, deterministic receipt ordering, TWU/byte/count caps
+
 Consensus/Settlement Layer
-  blocks, receipts, attestations, rewards, finality
+  useful-verification PoW, blocks, attestations, rewards, BFT finality
 ```
 
 ---
@@ -577,11 +598,14 @@ This prevents ambiguity in execution receipts.
 
 ---
 
-## 9. Primitive 1: TensorOp Job
+## 9. Primitive 1: TensorOp Workload
 
 ### 9.1 Purpose
 
-TensorOp jobs verify raw tensor compute.
+TensorOp workloads verify raw tensor compute. A workload request can be generated by the local profile,
+submitted by a user in future versions, or scheduled by a workload policy, but it is not itself the block
+production primitive. The on-chain primitive that enters blockspace is the miner receipt after it has
+enough validator evidence to become settled.
 
 The canonical MVP job is matrix multiplication:
 
@@ -589,10 +613,10 @@ The canonical MVP job is matrix multiplication:
 C = A @ B
 ```
 
-### 9.2 Synthetic Matmul Job
+### 9.2 Synthetic Matmul Workload Request
 
 ```rust
-struct MatmulJob {
+struct MatmulWorkload {
     job_id: JobId,
     epoch: u64,
     m: u64,
@@ -628,6 +652,9 @@ commitment_C
 receipt
 ```
 
+The receipt becomes blockspace only after validator attestations settle it. Blocks contain hashes and roots
+for settled receipts, not raw job requests.
+
 ---
 
 ### 9.3 TensorOp Receipt
@@ -651,7 +678,7 @@ For synthetic jobs, `input_roots` can be derived from seeds and may not need ful
 
 ---
 
-## 10. Primitive 2: LinearTrainingStep Job
+## 10. Primitive 2: LinearTrainingStep Workload
 
 ### 10.1 Purpose
 
@@ -667,6 +694,10 @@ optimizer update
 without requiring Transformer complexity.
 
 This is the smallest learning-shaped training primitive.
+
+As with TensorOp, the workload request defines what a miner should compute. The chain's blockspace primitive
+is the settled receipt proving the miner computed and served enough data for validators to verify the
+transition.
 
 ---
 
@@ -720,10 +751,10 @@ This primitive is intentionally simple because both the forward and backward pas
 
 ---
 
-### 10.3 LinearTrainingStep Job
+### 10.3 LinearTrainingStep Workload Request
 
 ```rust
-struct LinearTrainingStepJob {
+struct LinearTrainingStepWorkload {
     job_id: JobId,
     model_id: ModelId,
     step: u64,
@@ -1220,22 +1251,28 @@ misconduct hard to prove.
 
 ---
 
-## 19. Job Lifecycle
+## 19. Workload, Receipt, And Blockspace Lifecycle
 
 ```text
-1. Chain generates job from finalized epoch randomness.
-2. Miners observe job.
-3. Miners execute TensorVM program.
+1. A local profile, user, or workload policy creates a TensorVM workload request.
+2. Miners observe the workload request.
+3. Miners execute the TensorVM program.
 4. Miners commit output roots.
 5. Miners submit receipts before the receipt deadline.
-6. Receipt root is locked for the validation window.
-7. Validation randomness is revealed from an unbiasable beacon.
-8. Validators derive random checks.
+6. Receipt roots are locked for the validation window.
+7. Validation randomness is revealed from an unbiasable finalized beacon.
+8. Validators derive random checks for each receipt.
 9. Validators request tensor openings.
-10. Validators perform full-output Freivalds checks and sampled audits.
+10. Validators perform full-output Freivalds checks, random-linear checks, and sampled audits as required.
 11. Validators submit attestations.
-12. Proposer includes valid attestations and settled receipts in a block.
-13. Rewards and future proposer eligibility are calculated after delay.
+12. A receipt with sufficient valid attestations and data-availability evidence enters the settled-receipt pool.
+13. The next block's canonical blockspace is selected deterministically from the settled-receipt pool.
+14. Validators verify the canonical receipt set, commit to checks_root, and race to find a useful-verification
+    PoW nonce over that checks_root.
+15. The winning validator proposes a block containing the settled receipt set root and checks_root.
+16. Stake-weighted validator finality confirms the block.
+17. Miner, validator, PoW proposer, and treasury rewards are calculated after the verification challenge
+    window.
 ```
 
 ---
@@ -1247,29 +1284,33 @@ misconduct hard to prove.
 The MVP uses:
 
 ```text
-settled TensorWork-weighted proposer selection
+validator useful-verification PoW
 +
-validator finality
+stake-weighted validator finality
 ```
 
-Miners earn future proposer eligibility by producing valid tensor work.
+Miners earn rewards by producing settled tensor receipts. Validators earn rewards by verifying receipts,
+producing valid useful-verification PoW blocks, and voting on finality.
 
-Validators finalize blocks through stake-weighted voting. Validator stake is the immediate consensus security
-source in v0; TensorWork is a proposer-eligibility and reward signal until slashing and stronger fraud proofs
-exist.
+TensorWork is no longer a proposer-eligibility signal. It is used for miner reward weighting, blockspace TWU
+accounting, and network metrics. This removes the circularity where current or recent receipts can influence
+who gets to propose blocks.
 
-The chain must also have a liveness fallback. Genesis and zero-work epochs cannot rely on prior TensorWork.
+The chain must also have a liveness fallback. Genesis, zero-receipt epochs, and network partitions cannot
+halt block production merely because no useful receipt set is available.
 
 Fallback rule:
 
 ```text
-if total_valid_tensor_work(epoch E) == 0:
-  proposer selection for epoch E+1 falls back to stake-weighted validator/proposer rotation
-  no miner TensorWork rewards are paid for epoch E
-  job generation continues with smaller fallback jobs
+if no valid useful-verification PoW block appears within pow_timeout_blocks:
+  a stake-weighted validator rotation may produce a PoW-skip fallback block
+  the block may include no new settled receipts
+  the proposer reward is reduced
+  no miner TensorWork rewards are paid for empty blockspace
+  workload generation continues with smaller fallback workloads
 ```
 
-This keeps the chain live while still making TensorWork the normal proposer-eligibility path.
+This keeps the chain live while making useful verification the normal block-production path.
 
 ---
 
@@ -1289,7 +1330,8 @@ Each epoch has:
 challenge generation
 receipt submission
 verification
-next-epoch proposer selection
+settled-receipt pool update
+useful-verification PoW difficulty retargeting
 reward settlement
 ```
 
@@ -1303,17 +1345,14 @@ Each valid receipt contributes TensorWork Units.
 score_miner(epoch E) = sum(settled_valid_receipt.tensor_work_units from epoch E)
 ```
 
-Block proposer probability:
+Miner reward weight:
 
 ```text
-P(miner for epoch E+1) = score_miner(epoch E) / total_valid_tensor_work(epoch E)
+reward_weight_miner(epoch E) = score_miner(epoch E) / total_valid_tensor_work(epoch E)
 ```
 
-Use weighted randomness rather than deterministic top-miner selection to reduce monopolization.
-
-Do not let receipts from the current block or current epoch affect the current proposer selection. That would
-let proposers bias inclusion, validation timing, and their own future eligibility within the same decision
-cycle.
+TensorWork does not affect block proposer selection. Validators produce blocks by proving useful verification
+of the canonical settled-receipt set.
 
 ---
 
@@ -1328,12 +1367,137 @@ A block is finalized if:
 Validators check:
 
 ```text
+useful-verification PoW target
+canonical settled-receipt set root
+checks_root recomputation
 receipt validity
 attestation quorum
 reward calculation
 state transition
 parent validity
 ```
+
+Block finality can be immediate under the BFT rule, but reward finality is delayed until the verification
+challenge window closes. A finalized block can still have its proposer reward clawed back if its `checks_root`
+is disproven.
+
+---
+
+### 20.5 Useful-Verification PoW
+
+For a candidate block, validators build the canonical settled-receipt set from the parent state:
+
+```text
+receipt_set = select(finalized_beacon, settled_receipt_pool, blockspace_caps)
+settled_receipt_set_root = MerkleRoot(receipt_set.receipt_id || receipt_hash || tensor_work_units)
+```
+
+Selection is deterministic:
+
+```text
+1. filter receipts that are settled, unspent, unexpired, and data-available through the challenge window
+2. sort by H(finalized_beacon || parent_hash || receipt_id)
+3. append receipts in order until adding the next receipt would exceed any blockspace cap
+4. produce an empty set if the pool is empty
+```
+
+Validators then execute the required verification checks for every selected receipt and commit to the result:
+
+```text
+check_seed = H(finalized_beacon || parent_hash || receipt_id || "checks")
+check_leaf = H(receipt_id || primitive_type || freivalds_transcript_root || random_linear_root || da_root)
+checks_root = MerkleRoot(check_leaf_0, check_leaf_1, ...)
+```
+
+The useful-verification PoW header is:
+
+```text
+pow_header = H(parent_hash || settled_receipt_set_root || checks_root || finalized_beacon || validator_id)
+```
+
+A block satisfies PoW if:
+
+```text
+H(pow_header || nonce) < difficulty_target
+```
+
+A valid PoW block must satisfy all of:
+
+```text
+nonce meets difficulty_target
+settled_receipt_set_root matches canonical selection from parent state
+checks_root recomputes from the selected receipts and finalized beacon
+proposer is a registered validator eligible for the epoch
+block has stake-weighted finality signatures
+```
+
+This makes the proof of work useful only if verification dominates the candidate construction cost. The
+initial parameter target should keep expected nonce-search time per validator less than or equal to expected
+verification time for the canonical receipt set; otherwise validators could skip verification and brute-force
+nonces.
+
+Difficulty retargeting is bounded per epoch:
+
+```text
+observed_time = median_time(last_epoch_blocks)
+ratio = clamp(observed_time / target_epoch_time, 1 / difficulty_retarget_max_ratio, difficulty_retarget_max_ratio)
+new_target = old_target * ratio
+```
+
+Difficulty must also have a floor and ceiling so local CPU testnets remain live and public testnets cannot
+collapse into trivial nonce search.
+
+---
+
+### 20.6 Blockspace
+
+Blockspace is the bounded capacity for settled receipts in a block. The MVP has no fee market and no
+validator-selected mempool ordering. Inclusion is deterministic.
+
+The three independent caps are:
+
+```text
+block_twu_cap
+block_byte_cap
+block_receipt_cap
+```
+
+The canonical selector stops before the first receipt that would exceed any cap. This prevents both
+single-mega-receipt and many-tiny-receipt attacks. TensorWork Units are a blockspace dimension and miner
+reward metric, not a proposer-selection primitive.
+
+Because v0 has no fee market, congestion is handled by deterministic carry-over. Receipts not included in
+one block remain in the settled pool until included, expired, challenged, or pruned by retention policy.
+
+---
+
+### 20.7 Verification Challenge Window
+
+Any registered validator may challenge a block's `checks_root` during `verification_challenge_window`.
+
+A challenge provides:
+
+```text
+block_hash
+receipt_id
+expected_check_leaf
+observed_check_leaf
+opening against checks_root
+recomputed verification transcript
+challenger_signature
+```
+
+If the challenge proves the block proposer committed to a wrong verification result:
+
+```text
+proposer block reward is clawed back
+challenger receives the challenge reward
+proposer's future PoW eligibility is throttled for a penalty window
+the affected receipt is removed from reward settlement until reverified
+```
+
+MVP v0 may use reward clawback and throttling instead of hard stake slashing. Hard slashing should wait
+until verifier correctness, transcript formats, and appeal paths are battle-tested.
 
 ---
 
@@ -1344,13 +1508,15 @@ struct TensorBlock {
     height: u64,
     parent_hash: Hash,
     epoch: u64,
-    proposer: Address,
-    job_root: Hash,
-    receipt_root: Hash,
+    proposer: Address, // winning validator
+    settled_receipt_set_root: Hash,
+    checks_root: Hash,
     attestation_root: Hash,
     state_root: Hash,
     reward_root: Hash,
-    randomness: Hash,
+    beacon: Hash,
+    difficulty_target: U256,
+    nonce: u64,
     timestamp: u64,
     proposer_signature: Signature,
     validator_signature_aggregate: Signature,
@@ -1362,15 +1528,30 @@ struct TensorBlock {
 ## 22. Chain State
 
 ```rust
+struct SettledReceipt {
+    receipt_id: ReceiptId,
+    receipt_hash: Hash,
+    miner: Address,
+    primitive_type: PrimitiveType,
+    tensor_work_units: u64,
+    byte_size: u64,
+    settled_at_block: u64,
+    expires_at_block: u64,
+    attestation_quorum_root: Hash,
+}
+
 struct ChainState {
     accounts: Map<Address, Account>,
     miners: Map<Address, MinerState>,
     validators: Map<Address, ValidatorState>,
     jobs: Map<JobId, JobState>,
     receipts: Map<ReceiptId, ReceiptState>,
+    settled_receipt_pool: BTreeMap<ReceiptId, SettledReceipt>,
     attestations: Map<ReceiptId, Vec<ValidatorAttestation>>,
     model_states: Map<ModelId, ModelState>,
     rewards: RewardState,
+    difficulty: U256,
+    last_retarget_epoch: u64,
 }
 ```
 
@@ -1453,9 +1634,9 @@ future user job fees
 Recommended MVP split:
 
 ```text
-70% miners
+60% miners
 20% validators
-5% proposers
+15% useful-verification PoW proposer
 5% treasury
 ```
 
@@ -1474,8 +1655,12 @@ validator_reward = validator_valid_attestations / total_valid_attestations * val
 ### 25.5 Proposer Rewards
 
 ```text
-proposer_reward = fixed_block_reward + fee_share
+proposer_reward = fixed_block_reward_for_valid_useful_verification_pow
 ```
+
+The proposer is the winning validator, not a miner selected by TensorWork. In v0 there is no fee market and
+no miner inclusion bid. The proposer reward is paid only after `verification_challenge_window` closes without
+a successful `checks_root` challenge.
 
 ---
 
@@ -1517,7 +1702,9 @@ Public rewards should be capped until slashing and appeal/challenge flows are im
 
 ## 27. TensorWork Units
 
-TensorWork Units represent normalized verified tensor computation.
+TensorWork Units represent normalized verified tensor computation. In v2, TensorWork Units are used for miner
+reward weighting, blockspace capacity, telemetry, and concentration analysis. They do not select block
+proposers.
 
 Initial simple model:
 
@@ -1536,7 +1723,8 @@ LinearTrainingStep cost:
 forward_matmul + backward_matmul + optimizer_update + auxiliary ops
 ```
 
-The cost model should be governance/config upgradeable.
+The cost model should be governance/config upgradeable. Any update must preserve deterministic TWU
+calculation from receipt contents so every validator computes the same blockspace cap usage.
 
 ---
 
@@ -1556,6 +1744,14 @@ validators_per_job: 8
 full_freivalds_rounds_per_validator: 1
 audit_rows_per_validator: 16
 minimum_valid_attestations: max(5 validators, 2/3 assigned validator stake)
+block_twu_cap: 10_000_000_000 base units
+block_byte_cap: 4 MiB
+block_receipt_cap: 512 receipts
+difficulty_target_block_time: 6 seconds
+difficulty_retarget_epoch_length: 100 blocks
+difficulty_retarget_max_ratio: 4
+pow_timeout_blocks: 2
+verification_challenge_window: 1 epoch
 miner_min_stake: 100 tokens
 validator_min_stake: 10,000 tokens
 chunk_size: 1 MiB
@@ -2361,8 +2557,8 @@ Success criteria:
 documented false-accept targets per job shape
 no row-sampled-only block eligibility unless target bounds are met
 validation randomness cannot be biased by the current proposer
-settled-epoch TensorWork selection is implemented in the reference chain
-genesis and zero-work epochs still produce blocks via fallback proposer selection
+useful-verification PoW is implemented over canonical settled-receipt sets
+genesis and zero-receipt epochs still produce blocks via stake-weighted PoW-skip fallback
 ```
 
 ---
@@ -2466,13 +2662,17 @@ job registry
 receipt registry
 attestation registry
 reward state
-block production
+settled-receipt pool
+deterministic blockspace selector
+useful-verification PoW block production
 ```
 
 Success criteria:
 
 ```text
-local testnet produces blocks from valid tensor receipts
+local testnet produces blocks from deterministic settled-receipt blockspace
+validators can recompute checks_root for the block receipt set
+TensorWork affects miner rewards and blockspace caps, not proposer selection
 ```
 
 ---
@@ -2509,7 +2709,8 @@ Success criteria:
 signed wall-clock run window covering the full 7-day duration
 independent external operator evidence
 invalid work rejected
-rewards paid by verified TensorWork
+rewards paid by verified TensorWork and useful-verification PoW proposer success
+validators produce blocks by useful-verification PoW over canonical settled receipts
 production libp2p networking used for node propagation
 production libp2p operation is evidenced by signed network-observation records
 deployed services remain reachable during the public run
@@ -2573,10 +2774,11 @@ cost to attack one epoch
 The MVP succeeds if:
 
 ```text
-1. Miners execute deterministic tensor jobs.
-2. Validators verify block-eligible matmul jobs with full-output Freivalds or an explicitly bounded equivalent.
+1. Miners execute deterministic tensor workload requests and submit receipts.
+2. Validators verify block-eligible matmul receipts with full-output Freivalds or an explicitly bounded equivalent.
 3. Row-sampled checks are treated as audits unless their false-accept bounds are documented.
-4. Blocks are produced using settled prior-epoch TensorWork.
+4. Blocks are produced by validators winning useful-verification PoW over deterministically ordered settled
+   receipts.
 5. Rewards are distributed according to verified settled TensorWork.
 6. Validation randomness is unbiasable after receipt roots are committed.
 7. Invalid tensor outputs are rejected in controlled dense and sparse corruption tests.
@@ -2586,7 +2788,7 @@ The MVP succeeds if:
 11. Validators spend materially less compute than full recomputation.
 12. Tensor data availability exceeds 95% during active windows and required retention windows.
 13. The network runs for 7 consecutive days with independent nodes.
-14. Genesis and zero-work epochs have a tested fallback proposer path.
+14. Zero-receipt epochs have a tested stake-weighted PoW-skip fallback path.
 15. Reward concentration, validator disagreement, and data withholding are reported.
 ```
 
@@ -2632,7 +2834,9 @@ durable state is only a reference file store rather than a production database/s
 Do not count the MVP as successful if:
 
 ```text
-current-epoch receipts affect current proposer selection
+current-epoch receipts affect proposer eligibility
+validators can choose arbitrary receipts instead of the canonical blockspace set
+checks_root cannot be recomputed by other validators
 row-sampled checks are the only validity check without a parameterized soundness bound
 training-step state updates are only sampled entry-by-entry
 validation randomness can be influenced after miners commit receipt roots
@@ -2770,12 +2974,13 @@ track how much TensorWork comes from synthetic versus user-valued jobs
 
 ### 37.7 TensorWork Consensus Circularity
 
-If current receipts influence current proposer selection, proposers can bias inclusion and timing.
+If current receipts influence proposer eligibility, block producers can bias inclusion and timing.
 
 Mitigation:
 
 ```text
-use only settled prior-epoch TensorWork for proposer eligibility
+do not use TensorWork for proposer eligibility
+use useful-verification PoW over deterministic settled-receipt blockspace
 settle rewards after validation and challenge windows
 make validator stake the immediate finality security source in v0
 ```
@@ -2791,6 +2996,65 @@ cap rewards
 publish v0 as a research testnet
 add slashing only after verifier correctness and appeal flows are tested
 ```
+
+### 37.9 Edge Cases For The PoW + Blockspace Model
+
+Verification grinding: validators may try different receipt subsets until they find an easier nonce.
+Mitigation: the receipt set is canonical, sorted by `H(finalized_beacon || parent_hash || receipt_id)`, and
+truncated only by blockspace caps. A block with a non-canonical set is invalid.
+
+Fake verification: a validator may skip Freivalds or random-linear checks and search nonces over a bogus
+`checks_root`. Mitigation: `checks_root` is reproducible from selected receipts, the parent, and the finalized
+beacon. Other validators can recompute it and challenge during `verification_challenge_window`.
+
+Empty blocks: if no settled receipts are available, the chain still needs liveness. Mitigation: empty
+blockspace is valid, proposer reward is reduced, and no miner TensorWork rewards are paid.
+
+Stalling: a validator may find a nonce and withhold the block. Mitigation: after `pow_timeout_blocks`,
+stake-weighted fallback can produce a PoW-skip block; future versions can also throttle validators that
+repeatedly win and withhold.
+
+Censorship: validators may try to exclude a miner's receipts. Mitigation: deterministic selection makes
+omission from the canonical set invalid rather than discretionary.
+
+Validator/miner self-dealing: the same operator may run both roles and favor their own receipts. Mitigation:
+receipts still need independent attestation quorum, and v1 should require operator-group diversity for
+attestations that support proposer rewards.
+
+Difficulty death spiral: low verification throughput can reduce difficulty until one validator dominates.
+Mitigation: bounded retargeting, floor and ceiling targets, and a per-validator block cap per epoch.
+
+No fee market: v0 deterministic inclusion has no congestion pricing. Mitigation: carry over unspent settled
+receipts and treat v0 blockspace as a fairness and security harness, not a fee-market design.
+
+Dimension gaming: attackers may use one huge receipt or many tiny receipts to distort block construction.
+Mitigation: cap TWU, bytes, and receipt count independently.
+
+Liveness fallback: zero-receipt or no-PoW periods must not halt the chain. Mitigation: stake-weighted
+PoW-skip fallback block with reduced rewards and explicit telemetry.
+
+### 37.10 Critique Of v2
+
+The v2 design replaces a single measurable economic primitive, TensorWork-weighted proposer eligibility,
+with two coupled primitives: validator verification cost and nonce search. That is cleaner for block
+semantics but harder to model economically.
+
+Validators now bear proof-of-work cost in addition to verification cost. The 15% proposer reward is a
+placeholder; it must be tuned against observed verification cost, nonce-search cost, and validator
+participation.
+
+The verification challenge window means block finality and reward finality are different. BFT can finalize a
+block immediately, but proposer reward and affected receipt settlement remain challengeable until the window
+closes.
+
+Useful-verification PoW only remains useful if verification cost dominates or at least materially gates the
+nonce race. If nonce search dominates, validators can skip verification and brute force headers. The MVP
+therefore targets expected nonce-search time per validator less than or equal to expected verification time
+for the canonical receipt set.
+
+The design may centralize around validators with both high stake and high verification throughput.
+Mitigations include stake caps for finality weighting, bounded difficulty retargeting, per-validator block
+caps per epoch, and public telemetry for validator reward concentration.
 
 ---
 
@@ -2839,20 +3103,21 @@ A Tensor Proof-of-Work research testnet with:
   - deterministic TensorVM
   - finite-field/int tensor arithmetic
   - Merkle-committed tensors
-  - synthetic matmul TensorOp jobs
+  - synthetic matmul TensorOp workload requests
   - full-output Freivalds validator checks for block-eligible receipts
   - row/chunk audits and verification-time availability checks
   - redundant miner agreement
-  - settled prior-epoch TensorWork-weighted proposer selection
-  - validator finality
-  - reward distribution by settled valid TensorWork
+  - deterministic settled-receipt blockspace
+  - validator useful-verification PoW over checks_root
+  - stake-weighted validator finality
+  - reward distribution by settled valid TensorWork and PoW proposer success
   - LinearTrainingStep primitive with forward/backward/random-linear update validation
 ```
 
 The MVP should test two claims:
 
 ```text
-1. Tensor computation can be used as a measurable block-production resource in a testnet.
+1. Validator verification of tensor computation can be used as a useful proof-of-work resource in a testnet.
 2. Simple learning steps can be probabilistically verified as deterministic state transitions.
 ```
 
@@ -2879,7 +3144,153 @@ The strategic message is:
 
 ```text
 Bitcoin proved energy was spent.
-TensorVM tests whether learning-relevant tensor work can be verified cheaply enough to drive block production.
+TensorVM proves verification of tensor work was performed.
 ```
 
 That is the MVP worth building.
+
+---
+
+## Appendix A: v1 Assumptions Superseded By v2
+
+This appendix preserves the prior v1 consensus assumptions that were replaced by the useful-verification
+PoW and deterministic blockspace design. They remain here for auditability and migration planning, not as
+active requirements.
+
+### A.1 Superseded Section 5.3: Block Proposer
+
+> Superseded by v2. In v2, the proposer is the validator that wins useful-verification PoW.
+
+```text
+### 5.3 Block Proposer
+
+A proposer assembles blocks from valid tensor receipts.
+
+Responsibilities:
+
+collect receipts
+collect validator attestations
+compute reward updates
+propose block
+include settled TensorWork score
+
+In the MVP, proposers are selected from miners according to settled prior-epoch TensorWork score.
+```
+
+### A.2 Superseded Section 20: Consensus Model
+
+> Superseded by v2. In v2, TensorWork does not select block proposers. Validators produce blocks by useful-verification PoW.
+
+```text
+### 20.1 Hybrid Consensus
+
+The MVP uses:
+
+settled TensorWork-weighted proposer selection
++
+validator finality
+
+Miners earn future proposer eligibility by producing valid tensor work.
+
+Validators finalize blocks through stake-weighted voting. Validator stake is the immediate consensus security
+source in v0; TensorWork is a proposer-eligibility and reward signal until slashing and stronger fraud proofs
+exist.
+
+The chain must also have a liveness fallback. Genesis and zero-work epochs cannot rely on prior TensorWork.
+
+Fallback rule:
+
+if total_valid_tensor_work(epoch E) == 0:
+  proposer selection for epoch E+1 falls back to stake-weighted validator/proposer rotation
+  no miner TensorWork rewards are paid for epoch E
+  job generation continues with smaller fallback jobs
+
+This keeps the chain live while still making TensorWork the normal proposer-eligibility path.
+
+### 20.2 Epochs
+
+Suggested parameters:
+
+block_time: 6 seconds
+epoch_length: 100 blocks
+approx_epoch_duration: 10 minutes
+
+Each epoch has:
+
+challenge generation
+receipt submission
+verification
+next-epoch proposer selection
+reward settlement
+
+### 20.3 TensorWork Score
+
+Each valid receipt contributes TensorWork Units.
+
+score_miner(epoch E) = sum(settled_valid_receipt.tensor_work_units from epoch E)
+
+Block proposer probability:
+
+P(miner for epoch E+1) = score_miner(epoch E) / total_valid_tensor_work(epoch E)
+
+Use weighted randomness rather than deterministic top-miner selection to reduce monopolization.
+
+Do not let receipts from the current block or current epoch affect the current proposer selection. That would
+let proposers bias inclusion, validation timing, and their own future eligibility within the same decision
+cycle.
+
+### 20.4 Finality
+
+A block is finalized if:
+
+>= 2/3 validator stake signs the block
+
+Validators check:
+
+receipt validity
+attestation quorum
+reward calculation
+state transition
+parent validity
+```
+
+### A.3 Superseded Section 21: Block Structure
+
+> Superseded by v2. In v2, `job_root` is removed and blocks commit to `settled_receipt_set_root`, `checks_root`, `difficulty_target`, and `nonce`.
+
+```rust
+struct TensorBlock {
+    height: u64,
+    parent_hash: Hash,
+    epoch: u64,
+    proposer: Address,
+    job_root: Hash,
+    receipt_root: Hash,
+    attestation_root: Hash,
+    state_root: Hash,
+    reward_root: Hash,
+    randomness: Hash,
+    timestamp: u64,
+    proposer_signature: Signature,
+    validator_signature_aggregate: Signature,
+}
+```
+
+### A.4 Superseded Section 25.5: Proposer Rewards
+
+> Superseded by v2. In v2, the proposer reward is paid to the winning validator after the verification challenge window.
+
+```text
+### 25.5 Proposer Rewards
+
+proposer_reward = fixed_block_reward + fee_share
+```
+
+### A.5 Superseded Acceptance Criteria
+
+> Superseded by v2. In v2, block production is useful-verification PoW over deterministic settled-receipt blockspace.
+
+```text
+4. Blocks are produced using settled prior-epoch TensorWork.
+14. Genesis and zero-work epochs have a tested fallback proposer path.
+```

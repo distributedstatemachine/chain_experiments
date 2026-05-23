@@ -2,8 +2,9 @@
 //!
 //! The crate focuses on deterministic local/testnet semantics: finite-field
 //! tensors, Merkle commitments, Freivalds verification, linear training-step
-//! checks, receipts, attestations, rewards, and settled TensorWork proposer
-//! selection.
+//! checks, receipts, attestations, rewards, and the current reference block
+//! path. The reviewed v2 MVP replaces settled TensorWork proposer selection
+//! with useful-verification PoW; see the docs for the remaining consensus gap.
 
 pub mod api;
 pub mod chain;
