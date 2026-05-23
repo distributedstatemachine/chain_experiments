@@ -159,6 +159,8 @@ spaghetti around.
   `storage/node_store.rs`, making `storage.rs` a public facade over the storage submodules.
 - Iteration 63 extracted shared primitive storage-format readers/writers into `storage/codec.rs`,
   removing duplicate snapshot readers while keeping chain-state domain codecs in `storage/chain_state.rs`.
+- Iteration 64 moved the binary runtime test module out of `main.rs` into `main_tests.rs`, keeping
+  test paths stable while reducing the production binary file to runtime code.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
