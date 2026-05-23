@@ -2,8 +2,8 @@ use std::{io::ErrorKind, thread, time::Duration};
 
 use super::{
     miner_role::tick_miner_role_work_once,
-    network::ingest_network_events,
     runtime_config::{RuntimeRole, ServiceRuntimeConfig},
+    runtime_network::ingest_network_once as ingest_runtime_network_once,
     runtime_production::LocalProductionSchedule,
     runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
@@ -93,27 +93,16 @@ impl RoleRuntimeLoop {
     }
 
     fn ingest_network_once(&mut self) -> std::result::Result<(), String> {
-        let ingested = ingest_network_events(
+        if ingest_runtime_network_once(
+            &self.store,
             &mut self.server,
             &self.p2p_service,
             self.local_producer,
-            self.runtime_state.pending_payloads_mut(),
-        )?;
-        if !ingested.has_activity() {
-            return Ok(());
+            &mut self.runtime_state,
+        )? {
+            self.write_status()?;
         }
-        let should_persist = ingested.applied_blocks > 0
-            || ingested.job_payloads_applied > 0
-            || ingested.receipt_payloads_applied > 0
-            || ingested.attestation_payloads_applied > 0
-            || ingested.block_votes_applied > 0;
-        self.runtime_state.record_network_ingest(ingested);
-        if should_persist {
-            self.store
-                .persist_chain(&self.server.gateway().node.chain)
-                .map_err(|error| format!("failed to persist network-applied state: {error}"))?;
-        }
-        self.write_status()
+        Ok(())
     }
 
     fn tick_role_work_once(&mut self) -> std::result::Result<(), String> {

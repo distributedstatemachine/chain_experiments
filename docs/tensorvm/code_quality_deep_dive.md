@@ -228,6 +228,9 @@ spaghetti around.
 - Iteration 96 split validator runtime ticking into `main/runtime_validator.rs`, leaving
   `main/validator_role.rs` focused on role observation, artifact assembly, attestation submission,
   and block-vote submission.
+- Iteration 97 extracted runtime network ingest persistence and counter recording into
+  `main/runtime_network.rs`, leaving `RoleRuntimeLoop` to call the network tick and write status
+  when activity occurred.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
