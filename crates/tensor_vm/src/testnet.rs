@@ -1,5 +1,8 @@
 use crate::ExplorerSummary;
-use crate::chain::{BlockVote, Chain, ChainParams, JobState, TensorBlock, Transaction};
+use crate::chain::{
+    BlockVote, Chain, ChainCommand, ChainEngine, ChainParams, JobState, ReceiptState, TensorBlock,
+    Transaction,
+};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -3506,7 +3509,12 @@ impl LocalTestnet {
             Vec::with_capacity(config.miner_count + config.validator_count);
         for i in 0..config.miner_count {
             let miner = address(format!("testnet-miner-{i}").as_bytes());
-            chain.register_miner(miner, config.miner_stake).unwrap();
+            chain
+                .apply_command(ChainCommand::RegisterMiner {
+                    address: miner,
+                    stake: config.miner_stake,
+                })
+                .unwrap();
             miners.push(miner);
             let index = (i as u64).to_le_bytes();
             participant_endpoints.push(LocalParticipantEndpoint {
@@ -3522,7 +3530,10 @@ impl LocalTestnet {
         for i in 0..config.validator_count {
             let validator = address(format!("testnet-validator-{i}").as_bytes());
             chain
-                .register_validator(validator, config.validator_stake)
+                .apply_command(ChainCommand::RegisterValidator {
+                    address: validator,
+                    stake: config.validator_stake,
+                })
                 .unwrap();
             validators.push(validator);
             let index = (i as u64).to_le_bytes();
@@ -3577,10 +3588,7 @@ impl LocalTestnet {
                 .or_else(|| self.validators.first().copied())
                 .unwrap_or([0; 32]);
             let timestamp = i.saturating_mul(self.chain.params.block_time_seconds);
-            let block = self
-                .chain
-                .produce_block(proposer, timestamp)
-                .expect("registered validator should produce a useful-verification block");
+            let block = self.produce_block_with_command(proposer, timestamp);
             self.finalize_block(&block);
         }
     }
@@ -3594,7 +3602,9 @@ impl LocalTestnet {
             self.chain.state.height + self.chain.params.receipt_submission_window,
         );
         let mut txpool = TxPool::default();
-        self.chain.submit_job(JobState::TensorOp(job.clone()));
+        self.chain
+            .apply_command(ChainCommand::SubmitJob(JobState::TensorOp(job.clone())))
+            .expect("generated tensor job should be accepted");
         let miner_assignment = scheduler.assign_miners(&self.chain, job.job_id, &beacon);
         let mut receipts = Vec::new();
         for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
@@ -3604,25 +3614,29 @@ impl LocalTestnet {
                 .expect("reference miner should solve generated job");
             assert!(txpool.submit(Transaction::SubmitTensorOpReceipt(receipt.receipt_id)));
             self.chain
-                .submit_tensor_op_receipt(receipt.clone())
+                .apply_command(ChainCommand::SubmitReceipt(ReceiptState::TensorOp(
+                    receipt.clone(),
+                )))
                 .expect("registered miner receipt should be accepted");
             receipts.push((receipt, miner.tensor_server.clone()));
         }
 
         self.attest_matmul_receipts(scheduler, &job, &receipts, &beacon, &mut txpool);
 
-        self.chain.settle_epoch(1_000, 500);
+        self.chain
+            .apply_command(ChainCommand::SettleEpoch {
+                miner_reward_pool: 1_000,
+                validator_reward_pool: 500,
+            })
+            .expect("verified receipts should settle");
         let proposer = self
             .chain
             .proposer_for_next_epoch(&beacon)
             .unwrap_or_else(|| self.validators[0]);
-        let block = self
-            .chain
-            .produce_block(
-                proposer,
-                self.chain.state.height * self.chain.params.block_time_seconds,
-            )
-            .expect("registered validator should produce a useful-verification block");
+        let block = self.produce_block_with_command(
+            proposer,
+            self.chain.state.height * self.chain.params.block_time_seconds,
+        );
         self.finalize_block(&block);
     }
 
@@ -3648,7 +3662,10 @@ impl LocalTestnet {
         });
         let mut txpool = TxPool::default();
         self.chain
-            .submit_job(JobState::LinearTrainingStep(job.clone()));
+            .apply_command(ChainCommand::SubmitJob(JobState::LinearTrainingStep(
+                job.clone(),
+            )))
+            .expect("generated linear training job should be accepted");
         let miner_assignment = scheduler.assign_miners(&self.chain, job.job_id, &beacon);
         let mut receipts = Vec::new();
         for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
@@ -3665,7 +3682,9 @@ impl LocalTestnet {
                 receipt.receipt_id
             )));
             self.chain
-                .submit_linear_receipt(receipt.clone())
+                .apply_command(ChainCommand::SubmitReceipt(
+                    ReceiptState::LinearTrainingStep(receipt.clone()),
+                ))
                 .expect("registered miner linear receipt should be accepted");
             receipts.push((receipt, output));
         }
@@ -3694,7 +3713,7 @@ impl LocalTestnet {
                     .expect("reference validator should verify generated training step");
                 assert!(txpool.submit(Transaction::SubmitAttestation(attestation.receipt_id)));
                 self.chain
-                    .submit_attestation(attestation)
+                    .apply_command(ChainCommand::SubmitAttestation(attestation))
                     .expect("registered validator attestation should be accepted");
             }
         }
@@ -3708,7 +3727,12 @@ impl LocalTestnet {
             self.chain
                 .has_redundant_agreement(&canonical_receipt.receipt_id)
         );
-        self.chain.settle_epoch(1_000, 500);
+        self.chain
+            .apply_command(ChainCommand::SettleEpoch {
+                miner_reward_pool: 1_000,
+                validator_reward_pool: 500,
+            })
+            .expect("verified linear receipts should settle");
         assert!(
             self.chain
                 .state
@@ -3727,13 +3751,10 @@ impl LocalTestnet {
             .chain
             .proposer_for_next_epoch(&beacon)
             .unwrap_or_else(|| self.validators[0]);
-        let block = self
-            .chain
-            .produce_block(
-                proposer,
-                self.chain.state.height * self.chain.params.block_time_seconds,
-            )
-            .expect("registered validator should produce a useful-verification block");
+        let block = self.produce_block_with_command(
+            proposer,
+            self.chain.state.height * self.chain.params.block_time_seconds,
+        );
         self.finalize_block(&block);
     }
 
@@ -3886,10 +3907,24 @@ impl LocalTestnet {
                     .expect("reference validator should verify generated job");
                 assert!(txpool.submit(Transaction::SubmitAttestation(attestation.receipt_id)));
                 self.chain
-                    .submit_attestation(attestation)
+                    .apply_command(ChainCommand::SubmitAttestation(attestation))
                     .expect("registered validator attestation should be accepted");
             }
         }
+    }
+
+    fn produce_block_with_command(&mut self, proposer: Address, timestamp: u64) -> TensorBlock {
+        self.chain
+            .apply_command(ChainCommand::ProduceBlock {
+                proposer,
+                timestamp,
+            })
+            .expect("registered validator should produce a useful-verification block");
+        self.chain
+            .blocks()
+            .last()
+            .cloned()
+            .expect("producing a block should append to the chain")
     }
 
     fn finalize_block(&mut self, block: &TensorBlock) {
@@ -3902,7 +3937,9 @@ impl LocalTestnet {
                 .map(|validator| validator.stake)
                 .unwrap_or_default();
             self.chain
-                .submit_block_vote(BlockVote::new(validator, stake, block))
+                .apply_command(ChainCommand::SubmitBlockVote(BlockVote::new(
+                    validator, stake, block,
+                )))
                 .expect("registered validator vote should finalize local block");
             if self.chain.is_block_finalized(&block.hash()) {
                 break;

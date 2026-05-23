@@ -41,6 +41,9 @@ spaghetti around.
 - Iteration 5 stopped runtime RPC serving from persisting chain state after read-only requests. The service
   loop now compares chain snapshots around a served RPC request, persists only when the chain changed, and
   still updates served-request runtime status for read-only traffic.
+- Iteration 6 routed `LocalTestnet` participant registration, job/receipt/attestation submission,
+  settlement, block production, and block votes through `ChainCommand`. Model registration and model
+  transition remain direct until the command API grows model-specific variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -188,7 +191,7 @@ through imperative methods on `Chain`.
 
 Remaining examples:
 
-- runtime, public-testnet, and RPC test setup paths still call direct mutation helpers in several places.
+- runtime, RPC test setup, and model-state paths still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
 - `apply_transaction` now rejects txpool-only reference submissions, but the public transaction surface still
   mixes immediate chain mutations with queued reference announcements.
