@@ -143,6 +143,8 @@ spaghetti around.
   into `p2p/node.rs`, leaving the parent module as the public configuration facade plus p2p tests.
 - Iteration 55 moved peer-book persistence and malformed-decoder tests into `p2p/peer_book.rs`,
   allowing peer-book codec constants and helper readers/writers to become module-private.
+- Iteration 56 moved libp2p node construction tests into `p2p/node.rs`, keeping those transport and
+  bootstrap assertions with the node builder.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
