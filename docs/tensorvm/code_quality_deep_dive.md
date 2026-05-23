@@ -205,6 +205,8 @@ spaghetti around.
   tests into `main_tests/validator_role.rs`, keeping role-specific binary tests with their behavior.
 - Iteration 86 moved network payload ordering/retry tests and their local chain helpers into
   `main_tests/network_payloads.rs`, further shrinking the binary test parent module.
+- Iteration 87 moved runtime role policy, role-loop config/report, wallet-registration, and profile
+  parsing tests into `main_tests/runtime_roles.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
