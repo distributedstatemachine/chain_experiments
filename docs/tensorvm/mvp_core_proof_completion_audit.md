@@ -155,6 +155,8 @@ The proof assumptions and their discharge gates are classified in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md).
 The adversary model for the current proof boundary is stated in
 [`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
+The theorem import/dependency cut line is documented in
+[`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 The proof-to-implementation claim boundary is summarized in
 [`mvp_core_proof_traceability_matrix.md`](mvp_core_proof_traceability_matrix.md).
 

@@ -11,6 +11,8 @@ Assumption categories and discharge gates are tracked in
 move to a stronger status only when its assumption-discharge category has been satisfied.
 The adversary model used to interpret those assumptions is stated in
 [`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
+The theorem dependency graph is maintained in
+[`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 
 ## Status Key
 

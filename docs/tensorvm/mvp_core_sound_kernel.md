@@ -9,6 +9,9 @@ allowed claim boundary until the implementation makes the v2 counterexamples imp
 This is not a mechanized Lean/TorchLean proof. It is a paper-proof kernel that identifies theorem
 statements, assumptions, and exclusions for later mechanization.
 
+The theorem import boundary for this kernel is made explicit in
+[`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
+
 ## Kernel Claim
 
 The current MVP core supports this limited claim:

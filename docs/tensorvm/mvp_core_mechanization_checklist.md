@@ -5,6 +5,8 @@ Status: documentation-only checklist for future Lean/TorchLean work.
 Purpose: turn the sound-kernel paper proofs into a concrete mechanization plan without pretending that the
 blocked v2 consensus theorems are ready. This file is intentionally scoped to the defensible kernel in
 [`mvp_core_sound_kernel.md`](mvp_core_sound_kernel.md).
+The import graph that separates completed kernel proofs from blocked v2 nodes is documented in
+[`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 
 This is not a mechanized proof artifact. It is the checklist a mechanized proof package should satisfy
 before any claim moves from "paper proof" to "formal proof."
