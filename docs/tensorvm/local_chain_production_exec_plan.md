@@ -7,8 +7,9 @@ feature-sized iterations are summarized after validation and push, and older det
 
 - Active feature: Iteration 12, network-visible block payload propagation/admission is implemented and
   validated as feature commit `f6f95074821a1ab5c0e320e0645c330ff88dde7d`
-  (`Add network-visible block payload admission`); push evidence is recorded after this evidence commit
-  lands.
+  (`Add network-visible block payload admission`) with evidence commit
+  `133fbcb6e1471261214d273415574cf9febef199` (`Record iteration 12 validation evidence`) pushed to
+  `origin/main`.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
 - Iteration 11 feature and evidence commits are on `origin/main`: `e6129d1915562a1e865579e347d8cfb85855089e`
@@ -209,6 +210,9 @@ Post-implementation validation currently passed:
   `curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received`.
 - Feature commit after validation:
   `f6f95074821a1ab5c0e320e0645c330ff88dde7d` (`Add network-visible block payload admission`).
+- Validation evidence commit:
+  `133fbcb6e1471261214d273415574cf9febef199` (`Record iteration 12 validation evidence`), confirmed on
+  `origin/main`.
 
 Previous Iteration 11 evidence:
 - Feature commit: `e6129d1915562a1e865579e347d8cfb85855089e`.
