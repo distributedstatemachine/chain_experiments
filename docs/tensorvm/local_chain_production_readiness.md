@@ -157,6 +157,9 @@ The first chain-core cleanup slices are already in the tree:
 - Decoded network job, receipt, and attestation payload application now lives behind chain-centric node
   runtime helpers, so future role loops can apply accepted payloads through `ChainCommand` without depending
   on private `tvmd` helpers.
+- Network event ordering, invalid event accounting, decoded payload ingestion, pending-payload retry, and
+  block-header application dispatch now live in the reusable node runtime driver. `tvmd` adapts that driver
+  to the existing service-owned block catch-up callback while deterministic replay remains service-specific.
 
 These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
 state transitions before it satisfies the local CPU spec as a production-grade local chain.
@@ -245,10 +248,12 @@ non-producers validate and apply job payloads through `ChainCommand::SubmitJob`,
 receipt and attestation payloads are retained and retried once prerequisite jobs or receipts arrive, then
 live block catch-up is applied from drained `NewBlockHeader` events instead of reading only aggregate
 latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes block
-announcements ahead of payload-only messages and local synthetic replay prunes future pre-applied synthetic
-jobs, receipts, attestations, and validator attestation counters before matching an observed head, so decoded
-payloads cannot poison deterministic local catch-up. The remaining gap is replacing deterministic replay
-with role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
+announcements ahead of payload-only messages through the reusable node runtime event driver, which also owns
+decoded payload application, pending retry, invalid event accounting, and producer versus non-producer
+block-header dispatch. Local synthetic replay still prunes future pre-applied synthetic jobs, receipts,
+attestations, and validator attestation counters before matching an observed head, so decoded payloads
+cannot poison deterministic local catch-up. The remaining gap is replacing deterministic replay with
+role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -594,7 +599,9 @@ connected-peer counts, job/receipt/attestation/block gossip observations, and ta
 observations for every counted operator. The service runtime now keeps served-request counts,
 produced-block counts, network-applied block counts, aggregate network-event counters, pending
 out-of-order network payloads, and decoded job/receipt/attestation payload application in reusable
-node runtime helpers instead of private binary state. CPU
+node runtime helpers instead of private binary state. Message ordering, invalid network-event accounting,
+pending retry integration, and block-header application dispatch now also go through the shared node runtime
+event driver, with `tvmd` retaining only the service-specific deterministic catch-up callback. CPU
 miner execution and validator verification now live behind role-owned library components used by the local
 producer, but the long-running commands still delegate to the shared service runtime internally. Runtime
 role policy now prevents miner and validator roles from becoming local block producers even if they inherit

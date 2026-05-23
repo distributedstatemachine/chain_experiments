@@ -59,8 +59,9 @@ pub use localnet::{
 };
 pub use miner::MinerNode;
 pub use node::{
-    ChainNetworkPayloadProcessor, NetworkEventIngest, NetworkPayloadApply, NetworkPayloadProcessor,
-    NodeRuntimeState, PendingNetworkPayloads,
+    ChainNetworkPayloadProcessor, NetworkEventContext, NetworkEventIngest, NetworkPayloadApply,
+    NetworkPayloadProcessor, NodeRuntimeState, PendingNetworkPayloads, ingest_network_messages,
+    network_ingest_order,
 };
 pub use p2p::{
     GossipTopic, Libp2pControlPlaneConfig, NetworkStackRecommendation, PeerBookStore, PeerRecord,

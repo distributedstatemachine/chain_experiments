@@ -158,3 +158,90 @@ Out of scope:
 - Simplified receipt and attestation application after explicit prechecks so accepted payloads go through
   `ChainCommand` and unexpected command failures classify as invalid, while missing prerequisites still
   classify as pending before command application.
+
+## Iteration 3: Extract Reusable Network Event Driver
+
+Readiness requirement:
+Move network event ordering, decoded payload ingestion, pending payload retry integration, and block-header
+application dispatch out of private `tvmd` helpers and into a reusable node runtime event driver. Keep the
+current deterministic block catch-up and synthetic production semantics unchanged.
+
+Files likely touched:
+- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/src/lib.rs`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Read-only codebase exploration for event-driver extraction.
+- Read-only test/coverage exploration for event-driver extraction.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Move or add unit coverage for network event ordering and invalid event counting in the reusable driver.
+- Add unit coverage proving block-header application is dispatched only for non-producers.
+- Keep binary coverage for service-runtime network payload retry and event ingestion.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --lib node::tests`
+- `cargo test -p tensor_vm --lib network_event`
+- `cargo test -p tensor_vm --bin tvmd network_payload`
+- `cargo test -p tensor_vm --bin tvmd network_ingest`
+- `cargo test -p tensor_vm --bin tvmd network_catchup`
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test tvmd_cli local_testnet_seed_cli_persists_cpu_chain_for_service_gateway`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm local_testnet --release`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- `tvmd` delegates message ordering and job/receipt/attestation/block-header ingestion to a library node
+  runtime driver.
+- The driver still applies payloads through `ChainCommand` and preserves pending receipt/attestation retry
+  behavior.
+- Local producer behavior and deterministic non-producer block catch-up remain unchanged.
+
+Out of scope:
+- Replacing deterministic block catch-up replay with network-assembled blocks.
+- Splitting miner, validator, and proposer into fully independent role-owned work loops.
+- Changing local synthetic job generation, receipt production, attestation production, or block production.
+
+## Iteration 3 Validation Log
+
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --lib node::tests`: passed; 15 node runtime tests passed.
+- `cargo test -p tensor_vm --lib network_event`: passed; 5 filtered network-event library tests passed.
+- `cargo test -p tensor_vm --bin tvmd network_payload`: passed; 2 binary network-payload tests passed.
+- `cargo test -p tensor_vm --bin tvmd network_ingest`: passed; 1 binary network-ingest ordering test
+  passed.
+- `cargo test -p tensor_vm --bin tvmd network_catchup`: passed; 3 binary network-catch-up tests passed.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 process-level role command test passed.
+- `cargo test -p tensor_vm --test tvmd_cli local_testnet_seed_cli_persists_cpu_chain_for_service_gateway`:
+  passed; 1 process-level local-testnet seed persistence test passed.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 Compose spec-shape test passed.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 tensor_vm library tests and 1 `tvmd_cli`
+  local-testnet seed test passed.
+- `cargo tarpaulin --workspace --offline`: passed; 250 instrumented workspace tests passed with 99.21%
+  workspace line coverage and 99.96% tensor_vm crate line coverage. The remaining tensor_vm uncovered
+  lines are rustfmt-split `P2pMessage` struct-pattern lines for receipt and attestation payload variants;
+  the direct applied, pending retry, and invalid payload branches are covered by node runtime tests.
+
+## Iteration 3 Decisions And Notes
+
+- Kept the service-specific libp2p drain point and deterministic block replay in `tvmd`, but moved message
+  ordering, decoded payload application, pending retry, and block-header dispatch policy into
+  `ingest_network_messages`.
+- Adapted `tvmd` through `RuntimeNetworkEventContext`, so reusable node runtime code only requires mutable
+  `LocalChain` access and a block-header application callback.
+- Added library coverage for producer versus non-producer block-header dispatch, invalid runtime message
+  accounting, direct payload application, invalid payload handling, and out-of-order receipt/attestation
+  retry after the job payload arrives.

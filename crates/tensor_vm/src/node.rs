@@ -1,4 +1,5 @@
 use crate::{
+    api::P2pMessage,
     chain::{ChainCommand, ChainEngine, LocalChain},
     p2p::{decode_attestation_payload, decode_job_payload, decode_receipt_payload},
     types::{Hash, hash_bytes},
@@ -127,6 +128,149 @@ pub trait NetworkPayloadProcessor {
     fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply;
 }
 
+pub trait NetworkEventContext {
+    fn chain(&mut self) -> &mut LocalChain;
+
+    fn apply_block_header(
+        &mut self,
+        height: u64,
+        block_hash: Hash,
+    ) -> std::result::Result<usize, String>;
+}
+
+pub fn ingest_network_messages<C: NetworkEventContext + ?Sized>(
+    context: &mut C,
+    messages: Vec<P2pMessage>,
+    local_producer: bool,
+    pending_payloads: &mut PendingNetworkPayloads,
+) -> std::result::Result<NetworkEventIngest, String> {
+    let mut ingested = NetworkEventIngest::default();
+    for message in network_ingest_order(messages) {
+        ingested.events = ingested.events.saturating_add(1);
+        match message {
+            P2pMessage::NewBlock(block_hash) => {
+                ingested.block_announcements = ingested.block_announcements.saturating_add(1);
+                if block_hash == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::NewBlockHeader { height, block_hash } => {
+                ingested.block_announcements = ingested.block_announcements.saturating_add(1);
+                ingested.block_headers = ingested.block_headers.saturating_add(1);
+                if height == 0 || block_hash == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    continue;
+                }
+                if !local_producer {
+                    ingested.applied_blocks = ingested
+                        .applied_blocks
+                        .saturating_add(context.apply_block_header(height, block_hash)?);
+                }
+            }
+            P2pMessage::NewJob(job_id) => {
+                ingested.jobs = ingested.jobs.saturating_add(1);
+                if job_id == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::NewJobPayload { job_id, payload } => {
+                ingested.jobs = ingested.jobs.saturating_add(1);
+                ingested.job_payloads = ingested.job_payloads.saturating_add(1);
+                match apply_network_job_payload(context.chain(), job_id, &payload) {
+                    Ok(()) => {
+                        ingested.job_payloads_applied =
+                            ingested.job_payloads_applied.saturating_add(1);
+                    }
+                    Err(()) => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
+            P2pMessage::NewReceipt(receipt_id) => {
+                ingested.receipts = ingested.receipts.saturating_add(1);
+                if receipt_id == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::NewReceiptPayload {
+                receipt_id,
+                payload,
+            } => {
+                ingested.receipts = ingested.receipts.saturating_add(1);
+                ingested.receipt_payloads = ingested.receipt_payloads.saturating_add(1);
+                match apply_network_receipt_payload(context.chain(), receipt_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        ingested.receipt_payloads_applied =
+                            ingested.receipt_payloads_applied.saturating_add(1);
+                    }
+                    NetworkPayloadApply::Pending => {
+                        pending_payloads.queue_receipt(receipt_id, payload);
+                    }
+                    NetworkPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
+            P2pMessage::NewAttestation(attestation_id) => {
+                ingested.attestations = ingested.attestations.saturating_add(1);
+                if attestation_id == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::NewAttestationPayload {
+                attestation_id,
+                payload,
+            } => {
+                ingested.attestations = ingested.attestations.saturating_add(1);
+                ingested.attestation_payloads = ingested.attestation_payloads.saturating_add(1);
+                match apply_network_attestation_payload(context.chain(), attestation_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        ingested.attestation_payloads_applied =
+                            ingested.attestation_payloads_applied.saturating_add(1);
+                    }
+                    NetworkPayloadApply::Pending => {
+                        pending_payloads.queue_attestation(attestation_id, payload);
+                    }
+                    NetworkPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
+            P2pMessage::PeerInfo { address } => {
+                ingested.peers = ingested.peers.saturating_add(1);
+                if address == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                }
+            }
+            P2pMessage::RequestTensorChunk { .. }
+            | P2pMessage::TensorChunkResponse { .. }
+            | P2pMessage::RequestTensorRow { .. }
+            | P2pMessage::TensorRowResponse { .. }
+            | P2pMessage::RequestProgram(_)
+            | P2pMessage::ProgramResponse { .. } => {
+                ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+            }
+        }
+    }
+    let mut processor = ContextNetworkPayloadProcessor { context };
+    ingested.accumulate(pending_payloads.retry_with(&mut processor));
+    Ok(ingested)
+}
+
+pub fn network_ingest_order(messages: Vec<P2pMessage>) -> Vec<P2pMessage> {
+    let (mut block_messages, mut other_messages): (Vec<_>, Vec<_>) =
+        messages.into_iter().partition(is_block_announcement);
+    block_messages.append(&mut other_messages);
+    block_messages
+}
+
+fn is_block_announcement(message: &P2pMessage) -> bool {
+    matches!(
+        message,
+        P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. }
+    )
+}
+
 pub fn apply_network_job_payload(
     chain: &mut LocalChain,
     job_id: Hash,
@@ -242,6 +386,22 @@ impl NetworkPayloadProcessor for ChainNetworkPayloadProcessor<'_> {
     }
 }
 
+struct ContextNetworkPayloadProcessor<'a, C: NetworkEventContext + ?Sized> {
+    context: &'a mut C,
+}
+
+impl<C: NetworkEventContext + ?Sized> NetworkPayloadProcessor
+    for ContextNetworkPayloadProcessor<'_, C>
+{
+    fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_receipt_payload(self.context.chain(), receipt_id, payload)
+    }
+
+    fn apply_attestation(&mut self, attestation_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_attestation_payload(self.context.chain(), attestation_id, payload)
+    }
+}
+
 pub fn attestation_announcement_hash(attestation: &ValidatorAttestation) -> Hash {
     hash_bytes(
         b"tensor-vm-attestation-announcement-v1",
@@ -343,7 +503,7 @@ impl PendingNetworkPayloads {
 mod tests {
     use super::*;
     use crate::{
-        chain::{JobState, ReceiptState},
+        chain::{JobState, LocalChain, ReceiptState},
         p2p::{encode_attestation_payload, encode_job_payload, encode_receipt_payload},
         scheduler::JobScheduler,
         testnet::{LocalTestnet, TestnetConfig},
@@ -558,6 +718,132 @@ mod tests {
         let scheduler = JobScheduler::with_small_shape((8, 8, 8));
         testnet.run_matmul_round(&scheduler);
         testnet
+    }
+
+    struct TestNetworkEventContext {
+        chain: LocalChain,
+        applied_headers: Vec<(u64, Hash)>,
+        applied_blocks: usize,
+    }
+
+    impl TestNetworkEventContext {
+        fn new(seed_label: &[u8]) -> Self {
+            Self {
+                chain: LocalChain::new(hash_bytes(
+                    b"tensor-vm-node-event-context-test",
+                    &[seed_label],
+                )),
+                applied_headers: Vec::new(),
+                applied_blocks: 2,
+            }
+        }
+    }
+
+    impl NetworkEventContext for TestNetworkEventContext {
+        fn chain(&mut self) -> &mut LocalChain {
+            &mut self.chain
+        }
+
+        fn apply_block_header(
+            &mut self,
+            height: u64,
+            block_hash: Hash,
+        ) -> std::result::Result<usize, String> {
+            self.applied_headers.push((height, block_hash));
+            Ok(self.applied_blocks)
+        }
+    }
+
+    #[test]
+    fn network_ingest_order_prioritizes_block_announcements() {
+        let block_hash = hash_bytes(b"test", &[b"announced-block"]);
+        let job_id = hash_bytes(b"test", &[b"announced-job"]);
+        let receipt_id = hash_bytes(b"test", &[b"announced-receipt"]);
+        let messages = network_ingest_order(vec![
+            P2pMessage::NewJobPayload {
+                job_id,
+                payload: vec![1, 2, 3],
+            },
+            P2pMessage::NewReceipt(receipt_id),
+            P2pMessage::NewBlockHeader {
+                height: 3,
+                block_hash,
+            },
+            P2pMessage::NewJob(job_id),
+            P2pMessage::NewBlock(block_hash),
+        ]);
+
+        assert!(matches!(messages[0], P2pMessage::NewBlockHeader { .. }));
+        assert!(matches!(messages[1], P2pMessage::NewBlock(_)));
+        assert!(matches!(messages[2], P2pMessage::NewJobPayload { .. }));
+        assert!(matches!(messages[3], P2pMessage::NewReceipt(_)));
+        assert!(matches!(messages[4], P2pMessage::NewJob(_)));
+    }
+
+    #[test]
+    fn network_event_driver_dispatches_block_headers_only_for_non_producers() {
+        let block_hash = hash_bytes(b"test", &[b"network-head"]);
+        let messages = vec![P2pMessage::NewBlockHeader {
+            height: 4,
+            block_hash,
+        }];
+        let mut producer_context = TestNetworkEventContext::new(b"producer");
+        let mut pending = PendingNetworkPayloads::default();
+
+        let producer_ingested =
+            ingest_network_messages(&mut producer_context, messages.clone(), true, &mut pending)
+                .unwrap();
+
+        assert_eq!(producer_ingested.block_headers, 1);
+        assert_eq!(producer_ingested.applied_blocks, 0);
+        assert!(producer_context.applied_headers.is_empty());
+
+        let mut non_producer_context = TestNetworkEventContext::new(b"non-producer");
+        let non_producer_ingested = ingest_network_messages(
+            &mut non_producer_context,
+            messages,
+            false,
+            &mut PendingNetworkPayloads::default(),
+        )
+        .unwrap();
+
+        assert_eq!(non_producer_ingested.block_headers, 1);
+        assert_eq!(non_producer_ingested.applied_blocks, 2);
+        assert_eq!(non_producer_context.applied_headers, vec![(4, block_hash)]);
+    }
+
+    #[test]
+    fn network_event_driver_counts_invalid_runtime_messages() {
+        let mut context = TestNetworkEventContext::new(b"invalid-events");
+        let mut pending = PendingNetworkPayloads::default();
+        let ingested = ingest_network_messages(
+            &mut context,
+            vec![
+                P2pMessage::NewBlock([0; 32]),
+                P2pMessage::NewBlockHeader {
+                    height: 0,
+                    block_hash: hash_bytes(b"test", &[b"bad-height"]),
+                },
+                P2pMessage::NewJob([0; 32]),
+                P2pMessage::NewReceipt([0; 32]),
+                P2pMessage::NewAttestation([0; 32]),
+                P2pMessage::PeerInfo { address: [0; 32] },
+                P2pMessage::RequestProgram(hash_bytes(b"test", &[b"program"])),
+            ],
+            false,
+            &mut pending,
+        )
+        .unwrap();
+
+        assert_eq!(ingested.events, 7);
+        assert_eq!(ingested.block_announcements, 2);
+        assert_eq!(ingested.block_headers, 1);
+        assert_eq!(ingested.jobs, 1);
+        assert_eq!(ingested.receipts, 1);
+        assert_eq!(ingested.attestations, 1);
+        assert_eq!(ingested.peers, 1);
+        assert_eq!(ingested.invalid_events, 7);
+        assert!(context.applied_headers.is_empty());
     }
 
     #[test]
@@ -817,5 +1103,165 @@ mod tests {
                 .and_then(|items| items.first()),
             Some(&attestation)
         );
+    }
+
+    #[test]
+    fn network_event_driver_applies_payloads_and_retries_pending_payloads() {
+        let testnet = local_matmul_round(b"driver-payloads");
+        let job = testnet
+            .chain
+            .state
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
+        let job_id = job.job_id();
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+        let mut context = TestNetworkEventContext {
+            chain: testnet.chain.clone(),
+            applied_headers: Vec::new(),
+            applied_blocks: 0,
+        };
+        context.chain.state.jobs.remove(&job_id);
+        context.chain.state.receipts.remove(&receipt_id);
+        context.chain.state.attestations.remove(&receipt_id);
+        let mut pending = PendingNetworkPayloads::default();
+
+        let ingested = ingest_network_messages(
+            &mut context,
+            vec![
+                P2pMessage::NewReceiptPayload {
+                    receipt_id,
+                    payload: encode_receipt_payload(&receipt),
+                },
+                P2pMessage::NewAttestationPayload {
+                    attestation_id,
+                    payload: encode_attestation_payload(&attestation),
+                },
+                P2pMessage::NewJobPayload {
+                    job_id,
+                    payload: encode_job_payload(&job),
+                },
+            ],
+            false,
+            &mut pending,
+        )
+        .unwrap();
+
+        assert_eq!(ingested.events, 3);
+        assert_eq!(ingested.job_payloads_applied, 1);
+        assert_eq!(ingested.receipt_payloads_applied, 1);
+        assert_eq!(ingested.attestation_payloads_applied, 1);
+        assert_eq!(ingested.invalid_events, 0);
+        assert!(pending.is_empty());
+        assert_eq!(context.chain.state.jobs.get(&job_id), Some(&job));
+        assert_eq!(
+            context.chain.state.receipts.get(&receipt_id),
+            Some(&receipt)
+        );
+        assert_eq!(
+            context
+                .chain
+                .state
+                .attestations
+                .get(&receipt_id)
+                .and_then(|items| items.first()),
+            Some(&attestation)
+        );
+    }
+
+    #[test]
+    fn network_event_driver_reports_direct_applied_and_invalid_payload_edges() {
+        let testnet = local_matmul_round(b"driver-direct-payloads");
+        let job = testnet
+            .chain
+            .state
+            .jobs
+            .values()
+            .next()
+            .expect("local round must produce a job")
+            .clone();
+        let receipt = testnet
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("local round must produce a receipt")
+            .clone();
+        let receipt_id = receipt.receipt_id();
+        let attestation = testnet
+            .chain
+            .state
+            .attestations
+            .values()
+            .flat_map(|items| items.iter())
+            .next()
+            .expect("local round must produce an attestation")
+            .clone();
+        let attestation_id = attestation_announcement_hash(&attestation);
+        let mut context = TestNetworkEventContext {
+            chain: testnet.chain.clone(),
+            applied_headers: Vec::new(),
+            applied_blocks: 0,
+        };
+        let mut pending = PendingNetworkPayloads::default();
+
+        let ingested = ingest_network_messages(
+            &mut context,
+            vec![
+                P2pMessage::NewReceiptPayload {
+                    receipt_id,
+                    payload: encode_receipt_payload(&receipt),
+                },
+                P2pMessage::NewAttestationPayload {
+                    attestation_id,
+                    payload: encode_attestation_payload(&attestation),
+                },
+                P2pMessage::NewJobPayload {
+                    job_id: job.job_id(),
+                    payload: vec![0xff],
+                },
+                P2pMessage::NewReceiptPayload {
+                    receipt_id,
+                    payload: vec![0xff],
+                },
+                P2pMessage::NewAttestationPayload {
+                    attestation_id,
+                    payload: vec![0xff],
+                },
+            ],
+            false,
+            &mut pending,
+        )
+        .unwrap();
+
+        assert_eq!(ingested.events, 5);
+        assert_eq!(ingested.job_payloads, 1);
+        assert_eq!(ingested.receipt_payloads, 2);
+        assert_eq!(ingested.receipt_payloads_applied, 1);
+        assert_eq!(ingested.attestation_payloads, 2);
+        assert_eq!(ingested.attestation_payloads_applied, 1);
+        assert_eq!(ingested.invalid_events, 3);
+        assert!(pending.is_empty());
     }
 }
