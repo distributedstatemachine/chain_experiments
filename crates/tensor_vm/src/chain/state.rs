@@ -468,6 +468,80 @@ pub struct ChainState {
     pub rewards: RewardState,
 }
 
+impl ChainState {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
+
+    pub fn epoch(&self) -> u64 {
+        self.epoch
+    }
+
+    pub fn finalized_randomness(&self) -> Hash {
+        self.finalized_randomness
+    }
+
+    pub fn genesis_randomness(&self) -> Hash {
+        self.genesis_randomness
+    }
+
+    pub fn accounts(&self) -> &BTreeMap<Address, AccountState> {
+        &self.accounts
+    }
+
+    pub fn miners(&self) -> &BTreeMap<Address, MinerState> {
+        &self.miners
+    }
+
+    pub fn validators(&self) -> &BTreeMap<Address, ValidatorState> {
+        &self.validators
+    }
+
+    pub fn jobs(&self) -> &BTreeMap<Hash, JobState> {
+        &self.jobs
+    }
+
+    pub fn receipts(&self) -> &BTreeMap<Hash, ReceiptState> {
+        &self.receipts
+    }
+
+    pub fn attestations(&self) -> &BTreeMap<Hash, Vec<ValidatorAttestation>> {
+        &self.attestations
+    }
+
+    pub fn block_votes(&self) -> &BTreeMap<Hash, Vec<BlockVote>> {
+        &self.block_votes
+    }
+
+    pub fn finalized_blocks(&self) -> &BTreeSet<Hash> {
+        &self.finalized_blocks
+    }
+
+    pub fn data_unavailable_receipts(&self) -> &BTreeSet<Hash> {
+        &self.data_unavailable_receipts
+    }
+
+    pub fn settled_receipts(&self) -> &BTreeSet<Hash> {
+        &self.settled_receipts
+    }
+
+    pub fn included_receipts(&self) -> &BTreeSet<Hash> {
+        &self.included_receipts
+    }
+
+    pub fn block_selected_receipts(&self) -> &BTreeMap<Hash, Vec<Hash>> {
+        &self.block_selected_receipts
+    }
+
+    pub fn model_states(&self) -> &BTreeMap<Hash, ModelState> {
+        &self.model_states
+    }
+
+    pub fn rewards(&self) -> &RewardState {
+        &self.rewards
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Chain {
     pub(crate) params: ChainParams,

@@ -306,7 +306,7 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     testnet.run_matmul_round(&scheduler);
-    let matmul_settled_receipts = testnet.chain.state().settled_receipts.len();
+    let matmul_settled_receipts = testnet.chain.state().settled_receipts().len();
     testnet.run_linear_training_round(&scheduler);
 
     let store = NodeStore::open(data_dir);
@@ -326,9 +326,9 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let rewarded_miners = testnet
         .miners
         .iter()
-        .filter(|miner| testnet.chain.state().rewards.balance(miner) > 0)
+        .filter(|miner| testnet.chain.state().rewards().balance(miner) > 0)
         .count();
-    let total_reward_balance = testnet.chain.state().rewards.total_balance();
+    let total_reward_balance = testnet.chain.state().rewards().total_balance();
     let attestation_count: usize = testnet
         .chain
         .state()
@@ -340,12 +340,12 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
         "command=local_testnet_seed\ndata_dir={data_dir}\nminers={}\nvalidators={}\nheight={}\nblocks={}\nsettled_receipts={}\nmatmul_settled={}\nlinear_training_settled={}\nmodel_states={}\nrewarded_miners={rewarded_miners}\ntotal_reward_balance={total_reward_balance}\nattestation_count={attestation_count}\ntotal_tensor_work={}\nfinality_rate_bps={}\ndata_availability_bps={}\nnode_store_ready=true\npersisted_block_count={}\nlatest_block_hash={}\npublic_evidence_full_spec=false\nindependently_checkable=false",
         testnet.miners.len(),
         testnet.validators.len(),
-        testnet.chain.state().height,
+        testnet.chain.state().height(),
         testnet.chain.blocks().len(),
-        testnet.chain.state().settled_receipts.len(),
+        testnet.chain.state().settled_receipts().len(),
         matmul_settled_receipts > 0,
-        !testnet.chain.state().model_states.is_empty(),
-        testnet.chain.state().model_states.len(),
+        !testnet.chain.state().model_states().is_empty(),
+        testnet.chain.state().model_states().len(),
         telemetry.total_tensor_work,
         local_evidence.finality_rate_bps,
         local_evidence.data_availability_bps,
@@ -374,14 +374,14 @@ fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<Str
         .count();
     let ready = status.block_count == chain.blocks().len()
         && status.block_count > 0
-        && chain.state().height == latest_block_height.saturating_add(1)
+        && chain.state().height() == latest_block_height.saturating_add(1)
         && finalized_block_count <= status.block_count;
     if json {
         Ok(format!(
             "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true,\"ready\":{},\"height\":{},\"latest_block_height\":{},\"block_count\":{},\"finalized_block_count\":{},\"node_store_ready\":true}}",
             json_escape(data_dir),
             ready,
-            chain.state().height,
+            chain.state().height(),
             latest_block_height,
             status.block_count,
             finalized_block_count
@@ -389,7 +389,7 @@ fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<Str
     } else {
         Ok(format!(
             "command=local_cpu_verify\ndata_dir={data_dir}\nstructured_verifier_ready=true\nready={ready}\nheight={}\nlatest_block_height={latest_block_height}\nblock_count={}\nfinalized_block_count={finalized_block_count}\nnode_store_ready=true",
-            chain.state().height,
+            chain.state().height(),
             status.block_count
         ))
     }
@@ -433,7 +433,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     } else {
         0
     };
-    let attestation_count: usize = chain.state().attestations.values().map(Vec::len).sum();
+    let attestation_count: usize = chain.state().attestations().values().map(Vec::len).sum();
     let reward_account_count = chain
         .state()
         .rewards
@@ -511,19 +511,19 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_p2p_observed_block_payload_hashes"),
         ready_file_field(data_dir, "node_multiaddr"),
         ready_file_field(data_dir, "p2p_peer_id"),
-        chain.state().height,
-        chain.state().epoch,
+        chain.state().height(),
+        chain.state().epoch(),
         status.block_count,
         hex(&status.latest_block_hash),
         hex(&chain.state_root()),
         hex(&status.block_log_root),
         hex(&first_live_block_hash),
-        chain.state().miners.len(),
-        chain.state().validators.len(),
-        chain.state().jobs.len(),
-        chain.state().receipts.len(),
-        chain.state().settled_receipts.len(),
-        chain.state().model_states.len(),
+        chain.state().miners().len(),
+        chain.state().validators().len(),
+        chain.state().jobs().len(),
+        chain.state().receipts().len(),
+        chain.state().settled_receipts().len(),
+        chain.state().model_states().len(),
     ))
 }
 
@@ -542,16 +542,16 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let blockspace_caps = chain.blockspace_caps();
     let selected_receipt_twu = selected_receipt_ids
         .iter()
-        .filter_map(|receipt_id| chain.state().receipts.get(receipt_id))
+        .filter_map(|receipt_id| chain.state().receipts().get(receipt_id))
         .map(|receipt| receipt.tensor_work_units())
         .sum::<u64>();
     let selected_receipt_bytes = selected_receipt_ids
         .iter()
-        .filter_map(|receipt_id| chain.state().receipts.get(receipt_id))
+        .filter_map(|receipt_id| chain.state().receipts().get(receipt_id))
         .map(|receipt| receipt.estimated_block_bytes())
         .sum::<u64>();
     let block_valid = chain.validate_block(block).is_ok();
-    let proposer_registered = chain.state().validators.contains_key(&block.proposer);
+    let proposer_registered = chain.state().validators().contains_key(&block.proposer);
     let pow_hash = block.pow_hash();
     let pow_header_hash = block.pow_header_hash();
     let block_votes = chain
@@ -571,7 +571,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let mut valid_vote_validators = Vec::new();
     let mut valid_vote_stake = 0_u64;
     for vote in &block_votes {
-        let Some(validator) = chain.state().validators.get(&vote.validator) else {
+        let Some(validator) = chain.state().validators().get(&vote.validator) else {
             continue;
         };
         if validator.stake != vote.stake || !vote.verify_signature() {
@@ -594,7 +594,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     {
         let receipt_id = receipt.receipt_id();
         receipt_ids.push(receipt_id);
-        if chain.state().settled_receipts.contains(&receipt_id) {
+        if chain.state().settled_receipts().contains(&receipt_id) {
             settled_receipt_ids.push(receipt_id);
         }
         match receipt.primitive_type() {
@@ -610,7 +610,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         proposer_registered,
         hex(&block.state_root),
         block.epoch,
-        chain.state().height,
+        chain.state().height(),
         chain.is_block_finalized(&block_hash),
         hex(&block.settled_receipt_set_root),
         hex_hash_list(&selected_receipt_ids),
@@ -891,20 +891,20 @@ fn runtime_role_wallet_registration(
     };
     match role {
         RuntimeRole::Miner => {
-            if chain.state().miners.contains_key(&address) {
+            if chain.state().miners().contains_key(&address) {
                 "miner"
             } else {
                 "unregistered"
             }
         }
         RuntimeRole::Validator => {
-            if chain.state().validators.contains_key(&address) {
+            if chain.state().validators().contains_key(&address) {
                 "validator"
             } else {
                 "unregistered"
             }
         }
-        RuntimeRole::Proposer if chain.state().validators.contains_key(&address) => "validator",
+        RuntimeRole::Proposer if chain.state().validators().contains_key(&address) => "validator",
         RuntimeRole::Proposer => "unregistered",
         RuntimeRole::Service => "none",
     }
@@ -929,9 +929,9 @@ struct MinerRoleWorkObservation {
 
 fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
-    let assignment_seed = chain.state().finalized_randomness;
+    let assignment_seed = chain.state().finalized_randomness();
     let mut observation = MinerRoleWorkObservation::default();
-    for job_id in chain.state().jobs.keys() {
+    for job_id in chain.state().jobs().keys() {
         let assignment = scheduler.assign_miners(chain, *job_id, &assignment_seed);
         if !assignment.miners.contains(&miner) {
             continue;
@@ -964,24 +964,24 @@ fn submit_miner_role_receipt(
     miner: Address,
     job_id: Hash,
 ) -> std::result::Result<Option<MinerRoleReceiptSubmission>, String> {
-    if !node.chain.state().miners.contains_key(&miner) {
+    if !node.chain.state().miners().contains_key(&miner) {
         return Ok(None);
     }
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     let assignment = scheduler.assign_miners(
         &node.chain,
         job_id,
-        &node.chain.state().finalized_randomness,
+        &node.chain.state().finalized_randomness(),
     );
     if !assignment.miners.contains(&miner) || miner_has_receipt_for_job(&node.chain, miner, job_id)
     {
         return Ok(None);
     }
-    let Some(job) = node.chain.state().jobs.get(&job_id).cloned() else {
+    let Some(job) = node.chain.state().jobs().get(&job_id).cloned() else {
         return Ok(None);
     };
     let bundle = CpuReferenceMinerRole::new(miner)
-        .execute_job(&job, node.chain.state().height, 1)
+        .execute_job(&job, node.chain.state().height(), 1)
         .map_err(|error| format!("miner role failed to execute job {}: {error}", hex(&job_id)))?;
     if bundle.receipt.job_id() != job_id || bundle.receipt.miner() != miner {
         return Err("miner role produced receipt for the wrong job or miner".to_owned());
@@ -1020,9 +1020,9 @@ fn validator_role_work_observation(
     validator: Address,
 ) -> ValidatorRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
-    let assignment_seed = node.chain.state().finalized_randomness;
+    let assignment_seed = node.chain.state().finalized_randomness();
     let mut observation = ValidatorRoleWorkObservation::default();
-    for (receipt_id, receipt) in &node.chain.state().receipts {
+    for (receipt_id, receipt) in node.chain.state().receipts() {
         let assignment = scheduler.assign_validators(&node.chain, *receipt_id, &assignment_seed);
         if !assignment.validators.contains(&validator) {
             continue;
@@ -1077,7 +1077,7 @@ fn fetch_validator_role_missing_tensors(
     p2p_service: &TensorVmLibp2pService,
     receipt_id: Hash,
 ) -> std::result::Result<ValidatorRemoteTensorFetchReport, String> {
-    let Some(receipt) = node.chain.state().receipts.get(&receipt_id).cloned() else {
+    let Some(receipt) = node.chain.state().receipts().get(&receipt_id).cloned() else {
         return Ok(ValidatorRemoteTensorFetchReport::default());
     };
     let missing_roots = validator_receipt_required_remote_roots(node, &receipt);
@@ -1201,7 +1201,7 @@ fn submit_validator_role_attestation(
     validator: Address,
     receipt_id: Hash,
 ) -> std::result::Result<Option<ValidatorRoleAttestationSubmission>, String> {
-    let Some(validator_state) = node.chain.state().validators.get(&validator) else {
+    let Some(validator_state) = node.chain.state().validators().get(&validator) else {
         return Ok(None);
     };
     let validator_stake = validator_state.stake;
@@ -1209,17 +1209,17 @@ fn submit_validator_role_attestation(
     let assignment = scheduler.assign_validators(
         &node.chain,
         receipt_id,
-        &node.chain.state().finalized_randomness,
+        &node.chain.state().finalized_randomness(),
     );
     if !assignment.validators.contains(&validator)
         || validator_has_attested_for_receipt(&node.chain, validator, receipt_id)
     {
         return Ok(None);
     }
-    let Some(receipt) = node.chain.state().receipts.get(&receipt_id).cloned() else {
+    let Some(receipt) = node.chain.state().receipts().get(&receipt_id).cloned() else {
         return Ok(None);
     };
-    let Some(job) = node.chain.state().jobs.get(&receipt.job_id()).cloned() else {
+    let Some(job) = node.chain.state().jobs().get(&receipt.job_id()).cloned() else {
         return Ok(None);
     };
     let Some(bundle) = role_receipt_bundle_from_local_tensors(node, &receipt) else {
@@ -1261,7 +1261,7 @@ fn submit_validator_role_block_vote(
     node: &mut RpcNode,
     validator: Address,
 ) -> std::result::Result<Option<ValidatorRoleBlockVoteSubmission>, String> {
-    let Some(validator_state) = node.chain.state().validators.get(&validator) else {
+    let Some(validator_state) = node.chain.state().validators().get(&validator) else {
         return Ok(None);
     };
     let validator_stake = validator_state.stake;
@@ -1306,7 +1306,7 @@ fn role_receipt_bundle_from_local_tensors(
     node: &RpcNode,
     receipt: &ReceiptState,
 ) -> Option<RoleReceiptBundle> {
-    let job = node.chain.state().jobs.get(&receipt.job_id())?;
+    let job = node.chain.state().jobs().get(&receipt.job_id())?;
     match (job, receipt) {
         (tensor_vm::JobState::TensorOp(_), ReceiptState::TensorOp(receipt)) => {
             let a = node
@@ -1900,7 +1900,7 @@ impl RuntimeStatusSnapshot {
             produced_blocks: state.produced_blocks(),
             network_applied_blocks: state.network_applied_blocks(),
             local_producer,
-            latest_height: server.gateway().node.chain.state().height,
+            latest_height: server.gateway().node.chain.state().height(),
             p2p_connected_peers: p2p_service.connected_peer_count(),
             p2p_observed_blocks: p2p_service.observed_block_gossip_count(),
             p2p_observed_block_payloads: p2p_service.observed_block_payload_gossip_count(),
@@ -2122,8 +2122,8 @@ struct ChainAnnouncementCheckpoint {
 
 fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementCheckpoint {
     ChainAnnouncementCheckpoint {
-        jobs: chain.state().jobs.keys().copied().collect(),
-        receipts: chain.state().receipts.keys().copied().collect(),
+        jobs: chain.state().jobs().keys().copied().collect(),
+        receipts: chain.state().receipts().keys().copied().collect(),
         attestations: attestation_announcement_hashes(chain).collect(),
         block_votes: block_vote_announcement_keys(chain).collect(),
     }
@@ -2134,7 +2134,7 @@ fn publish_new_chain_announcements(
     before: &ChainAnnouncementCheckpoint,
     chain: &Chain,
 ) -> std::result::Result<(), String> {
-    for (job_id, job) in &chain.state().jobs {
+    for (job_id, job) in chain.state().jobs() {
         if !before.jobs.contains(job_id) {
             p2p_service
                 .publish_gossip(P2pMessage::NewJobPayload {
@@ -2147,7 +2147,7 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish job gossip: {error}"))?;
         }
     }
-    for (receipt_id, receipt) in &chain.state().receipts {
+    for (receipt_id, receipt) in chain.state().receipts() {
         if !before.receipts.contains(receipt_id) {
             p2p_service
                 .publish_gossip(P2pMessage::NewReceiptPayload {
@@ -2181,7 +2181,7 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish attestation gossip: {error}"))?;
         }
     }
-    for (block_hash, votes) in &chain.state().block_votes {
+    for (block_hash, votes) in chain.state().block_votes() {
         for vote in votes {
             let key = (*block_hash, vote.validator);
             if !before.block_votes.contains(&key) {
@@ -2433,7 +2433,7 @@ mod tests {
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         let persisted = store.load_chain().unwrap();
-        assert_eq!(persisted.state().rewards.balance(&user), 100);
+        assert_eq!(persisted.state().rewards().balance(&user), 100);
         let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
         assert!(status.contains("role_served_requests=1"));
 
@@ -2466,9 +2466,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -2479,7 +2479,7 @@ mod tests {
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state().height, 1)
+            .execute_job(&job_state, chain.state().height(), 1)
             .unwrap();
         chain
             .apply_command(ChainCommand::SubmitReceipt(bundle.receipt))
@@ -2828,9 +2828,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -2847,7 +2847,7 @@ mod tests {
         assert_eq!(observation.unreceipted_jobs, BTreeSet::from([job_id]));
 
         let bundle = tensor_vm::roles::CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state().height, 1)
+            .execute_job(&job_state, chain.state().height(), 1)
             .unwrap();
         chain
             .apply_command(ChainCommand::SubmitReceipt(bundle.receipt))
@@ -2868,9 +2868,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -2895,9 +2895,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -2915,7 +2915,7 @@ mod tests {
 
         assert_eq!(submission.receipts_submitted, 1);
         assert_eq!(submission.tensors_inserted, 3);
-        assert_eq!(node.chain.state().receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts().len(), 1);
         let receipt = node
             .chain
             .state()
@@ -2949,9 +2949,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -2964,7 +2964,7 @@ mod tests {
         let assignment = JobScheduler::with_small_shape((8, 8, 8)).assign_miners(
             &chain,
             job_id,
-            &chain.state().finalized_randomness,
+            &chain.state().finalized_randomness(),
         );
         let assigned = assignment.miners[0];
         let unassigned = [miner_a, miner_b]
@@ -2983,21 +2983,21 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state().receipts.len(), 0);
+        assert_eq!(node.chain.state().receipts().len(), 0);
 
         assert!(
             submit_miner_role_receipt(&mut node, assigned, job_id)
                 .unwrap()
                 .is_some()
         );
-        assert_eq!(node.chain.state().receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts().len(), 1);
         assert_tensor_count(&node, 3);
         assert!(
             submit_miner_role_receipt(&mut node, assigned, job_id)
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state().receipts.len(), 1);
+        assert_eq!(node.chain.state().receipts().len(), 1);
         assert_tensor_count(&node, 3);
     }
 
@@ -3014,9 +3014,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -3027,7 +3027,7 @@ mod tests {
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state().height, 1)
+            .execute_job(&job_state, chain.state().height(), 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -3090,9 +3090,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -3103,7 +3103,7 @@ mod tests {
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state().height, 1)
+            .execute_job(&job_state, chain.state().height(), 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -3112,7 +3112,7 @@ mod tests {
         let assignment = JobScheduler::with_small_shape((8, 8, 8)).assign_validators(
             &chain,
             receipt_id,
-            &chain.state().finalized_randomness,
+            &chain.state().finalized_randomness(),
         );
         let assigned = assignment.validators[0];
         let unassigned = [validator_a, validator_b]
@@ -3136,7 +3136,7 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert!(!node.chain.state().attestations.contains_key(&receipt_id));
+        assert!(!node.chain.state().attestations().contains_key(&receipt_id));
 
         insert_bundle_tensors(&mut node, &bundle);
         let submission = submit_validator_role_attestation(&mut node, assigned, receipt_id)
@@ -3157,7 +3157,7 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(node.chain.state().attestations[&receipt_id].len(), 1);
+        assert_eq!(node.chain.state().attestations()[&receipt_id].len(), 1);
         let observation = validator_role_work_observation(&node, assigned);
         assert_eq!(observation.assigned_receipts, BTreeSet::from([receipt_id]));
         assert!(observation.unattested_receipts.is_empty());
@@ -3183,7 +3183,7 @@ mod tests {
         let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
 
         assert!(!node.chain.is_block_finalized(&block_hash));
-        assert!(!node.chain.state().block_votes.contains_key(&block_hash));
+        assert!(!node.chain.state().block_votes().contains_key(&block_hash));
         assert!(
             submit_validator_role_block_vote(&mut node, address(b"unknown-block-voter"))
                 .unwrap()
@@ -3195,7 +3195,7 @@ mod tests {
             .expect("registered validator should vote on an unfinalized block");
         assert_eq!(first.block_votes_submitted, 1);
         assert!(!node.chain.is_block_finalized(&block_hash));
-        assert_eq!(node.chain.state().block_votes[&block_hash].len(), 1);
+        assert_eq!(node.chain.state().block_votes()[&block_hash].len(), 1);
         assert!(
             submit_validator_role_block_vote(&mut node, validators[0])
                 .unwrap()
@@ -3298,9 +3298,9 @@ mod tests {
             .unwrap();
         let scheduler = JobScheduler::with_small_shape((2, 2, 2));
         let job = scheduler.generate_small_matmul(
-            chain.state().epoch,
-            chain.state().height,
-            &chain.state().finalized_randomness,
+            chain.state().epoch(),
+            chain.state().height(),
+            &chain.state().finalized_randomness(),
             chain
                 .state()
                 .height
@@ -3311,7 +3311,7 @@ mod tests {
             .apply_command(ChainCommand::SubmitJob(job_state.clone()))
             .unwrap();
         let bundle = CpuReferenceMinerRole::new(miner)
-            .execute_job(&job_state, chain.state().height, 1)
+            .execute_job(&job_state, chain.state().height(), 1)
             .unwrap();
         let receipt_id = bundle.receipt_id();
         chain
@@ -3366,7 +3366,7 @@ mod tests {
             .expect("remote-fetched tensors should allow attestation");
         assert_eq!(submission.attestations_submitted, 1);
         assert_eq!(
-            node.chain.state().attestations[&receipt_id][0].result,
+            node.chain.state().attestations()[&receipt_id][0].result,
             VerificationResult::Valid
         );
     }

@@ -76,6 +76,8 @@ spaghetti around.
   crate-test-only `Chain` helpers instead of reaching into state internals.
 - Iteration 21 moved node network-payload dependency deletion fixtures behind crate-test-only `Chain`
   helpers, so missing job/receipt/attestation setup no longer mutates maps directly outside `chain/*`.
+- Iteration 22 added read-only `ChainState` accessors and started moving the binary runtime/reporting
+  surface away from direct public field reads.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
