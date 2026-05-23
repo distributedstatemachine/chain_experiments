@@ -64,6 +64,8 @@ spaghetti around.
   total balance, and treasury so runtime/RPC/testnet reporting no longer reaches through reward internals.
 - Iteration 15 made `RewardState` balances and treasury visible only inside the `chain` module, while storage
   decodes rewards through an explicit constructor and encodes them through read accessors.
+- Iteration 16 made reward crediting chain-private too, moving storage and telemetry fixtures through
+  `ChainCommand::CreditReward` instead of calling `RewardState::credit` directly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

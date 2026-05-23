@@ -1366,6 +1366,7 @@ impl<'a> StateReader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chain::ChainCommand;
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
         TensorOpReceipt,
@@ -1473,7 +1474,12 @@ mod tests {
             .state
             .data_unavailable_receipts
             .insert(linear_receipt.receipt_id);
-        chain.state.rewards.credit(miner, 77);
+        chain
+            .apply_command(ChainCommand::CreditReward {
+                address: miner,
+                amount: 77,
+            })
+            .unwrap();
         chain.state.rewards = RewardState::from_parts(chain.state.rewards.balances().clone(), 11);
 
         let block = chain.produce_block(validator, 1_000).unwrap();

@@ -181,7 +181,7 @@ impl RewardState {
         Self { balances, treasury }
     }
 
-    pub fn credit(&mut self, address: Address, amount: u64) {
+    pub(in crate::chain) fn credit(&mut self, address: Address, amount: u64) {
         *self.balances.entry(address).or_default() += amount;
     }
 
