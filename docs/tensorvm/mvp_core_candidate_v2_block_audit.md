@@ -1,14 +1,14 @@
 # TensorVM MVP Core Candidate v2 Block Audit
 
-Status: documentation-only audit of the local dirty v2-block candidate observed on May 23, 2026.
+Status: documentation-only audit of the local v2-block reference path observed on May 23, 2026.
 
-Purpose: evaluate whether the current uncommitted v2-shaped block changes discharge the proof obligations in
-the MVP core proof corpus. They do not. The candidate is meaningful progress, but it is not build-clean and
-does not yet prove the reviewed v2 consensus theorem.
+Purpose: evaluate whether the local v2-shaped block changes discharge the proof obligations in the MVP core
+proof corpus. They do not. The reference path is meaningful progress and is build-clean locally, but it does
+not yet prove the reviewed v2 consensus theorem.
 
-This document deliberately treats the dirty Rust files as candidate evidence only. It does not stage or
-commit any code. Existing proof statuses remain conservative until the code is committed, build-clean,
-tested adversarially, and mapped back into the formal proof manifest.
+Existing proof statuses remain conservative until exact parent snapshots, child-state apply semantics,
+selected-leaf lifecycle metadata, challenge openings, difficulty retargeting, and fallback semantics are
+implemented and mapped back into the formal proof manifest.
 
 The parent-state transition theorem that this candidate still needs is specified in
 [`mvp_core_parent_state_transition_model.md`](mvp_core_parent_state_transition_model.md).
@@ -17,7 +17,7 @@ The settled-receipt lifecycle and blockspace theorem that this candidate still n
 
 ## Evidence Scope
 
-Observed dirty files:
+Observed implementation files:
 
 ```text
 crates/tensor_vm/src/chain.rs
@@ -40,21 +40,18 @@ Build check:
 cargo check -p tensor_vm --all-targets
 ```
 
-Result: failed.
+Result: passed in the Iteration 11 validation run.
 
-Failure summary:
+Additional broad evidence:
 
 ```text
-error[E0609]: no field `parent_hash` on type `Result<TensorBlock, TvmError>`
-error[E0308]: expected `&TensorBlock`, found `&Result<TensorBlock, TvmError>`
+cargo test -p tensor_vm --lib
+cargo test -p tensor_vm local_testnet --release
+cargo tarpaulin --workspace --offline
 ```
 
-The failing site is the storage block-log test path where `produce_block` now returns `Result<TensorBlock,
-TvmError>` but the test still mutates and encodes the value as if it were a `TensorBlock`. There are also
-warnings where callers ignore the new `Result`.
-
-Consequence: the candidate cannot be proof evidence yet. A build-failing implementation does not discharge
-any theorem.
+Consequence: build status no longer blocks local evidence. The remaining blockers are proof-surface gaps,
+not compile failures.
 
 ## Candidate Progress
 
@@ -75,25 +72,25 @@ surface.
 
 ## Non-Discharged Findings
 
-### CV2-001: The Candidate Does Not Build
+### CV2-001: Build-Clean Is Only The First Gate
 
-The first proof gate is a build-clean committed implementation. The candidate fails `cargo check -p
-tensor_vm --all-targets`.
+The first proof gate is a build-clean implementation. The local reference path now passes `cargo check -p
+tensor_vm --all-targets`, but that only proves the candidate compiles.
 
-Required repair:
+Required next repair:
 
-- Update all callers and tests for fallible `produce_block`.
-- Treat ignored `Result` warnings as proof-relevant: silently ignoring failed block production can hide
-  consensus failures.
-- Rerun broad validation before upgrading any proof status.
+- Keep broad validation evidence attached to each semantic upgrade.
+- Add adversarial tests for every remaining theorem gate before upgrading proof status.
 
-### CV2-002: Block Validation Is Against Current State, Not An Explicit Parent Snapshot
+### CV2-002: Block Validation Uses A Reconstructed Parent View, Not An Explicit Parent Snapshot
 
-`blocks::validate(chain, block, strict_state_root)` recomputes selected receipts, checks root, attestation
-root, and reward root from `chain.state`. For finality and replay the theorem needs validation against the
-block's parent state, not whichever mutable state happens to be present when the vote is submitted.
+`blocks::validate(chain, block, strict_state_root)` now reconstructs a parent-like state view for known
+blocks by rewinding height, epoch, finalized randomness, block votes, finalized status, and selected
+included receipts. For finality and replay the theorem still needs an explicit parent snapshot or replayable
+transition, not a best-effort reconstruction from mutable node state.
 
-The candidate partially avoids this for immediate local production, but the proof statement must be:
+The local path partially avoids the old current-state bug for immediate production and vote admission, but
+the proof statement must still be:
 
 ```text
 valid_v2_block(parent_state, block)
@@ -114,11 +111,12 @@ Required repair:
 ### CV2-003: The Beacon Is Self-Consistent But Not Parent-State Validated
 
 The candidate block stores `beacon`, and validation recomputes canonical blockspace using `block.beacon`.
-It does not prove that `block.beacon` equals the parent state's finalized randomness or another valid
-beacon transition.
+The local path now checks the beacon against genesis randomness for height 0 and against the parent block's
+finalized-randomness transition for later heights. This is still not a complete production randomness model
+or parent-state snapshot theorem.
 
-This preserves a selection-grinding hole: a proposer could choose a beacon that gives a favorable selected
-receipt set and still be self-consistent under validation.
+The remaining selection-grinding surface is in the randomness model and replay proof, not in the immediate
+local `block.beacon` equality check.
 
 Required repair:
 
@@ -159,15 +157,15 @@ Required repair:
 
 ### CV2-006: Eligibility Lacks Unspent, Expiry, And Challenge-Window State
 
-The candidate filters settled receipts and data-unavailable receipts. The v2 proof target also needs
-unspent/included state, expiry, challenge-window availability, and carry-over semantics.
+The candidate filters settled receipts, included receipts, and data-unavailable receipts. The v2 proof target
+also needs expiry, challenge-window availability, and carry-over semantics.
 
-Without this state, a receipt can remain selectable after inclusion unless some separate transition removes
-it. The candidate production path does not show selected receipts being marked spent or carried over.
+Selected receipts are now marked included after local production so the selector will not select them again.
+That is a local one-shot guard, not the full settled-receipt lifecycle theorem.
 
 Required repair:
 
-- Add included/spent metadata or an equivalent selected-receipt lifecycle.
+- Promote included/spent metadata into the canonical selected-receipt lifecycle.
 - Add expiry and challenge-window availability predicates.
 - Prove nonselected eligible receipts carry over and selected receipts cannot be included twice.
 
@@ -222,6 +220,7 @@ Required repair:
 - Define difficulty state and validate `block.difficulty_target` from parent state.
 - Add retarget bounds, target floor/ceiling, and work-floor rules.
 - State that static difficulty is local evidence only unless the economic model is discharged.
+- Use the target convention and discharge gate in `mvp_core_difficulty_retarget_model.md`.
 
 ### CV2-010: Empty Or Tiny Blocks Can Still Be Normal PoW Blocks
 
@@ -239,24 +238,25 @@ Required repair:
 
 ### CV2-011: Reward Mutation Can Precede Block Validity Failure
 
-`produce_block_with_rewards` credits the proposer before calling `produce`. If `produce` fails after that
-credit, the reward mutation can remain even though no valid block was produced.
+Status: discharged for the local `produce_block_with_rewards` wrapper.
+
+`produce_block_with_rewards` now rejects unknown validators before crediting and restores the reward state
+if the fallible production path returns an error.
 
 This is a state-transition proof failure: failed block admission must not mutate rewards.
 
-Required repair:
+Remaining repair:
 
-- Make block production/admission atomic with respect to rewards.
-- Credit proposer rewards only after block validity succeeds.
-- Add an adversarial test for invalid proposer or invalid block production with nonzero rewards.
+- Add adversarial tests for invalid proposer or invalid block production with nonzero rewards.
+- Move verifier-dependent rewards into the pending/challenge-window reward model.
 
 ### CV2-012: Vote Validation Does Not Prove Full State Transition Roots
 
-`submit_block_vote` calls `blocks::validate(chain, &block, false)`. With `strict_state_root = false`, vote
-admission does not validate `block.state_root`.
+`submit_block_vote` now calls `blocks::validate(chain, &block, true)`, so local vote admission validates
+`block.state_root` against the reconstructed parent-like state view before counting stake.
 
-The finality theorem needs finalized blocks to imply a valid v2 state transition, not only parent, roots,
-proposer, and PoW-like checks.
+The finality theorem still needs finalized blocks to imply a valid v2 child-state transition, not only a
+valid parent-root/header view.
 
 Required repair:
 
@@ -280,15 +280,16 @@ Required repair:
 
 | Obligation | Candidate Movement | Remaining Status |
 | --- | --- | --- |
-| V2-BLK-001 canonical selection | Partial selector exists. | Still blocked: eligibility, expiry, spent/carry-over, and spec mismatch remain. |
+| V2-BLK-001 canonical selection | Partial selector exists with included-receipt exclusion. | Still blocked: expiry, carry-over, challenge-window eligibility, and spec mismatch remain. |
 | V2-BLK-002 selected root | Field exists. | Still blocked: root over ids only, no selected leaf theorem. |
 | V2-CHK-001 check leaf recomputability | No semantic leaf. | Still blocked. |
 | V2-CHK-002 block checks root | Aggregate root exists. | Still blocked: aggregates signed claims, not recomputed/challengeable evidence. |
-| V2-POW-001 useful-PoW validity | Nonce/target/hash predicate exists. | Still blocked: static target, no beacon validity, no work floor, no economics. |
-| V2-PROP-001 proposer eligibility | Significant progress: non-validator rejection and validator selector. | Not fully discharged until build-clean and finality imports complete validation. |
-| V2-STATE-001 valid transition | Roots exist. | Still blocked: no parent-state apply theorem, spent/carry-over, or reward atomicity. |
+| V2-DIFF-001 parent-state difficulty | Static target helper exists. | Still blocked: no parent difficulty state, retarget bounds, target vectors, or work-floor theorem. |
+| V2-POW-001 useful-PoW validity | Nonce/target/hash predicate exists and local beacon equality is checked. | Still blocked: static target, no full randomness model, no work floor, no economics. |
+| V2-PROP-001 proposer eligibility | Significant progress: non-validator rejection and validator selector. | Not fully discharged until live proposer networking and complete validation are in place. |
+| V2-STATE-001 valid transition | Roots exist and vote admission checks parent-root validity. | Still blocked: no child-state apply theorem or exact parent snapshot. |
 | V2-REWARD-001 delayed reward finality | Reward fields exist only as candidate/root ingredients. | Still blocked: no pending/challenged/invalidated/settled reward state or challenge resolution. |
-| V2-FIN-001 vote admission validates block | Partial: vote path calls `validate`. | Still blocked: validation predicate incomplete and current-state-based. |
+| V2-FIN-001 vote admission validates block | Partial: vote path calls strict `validate`. | Still blocked: validation predicate lacks full child-state transition and replay model. |
 | V2-FIN-002 finality implies v2 validity | Partial path. | Still blocked until V2-FIN-001 and V2-STATE-001 are complete. |
 | V2-FALLBACK-001 PoW-skip fallback | No candidate evidence; the proof model is documented separately in `mvp_core_fallback_liveness_model.md`. | Still blocked. |
 

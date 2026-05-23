@@ -13,8 +13,8 @@ Related boundary documents:
 
 - [`mvp_core_proof_completion_audit.md`](mvp_core_proof_completion_audit.md) audits the formal-proof goal
   requirement by requirement and records the current completion verdict.
-- [`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md) audits the local dirty
-  v2-block candidate and records why it does not yet discharge consensus proof obligations.
+- [`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md) audits the local
+  v2-block reference path and records why it does not yet discharge consensus proof obligations.
 - [`mvp_core_proof_traceability_matrix.md`](mvp_core_proof_traceability_matrix.md) maps current proof claims
   to Rust surfaces, evidence classes, allowed wording, and upgrade gates.
 - [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md) classifies proof
@@ -30,6 +30,8 @@ Related boundary documents:
   settled receipt lifecycle, cap policy, selected leaf, and carry-over rules needed for v2 blockspace.
 - [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md) separates structural
   useful-PoW header validity from economic useful-work dominance.
+- [`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md) defines parent-state
+  target validity, bounded retargeting, and hash-to-target comparison semantics.
 - [`mvp_core_fallback_liveness_model.md`](mvp_core_fallback_liveness_model.md) specifies the zero-receipt
   and no-PoW fallback path as a separate liveness-only transition, not useful-PoW.
 - [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
@@ -79,6 +81,7 @@ Related boundary documents:
 | Attestation admission | `local-proof-ready` for syntactic admission, `assumption-bound` for semantic verification | Assigned-validator admission is now in the chain engine; it does not prove the verifier actually ran, and receipt-lifecycle seed stability remains weak. |
 | Settlement | `local-proof-ready` for v1 syntactic-quorum settlement | Settlement/quorum behavior is testable, but semantic verifier execution and v2 blockspace pool semantics are missing. |
 | Useful-verification PoW | `implementation-blocked` | Current block type cannot support the reviewed v2 consensus theorem. |
+| Difficulty retargeting | `implementation-blocked` | Parent-state target derivation, bounded retargeting, target bounds, and hash-to-target vectors are not implemented. |
 | Fallback liveness | `implementation-blocked` | The fallback proof model is now specified, but the v2 fallback object, timeout evidence, rotation, rewards, and tests are missing. |
 | Reward finality | `implementation-blocked` | The delayed reward/challenge model is now specified, but reward state, challenge openings, clawback, and settlement tests are missing. |
 | Finality | `reference-only` | Stake-threshold finality exists for current blocks, not for v2 useful-PoW validity. |
@@ -618,6 +621,36 @@ The nonce must be bound to the canonical settled-receipt set and recomputable ve
 Useful-work dominance is a separate economic assumption; see
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
+### TVM-DIFF-001: Parent-State Difficulty Target Validity
+
+Target statement:
+
+```text
+For every valid nonfallback v2 block B at parent state S, B.difficulty_target equals the target derived
+from S.difficulty_state, bounded retarget rules, and committed difficulty parameters.
+```
+
+Status: `implementation-blocked`
+
+Why blocked:
+
+Current/candidate evidence can check a nonce against a static or helper-derived target, but no discharged
+theorem derives targets from parent consensus state or proves retarget bounds.
+
+Paper model:
+
+- [`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md)
+
+Required code surface before proof:
+
+```text
+DifficultyState
+DifficultyParams
+expected_target(parent_difficulty_state, height)
+target_valid(parent_state, block)
+hash_to_uint and target encoding vectors
+```
+
 ### TVM-FIN-001: Finality Implies v2 Block Validity
 
 Target statement:
@@ -714,6 +747,7 @@ reward_root over pending/challenged/invalidated/settled states
 | Per-receipt checks_root proves block proposer verified | Blocks do not aggregate or validate a canonical transcript. | Need block-level checks_root and challenge path. |
 | Aggregate checks_root proves verifier execution | A root over signed check claims is still a root over claims. | Need recomputable or challengeable verifier evidence. |
 | Stake finality implies useful-PoW validity | Current votes only check known block hash and signature/stake. | Votes must require v2 block validation. |
+| Block target validates itself | A nonce below a candidate-supplied target can be trivial. | Derive target from parent difficulty state and bounded retarget rules. |
 | Fallback or empty blocks prove useful work | Fallback is a liveness transition for zero-receipt, below-floor, or timeout cases. | Keep fallback disjoint from useful-PoW and give it reduced rewards. |
 | Block finality means reward finality | Verifier-dependent rewards remain challengeable after block ordering finality. | Use pending reward claims until direct recomputation or challenge-window settlement. |
 | Reference signatures imply production authentication | `sign` is a hash helper. | Use real signature assumptions and production crypto. |

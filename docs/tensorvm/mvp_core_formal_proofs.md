@@ -208,49 +208,49 @@ difficulty_target
 nonce
 ```
 
-They still contain v1 fields:
-
-```text
-job_root
-receipt_root
-randomness
-```
+The local chain now uses these canonical fields in `TensorBlock`; the previous `job_root`, `receipt_root`,
+and block `randomness` fields have been removed from the active block type.
 
 Consequence:
 
-The current chain can prove local deterministic block production, but not useful-verification PoW block
-production.
+The current chain can prove a local useful-verification PoW block header path, but the full production proof
+still needs exact parent-state validation snapshots, settled-receipt lifecycle metadata, and challenge
+openings.
 
-### U2: TensorWork Still Selects Proposers
+### U2: Live Proposer Networking Is Still Transitional
 
-The current `proposer_for_next_epoch` path selects miners by settled TensorWork and falls back to validators
-when there is no settled work. The reviewed spec says TensorWork must affect miner rewards and blockspace
-accounting only, not proposer eligibility.
-
-Consequence:
-
-Tests that pass for settled TensorWork proposer selection are regression tests for the old model, not proof
-evidence for the reviewed MVP.
-
-### U3: No Canonical Settled-Receipt Blockspace Selector
-
-The state has `settled_receipts: BTreeSet<Hash>`, but not a v2 settled-receipt pool with deterministic
-selection by parent/beacon, spent/carry-over status, expiration, byte cap, TWU cap, and receipt-count cap.
+The current `proposer_for_next_epoch` path selects registered validators and ignores miner TensorWork. The
+local Compose runtime still uses a transitional single local block driver before live validator proposer
+networking is implemented.
 
 Consequence:
 
-Validators cannot currently recompute the exact receipt set that a useful-verification PoW block was
-supposed to verify.
+The shared chain core no longer has TensorWork proposer selection, but the local runtime is not yet proof
+evidence for a live validator proposer race.
 
-### U4: Finality Does Not Validate v2 Block Soundness
+### U3: Canonical Settled-Receipt Blockspace Metadata Is Partial
 
-Block votes currently prove stake-weighted signatures over known block hashes. They do not check PoW target,
-canonical blockspace, recomputed `checks_root`, or challenge-window state.
+The state has `settled_receipts: BTreeSet<Hash>`, `included_receipts: BTreeSet<Hash>`, and persisted local
+block-selected receipt evidence plus deterministic selection by parent/beacon with byte, TWU, and
+receipt-count caps. It still does not model full settled-receipt pool metadata for carry-over status,
+expiration, and challenge-window state.
 
 Consequence:
 
-BFT finality exists for the reference block type, but not for the reviewed useful-verification PoW block
-type.
+Validators can recompute the local selected set for the current reference path, but the proof target still
+needs parent-state selected-leaf encoding with full lifecycle metadata.
+
+### U4: Finality Validation Needs Parent-State Snapshots
+
+Block votes now validate known blocks for proposer eligibility, state root, beacon, PoW target, canonical
+selected receipt root, and recomputed `checks_root` before counting stake. The validation reconstructs a
+parent-like view from local state rather than reading an exact stored parent snapshot for every historical
+block, and challenge-window state is not integrated.
+
+Consequence:
+
+BFT finality is locally gated by useful-verification block checks, but the historical parent-state theorem is
+not complete.
 
 ### U5: Validator Assignment Seed Is Not Receipt-Lifecycle Stable
 
@@ -265,14 +265,14 @@ Freivalds/random-linear checks, and attestation verification throughout the rece
 
 ## Next Core Upgrade
 
-The next coherent feature should be `useful_verification_block_v0`:
+The next coherent feature should complete parent-state and receipt-lifecycle block validation:
 
 ```text
-1. Add settled-receipt blockspace metadata and deterministic canonical selection.
-2. Add block fields for settled_receipt_set_root, checks_root, difficulty_target, and nonce.
-3. Implement a static-difficulty useful-verification PoW predicate over the v2 block header.
-4. Reject block votes unless the block passes parent, canonical receipt set, checks_root, and PoW checks.
-5. Keep difficulty retargeting and challenge-window reward clawback as follow-up slices.
+1. Add settled-receipt spent/carry-over, expiry, byte, TWU, and challenge-window metadata.
+2. Validate blocks against the exact parent state and persist enough evidence to recheck historical blocks.
+3. Add check-opening payloads and challenge-window reward/slash integration.
+4. Add difficulty retargeting and the zero-receipt skip fallback.
+5. Replace deterministic local replay with live validator proposer networking.
 ```
 
 Do not add nonce search to the existing v1 block header and call it useful PoW. That would preserve the wrong

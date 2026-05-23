@@ -24,7 +24,8 @@ Fallback is now specified as a paper model, but it is still implementation-block
 
 The reviewed MVP needs a v2 fallback object with timeout evidence, deterministic validator rotation,
 reduced rewards, no miner TensorWork rewards, and parent-state validation. The current worktree still has
-only superseded v1/local proposer fallback evidence plus a dirty v2 candidate with no fallback path.
+only superseded v1/local proposer fallback evidence plus a local v2-block reference path with no fallback
+path.
 
 The safe claim today is:
 
@@ -255,7 +256,7 @@ The proof status cannot move beyond paper-specified until tests cover at least:
 8. Equivocating fallback proposals for the same parent cannot both finalize without violating the stated
    quorum assumption.
 9. Timeout evidence root changes alter the block hash and validation result.
-10. Dirty/build-failing v2 candidate code is not counted as fallback evidence.
+10. Build-clean v2 block code is not counted as fallback evidence unless it implements the fallback path.
 
 ## Bad Assumptions Added
 

@@ -6,9 +6,9 @@ Purpose: tie every current proof claim to the Rust surface, evidence class, allo
 and next gate. This document is a control surface for avoiding accidental overclaiming. It is not a proof by
 itself and it does not upgrade any blocked theorem.
 
-The current dirty v2-block candidate is audited in
-[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). Dirty or build-failing code
-does not upgrade traceability status.
+The current local v2-block reference path is audited in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). Build-clean code upgrades
+traceability status only for the specific gates it implements and tests.
 
 Assumption categories and discharge gates are tracked in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md). A traceability row can
@@ -29,6 +29,8 @@ Settled-receipt blockspace boundaries are specified in
 [`mvp_core_settled_receipt_blockspace_model.md`](mvp_core_settled_receipt_blockspace_model.md).
 Useful-PoW structural and economic boundaries are specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+Difficulty retarget boundaries are specified in
+[`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
 Fallback liveness boundaries are specified in
 [`mvp_core_fallback_liveness_model.md`](mvp_core_fallback_liveness_model.md).
 Verifier evidence boundaries are specified in
@@ -73,17 +75,18 @@ V2 state invariants are tracked in
 
 | Claim ID | Target Claim | Current Rust Surface | Evidence Docs | Status | Why Not Proven | Gate To Upgrade |
 | --- | --- | --- | --- | --- | --- | --- |
-| V2-BLK-001 | Canonical settled-receipt selection is deterministic and cap-respecting. | Current `ChainState` has `settled_receipts: BTreeSet<Hash>`; candidate selectors still lack full lifecycle semantics. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_settled_receipt_blockspace_model.md` | Blocked | No settled-receipt pool metadata, eligibility, expiry, spent/carry-over, cap policy, or omission theorem is discharged. | Add selector state and prove deterministic inclusion/omission/carry-over. |
-| V2-BLK-002 | Block commits `settled_receipt_set_root` for canonical selected receipts. | Current/candidate roots do not yet bind full selected receipt leaves. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_settled_receipt_blockspace_model.md` | Blocked | Receipt id roots do not prove eligibility, cap accounting, reward fields, or lifecycle state. | Add selected receipt root over canonical selected leaves and prove leaf encoding. |
+| V2-BLK-001 | Canonical settled-receipt selection is deterministic and cap-respecting. | Current `ChainState` has `settled_receipts`, `included_receipts`, local block-selected receipt evidence, and deterministic caps. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_settled_receipt_blockspace_model.md` | Partial / blocked-v2 | No full settled-receipt pool metadata, expiry, challenge-window eligibility, carry-over, cap policy theorem, or omission theorem is discharged. | Add selector state and prove deterministic inclusion/omission/carry-over. |
+| V2-BLK-002 | Block commits `settled_receipt_set_root` for canonical selected receipts. | Current blocks commit a selected receipt-id root; full selected receipt leaves are not bound. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_settled_receipt_blockspace_model.md` | Partial / blocked-v2 | Receipt id roots do not prove eligibility, cap accounting, reward fields, or lifecycle state. | Add selected receipt root over canonical selected leaves and prove leaf encoding. |
 | V2-CHK-001 | Validators can recompute check leaves for selected receipts. | Verifier reports and attestation `checks_root` exist, but semantic evidence needs transcript objects or openings. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_verifier_evidence_model.md` | Blocked | No committed check leaf schema, transcript root format, or opening/challenge path discharges semantic evidence. | Define check leaves and transcript recomputation or challenge openings. |
 | V2-CHK-002 | Block-level `checks_root` binds all selected receipt checks. | Block-check roots can aggregate claims, but semantic binding requires recomputable selected receipt check leaves. | `mvp_core_negative_proofs.md`, `mvp_core_verifier_evidence_model.md` | Blocked | Per-attestation roots or aggregate roots over them do not prove verifier execution. | Add block-level checks root with recomputation/challenge validation. |
-| V2-POW-001 | Useful-PoW nonce is bound to parent, selected receipt root, checks root, beacon, proposer, and target. | `chain/blocks.rs::produce` has no PoW predicate. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_useful_pow_work_model.md` | Blocked | Current block has no target or nonce, nonce search is not tied to verification, and useful-work dominance is not modeled. | Add PoW header, difficulty target, nonce predicate, validation, work floor, and cost model. |
-| V2-PROP-001 | Proposer is registered validator useful-PoW winner. | `produce_block(proposer, timestamp)` accepts caller-supplied address; `chain/proposer.rs` uses settled TensorWork. | `mvp_core_negative_proofs.md` | Contradicted | Current path can select/append non-v2 proposers. | Replace normal proposer path with validator useful-PoW eligibility and reject arbitrary proposer append. |
-| V2-STATE-001 | Valid v2 block transition determines state and reward roots. | Current roots are v1/reference roots over global maps. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_parent_state_transition_model.md` | Blocked | No parent-state `apply_v2_block` theorem, selected-receipt application, spent/carry-over mutation, challenge-window reward semantics, or atomicity proof. | Define parent-state block apply transition and child root checks. |
+| V2-DIFF-001 | Difficulty target is derived from parent consensus state with bounded retargeting and canonical hash-to-target semantics. | Local v2-shaped work has a target helper; current committed proof status has no v2 difficulty state. | `mvp_core_difficulty_retarget_model.md`, `mvp_core_useful_pow_work_model.md`, `mvp_core_candidate_v2_block_audit.md` | Blocked | No parent `DifficultyState`, retarget window, target bounds, work-floor params, or hash boundary vectors discharge target validity. | Add difficulty state, target derivation, bounded retarget, target encoding vectors, fallback policy, and adversarial tests. |
+| V2-POW-001 | Useful-PoW nonce is bound to parent, selected receipt root, checks root, beacon, proposer, and parent-state-derived target. | `chain/blocks.rs::produce` mines and validates a nonce over the local block header. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_useful_pow_work_model.md`, `mvp_core_difficulty_retarget_model.md` | Partial / blocked-v2 | Static target, no parent difficulty state, no work floor, and useful-work dominance is not modeled. | Add parent-state difficulty target, retargeting, work floor, and cost model. |
+| V2-PROP-001 | Proposer is registered validator useful-PoW winner. | `produce_block` rejects nonvalidators; `chain/proposer.rs` selects registered validators by stake and ignores TensorWork. | `mvp_core_negative_proofs.md` | Partial / blocked-v2 | Local core checks proposer registration, but live proposer networking and complete useful-PoW winner semantics are not implemented. | Tie normal proposer networking and admission to complete useful-PoW eligibility. |
+| V2-STATE-001 | Valid v2 block transition determines state and reward roots. | Current roots include local v2 block inputs, and votes check parent-root validity. | `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_parent_state_transition_model.md` | Blocked | No exact parent snapshot, child-state `apply_v2_block` theorem, full selected-receipt lifecycle, challenge-window reward semantics, or atomicity proof. | Define parent-state block apply transition and child root checks. |
 | V2-REWARD-001 | Verifier-dependent rewards remain pending until direct recomputation or challenge-window finality; valid challenges invalidate dependent claims before spendability. | Current/candidate reward roots do not expose a complete pending/challenged/invalidated/settled challenge state. | `mvp_core_reward_finality_challenge_model.md`, `mvp_core_verifier_evidence_model.md`, `mvp_core_parent_state_transition_model.md`, `mvp_core_negative_proofs.md` | Blocked | No consensus challenge opening, reward claim status encoding, deterministic clawback/nonpayment, or DA-through-window settlement theorem is discharged. | Add reward-finality state, challenge admission/resolution, settlement rules, root binding, and adversarial tests. |
-| V2-FIN-001 | Vote admission requires `validate_block_v2(parent_state, block)`. | `chain/validation.rs::submit_block_vote` checks voters and known block hash. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_parent_state_transition_model.md` | Blocked | It does not prove complete parent-state validation with state/reward transition roots. | Add parent-state `validate_block_v2` and require it before counting votes. |
-| V2-FIN-002 | Finality implies v2 block validity. | `state.finalized_blocks` can be updated after current stake threshold. | `mvp_core_proof_completion_audit.md`, `mvp_core_parent_state_transition_model.md` | Contradicted / blocked | Current finality lacks a certificate tying finalized hashes to parent-state v2 validation. | Restrict finalized-set mutation to validated v2 votes or validated fallback certificates. |
-| V2-FALLBACK-001 | PoW-skip fallback has explicit timeout/no-work evidence, validator rotation, parent-state validation, reduced reward, and no miner TWU rewards. | Existing fallback belongs to v1 proposer selection; dirty v2 candidate has no fallback path. | `formal_proof_manifest_v0.md`, `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_fallback_liveness_model.md` | Blocked | The paper model exists, but v2 fallback state, transition, timeout evidence, reward rule, and tests are not implemented. | Add disjoint fallback object, timeout/no-work evidence, deterministic rotation, reward rules, parent-state validation, and adversarial tests. |
+| V2-FIN-001 | Vote admission requires `validate_block_v2(parent_state, block)`. | `chain/validation.rs::submit_block_vote` calls strict block validation before counting votes. | `mvp_core_negative_proofs.md`, `formal_proof_manifest_v0.md`, `mvp_core_parent_state_transition_model.md` | Partial / blocked-v2 | It validates a reconstructed parent-like view, not an exact parent snapshot with child-state transition roots. | Add exact parent-state `validate_block_v2` and child-state apply validation before counting votes. |
+| V2-FIN-002 | Finality implies v2 block validity. | `state.finalized_blocks` updates only after strict local block validation and stake threshold. | `mvp_core_proof_completion_audit.md`, `mvp_core_parent_state_transition_model.md` | Partial / blocked-v2 | Current finality lacks a certificate tying finalized hashes to exact parent-state v2 validation and fallback rules. | Restrict finalized-set mutation to exact parent-state validated v2 votes or validated fallback certificates. |
+| V2-FALLBACK-001 | PoW-skip fallback has explicit timeout/no-work evidence, validator rotation, parent-state validation, reduced reward, and no miner TWU rewards. | Existing fallback belongs to v1 proposer selection; local v2 block path has no fallback path. | `formal_proof_manifest_v0.md`, `mvp_core_v2_consensus_proof_obligations.md`, `mvp_core_fallback_liveness_model.md` | Blocked | The paper model exists, but v2 fallback state, transition, timeout evidence, reward rule, and tests are not implemented. | Add disjoint fallback object, timeout/no-work evidence, deterministic rotation, reward rules, parent-state validation, and adversarial tests. |
 
 ## Evidence Class Matrix
 
@@ -105,18 +108,16 @@ A claim may be used in public or release-facing text only if all of these are tr
 2. Its status is not `Blocked` or `Contradicted`.
 3. Its assumptions are stated in the same document or linked boundary doc.
 4. Its wording matches the "Allowed Wording" column.
-5. It does not depend on a dirty/uncommitted code change unless that change is explicitly cited as
-   uncommitted evidence.
+5. It does not depend on uncommitted code unless that change is explicitly cited as uncommitted evidence.
 6. Any related assumption-discharge gate is satisfied or still stated as an assumption.
 
 If any condition fails, phrase it as a gap or target, not as a property.
 
-## Current Dirty Worktree Note
+## Worktree Evidence Note
 
-At the time this matrix was created, the worktree contained unrelated uncommitted code and status-doc
-changes. This matrix treats those files as current-state evidence when inspected, but it does not commit or
-validate those implementation changes. The proof status remains conservative until implementation changes
-are committed, tested, and mapped back into this matrix.
+This matrix treats inspected local files as current-state evidence only after the associated implementation
+changes are build-clean, tested, and mapped back into the matrix. The proof status remains conservative
+until each stronger claim has an explicit validation gate.
 
 ## Current Judgment
 

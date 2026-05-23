@@ -1,4 +1,4 @@
-use super::{BlockVote, LocalChain};
+use super::{BlockVote, LocalChain, blocks};
 use crate::error::{Result, TvmError};
 use crate::scheduler::JobScheduler;
 use crate::types::{Address, Hash, hash_bytes};
@@ -139,13 +139,15 @@ pub fn submit_block_vote(chain: &mut LocalChain, vote: BlockVote) -> Result<()> 
     if !vote.verify_signature() {
         return Err(TvmError::InvalidReceipt("bad block vote signature"));
     }
-    if !chain
+    let Some(block) = chain
         .blocks
         .iter()
-        .any(|block| block.height == vote.block_height && block.hash() == vote.block_hash)
-    {
+        .find(|block| block.height == vote.block_height && block.hash() == vote.block_hash)
+        .cloned()
+    else {
         return Err(TvmError::InvalidReceipt("unknown block"));
-    }
+    };
+    blocks::validate(chain, &block, true)?;
     if chain
         .state
         .block_votes

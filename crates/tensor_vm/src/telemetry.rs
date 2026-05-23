@@ -413,8 +413,8 @@ mod tests {
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
         chain.register_validator(validator, 10_000).unwrap();
-        chain.produce_block(miner, 10);
-        chain.produce_block(miner, 16);
+        chain.produce_block(validator, 10).unwrap();
+        chain.produce_block(validator, 16).unwrap();
         chain
             .state
             .miners
@@ -448,8 +448,8 @@ mod tests {
             crate::jobs::TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
         chain.submit_job(JobState::TensorOp(job));
         chain.submit_tensor_op_receipt(receipt).unwrap();
-        chain.produce_block(miner, 10);
-        chain.produce_block(miner, 16);
+        chain.produce_block(validator, 10).unwrap();
+        chain.produce_block(validator, 16).unwrap();
 
         let snapshot = TelemetrySnapshot::from_chain(&chain);
         assert_eq!(snapshot.receipt_count, 1);
@@ -513,8 +513,8 @@ mod tests {
             ReceiptState::LinearTrainingStep(orphan_linear_receipt),
         );
 
-        chain.produce_block(miner, 10);
-        chain.produce_block(miner, 16);
+        chain.produce_block(validator, 10).unwrap();
+        chain.produce_block(validator, 16).unwrap();
 
         let snapshot = TelemetrySnapshot::from_chain(&chain);
         assert_eq!(snapshot.receipt_count, 3);

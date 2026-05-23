@@ -3574,11 +3574,13 @@ impl LocalTestnet {
             let proposer = self
                 .chain
                 .proposer_for_next_epoch(&beacon)
-                .or_else(|| self.miners.first().copied())
                 .or_else(|| self.validators.first().copied())
                 .unwrap_or([0; 32]);
             let timestamp = i.saturating_mul(self.chain.params.block_time_seconds);
-            let block = self.chain.produce_block(proposer, timestamp);
+            let block = self
+                .chain
+                .produce_block(proposer, timestamp)
+                .expect("registered validator should produce a useful-verification block");
             self.finalize_block(&block);
         }
     }
@@ -3613,11 +3615,14 @@ impl LocalTestnet {
         let proposer = self
             .chain
             .proposer_for_next_epoch(&beacon)
-            .unwrap_or_else(|| self.miners[0]);
-        let block = self.chain.produce_block(
-            proposer,
-            self.chain.state.height * self.chain.params.block_time_seconds,
-        );
+            .unwrap_or_else(|| self.validators[0]);
+        let block = self
+            .chain
+            .produce_block(
+                proposer,
+                self.chain.state.height * self.chain.params.block_time_seconds,
+            )
+            .expect("registered validator should produce a useful-verification block");
         self.finalize_block(&block);
     }
 
@@ -3721,11 +3726,14 @@ impl LocalTestnet {
         let proposer = self
             .chain
             .proposer_for_next_epoch(&beacon)
-            .unwrap_or_else(|| self.miners[0]);
-        let block = self.chain.produce_block(
-            proposer,
-            self.chain.state.height * self.chain.params.block_time_seconds,
-        );
+            .unwrap_or_else(|| self.validators[0]);
+        let block = self
+            .chain
+            .produce_block(
+                proposer,
+                self.chain.state.height * self.chain.params.block_time_seconds,
+            )
+            .expect("registered validator should produce a useful-verification block");
         self.finalize_block(&block);
     }
 

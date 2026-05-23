@@ -48,6 +48,7 @@ required witness fields and vote admission does not require v2 validation.
 | Canonical blockspace | Eligible settled receipts have deterministic inclusion, omission, spent, and carry-over semantics. | Missing. |
 | Verification transcript | Every selected receipt has recomputable check leaves and block-level aggregate binding. | Missing. |
 | Useful-PoW block validity | Header, nonce, target, selected root, checks root, beacon, and proposer are validated together. | Missing. |
+| Difficulty validity | Targets are derived from parent difficulty state and bounded retarget rules. | Paper-specified, implementation-blocked. |
 | Proposer eligibility | Block proposer is a registered validator that won useful-verification PoW. | Contradicted by current reference path. |
 | Reward finality | Verifier-dependent rewards remain pending until challenge-window finality or direct recomputation. | Paper-specified, implementation-blocked. |
 | Finality safety | Votes and finalized-set mutation are allowed only after v2 block validation. | Missing. |
@@ -67,6 +68,7 @@ required witness fields and vote admission does not require v2 validation.
 | INV-007 | Check leaves are recomputable or challengeable. | check leaf schema, verifier transcript roots, DA proof root, challenge openings. | Every selected receipt has a leaf that can be recomputed under parent state and block beacon, or disproven by a consensus-valid opening. | Per-attestation `checks_root` is arbitrary statement evidence unless bound to transcript evidence. |
 | INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root, selected order, evidence schema version. | Recompute aggregate root from all selected check leaves or validate openings against it; reject mismatches before semantic claims. | Aggregate roots over signed claims do not prove transcript truth. |
 | INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce, parameter version. | Nonce target is checked over exactly the fields validated by block validity; economic useful-work claims separately satisfy the work model. | Current block has no target/nonce predicate, and useful-work dominance is unmodeled. |
+| INV-009A | Difficulty target is parent-state-derived and bounded. | `DifficultyState`, `DifficultyParams`, retarget window, hardest/easiest target bounds, hash-to-target encoding, work-floor params. | Block validation rejects targets that do not equal the parent-derived expected target or violate retarget bounds. | No v2 difficulty state or retarget theorem exists. |
 | INV-010 | Proposer is v2 eligible. | validator registry, eligibility rules, useful-PoW result. | Block admission rejects arbitrary proposers and excludes TensorWork proposer selection. | Current production accepts a supplied proposer and current selector can use TensorWork. |
 | INV-011 | State and reward roots are deterministic after valid v2 apply. | parent-state snapshot, v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots; failed admission has no partial mutation. | Current roots are v1/reference global-map roots and no parent-state apply theorem exists. |
 | INV-012 | Vote admission imports parent-state v2 validation. | `validate_block_v2(parent_state, block)` result, vote signature, stake snapshot, duplicate rule. | Votes for invalid blocks or blocks validated against the wrong state are rejected before finality weight is counted. | Current votes check known block hash, voter stake, and signatures only. |
@@ -89,6 +91,7 @@ selected_receipt_root_matches_canonical_selection
 check_leaf_recomputes_for_selected_receipt
 checks_root_matches_all_selected_leaves
 valid_useful_pow_binds_validated_header
+difficulty_target_derived_from_parent_state
 valid_v2_block_implies_proposer_eligible
 apply_v2_block_roots_are_deterministic
 vote_admission_requires_validate_block_v2
@@ -114,6 +117,7 @@ traceable.
 | CEX-006 assignment uses current beacon, not receipt-lifecycle seed | INV-002 |
 | CEX-007 reference signatures are not production auth | INV-012 plus production signature assumption |
 | CEX-010 finalized block pays irreversible rewards before challenge finality | INV-011, INV-016 |
+| CEX-011 block uses an easy self-supplied target | INV-009, INV-009A, INV-012 |
 
 If a counterexample still constructs after an implementation change, the related invariant is not
 discharged.

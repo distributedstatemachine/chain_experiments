@@ -22,6 +22,7 @@ pub(super) fn state_root(state: &ChainState) -> Hash {
     parts.extend_from_slice(&state.height.to_le_bytes());
     parts.extend_from_slice(&state.epoch.to_le_bytes());
     parts.extend_from_slice(&state.finalized_randomness);
+    parts.extend_from_slice(&state.genesis_randomness);
     parts.extend_from_slice(&account_root(&state.accounts));
     parts.extend_from_slice(&miner_root(&state.miners));
     parts.extend_from_slice(&validator_root(&state.validators));
@@ -37,6 +38,10 @@ pub(super) fn state_root(state: &ChainState) -> Hash {
         &state.data_unavailable_receipts,
     ));
     parts.extend_from_slice(&settled_receipt_root(&state.settled_receipts));
+    parts.extend_from_slice(&hash_set_root(
+        b"tensor-vm-included-receipt-root-v1",
+        &state.included_receipts,
+    ));
     parts.extend_from_slice(&model_state_root(&state.model_states));
     parts.extend_from_slice(&reward_root(&state.rewards));
     hash_bytes(b"tensor-vm-state-root-v1", &[&parts])
@@ -208,6 +213,47 @@ pub(super) fn attestation_root(attestations: &BTreeMap<Hash, Vec<ValidatorAttest
 
 pub(super) fn settled_receipt_root(receipts: &BTreeSet<Hash>) -> Hash {
     hash_set_root(b"tensor-vm-settled-receipt-root-v1", receipts)
+}
+
+pub(super) fn selected_receipt_root(receipts: &BTreeSet<Hash>) -> Hash {
+    hash_set_root(b"tensor-vm-selected-receipt-root", receipts)
+}
+
+pub(super) fn block_checks_root(
+    selected_receipts: &[Hash],
+    attestations: &BTreeMap<Hash, Vec<ValidatorAttestation>>,
+) -> Hash {
+    let mut encoded = Vec::new();
+    for receipt_id in selected_receipts {
+        encoded.extend_from_slice(receipt_id);
+        encoded.extend_from_slice(&canonical_receipt_checks_root(
+            receipt_id,
+            attestations.get(receipt_id),
+        ));
+    }
+    hash_bytes(b"tensor-vm-block-checks-root", &[&encoded])
+}
+
+fn canonical_receipt_checks_root(
+    receipt_id: &Hash,
+    attestations: Option<&Vec<ValidatorAttestation>>,
+) -> Hash {
+    let mut roots = BTreeSet::new();
+    for attestation in attestations.into_iter().flatten() {
+        if attestation.result == VerificationResult::Valid
+            && attestation.data_availability_passed
+            && attestation.verify_signature()
+            && attestation.receipt_id == *receipt_id
+        {
+            roots.insert(attestation.checks_root);
+        }
+    }
+    let mut encoded = Vec::new();
+    encoded.extend_from_slice(receipt_id);
+    for checks_root in roots {
+        encoded.extend_from_slice(&checks_root);
+    }
+    hash_bytes(b"tensor-vm-receipt-checks-root", &[&encoded])
 }
 
 pub(super) fn hash_set_root(domain: &[u8], items: &BTreeSet<Hash>) -> Hash {

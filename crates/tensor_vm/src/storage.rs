@@ -15,14 +15,14 @@ use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-const SNAPSHOT_MAGIC: &[u8] = b"TENSORVM_SNAPSHOT_V1\n";
-const BLOCK_LOG_MAGIC: &[u8] = b"TENSORVM_BLOCK_LOG_V1\n";
-const CHAIN_STATE_MAGIC: &[u8] = b"TENSORVM_STATE_V1\n";
+const SNAPSHOT_MAGIC: &[u8] = b"TENSORVM_SNAPSHOT\n";
+const BLOCK_LOG_MAGIC: &[u8] = b"TENSORVM_BLOCK_LOG\n";
+const CHAIN_STATE_MAGIC: &[u8] = b"TENSORVM_STATE\n";
 const HASH_LEN: usize = 32;
 const U64_LEN: usize = 8;
 const SNAPSHOT_PAYLOAD_LEN: usize = U64_LEN + U64_LEN + HASH_LEN + U64_LEN + HASH_LEN + HASH_LEN;
 const SNAPSHOT_DIGEST_LEN: usize = HASH_LEN;
-const BLOCK_PAYLOAD_LEN: usize = U64_LEN * 3 + HASH_LEN * 10;
+const BLOCK_PAYLOAD_LEN: usize = U64_LEN * 4 + HASH_LEN * 11;
 const BLOCK_DIGEST_LEN: usize = HASH_LEN;
 const CHAIN_STATE_DIGEST_LEN: usize = HASH_LEN;
 const SNAPSHOT_FILE_NAME: &str = "chain.snapshot";
@@ -584,6 +584,7 @@ fn encode_chain_state(out: &mut Vec<u8>, state: &ChainState) {
     write_u64(out, state.height);
     write_u64(out, state.epoch);
     write_hash(out, &state.finalized_randomness);
+    write_hash(out, &state.genesis_randomness);
     encode_accounts(out, &state.accounts);
     encode_miners(out, &state.miners);
     encode_validators(out, &state.validators);
@@ -594,6 +595,8 @@ fn encode_chain_state(out: &mut Vec<u8>, state: &ChainState) {
     encode_hash_set(out, &state.finalized_blocks);
     encode_hash_set(out, &state.data_unavailable_receipts);
     encode_hash_set(out, &state.settled_receipts);
+    encode_hash_set(out, &state.included_receipts);
+    encode_hash_vec_map(out, &state.block_selected_receipts);
     encode_model_states(out, &state.model_states);
     encode_rewards(out, &state.rewards);
 }
@@ -603,6 +606,7 @@ fn decode_chain_state(reader: &mut StateReader<'_>) -> Result<ChainState> {
         height: reader.read_u64()?,
         epoch: reader.read_u64()?,
         finalized_randomness: reader.read_hash()?,
+        genesis_randomness: reader.read_hash()?,
         accounts: decode_accounts(reader)?,
         miners: decode_miners(reader)?,
         validators: decode_validators(reader)?,
@@ -613,6 +617,8 @@ fn decode_chain_state(reader: &mut StateReader<'_>) -> Result<ChainState> {
         finalized_blocks: decode_hash_set(reader)?,
         data_unavailable_receipts: decode_hash_set(reader)?,
         settled_receipts: decode_hash_set(reader)?,
+        included_receipts: decode_hash_set(reader)?,
+        block_selected_receipts: decode_hash_vec_map(reader)?,
         model_states: decode_model_states(reader)?,
         rewards: decode_rewards(reader)?,
     })
@@ -1027,6 +1033,30 @@ fn decode_hash_set(reader: &mut StateReader<'_>) -> Result<BTreeSet<Hash>> {
     Ok(items)
 }
 
+fn encode_hash_vec_map(out: &mut Vec<u8>, items: &BTreeMap<Hash, Vec<Hash>>) {
+    write_len(out, items.len());
+    for (key, values) in items {
+        write_hash(out, key);
+        write_len(out, values.len());
+        for value in values {
+            write_hash(out, value);
+        }
+    }
+}
+
+fn decode_hash_vec_map(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Vec<Hash>>> {
+    let mut items = BTreeMap::new();
+    for _ in 0..reader.read_len()? {
+        let key = reader.read_hash()?;
+        let mut values = Vec::new();
+        for _ in 0..reader.read_len()? {
+            values.push(reader.read_hash()?);
+        }
+        items.insert(key, values);
+    }
+    Ok(items)
+}
+
 fn encode_block_record(block: &TensorBlock) -> Vec<u8> {
     let payload = encode_block_payload(block);
     let digest = hash_bytes(b"tensor-vm-block-log-record-v1", &[&payload]);
@@ -1042,12 +1072,14 @@ fn encode_block_payload(block: &TensorBlock) -> Vec<u8> {
     payload.extend_from_slice(&block.parent_hash);
     payload.extend_from_slice(&block.epoch.to_le_bytes());
     payload.extend_from_slice(&block.proposer);
-    payload.extend_from_slice(&block.job_root);
-    payload.extend_from_slice(&block.receipt_root);
+    payload.extend_from_slice(&block.settled_receipt_set_root);
+    payload.extend_from_slice(&block.checks_root);
     payload.extend_from_slice(&block.attestation_root);
     payload.extend_from_slice(&block.state_root);
     payload.extend_from_slice(&block.reward_root);
-    payload.extend_from_slice(&block.randomness);
+    payload.extend_from_slice(&block.beacon);
+    payload.extend_from_slice(&block.difficulty_target);
+    payload.extend_from_slice(&block.nonce.to_le_bytes());
     payload.extend_from_slice(&block.timestamp.to_le_bytes());
     payload.extend_from_slice(&block.proposer_signature);
     payload.extend_from_slice(&block.validator_signature_aggregate);
@@ -1092,12 +1124,14 @@ fn decode_block_payload(bytes: &[u8]) -> Result<TensorBlock> {
         parent_hash: read_hash(bytes, &mut offset)?,
         epoch: read_u64(bytes, &mut offset)?,
         proposer: read_hash(bytes, &mut offset)?,
-        job_root: read_hash(bytes, &mut offset)?,
-        receipt_root: read_hash(bytes, &mut offset)?,
+        settled_receipt_set_root: read_hash(bytes, &mut offset)?,
+        checks_root: read_hash(bytes, &mut offset)?,
         attestation_root: read_hash(bytes, &mut offset)?,
         state_root: read_hash(bytes, &mut offset)?,
         reward_root: read_hash(bytes, &mut offset)?,
-        randomness: read_hash(bytes, &mut offset)?,
+        beacon: read_hash(bytes, &mut offset)?,
+        difficulty_target: read_hash(bytes, &mut offset)?,
+        nonce: read_u64(bytes, &mut offset)?,
         timestamp: read_u64(bytes, &mut offset)?,
         proposer_signature: read_hash(bytes, &mut offset)?,
         validator_signature_aggregate: read_hash(bytes, &mut offset)?,
@@ -1441,7 +1475,7 @@ mod tests {
         chain.state.rewards.credit(miner, 77);
         chain.state.rewards.treasury = 11;
 
-        let block = chain.produce_block(miner, 1_000);
+        let block = chain.produce_block(validator, 1_000).unwrap();
         chain
             .submit_block_vote(BlockVote::new(
                 validator,
@@ -1449,7 +1483,7 @@ mod tests {
                 &block,
             ))
             .unwrap();
-        chain.produce_block(miner, 1_006);
+        chain.produce_block(validator, 1_006).unwrap();
         chain
     }
 
@@ -1460,8 +1494,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
         chain.credit_account(miner, 42);
-        chain.produce_block(miner, 1_000);
+        chain.produce_block(miner, 1_000).unwrap();
 
         let snapshot = ChainSnapshot::from_chain(&chain);
         let encoded = snapshot.encode();
@@ -1514,7 +1551,10 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 2_000);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 2_000).unwrap();
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-snapshot-{}-{}.bin",
@@ -1538,8 +1578,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        chain.produce_block(miner, 1_006).unwrap();
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-{}-{}.bin",
@@ -1572,8 +1615,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        chain.produce_block(miner, 1_006).unwrap();
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-sync-{}-{}.bin",
@@ -1606,8 +1652,11 @@ mod tests {
         different
             .register_miner(miner, different.params.miner_min_stake)
             .unwrap();
-        different.produce_block(miner, 1_000);
-        different.produce_block(miner, 1_006);
+        different
+            .register_validator(miner, different.params.validator_min_stake)
+            .unwrap();
+        different.produce_block(miner, 1_000).unwrap();
+        different.produce_block(miner, 1_006).unwrap();
         assert_eq!(
             store.sync_chain(&different),
             Err(TvmError::Storage("block log chain mismatch"))
@@ -1623,8 +1672,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        chain.produce_block(miner, 1_006).unwrap();
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-replace-{}-{}.bin",
@@ -1659,8 +1711,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        chain.produce_block(miner, 1_006).unwrap();
 
         let data_dir =
             std::env::temp_dir().join(format!("tensor-vm-node-store-{}", std::process::id()));
@@ -1698,7 +1753,7 @@ mod tests {
         assert_eq!(loaded.blocks, chain.blocks);
         assert_eq!(store.load_chain().unwrap(), chain);
 
-        chain.produce_block(miner, 1_012);
+        chain.produce_block(miner, 1_012).unwrap();
         let updated = store.persist_chain(&chain).unwrap();
         assert_eq!(updated.block_count, 3);
         assert_ne!(updated.block_log_root, status.block_log_root);
@@ -1737,7 +1792,9 @@ mod tests {
         assert_eq!(store.load_chain().unwrap(), chain);
 
         let mut ahead = chain.clone();
-        ahead.produce_block(address(b"durable-miner"), 1_012);
+        ahead
+            .produce_block(address(b"durable-validator"), 1_012)
+            .unwrap();
         store
             .block_log_store()
             .append_block(ahead.blocks.last().unwrap())
@@ -1774,7 +1831,10 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
 
         let data_dir = std::env::temp_dir().join(format!(
             "tensor-vm-chain-store-boundary-{}",
@@ -1996,7 +2056,10 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
 
         let data_dir = std::env::temp_dir().join(format!(
             "tensor-vm-node-store-mismatch-{}",
@@ -2045,8 +2108,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        let mut second = chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        let mut second = chain.produce_block(miner, 1_006).unwrap();
         second.parent_hash = hash_bytes(b"test", &[b"wrong-parent"]);
 
         let mut bytes = Vec::from(BLOCK_LOG_MAGIC);

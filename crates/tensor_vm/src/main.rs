@@ -477,6 +477,22 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         ));
     };
     let block_hash = block.hash();
+    let selected_receipt_ids = chain.selected_receipts_for_block(block);
+    let blockspace_caps = chain.blockspace_caps();
+    let selected_receipt_twu = selected_receipt_ids
+        .iter()
+        .filter_map(|receipt_id| chain.state.receipts.get(receipt_id))
+        .map(|receipt| receipt.tensor_work_units())
+        .sum::<u64>();
+    let selected_receipt_bytes = selected_receipt_ids
+        .iter()
+        .filter_map(|receipt_id| chain.state.receipts.get(receipt_id))
+        .map(|receipt| receipt.estimated_block_bytes())
+        .sum::<u64>();
+    let block_valid = chain.validate_block(block).is_ok();
+    let proposer_registered = chain.state.validators.contains_key(&block.proposer);
+    let pow_hash = block.pow_hash();
+    let pow_header_hash = block.pow_header_hash();
     let mut receipt_ids = Vec::new();
     let mut tensor_op_receipt_ids = Vec::new();
     let mut linear_training_receipt_ids = Vec::new();
@@ -498,12 +514,33 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
         }
     }
     Ok(format!(
-        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
+        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nblock_validation=useful_verification_pow\nparent_hash={}\nproposer={}\nproposer_role=validator\nproposer_registered={}\ntensorwork_proposer_selection=false\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nsettled_receipt_set_root={}\nselected_receipt_ids={}\nselected_receipt_count={}\nselected_receipt_twu={}\nselected_receipt_bytes={}\nblock_twu_cap={}\nblock_byte_cap={}\nblock_receipt_cap={}\nchecks_root={}\ncheck_leaf_count={}\nchecks_root_recomputed={}\ndifficulty_target={}\nnonce={}\npow_header_hash={}\npow_hash={}\npow_valid={}\ncanonical_blockspace_valid={}\nfinality_validated_block={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
         hex(&block_hash),
+        hex(&block.parent_hash),
+        hex(&block.proposer),
+        proposer_registered,
         hex(&block.state_root),
         block.epoch,
         chain.state.height,
         chain.is_block_finalized(&block_hash),
+        hex(&block.settled_receipt_set_root),
+        hex_hash_list(&selected_receipt_ids),
+        selected_receipt_ids.len(),
+        selected_receipt_twu,
+        selected_receipt_bytes,
+        blockspace_caps.max_tensor_work_units,
+        blockspace_caps.max_bytes,
+        blockspace_caps.max_receipts,
+        hex(&block.checks_root),
+        selected_receipt_ids.len(),
+        block_valid,
+        hex(&block.difficulty_target),
+        block.nonce,
+        hex(&pow_header_hash),
+        hex(&pow_hash),
+        block.pow_valid(),
+        block_valid,
+        chain.is_block_finalized(&block_hash) && block_valid,
         receipt_ids.len(),
         hex_hash_list(&receipt_ids),
         tensor_op_receipt_ids.len(),
@@ -2232,8 +2269,11 @@ mod tests {
         chain
             .register_miner(miner, chain.params.miner_min_stake)
             .unwrap();
-        chain.produce_block(miner, 1_000);
-        chain.produce_block(miner, 1_006);
+        chain
+            .register_validator(miner, chain.params.validator_min_stake)
+            .unwrap();
+        chain.produce_block(miner, 1_000).unwrap();
+        chain.produce_block(miner, 1_006).unwrap();
         store.persist_chain(&chain).unwrap();
 
         let mut stale_snapshot = ChainSnapshot::from_chain(&chain);

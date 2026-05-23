@@ -319,6 +319,11 @@ LIVE_TENSOR_OP_BLOCK_HEIGHT=0
 LIVE_TENSOR_OP_BLOCK_RECEIPTS=0
 LIVE_LINEAR_TRAINING_BLOCK_HEIGHT=0
 LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS=0
+USEFUL_POW_BLOCK_EVIDENCE=false
+CANONICAL_BLOCKSPACE_EVIDENCE=false
+BLOCK_CHECKS_ROOT_EVIDENCE=false
+VALIDATOR_PROPOSER_EVIDENCE=false
+FINALITY_REQUIRES_USEFUL_POW=false
 BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))
 [ "$BLOCK_SCAN_START" -gt 2 ] || BLOCK_SCAN_START=3
 BLOCK_SCAN_HEIGHT="$BLOCK_SCAN_START"
@@ -329,6 +334,48 @@ while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
     BLOCK_RECEIPT_IDS=$(status_value receipt_ids "$BLOCK_STATUS")
     BLOCK_TENSOR_OP_RECEIPTS=$(status_value tensor_op_receipt_count "$BLOCK_STATUS")
     BLOCK_LINEAR_TRAINING_RECEIPTS=$(status_value linear_training_receipt_count "$BLOCK_STATUS")
+    BLOCK_VALIDATION=$(status_value block_validation "$BLOCK_STATUS")
+    BLOCK_POW_VALID=$(status_value pow_valid "$BLOCK_STATUS")
+    BLOCK_CANONICAL_BLOCKSPACE_VALID=$(status_value canonical_blockspace_valid "$BLOCK_STATUS")
+    BLOCK_SETTLED_RECEIPT_SET_ROOT=$(status_value settled_receipt_set_root "$BLOCK_STATUS")
+    BLOCK_CHECKS_ROOT_RECOMPUTED=$(status_value checks_root_recomputed "$BLOCK_STATUS")
+    BLOCK_CHECKS_ROOT=$(status_value checks_root "$BLOCK_STATUS")
+    BLOCK_PROPOSER_REGISTERED=$(status_value proposer_registered "$BLOCK_STATUS")
+    BLOCK_TENSORWORK_PROPOSER_SELECTION=$(status_value tensorwork_proposer_selection "$BLOCK_STATUS")
+    BLOCK_FINALITY_VALIDATED=$(status_value finality_validated_block "$BLOCK_STATUS")
+    BLOCK_SELECTED_RECEIPT_COUNT=$(status_value selected_receipt_count "$BLOCK_STATUS")
+    BLOCK_CHECK_LEAF_COUNT=$(status_value check_leaf_count "$BLOCK_STATUS")
+    BLOCK_NONCE=$(status_value nonce "$BLOCK_STATUS")
+    BLOCK_DIFFICULTY_TARGET=$(status_value difficulty_target "$BLOCK_STATUS")
+    BLOCK_POW_HASH=$(status_value pow_hash "$BLOCK_STATUS")
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ "$BLOCK_VALIDATION" = "useful_verification_pow" ] \
+      && [ "$BLOCK_POW_VALID" = "true" ] \
+      && [ -n "$BLOCK_NONCE" ] \
+      && [ -n "$BLOCK_DIFFICULTY_TARGET" ] \
+      && [ -n "$BLOCK_POW_HASH" ]; then
+      USEFUL_POW_BLOCK_EVIDENCE=true
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ "$BLOCK_CANONICAL_BLOCKSPACE_VALID" = "true" ] \
+      && [ -n "$BLOCK_SETTLED_RECEIPT_SET_ROOT" ] \
+      && [ -n "$BLOCK_SELECTED_RECEIPT_COUNT" ]; then
+      CANONICAL_BLOCKSPACE_EVIDENCE=true
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ "$BLOCK_CHECKS_ROOT_RECOMPUTED" = "true" ] \
+      && [ -n "$BLOCK_CHECKS_ROOT" ] \
+      && [ -n "$BLOCK_CHECK_LEAF_COUNT" ]; then
+      BLOCK_CHECKS_ROOT_EVIDENCE=true
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] \
+      && [ "$BLOCK_PROPOSER_REGISTERED" = "true" ] \
+      && [ "$BLOCK_TENSORWORK_PROPOSER_SELECTION" = "false" ]; then
+      VALIDATOR_PROPOSER_EVIDENCE=true
+    fi
+    if [ "$BLOCK_FINALIZED" = "true" ] && [ "$BLOCK_FINALITY_VALIDATED" = "true" ]; then
+      FINALITY_REQUIRES_USEFUL_POW=true
+    fi
     if [ "$BLOCK_FINALIZED" = "true" ] \
       && [ -n "$BLOCK_RECEIPT_IDS" ] \
       && [ "$BLOCK_RECEIPT_IDS" != "none" ] \
@@ -343,7 +390,13 @@ while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
       LIVE_LINEAR_TRAINING_BLOCK_HEIGHT="$BLOCK_SCAN_HEIGHT"
       LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS="$BLOCK_LINEAR_TRAINING_RECEIPTS"
     fi
-    if [ "$LIVE_TENSOR_OP_BLOCK_HEIGHT" -gt 0 ] && [ "$LIVE_LINEAR_TRAINING_BLOCK_HEIGHT" -gt 0 ]; then
+    if [ "$LIVE_TENSOR_OP_BLOCK_HEIGHT" -gt 0 ] \
+      && [ "$LIVE_LINEAR_TRAINING_BLOCK_HEIGHT" -gt 0 ] \
+      && [ "$USEFUL_POW_BLOCK_EVIDENCE" = "true" ] \
+      && [ "$CANONICAL_BLOCKSPACE_EVIDENCE" = "true" ] \
+      && [ "$BLOCK_CHECKS_ROOT_EVIDENCE" = "true" ] \
+      && [ "$VALIDATOR_PROPOSER_EVIDENCE" = "true" ] \
+      && [ "$FINALITY_REQUIRES_USEFUL_POW" = "true" ]; then
       break
     fi
   fi
@@ -352,6 +405,11 @@ done
 
 [ "$LIVE_TENSOR_OP_BLOCK_HEIGHT" -gt 0 ] || fail "service block view did not expose finalized live TensorOp receipt evidence"
 [ "$LIVE_LINEAR_TRAINING_BLOCK_HEIGHT" -gt 0 ] || fail "service block view did not expose finalized live LinearTrainingStep receipt evidence"
+[ "$USEFUL_POW_BLOCK_EVIDENCE" = "true" ] || fail "service block view did not expose finalized useful-verification PoW evidence"
+[ "$CANONICAL_BLOCKSPACE_EVIDENCE" = "true" ] || fail "service block view did not expose finalized canonical blockspace evidence"
+[ "$BLOCK_CHECKS_ROOT_EVIDENCE" = "true" ] || fail "service block view did not expose finalized block checks-root evidence"
+[ "$VALIDATOR_PROPOSER_EVIDENCE" = "true" ] || fail "service block view did not expose validator proposer evidence"
+[ "$FINALITY_REQUIRES_USEFUL_POW" = "true" ] || fail "service block view did not expose useful-PoW finality validation evidence"
 
 ALL_OPERATOR_NETWORK_HEAD_HEIGHT=""
 ALL_OPERATOR_NETWORK_HEAD_HASH=""
@@ -815,6 +873,13 @@ all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true
 single_local_producer=true
 local_proposer_runtime=true
+useful_pow_block_evidence=${USEFUL_POW_BLOCK_EVIDENCE}
+canonical_blockspace_evidence=${CANONICAL_BLOCKSPACE_EVIDENCE}
+block_checks_root_evidence=${BLOCK_CHECKS_ROOT_EVIDENCE}
+validator_proposer_evidence=${VALIDATOR_PROPOSER_EVIDENCE}
+tensorwork_proposer_selection_removed=true
+finality_requires_useful_pow=${FINALITY_REQUIRES_USEFUL_POW}
+live_validator_proposer_networking=false
 all_non_producer_network_applied_blocks=true
 all_non_producer_network_event_ingestion=true
 all_non_producer_network_payload_announcements=true

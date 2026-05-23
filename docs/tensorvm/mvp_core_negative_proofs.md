@@ -2,10 +2,10 @@
 
 Status: documentation-only proof audit compiled from the current worktree.
 
-Purpose: make the unsound cases explicit. A positive proof plan is not enough if the current Rust surface
-still admits states that contradict the reviewed MVP theorem. This document records concrete witness
-constructions that are accepted by the current reference core but cannot satisfy the v2 useful-verification
-PoW consensus claim.
+Purpose: make the unsound cases explicit. A positive proof plan is not enough if the Rust surface admits
+states that contradict the reviewed MVP theorem. This document records concrete witness constructions,
+including historical counterexamples already discharged by the current local reference path and remaining
+gaps that still cannot satisfy the full v2 useful-verification PoW consensus claim.
 
 The target invariants that would kill these counterexamples are mapped in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
@@ -17,6 +17,8 @@ The root/encoding boundary behind `CEX-004` and block-level `checks_root` failur
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The reward-finality boundary behind `CEX-010` is specified in
 [`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
+The difficulty target boundary behind `CEX-011` is specified in
+[`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
 
 This is not a code change and not a mechanized proof. It is a negative proof ledger for the formal manifest.
 
@@ -33,25 +35,30 @@ If block B is finalized as a non-fallback v2 block, then:
   stake-weighted validator finality signatures cover that valid block hash.
 ```
 
-The current implementation cannot prove this theorem. Some parts are not merely missing; the current public
-chain surface admits counterexamples.
+The current implementation still cannot prove this theorem end to end. The local block path now discharges
+the earlier block-shape, validator-proposer, useful-PoW nonce, vote-admission, and one-shot included-receipt
+counterexamples, but parent-state snapshots, challenge openings, difficulty retargeting, exact receipt
+lifecycle metadata, and live validator proposer networking remain open.
 
 ## Current Theorem That Is Actually Supported
 
-The current finality theorem is much narrower:
+The current local finality theorem is narrower:
 
 ```text
-If submit_block_vote finalizes block hash h, then enough unique registered validator stake signed h and h is
-the hash of a block already present in LocalChain.blocks.
+If submit_block_vote finalizes block hash h through the local reference path, then enough unique registered
+validator stake signed h, h is the hash of a known LocalChain block, and the block passes the local
+useful-PoW validity predicate against a reconstructed parent-like state view.
 ```
 
-That theorem is useful, but it is not useful-verification PoW consensus.
+That theorem is useful, but it is still not the full production useful-verification PoW consensus theorem.
 
 ## Counterexamples
 
 ### CEX-001: A Finalized Block Can Have No Useful-PoW Witness
 
-Witness construction:
+Status: discharged for the local reference block path; retained as historical negative proof.
+
+Former witness construction:
 
 ```text
 Start from any chain state with enough registered validator stake.
@@ -59,11 +66,11 @@ Produce a block through LocalChain::produce_block.
 Submit valid BlockVote records from validators representing the finality threshold.
 ```
 
-Accepted by current core:
+Formerly accepted by the core:
 
-- `chain::blocks::produce` builds a `TensorBlock` with `job_root`, `receipt_root`,
+- `chain::blocks::produce` built a `TensorBlock` with `job_root`, `receipt_root`,
   `attestation_root`, `state_root`, `reward_root`, and `randomness`.
-- `chain::validation::submit_block_vote` checks validator registration, stake, signature, known block hash,
+- `chain::validation::submit_block_vote` checked validator registration, stake, signature, known block hash,
   duplicate votes, and the finality stake threshold.
 
 Missing from the accepted block:
@@ -77,21 +84,24 @@ nonce
 
 Why this disproves the broad theorem:
 
-The finalized block has no field that could witness canonical settled-receipt selection, recomputable
-block-level verification, or PoW target satisfaction. Therefore:
+The old finalized block had no field that could witness canonical settled-receipt selection, recomputable
+block-level verification, or PoW target satisfaction. Therefore the historical implication
 
 ```text
 current_finalized(B) -> useful_verification_pow_valid(B)
 ```
 
-is false over the current block type.
+was false over the old block type.
 
-Repair gate:
+Current local repair:
 
-Add a v2 block validity predicate and require it before block admission, vote admission, and finality
-accounting.
+`TensorBlock` now carries `settled_receipt_set_root`, `checks_root`, `beacon`, `difficulty_target`, and
+`nonce`; local production mines a useful-PoW nonce, and vote admission calls block validation before counting
+stake. Remaining work is exact parent-state persistence and challenge-openable verification evidence.
 
 ### CEX-002: A Produced Block Does Not Imply Proposer Eligibility
+
+Status: discharged for the local reference block path; retained as historical negative proof.
 
 Witness construction:
 
@@ -101,24 +111,26 @@ Call LocalChain::produce_block(A, timestamp).
 Have enough registered validators vote for the resulting block hash.
 ```
 
-Accepted by current core:
+Formerly accepted by the core:
 
-- `LocalChain::produce_block` accepts an `Address` and returns a `TensorBlock`; it does not return a
-  `Result` and does not check whether the address is a registered validator.
-- `submit_block_vote` checks the voters, not the block proposer.
+- `LocalChain::produce_block` accepted an `Address` and returned a `TensorBlock`; it did not return a
+  `Result` and did not check whether the address was a registered validator.
+- `submit_block_vote` checked the voters, not the block proposer.
 
 Why this disproves the broad theorem:
 
-The reviewed v2 theorem requires the proposer to be a registered validator that won useful-verification PoW.
-The current finality path can finalize a block whose proposer is not proven eligible by the chain transition.
+The reviewed v2 theorem requires the proposer to be a registered validator that won useful-verification PoW,
+so the old path could finalize a block whose proposer was not proven eligible by the chain transition.
 
-Repair gate:
+Current local repair:
 
-Make block production/admission a fallible transition that validates proposer eligibility against the parent
-state. For v2, proposer eligibility must be tied to the useful-verification PoW predicate, not merely address
-presence.
+Block production is fallible, rejects unknown validators, and vote admission validates the block proposer.
+The remaining production proof must still tie proposer networking and admission to the full useful-PoW
+predicate across nodes.
 
 ### CEX-003: TensorWork Miner Proposer Selection Contradicts v2
+
+Status: discharged for local proposer selection.
 
 Witness construction:
 
@@ -128,11 +140,11 @@ That miner is not also a registered validator.
 Call proposer_for_next_epoch(beacon).
 ```
 
-Accepted by current core:
+Formerly accepted by the core:
 
-- `chain::proposer::for_next_epoch` sums miner `settled_tensor_work`.
-- When total work is nonzero, it selects from miners weighted by settled TensorWork.
-- Validator stake fallback is used only when total miner work is zero.
+- `chain::proposer::for_next_epoch` summed miner `settled_tensor_work`.
+- When total work was nonzero, it selected from miners weighted by settled TensorWork.
+- Validator stake fallback was used only when total miner work was zero.
 
 Why this disproves the broad theorem:
 
@@ -142,37 +154,40 @@ validator that won useful-verification PoW.
 
 Repair gate:
 
-Retire TensorWork proposer selection from the normal v2 path. Keep it only as explicitly labeled v1
-reference behavior if needed for migration tests.
+Current local repair:
+
+`chain::proposer::for_next_epoch` selects registered validators by stake and ignores miner TensorWork.
 
 ### CEX-004: A Receipt Map Root Is Not Canonical Blockspace
+
+Status: partially discharged locally; full v2 lifecycle metadata remains open.
 
 Witness construction:
 
 ```text
 Parent state has settled receipts r1 and r2.
 The v2 blockspace caps allow only one receipt.
-Current TensorBlock commits receipt_root over the global receipt map, not the selected receipt set.
+Old TensorBlock committed `receipt_root` over the global receipt map, not the selected receipt set.
 ```
 
-Accepted by current core:
+Formerly accepted by the core:
 
-- `chain::blocks::produce` commits `receipt_root(&chain.state.receipts)`.
-- `ChainState` has `settled_receipts: BTreeSet<Hash>`, but `TensorBlock` does not commit a
+- `chain::blocks::produce` committed `receipt_root(&chain.state.receipts)`.
+- `ChainState` had `settled_receipts: BTreeSet<Hash>`, but `TensorBlock` did not commit a
   `settled_receipt_set_root`.
-- The block type does not identify which settled receipts were selected, spent, carried over, or excluded by
+- The block type did not identify which settled receipts were selected, spent, carried over, or excluded by
   caps.
 
 Why this disproves the broad theorem:
 
-The v2 theorem needs deterministic inclusion and omission rules. A global receipt map root can be identical
-while the intended v2 selected set is undefined at the block level. Validators cannot prove that the block
-used the canonical receipt set because the block does not name that set.
+The v2 theorem needs deterministic inclusion and omission rules. The local path now computes deterministic
+settled-receipt selection, commits `settled_receipt_set_root`, records block-selected receipts as local
+evidence, and marks selected receipts included so they are not selected again.
 
-Repair gate:
+Remaining repair gate:
 
-Add settled-receipt pool metadata, deterministic selector rules, blockspace caps, spent/carry-over state,
-and a block-level `settled_receipt_set_root`.
+Persist exact parent-state snapshots or replayable transitions, promote selected-receipt metadata into the
+canonical block/opening model, and add expiry, challenge-window, DA, and carry-over semantics.
 
 ### CEX-005: Quorum Is Syntactic Unless Verification Evidence Is Bound
 
@@ -361,22 +376,52 @@ settlement. Add challenge admission, deterministic resolution, claim invalidatio
 single-use settlement as specified in
 [`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
 
+### CEX-011: A Block Can Use An Easy Self-Supplied Target
+
+Witness construction for an insufficient future repair:
+
+```text
+Build a v2-shaped block B with valid selected receipt and checks roots.
+Set B.difficulty_target to an easy numeric target chosen by the proposer.
+Find nonce n such that H(pow_header(B) || n) < B.difficulty_target.
+Validate only the hash inequality against B.difficulty_target.
+```
+
+Accepted by the insufficient repair:
+
+- The PoW hash can be below the target field in B.
+- The header can bind selected receipts, checks, beacon, proposer, and nonce.
+- The block can look structurally useful-PoW-shaped.
+
+Why this disproves target validity:
+
+The nonce proves only success against the target that was checked. If the target is not derived from parent
+consensus state, the proposer can choose an easy or locally configured target and convert useful-PoW into
+ordinary cheap nonce search.
+
+Repair gate:
+
+Add parent-state `DifficultyState`, bounded retarget rules, target bounds, canonical hash-to-target
+semantics, and work-floor policy as specified in
+[`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
+
 ## Manifest Corrections Required
 
 The formal manifest should interpret current claims this way:
 
 | Area | Correct Current Claim | Incorrect Claim To Reject |
 | --- | --- | --- |
-| Finality | Enough registered validator stake signed a known v1 block hash. | Finality implies useful-verification PoW validity. |
-| Block production | A reference block can be appended with a supplied proposer address. | Produced block implies eligible v2 proposer. |
-| Proposer selection | v1 reference selector can choose miners by settled TensorWork. | TensorWork-selected miner is a v2 proposer. |
-| Receipt roots | Blocks commit the global receipt map root. | Receipt map root is deterministic settled-receipt blockspace. |
+| Finality | Local votes are counted only for known blocks that pass useful-PoW validation against a reconstructed parent-like state view. | Local finality proves the full production v2 consensus theorem. |
+| Block production | Local block production is fallible and requires a registered validator proposer. | Local proposer checks prove live production proposer networking. |
+| Proposer selection | Local proposer selection is validator-stake weighted and ignores miner TensorWork. | TensorWork-selected miner is a v2 proposer. |
+| Receipt roots | Blocks commit deterministic selected settled receipts and mark selected receipts included once. | The local metadata-only selected-receipt map is a complete v2 opening/lifecycle model. |
 | Attestation quorum | Quorum counts assigned signed Valid/DataAvailable statements. | Quorum proves validators actually ran the verifier. |
 | Validation seed | Assignment is deterministic from current finalized randomness. | Assignment is stable for the receipt lifecycle. |
 | Signatures | Reference signing tests message-flow shape. | Reference signing proves production authentication. |
 | Useful-PoW work | A valid nonce can prove hash-target success over a validated header. | A valid nonce proves useful-work dominance or proposer-local verification. |
 | Verifier evidence | An aggregate checks root can commit signed check claims. | An aggregate checks root proves those claims came from real verifier execution. |
 | Reward finality | Finalized blocks may create pending verifier-dependent reward claims. | Block finality makes verifier-dependent rewards irreversible. |
+| Difficulty target | A valid nonce proves success against a parent-state-derived target. | A target field validates itself. |
 
 ## Proof Upgrade Order
 
@@ -392,6 +437,7 @@ The minimum proof repair order is:
 8. Discharge the useful-PoW work model before claiming useful-work dominance.
 9. Discharge the verifier evidence model before claiming semantic verifier execution.
 10. Discharge the reward-finality model before making verifier-dependent rewards spendable.
+11. Discharge the difficulty-retarget model before claiming production useful-PoW target validity.
 
 ## Current Judgment
 

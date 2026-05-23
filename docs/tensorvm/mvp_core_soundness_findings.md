@@ -68,38 +68,39 @@ nonce
 
 Evidence:
 
-- [`../../crates/tensor_vm/src/chain/state.rs`](../../crates/tensor_vm/src/chain/state.rs) defines
-  `TensorBlock` with `job_root`, `receipt_root`, and `randomness`, but no v2 PoW/check fields.
-- [`../../crates/tensor_vm/src/chain/blocks.rs`](../../crates/tensor_vm/src/chain/blocks.rs) produces a
-  block by committing global job/receipt/attestation maps and advancing height/randomness with no PoW
-  predicate.
+- [`../../crates/tensor_vm/src/chain/state.rs`](../../crates/tensor_vm/src/chain/state.rs) now defines
+  `TensorBlock` with `settled_receipt_set_root`, `checks_root`, `beacon`, `difficulty_target`, and `nonce`.
+- [`../../crates/tensor_vm/src/chain/blocks.rs`](../../crates/tensor_vm/src/chain/blocks.rs) now mines a
+  useful-verification PoW nonce over deterministic settled-receipt blockspace and marks selected receipts
+  included after production.
 
 Finding:
 
-This is not a minor implementation gap. The consensus object is wrong for the reviewed v2 MVP. Adding a
-nonce to the existing block shape would not fix the proof, because validators still could not recompute the
-canonical receipt set or the expected block-level verification commitment.
+This gap is partially closed in the local reference path. The remaining proof work is not just adding more
+header fields: validators still need exact parent-state evidence to recompute the historical
+canonical receipt set, child-state transition, or the expected block-level verification commitment.
 
-### Current Proposer Selection Contradicts The v2 Spec
+### Live Proposer Networking Remains Transitional
 
-Current proposer selection computes total settled miner TensorWork and selects from miners when total work
-is nonzero. It falls back to validators only when total work is zero.
+Current chain-core proposer selection chooses registered validators and ignores miner TensorWork. The local
+Compose runtime still has a single timed block driver, so it is not yet evidence for live validator proposer
+networking.
 
 Evidence:
 
 - [`../../crates/tensor_vm/src/chain/proposer.rs`](../../crates/tensor_vm/src/chain/proposer.rs) selects
-  by `settled_tensor_work`.
-- [`coverage_matrix.md`](coverage_matrix.md) now marks the v2 useful-verification PoW criterion as not
+  validators by stake/beacon and returns `None` without validators.
+- [`coverage_matrix.md`](coverage_matrix.md) now marks the useful-verification PoW criterion as partially
   complete.
 - [`completion_audit.md`](completion_audit.md) now marks the v2 block-production and zero-receipt fallback
   criteria as not complete.
 
 Finding:
 
-The old proposer path may remain useful as a compatibility or local reference path, but it cannot be counted
-as proof evidence for the reviewed MVP.
+The chain-core proposer resource is now aligned locally; the runtime still needs network-visible validator
+proposer work before it can be counted as production evidence.
 
-### Current Finality Does Not Validate v2 Block Soundness
+### Current Finality Needs Parent-State Block Soundness
 
 Current block voting checks:
 
@@ -108,26 +109,29 @@ Current block voting checks:
 - vote signature verifies
 - block hash/height exists
 - duplicate vote is rejected
-- signed stake reaches threshold
-
-It does not check:
-
 - block proposer eligibility
+- state root and beacon against a reconstructed parent-like state view
 - useful-verification PoW target
 - canonical settled-receipt set
 - recomputed `checks_root`
-- v2 block reward challenge-window state
-- invalid canonical-set omission or receipt-subset grinding
+- signed stake reaches threshold
+
+It does not yet prove:
+
+- exact historical parent-state snapshots and child-state apply transitions for every old block
+- carry-over receipt lifecycle metadata
+- challenge-window state
+- invalid canonical-set omission proofs or receipt-subset grinding beyond the current selector tests
 
 Evidence:
 
 - [`../../crates/tensor_vm/src/chain/validation.rs`](../../crates/tensor_vm/src/chain/validation.rs)
-  validates block votes and finality as stake-threshold checks over known block hashes.
+  validates block votes with block-soundness checks before counting stake.
 
 Finding:
 
-The current finality proof is only a BFT signature-threshold proof for the current reference block type. It
-is not a finality proof for useful-verification PoW block validity.
+The current finality proof is locally gated by useful-verification block checks, but it is not yet the full
+historical parent-state theorem.
 
 ## Claims That Are Actually Proof-Ready
 
@@ -302,7 +306,8 @@ a nonce satisfying H(parent || receipt_set_root || checks_root || beacon || vali
 
 ### N2: Canonical Receipt Inclusion
 
-Not proven because there is no v2 selector that answers:
+Partially proven locally: the current selector answers parent/beacon ordering and byte/TWU/count caps over
+settled receipts. It still does not answer:
 
 - Which settled receipts are eligible?
 - Which receipts are already spent?
@@ -317,7 +322,8 @@ Bad assumption to reject:
 "A receipt_root over the current map is equivalent to deterministic blockspace."
 ```
 
-It is not. A global receipt map root does not prove a canonical per-block receipt set.
+It is not. The local block now uses a selected-set root, but the full theorem still needs lifecycle metadata
+for spent/carry-over, expiry, and challenge-window eligibility.
 
 ### N3: Block-Level `checks_root` Recomputability
 

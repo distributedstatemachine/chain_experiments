@@ -81,6 +81,37 @@ impl ChainParams {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BlockspaceCaps {
+    pub max_receipts: usize,
+    pub max_tensor_work_units: u64,
+    pub max_bytes: u64,
+}
+
+impl Default for BlockspaceCaps {
+    fn default() -> Self {
+        Self {
+            max_receipts: 64,
+            max_tensor_work_units: 1_000_000,
+            max_bytes: 1_048_576,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BlockspaceSelection {
+    pub receipt_ids: Vec<Hash>,
+    pub total_tensor_work_units: u64,
+    pub total_bytes: u64,
+    pub caps: BlockspaceCaps,
+}
+
+impl BlockspaceSelection {
+    pub fn receipt_set(&self) -> BTreeSet<Hash> {
+        self.receipt_ids.iter().copied().collect()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RewardAllocation {
     pub miner_reward_pool: u64,
     pub validator_reward_pool: u64,
@@ -225,6 +256,19 @@ impl ReceiptState {
             Self::LinearTrainingStep(receipt) => receipt.tensor_work_units,
         }
     }
+
+    pub fn estimated_block_bytes(&self) -> u64 {
+        match self {
+            Self::TensorOp(receipt) => {
+                let roots = receipt
+                    .input_roots
+                    .len()
+                    .saturating_add(receipt.output_roots.len()) as u64;
+                32 * (7 + roots) + 8 * 3
+            }
+            Self::LinearTrainingStep(_) => 32 * 10 + 8 * 4,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -254,12 +298,14 @@ pub struct TensorBlock {
     pub parent_hash: Hash,
     pub epoch: u64,
     pub proposer: Address,
-    pub job_root: Hash,
-    pub receipt_root: Hash,
+    pub settled_receipt_set_root: Hash,
+    pub checks_root: Hash,
     pub attestation_root: Hash,
     pub state_root: Hash,
     pub reward_root: Hash,
-    pub randomness: Hash,
+    pub beacon: Hash,
+    pub difficulty_target: Hash,
+    pub nonce: u64,
     pub timestamp: u64,
     pub proposer_signature: Signature,
     pub validator_signature_aggregate: Signature,
@@ -268,22 +314,59 @@ pub struct TensorBlock {
 impl TensorBlock {
     pub fn hash(&self) -> Hash {
         hash_bytes(
-            b"tensor-vm-block-v1",
+            b"tensor-vm-block",
             &[
                 &self.height.to_le_bytes(),
                 &self.parent_hash,
                 &self.epoch.to_le_bytes(),
                 &self.proposer,
-                &self.job_root,
-                &self.receipt_root,
+                &self.settled_receipt_set_root,
+                &self.checks_root,
                 &self.attestation_root,
                 &self.state_root,
                 &self.reward_root,
-                &self.randomness,
+                &self.beacon,
+                &self.difficulty_target,
+                &self.nonce.to_le_bytes(),
                 &self.timestamp.to_le_bytes(),
             ],
         )
     }
+
+    pub fn pow_header_hash(&self) -> Hash {
+        hash_bytes(
+            b"tensor-vm-useful-pow-header",
+            &[
+                &self.height.to_le_bytes(),
+                &self.parent_hash,
+                &self.epoch.to_le_bytes(),
+                &self.proposer,
+                &self.settled_receipt_set_root,
+                &self.checks_root,
+                &self.attestation_root,
+                &self.state_root,
+                &self.reward_root,
+                &self.beacon,
+                &self.difficulty_target,
+                &self.timestamp.to_le_bytes(),
+            ],
+        )
+    }
+
+    pub fn pow_hash(&self) -> Hash {
+        hash_bytes(
+            b"tensor-vm-useful-pow",
+            &[&self.pow_header_hash(), &self.nonce.to_le_bytes()],
+        )
+    }
+
+    pub fn pow_valid(&self) -> bool {
+        hash_below_target(&self.pow_hash(), &self.difficulty_target)
+    }
+}
+
+pub fn hash_below_target(hash: &Hash, target: &Hash) -> bool {
+    hash < target
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -333,6 +416,7 @@ pub struct ChainState {
     pub height: u64,
     pub epoch: u64,
     pub finalized_randomness: Hash,
+    pub genesis_randomness: Hash,
     pub accounts: BTreeMap<Address, AccountState>,
     pub miners: BTreeMap<Address, MinerState>,
     pub validators: BTreeMap<Address, ValidatorState>,
@@ -343,6 +427,8 @@ pub struct ChainState {
     pub finalized_blocks: BTreeSet<Hash>,
     pub data_unavailable_receipts: BTreeSet<Hash>,
     pub settled_receipts: BTreeSet<Hash>,
+    pub included_receipts: BTreeSet<Hash>,
+    pub block_selected_receipts: BTreeMap<Hash, Vec<Hash>>,
     pub model_states: BTreeMap<Hash, ModelState>,
     pub rewards: RewardState,
 }

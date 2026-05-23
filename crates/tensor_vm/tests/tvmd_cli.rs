@@ -1012,6 +1012,22 @@ fn local_testnet_seed_cli_persists_cpu_chain_for_service_gateway() {
     assert!(block.contains("command=service_block"));
     assert_eq!(stdout_value(&block, "height"), "3");
     assert_eq!(stdout_value(&block, "block_hash"), first_live_block_hash);
+    assert_eq!(
+        stdout_value(&block, "block_validation"),
+        "useful_verification_pow"
+    );
+    assert_eq!(stdout_value(&block, "proposer_role"), "validator");
+    assert_eq!(stdout_value(&block, "proposer_registered"), "true");
+    assert_eq!(
+        stdout_value(&block, "tensorwork_proposer_selection"),
+        "false"
+    );
+    assert!(block.contains("settled_receipt_set_root="));
+    assert!(block.contains("checks_root="));
+    assert!(block.contains("difficulty_target="));
+    assert!(block.contains("nonce="));
+    assert!(block.contains("pow_hash="));
+    assert_eq!(stdout_value(&block, "pow_valid"), "true");
     assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
     assert_eq!(stdout_value(&block, "finalized"), "true");
     assert!(

@@ -7,7 +7,7 @@ Purpose: define the missing transition theorem behind `valid_v2_block(parent_sta
 or validation helper is not enough unless every consensus-relevant field is interpreted against the exact
 parent state and the resulting child state is deterministic.
 
-This document is a proof target. It does not mark the dirty v2-block candidate or current implementation
+This document is a proof target. It does not mark the local v2-block reference path or current implementation
 sound.
 
 Reward finality and challenge-window state used by `reward_root` are specified in

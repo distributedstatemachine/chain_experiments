@@ -13,22 +13,25 @@ Only the first two can plausibly become ordinary safety theorems over committed 
 parameterized economic assumption backed by measurement and threat-model choices; it is not proved merely
 by adding a nonce, a target, or a `checks_root`.
 
+Parent-state target derivation and retarget bounds are specified separately in
+[`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
+
 ## Current Verdict
 
-The current implementation does not implement useful-verification PoW.
+The current implementation has a local useful-verification PoW header path, but it does not implement the
+full production useful-work theorem.
 
 Current blockers:
 
-- Current blocks do not carry `settled_receipt_set_root`, `checks_root`, `difficulty_target`, or `nonce`.
-- Current block production advances the chain without a PoW predicate.
-- Current finality votes do not import v2 block validation.
-- Current proposer selection can use the superseded TensorWork path or caller-supplied proposer input.
-- Current receipt roots are roots of current-state maps, not canonical selected settled-receipt blockspace.
+- Difficulty target validity is static/helper-derived, not parent-state retargeted.
+- No consensus work floor prevents empty or tiny selected sets from using the normal useful-PoW path.
+- `checks_root` still aggregates signed claims rather than recomputable or challenge-openable transcripts.
+- Exact parent snapshots and child-state apply semantics are not yet persisted/proved.
+- Live validator proposer networking is still separate from the local block-production core.
 
-Even after those state fields exist, a second issue remains: a valid hash predicate proves that someone found
-a nonce for a committed header. It does not by itself prove that nonce search was economically dominated by
-useful verification, or that the winning proposer personally performed all verification work rather than
-using a cached or shared transcript.
+A valid hash predicate proves that someone found a nonce for a committed header. It does not by itself prove
+that nonce search was economically dominated by useful verification, or that the winning proposer personally
+performed all verification work rather than using a cached or shared transcript.
 
 The safe current wording is:
 
@@ -193,6 +196,7 @@ language.
 ## Difficulty And Retarget Requirements
 
 A future difficulty state must be validated as consensus state, not accepted from the candidate block.
+The detailed proof model is [`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
 
 Minimum fields or equivalent state:
 

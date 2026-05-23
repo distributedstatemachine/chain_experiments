@@ -66,7 +66,7 @@ impl ChainEngine for LocalChain {
                 proposer,
                 timestamp,
             } => {
-                let block = self.produce_block(proposer, timestamp);
+                let block = self.produce_block(proposer, timestamp)?;
                 Ok(vec![ChainEvent::BlockProduced {
                     height: block.height,
                     hash: block.hash(),

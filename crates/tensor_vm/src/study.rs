@@ -369,14 +369,17 @@ pub fn zero_work_liveness_study(
     }
     let mut proposers = Vec::with_capacity(blocks as usize);
     for height in 0..blocks {
-        let proposer = chain
-            .proposer_for_next_epoch(&chain.state.finalized_randomness)
-            .unwrap_or([0; 32]);
+        let Some(proposer) = chain.proposer_for_next_epoch(&chain.state.finalized_randomness)
+        else {
+            break;
+        };
         proposers.push(proposer);
-        chain.produce_block(
-            proposer,
-            height.saturating_mul(chain.params.block_time_seconds),
-        );
+        chain
+            .produce_block(
+                proposer,
+                height.saturating_mul(chain.params.block_time_seconds),
+            )
+            .expect("registered validator should produce zero-work study block");
     }
     ZeroWorkLivenessStudy {
         blocks_requested: blocks,
@@ -541,18 +544,18 @@ mod tests {
     }
 
     #[test]
-    fn zero_work_liveness_study_produces_blocks_from_fallback() {
+    fn zero_work_liveness_study_produces_blocks_from_validators() {
         let study = zero_work_liveness_study(0, 5, 12);
         assert_eq!(study.blocks_produced, 12);
         assert_eq!(study.proposers.len(), 12);
         assert!(study.proposers.iter().all(|proposer| *proposer != [0; 32]));
 
         let no_participants = zero_work_liveness_study(0, 0, 1);
-        assert_eq!(no_participants.blocks_produced, 1);
-        assert_eq!(no_participants.proposers, vec![[0; 32]]);
+        assert_eq!(no_participants.blocks_produced, 0);
+        assert!(no_participants.proposers.is_empty());
 
-        let miner_fallback = zero_work_liveness_study(1, 0, 1);
-        assert_eq!(miner_fallback.blocks_produced, 1);
-        assert_ne!(miner_fallback.proposers, vec![[0; 32]]);
+        let miner_only = zero_work_liveness_study(1, 0, 1);
+        assert_eq!(miner_only.blocks_produced, 0);
+        assert!(miner_only.proposers.is_empty());
     }
 }

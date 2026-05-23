@@ -95,7 +95,7 @@ fn produce_synthetic_matmul_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    let block = chain.produce_block(proposer, timestamp);
+    let block = chain.produce_block(proposer, timestamp)?;
     finalize_local_cpu_block(chain, &block)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
@@ -157,7 +157,7 @@ fn produce_synthetic_linear_training_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    let block = chain.produce_block(proposer, timestamp);
+    let block = chain.produce_block(proposer, timestamp)?;
     finalize_local_cpu_block(chain, &block)?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,

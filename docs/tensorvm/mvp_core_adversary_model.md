@@ -42,7 +42,7 @@ The verifier evidence boundary is tracked in
 | Signatures | Forge statements, replay statements, or claim another actor's authority. | Current code exercises a reference signature relation. | Production signature scheme, replay domains, and key-ownership model. |
 | Validator behavior | Sign `Valid` without running the verifier, withhold attestations, duplicate attempts, or disagree. | Admission prevents duplicates and enforces current assignment syntax. | Semantic verifier-execution evidence, Byzantine stake bound, slashing/challenge rule, or explicit honesty assumption. |
 | Block proposal | Produce blocks with arbitrary proposers or superseded TensorWork selection. | None for reviewed v2; current behavior is reference-only. | v2 proposer eligibility and useful-PoW validation. |
-| Useful-PoW economics | Grind nonces over cheap, empty, cached, or shared verification commitments and still claim useful work. | None for reviewed v2; current behavior has no useful-PoW predicate. | Work floor, target validation, retarget bounds, transcript-acquisition model, and conservative wording. |
+| Useful-PoW economics | Grind nonces over cheap, empty, cached, shared, or easy-target verification commitments and still claim useful work. | None for reviewed v2; current behavior has no useful-PoW predicate. | Parent-state target validation, work floor, retarget bounds, transcript-acquisition model, and conservative wording. |
 | Blockspace | Omit, reorder, or substitute settled receipts. | None for reviewed v2. | Canonical selected-receipt pool, caps, expiry, spent/carry-over rules, and selected root. |
 | Verification transcript | Mine over arbitrary, incomplete, or merely signed checks roots. | Per-attestation checks roots exist as statements only. | Block-level checks root, check leaves, recomputation, openings, and challenge-window reward semantics. |
 | Reward settlement | Rush spendable rewards before challenges, hide artifacts until the challenge window closes, or exploit clawback gaps. | Not modeled in the current proof kernel; reward finality is paper-specified only. | Pending reward claims, challenge openings, DA-through-window evidence, and deterministic clawback/nonpayment. |
@@ -65,6 +65,7 @@ Future proof statements must declare these parameters instead of relying on pros
 | DA retention window and observer threshold | Public availability claims. | Missing external evidence. |
 | Signature scheme and domains | Actor authentication. | Reference helper only. |
 | Hash model and security level | Commitment binding and PoW. | Assumed, not parameterized in theorems. |
+| Difficulty and retarget parameters | Useful-PoW target validity and liveness. | Paper-specified in `mvp_core_difficulty_retarget_model.md`, not implemented. |
 | Verification, transcript acquisition, and nonce costs | Useful-work dominance claims. | Missing as a discharged model. |
 | Verifier evidence and challenge-window liveness | Semantic attestation and checks-root claims. | Paper-specified across verifier-evidence and reward-finality docs, not implemented. |
 

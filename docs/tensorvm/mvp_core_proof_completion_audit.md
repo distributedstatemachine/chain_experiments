@@ -14,9 +14,9 @@ be critical, call our bad assumptions and create a doc. do not write code, just 
 This audit uses the current worktree as evidence. It does not mark the goal complete. The proof corpus is
 materially stronger than before, but the full reviewed v2 MVP core is still not sound.
 
-The local dirty v2-block candidate is audited separately in
-[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). That candidate is useful
-implementation direction, but it is build-failing and does not discharge the proof obligations.
+The local v2-block reference path is audited separately in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). That implementation is useful
+direction and build-clean locally, but it still does not discharge the full proof obligations.
 
 ## Verdict
 
@@ -58,7 +58,7 @@ public DA and operator-independence evidence
 | Create formal proofs for MVP core | `mvp_core_sound_kernel.md`, `formal_proof_manifest_v0.md`, `mvp_core_formal_proofs.md` | Partial | Paper proof statements exist for the narrow kernel. No mechanized Lean/TorchLean proof exists. Full consensus proof is blocked. |
 | Keep upgrading core until sound | Current docs and Rust consensus surfaces | Not complete | The user has restricted this pass to Markdown only. The docs identify required implementation gates, but the core itself remains unsound for v2. |
 | Be critical | `bad_assumptions_ledger.md`, `mvp_core_negative_proofs.md`, `mvp_core_data_availability_boundary.md` | Met for docs | The current docs call out false assumptions directly, including finality, proposer eligibility, quorum semantics, public DA, and signatures. |
-| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 27 bad assumptions and wording rules. It should remain open. |
+| Call bad assumptions | `bad_assumptions_ledger.md` | Met for current audit | The ledger now names 28 bad assumptions and wording rules. It should remain open. |
 | Create docs only | Git history and current staged policy | Met for this proof-work stream | Recent proof commits are Markdown-only. Dirty code changes in the worktree are not part of this proof-doc audit. |
 | Prove full reviewed MVP core sound | v2 spec plus current chain code | Not complete | Current blocks and finality cannot express the reviewed useful-verification PoW theorem. |
 
@@ -81,6 +81,7 @@ public DA and operator-independence evidence
 | Canonical settled-receipt blockspace | `TVM-BLK-001`, `mvp_spec.md` | Implementation-blocked | Nothing honest can be proved over current blocks. | Current receipt map roots do not define selected eligible settled receipts. |
 | Block-level `checks_root` | `TVM-BLK-002`, `mvp_core_negative_proofs.md` | Implementation-blocked | Per-attestation `checks_root` exists as statement evidence. | Blocks do not commit a recomputable aggregate verification transcript. |
 | Useful-verification PoW | `TVM-POW-001`, current `TensorBlock` | Contradicted / implementation-blocked | No current useful-PoW theorem. | Current blocks lack `settled_receipt_set_root`, `checks_root`, `difficulty_target`, and `nonce`. |
+| Difficulty retargeting | `TVM-DIFF-001`, `mvp_core_difficulty_retarget_model.md` | Implementation-blocked | The paper model now defines parent-state target derivation and bounded retargeting. | No v2 difficulty state, retarget window, target-bound theorem, or hash-to-target vectors are implemented. |
 | Proposer eligibility | `CEX-002`, `chain::blocks::produce` | Contradicted | Current block production can append a block with a caller-supplied proposer. | Produced block does not imply registered validator useful-PoW winner. |
 | TensorWork proposer removal | `CEX-003`, `chain::proposer` | Contradicted | Current selector still uses settled TensorWork when work is nonzero. | v2 says TensorWork must not select proposers. |
 | Finality implies v2 validity | `TVM-FIN-001`, `CEX-001` | Contradicted / implementation-blocked | Current finality proves stake signatures over a known v1 block hash. | It does not prove v2 block validity, useful-PoW, canonical blockspace, or checks-root correctness. |

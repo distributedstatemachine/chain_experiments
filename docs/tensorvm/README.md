@@ -11,6 +11,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core canonical encoding and commitment model](mvp_core_canonical_encoding_commitment_model.md)
 - [MVP core settled-receipt blockspace model](mvp_core_settled_receipt_blockspace_model.md)
 - [MVP core useful-PoW work model](mvp_core_useful_pow_work_model.md)
+- [MVP core difficulty retarget model](mvp_core_difficulty_retarget_model.md)
 - [MVP core fallback liveness model](mvp_core_fallback_liveness_model.md)
 - [MVP core verifier evidence model](mvp_core_verifier_evidence_model.md)
 - [MVP core reward finality and challenge model](mvp_core_reward_finality_challenge_model.md)

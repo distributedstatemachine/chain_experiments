@@ -3,9 +3,12 @@
 This tracks the implementation of [`mvp_spec.md`](mvp_spec.md). The
 acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
 
-The reviewed v2 MVP consensus model is not fully implemented yet. The reference core still has the old
-settled-TensorWork proposer path and v1 block fields; useful-verification PoW over canonical
-settled-receipt blockspace remains an open core upgrade. See
+The reviewed MVP consensus model is partially implemented locally. The reference core now uses
+validator-owned block production with useful-verification PoW fields over deterministic settled-receipt
+blockspace, selected receipts are marked included once, and block votes validate the known block with strict
+parent-root checks before counting stake. Remaining consensus gaps are exact parent-state snapshots and
+child-state apply semantics, selected-receipt lifecycle/opening metadata, `checks_root` challenge openings,
+difficulty retargeting, zero-receipt skip fallback, and live validator proposer networking. See
 [`mvp_core_formal_proofs.md`](mvp_core_formal_proofs.md).
 
 ## Implemented In `crates/tensor_vm`
@@ -28,7 +31,9 @@ settled-receipt blockspace remains an open core upgrade. See
 - Receipt digest/signature checks and trace-root recomputation
 - Validator attestations with registered-stake quorum enforcement and deterministic assigned-validator
   admission checks
-- Block assembly through the internal `chain::blocks` boundary, stake-weighted block-finality votes,
+- Block assembly through the internal `chain::blocks` boundary with registered-validator proposer
+  eligibility, deterministic settled-receipt blockspace selection, block-level `checks_root`, beacon,
+  difficulty target, nonce search, useful-verification PoW checking, stake-weighted block-finality votes,
   duplicate-vote rejection, finalized block tracking, and finality-rate telemetry
 - Duplicate registration, duplicate receipt, and duplicate validator-attestation rejection
 - Account, miner, validator, job, receipt, attestation, reward, and model-state registries
@@ -38,9 +43,8 @@ settled-receipt blockspace remains an open core upgrade. See
 - Receipt settlement in the internal `chain::settlement` boundary, 70/20/5/5 reward allocation,
   proposer/treasury rewards, reward accounting without repeated payout, and no-quorum rejection
 - MVP v0 penalty handling for data-unavailable receipts and mismatched attestations
-- Superseded v1 settled prior-epoch TensorWork proposer selection through the internal `chain::proposer`
-  boundary, pending-work exclusion, and zero-work fallback. This remains as reference behavior and test
-  coverage, not as completion evidence for the reviewed v2 useful-verification PoW consensus model.
+- Registered-validator proposer selection through the internal `chain::proposer` boundary. Miner
+  TensorWork no longer selects block proposers; TensorWork remains reward, telemetry, and blockspace input.
 - Chain parameters, chain state, block/vote, job/receipt, account, miner, validator, reward, model, and
   transaction domain types through the internal `chain::state` boundary
 - Genesis chain construction through the internal `chain::genesis` boundary
@@ -295,7 +299,7 @@ settled-receipt blockspace remains an open core upgrade. See
   attestation payloads gossiped, decoded, and applied through `ChainCommand::SubmitJob`,
   `ChainCommand::SubmitReceipt`, and
   `ChainCommand::SubmitAttestation` on non-producers, so post-startup blocks advance through receipts,
-  attestations, settlement, proposer selection, and finality instead of a static snapshot, miner role loops
+  attestations, settlement, validator block production, and finality instead of a static snapshot, miner role loops
   that report assigned-job and unreceipted-job readiness from loaded chain state and can submit assigned
   unreceipted receipts through the shared chain engine while inserting served tensor artifacts locally,
   validator role loops that can submit assigned attestations through the shared chain engine when local tensor

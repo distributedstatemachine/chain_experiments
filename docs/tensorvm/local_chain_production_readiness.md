@@ -6,10 +6,11 @@ The MVP spec now uses useful-verification PoW with deterministic blockspace. Gap
 TensorWork-weighted proposer selection or job-rooted blocks are obsolete. New gaps:
 
 - Implement `useful_verification_pow` puzzle and difficulty retargeting.
-- Implement settled-receipt pool and deterministic canonical selection.
+- Extend the local settled-receipt pool and deterministic canonical selection into a full parent-state,
+  selected-leaf, expiry, carry-over, and challenge-window lifecycle model.
 - Implement verification challenge window with cross-validator dispute path.
-- Remove `proposer_eligibility` from ChainState and migrate tests.
-- Update local checker to assert PoW block validity and BFT finality independently.
+- Keep local checker assertions for PoW block validity, canonical blockspace evidence, and BFT finality
+  independent as the live proposer network path is upgraded.
 
 This document records the current local-chain readiness gaps and the refactor path for making TensorVM's
 local chain production-grade while keeping it local-only. It combines the local setup review with an
@@ -207,19 +208,18 @@ The first chain-core cleanup slices are already in the tree:
   remaining proposer/block-assembly gap.
 
 These are foundation pieces, not completion. Miner receipts and validator attestations now have role-owned
-submission paths for locally available work, but the local runtime still needs remote tensor fetching and
-network-visible proposer/block assembly before it satisfies the local CPU spec as a production-grade local
-chain.
+submission paths for locally available work, and validators can fetch missing tensors remotely. The local
+runtime still needs network-visible validator proposer/block assembly before it satisfies the local CPU spec
+as a production-grade local chain.
 
 ## Highest-Priority Gaps
 
 ### 1. Local Production Is Still Single-Process
 
 Current live production still runs inside `miner-00`'s service loop for settlement, block production, and
-finality votes. Miner receipt submission and validator attestation submission now have role-loop paths for
-locally available work, but the full gate still relies on deterministic producer orchestration before final
-block assembly and finality are applied
-against one `Chain`.
+finality votes. The chain core now requires registered-validator useful-verification PoW blocks, but the
+full gate still relies on deterministic producer orchestration before final block assembly and finality are
+applied against one `Chain`.
 
 This conflicts with the local CPU spec and MVP Gate 0 language that rejects simulations, direct in-memory
 propagation, local-only networking shims, and single-participant shortcuts.
@@ -297,13 +297,14 @@ non-producers validate and apply job payloads through `ChainCommand::SubmitJob`,
 `ChainCommand::SubmitReceipt`, and attestation payloads through `ChainCommand::SubmitAttestation`. Pending
 receipt and attestation payloads are retained and retried once prerequisite jobs or receipts arrive, then
 live block catch-up is applied from drained `NewBlockHeader` events instead of reading only aggregate
-latest-head metrics. Only `miner-00` is allowed to produce timed local blocks. The role loop processes block
+latest-head metrics. Only `miner-00` is allowed to drive timed local block production, while the chain block
+itself must be proposed by a registered validator and pass useful-verification PoW checks. The role loop processes block
 announcements ahead of payload-only messages through the reusable node runtime event driver, which also owns
 decoded payload application, pending retry, invalid event accounting, and producer versus non-producer
 block-header dispatch. Local synthetic replay still prunes future pre-applied synthetic jobs, receipts,
 attestations, and validator attestation counters before matching an observed head, so decoded payloads
 cannot poison deterministic local catch-up. The remaining gap is replacing deterministic replay with
-role-owned miner, validator, and proposer loops that assemble blocks from network-visible state.
+role-owned miner, validator, and validator proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 

@@ -12,11 +12,13 @@ The canonical encoding and commitment model for selected roots and check roots i
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The useful-PoW work model that separates structural header validity from economic work dominance is defined
 in [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+The difficulty retarget model for parent-state target validity is defined in
+[`mvp_core_difficulty_retarget_model.md`](mvp_core_difficulty_retarget_model.md).
 The verifier evidence model for recomputable or challengeable check leaves is defined in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 The reward-finality model for delayed settlement, challenges, and clawback is defined in
 [`mvp_core_reward_finality_challenge_model.md`](mvp_core_reward_finality_challenge_model.md).
-The local dirty v2-block candidate is audited in
+The local v2-block reference path is audited in
 [`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md); it does not yet discharge
 these obligations.
 The parent-state transition model required by V2-STATE and V2-FIN is defined in
@@ -93,7 +95,7 @@ This theorem must not be stated over the current v1 block type.
 | `BlockspaceCaps` | TWU cap, byte cap, receipt-count cap | Needed to make deterministic truncation provable. | Missing as consensus object. |
 | `CheckLeaf` | receipt id, primitive type, Freivalds transcript root, random-linear root, DA root | Needed to recompute `checks_root`. | Missing as block-level object. |
 | `PowHeader` | parent hash, selected receipt root, checks root, beacon, proposer | Needed to bind nonce search to useful verification. | Missing. |
-| `DifficultyState` | target, retarget window, floor, ceiling | Needed to prove target validity and liveness bounds. | Missing as v2 state. |
+| `DifficultyState` | target, retarget window, hardest/easiest bounds, hash-to-target version, work-floor params | Needed to prove target validity and liveness bounds. | Paper-specified in `mvp_core_difficulty_retarget_model.md`; implementation not started. |
 | `BlockVoteV2` or validation rule | vote over valid v2 block hash after block validation | Needed to prove finality counts valid blocks only. | Missing. |
 | `RewardFinalityState` | pending claims, challenge windows, challenge resolutions, settled claims, clawbacks | Needed to prove `reward_root` and delayed verifier-dependent settlement. | Paper-specified in `mvp_core_reward_finality_challenge_model.md`; implementation not started. |
 | `FallbackBlock` rule | timeout, stake rotation, reduced reward, no miner TWU rewards for empty blockspace | Needed for zero-receipt/no-PoW liveness theorem. | Paper-specified in `mvp_core_fallback_liveness_model.md`; implementation not started. |
@@ -203,6 +205,34 @@ Counterexamples killed:
 
 Current status: implementation-blocked.
 
+### V2-DIFF-001: Parent-State Difficulty Target Validity
+
+Statement:
+
+```text
+For nonfallback v2 block B at parent state S, B.difficulty_target is valid only if it equals
+expected_target(S.difficulty_state, B.height) under bounded retarget rules and canonical hash-to-target
+semantics.
+```
+
+Dependencies:
+
+- difficulty retarget model
+- parent-state `DifficultyState`
+- versioned `DifficultyParams`
+- bounded retarget window
+- hardest/easiest target bounds
+- hash-to-uint and target encoding vectors
+- nonfallback work floor
+
+Counterexamples killed:
+
+- Candidate block chooses an easy target and mines a cheap nonce.
+- Static local target is treated as production retarget evidence.
+- Nodes disagree on byte ordering or target boundary comparison.
+
+Current status: paper-specified, implementation-blocked.
+
 ### V2-POW-001: Useful-Verification PoW Validity
 
 Statement:
@@ -220,7 +250,7 @@ Dependencies:
 - V2-BLK-002
 - V2-CHK-002
 - registered-validator proposer eligibility
-- difficulty target validity
+- parent-state difficulty target validity
 - nonfallback verification-work floor and useful-work cost model
 - hash model
 
@@ -414,6 +444,7 @@ Any path that mutates `finalized_blocks` without this predicate is outside the v
 | Adding `nonce` to the current v1 block is enough | The nonce must bind to canonical blockspace and `checks_root`. |
 | `receipt_root` is close enough to `settled_receipt_set_root` | A global receipt map root does not define selected eligible settled receipts. |
 | Per-attestation `checks_root` is a block checks root | Blocks need an aggregate root over canonical selected receipt transcripts. |
+| `difficulty_target` validates itself | A target must be derived from parent difficulty state and bounded retarget rules. |
 | Finality validates whatever block exists | Finality must count only votes for blocks that pass `validate_block_v2`. |
 | TensorWork is still acceptable for proposer choice | v2 makes validator useful-PoW the proposer primitive. |
 | Empty blocks can use old fallback | v2 fallback has different reward and eligibility semantics. |

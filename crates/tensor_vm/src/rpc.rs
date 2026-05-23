@@ -1475,8 +1475,8 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let mut chain = LocalChain::new(beacon);
         let proposer = address(b"proposer");
-        chain.register_miner(proposer, 100).unwrap();
-        chain.produce_block(proposer, 1000);
+        chain.register_validator(proposer, 10_000).unwrap();
+        chain.produce_block(proposer, 1000).unwrap();
         let rpc = RpcNode::new(chain);
 
         let head = rpc.handle(&RpcRequest {
@@ -1602,7 +1602,8 @@ mod tests {
         let miner = address(b"rpc-service-miner");
         let user = address(b"rpc-faucet-user");
         chain.register_miner(miner, 100).unwrap();
-        chain.produce_block(miner, 1000);
+        chain.register_validator(miner, 10_000).unwrap();
+        chain.produce_block(miner, 1000).unwrap();
         let mut rpc = RpcNode::with_faucet(chain, Faucet::new(1_000, 100));
 
         let summary = rpc.handle(&RpcRequest {
@@ -2151,7 +2152,8 @@ mod tests {
         let mut chain = LocalChain::new(beacon);
         let miner = address(b"ws-miner");
         chain.register_miner(miner, 100).unwrap();
-        chain.produce_block(miner, 1);
+        chain.register_validator(miner, 10_000).unwrap();
+        chain.produce_block(miner, 1).unwrap();
         let rpc = RpcNode::new(chain);
         let overview = rpc.explorer_websocket_response(
             "{\"type\":\"overview\",\"block_limit\":1,\"receipt_limit\":1,\"job_limit\":1}",
@@ -2246,7 +2248,8 @@ mod tests {
         chain.submit_job(JobState::LinearTrainingStep(linear_job));
         chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
         chain.state.settled_receipts.insert(receipt.receipt_id);
-        chain.produce_block(cpu_miner, 1000);
+        chain.register_validator(cpu_miner, 10_000).unwrap();
+        chain.produce_block(cpu_miner, 1000).unwrap();
         let rpc = RpcNode::new(chain);
 
         let miners = rpc.explorer_websocket_response("miners");
@@ -2528,7 +2531,8 @@ mod tests {
         let mut chain = LocalChain::new(beacon);
         let miner = address(b"ws-http-miner");
         chain.register_miner(miner, 100).unwrap();
-        chain.produce_block(miner, 1);
+        chain.register_validator(miner, 10_000).unwrap();
+        chain.produce_block(miner, 1).unwrap();
         let gateway = RpcGateway::new(RpcNode::new(chain), RpcPolicy::default());
         let mut server = match RpcHttpServer::bind("127.0.0.1:0", gateway) {
             Ok(server) => server,
