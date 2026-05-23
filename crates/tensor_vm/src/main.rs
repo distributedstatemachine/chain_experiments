@@ -28,6 +28,9 @@ mod runtime;
 #[path = "main/runtime_loop.rs"]
 mod runtime_loop;
 
+#[path = "main/runtime_production.rs"]
+mod runtime_production;
+
 #[path = "main/runtime_services.rs"]
 mod runtime_services;
 

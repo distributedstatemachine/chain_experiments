@@ -220,6 +220,9 @@ spaghetti around.
 - Iteration 93 moved validator role runtime ticking into `main/roles.rs`, preserving the
   `RoleRuntimeLoop` test wrapper while keeping fetch, attestation, block-vote, persistence, p2p
   publication, and counters with the validator worker.
+- Iteration 94 extracted local synthetic production timing, persistence, and produced-block
+  counters into `main/runtime_production.rs`, leaving `RoleRuntimeLoop` to orchestrate tick order
+  and status writes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

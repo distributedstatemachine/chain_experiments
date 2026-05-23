@@ -1,14 +1,11 @@
-use std::{
-    io::ErrorKind,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{io::ErrorKind, thread, time::Duration};
 
 use super::{
     miner_role::tick_miner_role_work_once,
-    network::{ingest_network_events, produce_and_publish_synthetic_round},
+    network::ingest_network_events,
     roles::tick_validator_role_work_once as tick_validator_role_worker_once,
     runtime_config::{RuntimeRole, ServiceRuntimeConfig},
+    runtime_production::LocalProductionSchedule,
     runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
         RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
@@ -22,8 +19,7 @@ pub(super) struct RoleRuntimeLoop {
     pub(super) server: RpcHttpServer,
     p2p_service: TensorVmLibp2pService,
     local_producer: bool,
-    block_interval: Option<Duration>,
-    next_block_at: Option<Instant>,
+    local_production: LocalProductionSchedule,
     runtime_state: NodeRuntimeState,
     p2p_metadata: RuntimeP2pMetadata,
 }
@@ -36,8 +32,7 @@ impl RoleRuntimeLoop {
             p2p_service,
             p2p_metadata,
         } = start_runtime_services(&config)?;
-        let block_interval = config.node.synthetic_block_interval();
-        let next_block_at = block_interval.map(|interval| Instant::now() + interval);
+        let local_production = LocalProductionSchedule::new(config.node.synthetic_block_interval());
         let local_producer = config.node.local_synthetic_producer();
         Ok(Self {
             config,
@@ -45,8 +40,7 @@ impl RoleRuntimeLoop {
             server,
             p2p_service,
             local_producer,
-            block_interval,
-            next_block_at,
+            local_production,
             runtime_state: NodeRuntimeState::default(),
             p2p_metadata,
         })
@@ -155,30 +149,16 @@ impl RoleRuntimeLoop {
     }
 
     fn produce_local_round_if_due(&mut self) -> std::result::Result<(), String> {
-        let Some(interval) = self.block_interval else {
-            return Ok(());
-        };
-        if self
-            .next_block_at
-            .is_none_or(|deadline| Instant::now() < deadline)
-        {
-            return Ok(());
-        }
-        if self.local_producer
-            && produce_and_publish_synthetic_round(
-                &mut self.server,
-                &self.p2p_service,
-                &self.config.node.profile,
-            )?
-            .is_some()
-        {
-            self.store
-                .persist_chain(&self.server.gateway().node.chain)
-                .map_err(|error| format!("failed to persist produced block: {error}"))?;
-            self.runtime_state.record_produced_block();
+        if self.local_production.produce_if_due(
+            &self.config.node.profile,
+            self.local_producer,
+            &self.store,
+            &mut self.server,
+            &self.p2p_service,
+            &mut self.runtime_state,
+        )? {
             self.write_status()?;
         }
-        self.next_block_at = Some(Instant::now() + interval);
         Ok(())
     }
 
