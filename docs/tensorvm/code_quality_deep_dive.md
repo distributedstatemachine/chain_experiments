@@ -167,6 +167,8 @@ spaghetti around.
   into `main/commands.rs`, leaving `main.rs` closer to dispatch and runtime orchestration.
 - Iteration 67 extracted binary network ingest and gossip-publishing helpers into `main/network.rs`,
   keeping runtime loop orchestration in `main.rs` while isolating p2p message application glue.
+- Iteration 68 moved runtime status snapshot construction and `role-runtime.status` writing into
+  `main/status.rs`, consolidating service and role status formatting behind the same module boundary.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

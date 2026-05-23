@@ -1,8 +1,9 @@
 use super::*;
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, FreivaldsParams,
-    NetworkPayloadApply, PendingNetworkPayloads, ValidatorAttestation, VerificationResult,
-    encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
+    NetworkEventIngest, NetworkPayloadApply, PendingNetworkPayloads, ValidatorAttestation,
+    VerificationResult, encode_attestation_payload, encode_job_payload, encode_receipt_payload,
+    network_ingest_order,
     node::{
         apply_network_attestation_payload, apply_network_job_payload,
         apply_network_receipt_payload, attestation_announcement_hash,
