@@ -151,6 +151,8 @@ spaghetti around.
   `p2p/service.rs`, leaving `p2p.rs` as the public p2p configuration and re-export facade.
 - Iteration 59 extracted snapshot encoding, decoding, persistence, and snapshot-specific tests into
   `storage/snapshot.rs`, starting the documented storage module split behind unchanged public exports.
+- Iteration 60 extracted block-log persistence, record codecs, and block-log tests into
+  `storage/block_log.rs`, leaving `storage.rs` to orchestrate node-store recovery and chain-state codecs.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
