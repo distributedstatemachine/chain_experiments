@@ -1,7 +1,8 @@
 use super::{
     BlockAdmission, Chain, ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState,
-    ReceiptState, TensorBlock, accounts, settlement,
+    ReceiptState, TensorBlock, accounts, challenges, settlement,
 };
+use crate::challenge::ChallengeOutcome;
 use crate::error::{Result, TvmError};
 
 impl ChainEngine for Chain {
@@ -123,6 +124,24 @@ impl ChainEngine for Chain {
                     step,
                     weight_root_after,
                 }])
+            }
+            ChainCommand::ApplyChallengeOutcome(outcome) => {
+                let event = match &outcome {
+                    ChallengeOutcome::Rejected { reason } => ChainEvent::ChallengeRejected {
+                        reason: reason.clone(),
+                    },
+                    ChallengeOutcome::ProvenInvalid {
+                        dishonest_party,
+                        slash_amount,
+                        reason,
+                    } => ChainEvent::ChallengeProvenInvalid {
+                        dishonest_party: *dishonest_party,
+                        slash_amount: *slash_amount,
+                        reason: reason.clone(),
+                    },
+                };
+                challenges::apply_outcome(self, outcome)?;
+                Ok(vec![event])
             }
         }
     }

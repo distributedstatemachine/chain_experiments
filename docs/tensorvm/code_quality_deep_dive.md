@@ -58,6 +58,8 @@ spaghetti around.
   drip eligibility and faucet balance, while the RPC claim path asks the chain engine to mutate reward state.
 - Iteration 12 made `apply_transaction` return the `ChainEvent`s produced by its delegated `ChainCommand`,
   so public transaction writes no longer silently discard the typed mutation effects.
+- Iteration 13 added a command/event wrapper for fraud challenge outcomes. Public challenge application now
+  enters through `ChainCommand::ApplyChallengeOutcome`, and rejected/slashing outcomes emit typed events.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -207,6 +209,8 @@ Remaining examples:
 
 - runtime test setup and lower-level model tests still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
+- network block ingestion still prepares parent state and admits blocks directly so it can preserve
+  pending/duplicate/invalid admission results.
 - `apply_transaction` now routes non-reference writes through `ChainCommand`, returns command events, and
   rejects txpool-only reference submissions, but the public transaction surface still mixes immediate
   mutations with queued reference announcements.

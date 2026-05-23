@@ -186,7 +186,8 @@ impl Chain {
     }
 
     pub fn apply_challenge_outcome(&mut self, outcome: ChallengeOutcome) -> Result<()> {
-        challenges::apply_outcome(self, outcome)
+        self.apply_command(ChainCommand::ApplyChallengeOutcome(outcome))
+            .map(|_| ())
     }
 
     pub fn validation_seed(&self, receipt_id: &Hash) -> Hash {
@@ -531,6 +532,36 @@ mod tests {
                 weight_root_after: linear_receipt.weight_root_after,
             }]
         );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::ApplyChallengeOutcome(
+                    ChallengeOutcome::Rejected {
+                        reason: "honest receipt".to_owned(),
+                    }
+                ))
+                .unwrap(),
+            vec![ChainEvent::ChallengeRejected {
+                reason: "honest receipt".to_owned(),
+            }]
+        );
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::ApplyChallengeOutcome(
+                    ChallengeOutcome::ProvenInvalid {
+                        dishonest_party: miner,
+                        slash_amount: 3,
+                        reason: "invalid receipt".to_owned(),
+                    }
+                ))
+                .unwrap(),
+            vec![ChainEvent::ChallengeProvenInvalid {
+                dishonest_party: miner,
+                slash_amount: 3,
+                reason: "invalid receipt".to_owned(),
+            }]
+        );
+        assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 97);
+        assert_eq!(chain.state.rewards.treasury, 3);
     }
 
     #[test]
@@ -1753,16 +1784,32 @@ mod tests {
         let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         chain.register_miner(miner, 100).unwrap();
-        chain
-            .apply_challenge_outcome(ChallengeOutcome::ProvenInvalid {
+        assert_eq!(
+            chain
+                .apply_command(ChainCommand::ApplyChallengeOutcome(
+                    ChallengeOutcome::ProvenInvalid {
+                        dishonest_party: miner,
+                        slash_amount: 25,
+                        reason: "invalid receipt".to_owned(),
+                    },
+                ))
+                .unwrap(),
+            vec![ChainEvent::ChallengeProvenInvalid {
                 dishonest_party: miner,
                 slash_amount: 25,
                 reason: "invalid receipt".to_owned(),
+            }]
+        );
+        chain
+            .apply_challenge_outcome(ChallengeOutcome::ProvenInvalid {
+                dishonest_party: miner,
+                slash_amount: 5,
+                reason: "invalid receipt again".to_owned(),
             })
             .unwrap();
-        assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 75);
-        assert_eq!(chain.state.miners.get(&miner).unwrap().reputation, -10);
-        assert_eq!(chain.state.rewards.treasury, 25);
+        assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 70);
+        assert_eq!(chain.state.miners.get(&miner).unwrap().reputation, -20);
+        assert_eq!(chain.state.rewards.treasury, 30);
     }
 
     #[test]

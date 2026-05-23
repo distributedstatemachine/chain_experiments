@@ -1,4 +1,5 @@
 use super::state::{BlockVote, ChainParams, ChainState, JobState, ReceiptState, TensorBlock};
+use crate::challenge::ChallengeOutcome;
 use crate::error::Result;
 use crate::types::{Address, Hash};
 use crate::verify::ValidatorAttestation;
@@ -75,6 +76,7 @@ pub enum ChainCommand {
         weight_root_before: Hash,
         weight_root_after: Hash,
     },
+    ApplyChallengeOutcome(ChallengeOutcome),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -119,6 +121,14 @@ pub enum ChainEvent {
         model_id: Hash,
         step: u64,
         weight_root_after: Hash,
+    },
+    ChallengeRejected {
+        reason: String,
+    },
+    ChallengeProvenInvalid {
+        dishonest_party: Address,
+        slash_amount: u64,
+        reason: String,
     },
 }
 
