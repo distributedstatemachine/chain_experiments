@@ -199,6 +199,8 @@ spaghetti around.
   as the service runtime entrypoint and preserving the existing test-facing loop handle.
 - Iteration 83 moved binary runtime persistence/status tests into `main_tests/runtime_persistence.rs`,
   starting the large `main_tests.rs` split along runtime behavior boundaries.
+- Iteration 84 moved miner role observation and receipt-submission tests into
+  `main_tests/miner_role.rs`, reducing the binary test module's mixed role-test surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
