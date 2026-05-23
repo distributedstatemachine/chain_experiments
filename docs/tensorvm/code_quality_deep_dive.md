@@ -92,6 +92,8 @@ spaghetti around.
   onto `ChainState` accessors without changing storage fixture mutations.
 - Iteration 29 moved the zero-work liveness study's proposer randomness read onto the `ChainState`
   accessor, removing another standalone production reach-through.
+- Iteration 30 moved node network-payload ingress duplicate/dependency checks and their colocated
+  assertions onto the `ChainState` accessors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

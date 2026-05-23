@@ -556,7 +556,7 @@ pub fn apply_network_job_payload(
     if job.job_id() != job_id {
         return Err(NetworkPayloadError::Invalid);
     }
-    if let Some(existing) = chain.state.jobs.get(&job_id) {
+    if let Some(existing) = chain.state().jobs().get(&job_id) {
         if existing == &job {
             return Ok(());
         }
@@ -590,10 +590,10 @@ pub fn apply_network_block_payload(
     {
         return NetworkBlockPayloadApply::Applied { appended: 0 };
     }
-    if height > chain.state.height {
+    if height > chain.state().height() {
         return NetworkBlockPayloadApply::Pending;
     }
-    if height < chain.state.height {
+    if height < chain.state().height() {
         return NetworkBlockPayloadApply::Invalid;
     }
     let expected_parent = chain
@@ -635,11 +635,16 @@ pub fn apply_network_block_vote_payload(
     if vote.block_hash != block_hash || vote.validator != validator {
         return NetworkPayloadApply::Invalid;
     }
-    if let Some(existing) = chain.state.block_votes.get(&block_hash).and_then(|votes| {
-        votes
-            .iter()
-            .find(|existing| existing.validator == validator)
-    }) {
+    if let Some(existing) = chain
+        .state()
+        .block_votes()
+        .get(&block_hash)
+        .and_then(|votes| {
+            votes
+                .iter()
+                .find(|existing| existing.validator == validator)
+        })
+    {
         return if existing == &vote {
             NetworkPayloadApply::Applied
         } else {
@@ -673,14 +678,14 @@ pub fn apply_network_receipt_payload(
     if receipt.receipt_id() != receipt_id {
         return NetworkPayloadApply::Invalid;
     }
-    if let Some(existing) = chain.state.receipts.get(&receipt_id) {
+    if let Some(existing) = chain.state().receipts().get(&receipt_id) {
         if existing == &receipt {
             return NetworkPayloadApply::Applied;
         }
         return NetworkPayloadApply::Invalid;
     }
-    if !chain.state.jobs.contains_key(&receipt.job_id())
-        || !chain.state.miners.contains_key(&receipt.miner())
+    if !chain.state().jobs().contains_key(&receipt.job_id())
+        || !chain.state().miners().contains_key(&receipt.miner())
     {
         return NetworkPayloadApply::Pending;
     }
@@ -705,8 +710,8 @@ pub fn apply_network_attestation_payload(
         return NetworkPayloadApply::Invalid;
     }
     if let Some(existing) = chain
-        .state
-        .attestations
+        .state()
+        .attestations()
         .get(&attestation.receipt_id)
         .and_then(|items| {
             items
@@ -719,8 +724,14 @@ pub fn apply_network_attestation_payload(
         }
         return NetworkPayloadApply::Invalid;
     }
-    if !chain.state.validators.contains_key(&attestation.validator)
-        || !chain.state.receipts.contains_key(&attestation.receipt_id)
+    if !chain
+        .state()
+        .validators()
+        .contains_key(&attestation.validator)
+        || !chain
+            .state()
+            .receipts()
+            .contains_key(&attestation.receipt_id)
     {
         return NetworkPayloadApply::Pending;
     }
@@ -1512,8 +1523,8 @@ mod tests {
         let testnet = local_matmul_round(b"job");
         let job = testnet
             .chain
-            .state
-            .jobs
+            .state()
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
@@ -1527,7 +1538,7 @@ mod tests {
             apply_network_job_payload(&mut chain, job_id, &payload),
             Ok(())
         );
-        assert_eq!(chain.state.jobs.get(&job_id), Some(&job));
+        assert_eq!(chain.state().jobs().get(&job_id), Some(&job));
         assert_eq!(
             apply_network_job_payload(&mut chain, job_id, &payload),
             Ok(())
@@ -1576,7 +1587,7 @@ mod tests {
             NetworkBlockPayloadApply::Applied { appended: 1 }
         );
         assert_eq!(consumer.blocks, producer.blocks);
-        assert!(!consumer.state.finalized_blocks.contains(&block_hash));
+        assert!(!consumer.state().finalized_blocks().contains(&block_hash));
         assert!(!consumer.has_block_finality(&block_hash));
         let vote = BlockVote::new(validator, 10_000, &block);
         assert_eq!(
@@ -1597,7 +1608,7 @@ mod tests {
             ),
             NetworkPayloadApply::Applied
         );
-        assert!(consumer.state.finalized_blocks.contains(&block_hash));
+        assert!(consumer.state().finalized_blocks().contains(&block_hash));
         assert!(consumer.has_block_finality(&block_hash));
         assert_eq!(
             apply_network_block_vote_payload(
@@ -1689,8 +1700,8 @@ mod tests {
         let testnet = local_matmul_round(b"receipt");
         let receipt = testnet
             .chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -1713,7 +1724,10 @@ mod tests {
             apply_network_receipt_payload(&mut apply_chain, receipt_id, &payload),
             NetworkPayloadApply::Applied
         );
-        assert_eq!(apply_chain.state.receipts.get(&receipt_id), Some(&receipt));
+        assert_eq!(
+            apply_chain.state().receipts().get(&receipt_id),
+            Some(&receipt)
+        );
         assert_eq!(
             apply_network_receipt_payload(&mut testnet.chain.clone(), receipt_id, &payload),
             NetworkPayloadApply::Applied
@@ -1759,8 +1773,8 @@ mod tests {
         let testnet = local_matmul_round(b"attestation");
         let attestation = testnet
             .chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
@@ -1785,8 +1799,8 @@ mod tests {
         );
         assert_eq!(
             apply_chain
-                .state
-                .attestations
+                .state()
+                .attestations()
                 .get(&attestation.receipt_id)
                 .and_then(|items| items.first()),
             Some(&attestation)
@@ -1830,8 +1844,8 @@ mod tests {
         let testnet = local_matmul_round(b"processor");
         let job = testnet
             .chain
-            .state
-            .jobs
+            .state()
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
@@ -1839,8 +1853,8 @@ mod tests {
         let job_id = job.job_id();
         let receipt = testnet
             .chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -1848,8 +1862,8 @@ mod tests {
         let receipt_id = receipt.receipt_id();
         let attestation = testnet
             .chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
@@ -1872,11 +1886,11 @@ mod tests {
         assert_eq!(ingested.receipt_payloads_applied, 1);
         assert_eq!(ingested.attestation_payloads_applied, 1);
         assert!(pending.is_empty());
-        assert_eq!(chain.state.receipts.get(&receipt_id), Some(&receipt));
+        assert_eq!(chain.state().receipts().get(&receipt_id), Some(&receipt));
         assert_eq!(
             chain
-                .state
-                .attestations
+                .state()
+                .attestations()
                 .get(&receipt_id)
                 .and_then(|items| items.first()),
             Some(&attestation)
@@ -1888,8 +1902,8 @@ mod tests {
         let testnet = local_matmul_round(b"driver-payloads");
         let job = testnet
             .chain
-            .state
-            .jobs
+            .state()
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
@@ -1897,8 +1911,8 @@ mod tests {
         let job_id = job.job_id();
         let receipt = testnet
             .chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -1906,8 +1920,8 @@ mod tests {
         let receipt_id = receipt.receipt_id();
         let attestation = testnet
             .chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
@@ -1951,16 +1965,16 @@ mod tests {
         assert_eq!(ingested.attestation_payloads_applied, 1);
         assert_eq!(ingested.invalid_events, 0);
         assert!(pending.is_empty());
-        assert_eq!(context.chain.state.jobs.get(&job_id), Some(&job));
+        assert_eq!(context.chain.state().jobs().get(&job_id), Some(&job));
         assert_eq!(
-            context.chain.state.receipts.get(&receipt_id),
+            context.chain.state().receipts().get(&receipt_id),
             Some(&receipt)
         );
         assert_eq!(
             context
                 .chain
-                .state
-                .attestations
+                .state()
+                .attestations()
                 .get(&receipt_id)
                 .and_then(|items| items.first()),
             Some(&attestation)
@@ -1972,16 +1986,16 @@ mod tests {
         let testnet = local_matmul_round(b"driver-direct-payloads");
         let job = testnet
             .chain
-            .state
-            .jobs
+            .state()
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
             .clone();
         let receipt = testnet
             .chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -1989,8 +2003,8 @@ mod tests {
         let receipt_id = receipt.receipt_id();
         let attestation = testnet
             .chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
