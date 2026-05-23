@@ -1,17 +1,18 @@
-use std::{io::ErrorKind, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use super::{
     miner_role::tick_miner_role_work_once,
     runtime_config::{RuntimeRole, ServiceRuntimeConfig},
     runtime_network::ingest_network_once as ingest_runtime_network_once,
     runtime_production::LocalProductionSchedule,
+    runtime_rpc::serve_rpc_once as serve_runtime_rpc_once,
     runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
         RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
     },
     runtime_validator::tick_validator_role_work_once as tick_validator_role_worker_once,
 };
-use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+use tensor_vm::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
 pub(super) struct RoleRuntimeLoop {
     config: ServiceRuntimeConfig,
@@ -70,26 +71,10 @@ impl RoleRuntimeLoop {
     }
 
     pub(super) fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
-        let chain_snapshot_before = ChainSnapshot::from_chain(&self.server.gateway().node.chain);
-        match self.server.serve_next() {
-            Ok(()) => {
-                let chain_changed = ChainSnapshot::from_chain(&self.server.gateway().node.chain)
-                    != chain_snapshot_before;
-                self.record_served_request(chain_changed)
-            }
-            Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(()),
-            Err(error) => Err(format!("service request failed: {error}")),
+        if serve_runtime_rpc_once(&self.store, &mut self.server, &mut self.runtime_state)? {
+            self.write_status()?;
         }
-    }
-
-    fn record_served_request(&mut self, chain_changed: bool) -> std::result::Result<(), String> {
-        if chain_changed {
-            self.store
-                .persist_chain(&self.server.gateway().node.chain)
-                .map_err(|error| format!("failed to persist service state: {error}"))?;
-        }
-        self.runtime_state.record_served_request();
-        self.write_status()
+        Ok(())
     }
 
     fn ingest_network_once(&mut self) -> std::result::Result<(), String> {

@@ -231,6 +231,9 @@ spaghetti around.
 - Iteration 97 extracted runtime network ingest persistence and counter recording into
   `main/runtime_network.rs`, leaving `RoleRuntimeLoop` to call the network tick and write status
   when activity occurred.
+- Iteration 98 extracted runtime RPC serving, mutation detection, chain persistence, and
+  served-request counters into `main/runtime_rpc.rs`, preserving the `RoleRuntimeLoop` test wrapper
+  as orchestration-only status writing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

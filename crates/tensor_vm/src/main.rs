@@ -31,6 +31,9 @@ mod runtime_network;
 #[path = "main/runtime_production.rs"]
 mod runtime_production;
 
+#[path = "main/runtime_rpc.rs"]
+mod runtime_rpc;
+
 #[path = "main/runtime_services.rs"]
 mod runtime_services;
 
