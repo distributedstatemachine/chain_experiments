@@ -133,6 +133,8 @@ spaghetti around.
   `p2p.rs` test module now focuses on libp2p service behavior and peer-book persistence.
 - Iteration 50 moved libp2p request-response behavior aliases, pending request bookkeeping, response
   construction, protocol dispatch, and behavior construction into `p2p/request_response.rs`.
+- Iteration 51 moved libp2p connection accounting, observed gossip metrics, request-response event
+  routing, and bounded observed-block hash tracking into `p2p/service_events.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -531,7 +533,7 @@ Several files are far past a healthy size boundary:
 | --- | --- |
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
-| `crates/tensor_vm/src/p2p.rs` | libp2p service, gossip accounting, service tests |
+| `crates/tensor_vm/src/p2p.rs` | libp2p service construction, worker loop, service tests |
 | `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
