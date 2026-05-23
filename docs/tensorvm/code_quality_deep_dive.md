@@ -66,6 +66,8 @@ spaghetti around.
   decodes rewards through an explicit constructor and encodes them through read accessors.
 - Iteration 16 made reward crediting chain-private too, moving storage and telemetry fixtures through
   `ChainCommand::CreditReward` instead of calling `RewardState::credit` directly.
+- Iteration 17 moved non-chain test fixture height/epoch writes behind a crate-test-only chain position
+  helper, keeping those setup mutations out of scheduler/localnet/profile tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -498,7 +498,7 @@ mod tests {
         };
         let mut chain =
             Chain::with_params(params, hash_bytes(b"test", &[b"localnet-linear-no-miners"]));
-        chain.state.height = 1;
+        chain.set_position_for_testing(1, 0);
         chain
             .register_miner(
                 address(b"localnet-linear-assignment-miner"),
@@ -534,7 +534,7 @@ mod tests {
             params,
             hash_bytes(b"test", &[b"localnet-linear-no-agreement"]),
         );
-        chain.state.height = 1;
+        chain.set_position_for_testing(1, 0);
         chain
             .register_miner(
                 address(b"localnet-linear-agreement-miner"),

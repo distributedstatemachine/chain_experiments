@@ -217,8 +217,7 @@ mod tests {
     fn synthetic_job_source_uses_chain_epoch_height_and_deadline() {
         let beacon = hash_bytes(b"test", &[b"synthetic-source"]);
         let mut chain = Chain::new(beacon);
-        chain.state.epoch = 7;
-        chain.state.height = 10;
+        chain.set_position_for_testing(10, 7);
         chain.params.receipt_submission_window = 13;
         let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
 
@@ -254,8 +253,7 @@ mod tests {
     fn synthetic_job_source_emits_linear_training_steps_on_odd_heights() {
         let beacon = hash_bytes(b"test", &[b"synthetic-linear-source"]);
         let mut chain = Chain::new(beacon);
-        chain.state.epoch = 3;
-        chain.state.height = 11;
+        chain.set_position_for_testing(11, 3);
         chain.params.receipt_submission_window = 13;
         let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
         let weights = SyntheticLocalJobSource::linear_training_weights();

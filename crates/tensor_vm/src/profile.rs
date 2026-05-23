@@ -351,8 +351,7 @@ mod tests {
         let public_profile = ChainProfile::public_testnet();
         let mainnet_profile = ChainProfile::mainnet();
         let beacon = hash_bytes(b"test", &[b"profile-synthetic-jobs"]);
-        let mut local_chain = ChainProfile::local_cpu().build_chain(beacon);
-        local_chain.state.height = 0;
+        let local_chain = ChainProfile::local_cpu().build_chain(beacon);
 
         let Some(crate::chain::JobState::TensorOp(job)) = local_source.next_job(&local_chain)
         else {

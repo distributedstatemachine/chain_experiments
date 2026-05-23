@@ -258,6 +258,12 @@ impl Chain {
     pub fn state_root(&self) -> Hash {
         roots::state_root(&self.state)
     }
+
+    #[cfg(test)]
+    pub(crate) fn set_position_for_testing(&mut self, height: u64, epoch: u64) {
+        self.state.height = height;
+        self.state.epoch = epoch;
+    }
 }
 
 #[cfg(test)]
