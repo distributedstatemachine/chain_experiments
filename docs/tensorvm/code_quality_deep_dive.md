@@ -127,6 +127,8 @@ spaghetti around.
   relying on vector capacity as an implicit counter.
 - Iteration 47 moved libp2p peer-book records, file encoding, and bootstrap multiaddr validation into
   `p2p/peer_book.rs` while preserving the public `p2p` facade exports.
+- Iteration 48 moved p2p message routing, gossipsub envelopes, payload wrappers, tensor payload codec,
+  and low-level wire readers/writers into `p2p/wire.rs`, leaving `p2p.rs` as the service facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -525,7 +527,7 @@ Several files are far past a healthy size boundary:
 | --- | --- |
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
-| `crates/tensor_vm/src/p2p.rs` | libp2p service, gossip, request-response, wire codecs, tests |
+| `crates/tensor_vm/src/p2p.rs` | libp2p service, gossip, request-response, integration tests |
 | `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
