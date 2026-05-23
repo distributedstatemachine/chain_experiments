@@ -24,10 +24,10 @@ Result:
 - 1 tensor_vm_explorer library test
 
 99.21% workspace line coverage
-10814/10900 workspace lines covered
+10826/10912 workspace lines covered
 
 99.96% tensor_vm crate line coverage
-9969/9973 tensor_vm lines covered
+9981/9985 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
 277/277 tensor_vm_explorer lines covered
 ```

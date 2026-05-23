@@ -281,8 +281,9 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   attestation payloads gossiped, decoded, and applied through `ChainCommand::SubmitJob`,
   `ChainCommand::SubmitReceipt`, and
   `ChainCommand::SubmitAttestation` on non-producers, so post-startup blocks advance through receipts,
-  attestations, settlement, proposer selection, and finality instead of a static snapshot, miner rewards,
-  finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
+  attestations, settlement, proposer selection, and finality instead of a static snapshot, miner role loops
+  that report assigned-job and unreceipted-job readiness from loaded chain state without submitting receipts
+  yet, miner rewards, finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
   WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
   durable status checks, an all-operator finalized common-head checkpoint queried through

@@ -5,7 +5,7 @@ use crate::{
     types::{Hash, hash_bytes},
     verify::ValidatorAttestation,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct NetworkEventIngest {
@@ -72,6 +72,8 @@ pub struct NodeRuntimeState {
     network_applied_blocks: usize,
     network_events: NetworkEventIngest,
     pending_network_payloads: PendingNetworkPayloads,
+    miner_assigned_jobs_seen: BTreeSet<Hash>,
+    miner_unreceipted_jobs: BTreeSet<Hash>,
 }
 
 impl NodeRuntimeState {
@@ -99,6 +101,18 @@ impl NodeRuntimeState {
         &mut self.pending_network_payloads
     }
 
+    pub fn miner_assigned_jobs_seen(&self) -> usize {
+        self.miner_assigned_jobs_seen.len()
+    }
+
+    pub fn miner_unreceipted_jobs(&self) -> usize {
+        self.miner_unreceipted_jobs.len()
+    }
+
+    pub fn miner_work_ready(&self) -> bool {
+        !self.miner_unreceipted_jobs.is_empty()
+    }
+
     pub fn record_served_request(&mut self) {
         self.served_requests = self.served_requests.saturating_add(1);
     }
@@ -112,6 +126,18 @@ impl NodeRuntimeState {
             .network_applied_blocks
             .saturating_add(ingested.applied_blocks);
         self.network_events.accumulate(ingested);
+    }
+
+    pub fn record_miner_work_observation(
+        &mut self,
+        assigned_jobs: BTreeSet<Hash>,
+        unreceipted_jobs: BTreeSet<Hash>,
+    ) -> bool {
+        let changed = self.miner_assigned_jobs_seen != assigned_jobs
+            || self.miner_unreceipted_jobs != unreceipted_jobs;
+        self.miner_assigned_jobs_seen = assigned_jobs;
+        self.miner_unreceipted_jobs = unreceipted_jobs;
+        changed
     }
 }
 
@@ -550,6 +576,11 @@ mod tests {
     fn runtime_state_tracks_loop_counters() {
         let mut state = NodeRuntimeState::default();
         state.pending_payloads_mut().queue_receipt([9; 32], vec![9]);
+        let mut assigned_jobs = BTreeSet::new();
+        assigned_jobs.insert([7; 32]);
+        let mut unreceipted_jobs = BTreeSet::new();
+        unreceipted_jobs.insert([7; 32]);
+        assert!(state.record_miner_work_observation(assigned_jobs, unreceipted_jobs));
         state.record_served_request();
         state.record_produced_block();
         state.record_network_ingest(NetworkEventIngest {
@@ -564,6 +595,13 @@ mod tests {
         assert_eq!(state.network_events().events, 1);
         assert_eq!(state.pending_payloads().pending_receipt_count(), 1);
         assert_eq!(state.pending_payloads().pending_attestation_count(), 0);
+        assert_eq!(state.miner_assigned_jobs_seen(), 1);
+        assert_eq!(state.miner_unreceipted_jobs(), 1);
+        assert!(state.miner_work_ready());
+        assert!(state.record_miner_work_observation(BTreeSet::from([[7; 32]]), BTreeSet::new()));
+        assert_eq!(state.miner_assigned_jobs_seen(), 1);
+        assert_eq!(state.miner_unreceipted_jobs(), 0);
+        assert!(!state.miner_work_ready());
     }
 
     #[test]

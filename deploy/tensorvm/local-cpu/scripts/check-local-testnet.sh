@@ -52,6 +52,13 @@ status_value() {
   printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'
 }
 
+is_u64() {
+  case "$1" in
+    ""|*[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
 require_command docker
 require_command grep
 require_command sed
@@ -219,16 +226,16 @@ SEED_ATTESTATION_COUNT=$(seed_report_value attestation_count)
 [ -n "$SEED_ATTESTATION_COUNT" ] || fail "seeded local testnet did not report attestation count"
 
 for path in /health /rpc/health /chain/head /jobs/current /explorer/health /explorer /faucet/health /faucet/page /telemetry/health /telemetry/dashboard; do
-  curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null \
+  curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null \
     || fail "gateway route is not reachable: $path"
 done
 
-EXPLORER_HEALTH=$(curl -fsS "http://127.0.0.1:${EXPLORER_PORT}/health")
+EXPLORER_HEALTH=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/health")
 printf '%s\n' "$EXPLORER_HEALTH" | grep -q '"tensorvm_explorer_ready":true' \
   || fail "standalone explorer health is not ready"
 printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' \
   || fail "standalone explorer does not publish the TensorVM websocket URL"
-EXPLORER_PAGE=$(curl -fsS "http://127.0.0.1:${EXPLORER_PORT}/")
+EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' \
   || fail "standalone explorer page is not reachable"
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' \
@@ -252,17 +259,17 @@ LIVE_TENSOR_OP_RECEIPT_COUNT=0
 LIVE_LINEAR_TRAINING_RECEIPT_COUNT=0
 attempt=0
 while [ "$attempt" -lt 30 ]; do
-  LIVE_CHAIN_HEAD=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
+  LIVE_CHAIN_HEAD=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
   LIVE_HEIGHT=$(json_number height "$LIVE_CHAIN_HEAD")
   LIVE_BLOCK_COUNT=$(json_number block_count "$LIVE_CHAIN_HEAD")
-  LIVE_OVERVIEW=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
+  LIVE_OVERVIEW=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
   LIVE_JOB_COUNT=$(json_number job_count "$LIVE_OVERVIEW")
   LIVE_MODEL_COUNT=$(json_number model_count "$LIVE_OVERVIEW")
   LIVE_ATTESTATION_COUNT=$(json_number attestation_count "$LIVE_OVERVIEW")
   LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
   LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
   LIVE_TOTAL_REWARD_BALANCE=$(json_number total_reward_balance "$LIVE_OVERVIEW")
-  LIVE_RECEIPTS=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/500")
+  LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/500")
   LIVE_ATTESTED_RECEIPT_COUNT=$(json_positive_field_count attestation_count "$LIVE_RECEIPTS")
   LIVE_TENSOR_OP_RECEIPT_COUNT=$(json_string_field_count primitive_type tensor_op "$LIVE_RECEIPTS")
   LIVE_LINEAR_TRAINING_RECEIPT_COUNT=$(json_string_field_count primitive_type linear_training_step "$LIVE_RECEIPTS")
@@ -295,17 +302,17 @@ done
 [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
-LIVE_TENSOR=$(curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
+LIVE_TENSOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
 LIVE_TENSOR_ID=$(json_string tensor_id "$LIVE_TENSOR")
 [ -n "$LIVE_TENSOR_ID" ] || fail "live tensor route did not report a tensor id"
 [ "$(json_number tensor_count "$LIVE_TENSOR")" -gt 0 ] || fail "live tensor route did not report retained tensors"
-curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor" | grep -q '"root":"' \
+curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor" | grep -q '"root":"' \
   || fail "live tensor descriptor was not fetchable"
-curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' \
+curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' \
   || fail "live tensor row was not fetchable"
-curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' \
+curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' \
   || fail "live tensor chunk was not fetchable"
-curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
+curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
   || fail "live tensor opening was not fetchable"
 
 LIVE_TENSOR_OP_BLOCK_HEIGHT=0
@@ -439,6 +446,9 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_WALLET_ADDRESS=$(status_value role_wallet_address "$STATUS")
     SERVICE_ROLE_WALLET_REGISTRATION=$(status_value role_wallet_registration "$STATUS")
     SERVICE_ROLE_WALLET_REGISTERED=$(status_value role_wallet_registered "$STATUS")
+    SERVICE_ROLE_MINER_WORK_READY=$(status_value role_miner_work_ready "$STATUS")
+    SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN=$(status_value role_miner_assigned_jobs_seen "$STATUS")
+    SERVICE_ROLE_MINER_UNRECEIPTED_JOBS=$(status_value role_miner_unreceipted_jobs "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
@@ -493,6 +503,9 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_WALLET_REGISTRATION" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_WALLET_REGISTRATION" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_WALLET_REGISTERED" = "true" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_MINER_WORK_READY" = "true" ] || [ "$SERVICE_ROLE_MINER_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_MINER_UNRECEIPTED_JOBS" || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
@@ -558,6 +571,14 @@ while [ "$attempt" -lt 60 ]; do
     case "$service" in
       miner-00) [ "$SERVICE_ROLE_LOOP_ROLE" = "proposer" ] || { STATUS_MISMATCH=true; continue; } ;;
       *) [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; } ;;
+    esac
+    case "$SERVICE_ROLE_LOOP_ROLE" in
+      miner) ;;
+      *)
+        [ "$SERVICE_ROLE_MINER_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_MINER_UNRECEIPTED_JOBS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        ;;
     esac
     case "$service" in
       miner-*) [ "$SERVICE_ROLE_WALLET_REGISTRATION" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
@@ -741,6 +762,7 @@ all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_wallets_registered=true
+all_operator_miner_work_status=true
 all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true

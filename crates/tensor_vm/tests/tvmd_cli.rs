@@ -1156,6 +1156,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains(&format!("role_wallet_address={wallet_address}")));
         assert!(stdout.contains(&format!("role_wallet_registration={expected_registration}")));
         assert!(stdout.contains("role_wallet_registered=true"));
+        assert!(stdout.contains("miner_work_ready="));
+        assert!(stdout.contains("miner_assigned_jobs_seen="));
+        assert!(stdout.contains("miner_unreceipted_jobs="));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
@@ -1182,6 +1185,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains(&format!("role_wallet_address={wallet_address}")));
         assert!(status.contains(&format!("role_wallet_registration={expected_registration}")));
         assert!(status.contains("role_wallet_registered=true"));
+        assert!(status.contains("role_miner_work_ready="));
+        assert!(status.contains("role_miner_assigned_jobs_seen="));
+        assert!(status.contains("role_miner_unreceipted_jobs="));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));
