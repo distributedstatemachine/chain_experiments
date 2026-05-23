@@ -217,6 +217,9 @@ spaghetti around.
   `main/runtime_services.rs`, narrowing `main/runtime_loop.rs` toward loop behavior.
 - Iteration 92 moved miner role runtime ticking into `main/miner_role.rs`, keeping miner
   observation, receipt submission, persistence, p2p publication, and counters with the miner worker.
+- Iteration 93 moved validator role runtime ticking into `main/roles.rs`, preserving the
+  `RoleRuntimeLoop` test wrapper while keeping fetch, attestation, block-vote, persistence, p2p
+  publication, and counters with the validator worker.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -6,20 +6,13 @@ use std::{
 
 use super::{
     miner_role::tick_miner_role_work_once,
-    network::{
-        chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
-        publish_new_chain_announcements,
-    },
-    roles::{
-        submit_validator_role_attestation, submit_validator_role_block_vote,
-        validator_role_work_observation,
-    },
-    runtime_config::{RuntimeRole, ServiceRuntimeConfig, runtime_role_wallet_registration},
+    network::{ingest_network_events, produce_and_publish_synthetic_round},
+    roles::tick_validator_role_work_once as tick_validator_role_worker_once,
+    runtime_config::{RuntimeRole, ServiceRuntimeConfig},
     runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
         RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
     },
-    validator_fetch::fetch_validator_role_missing_tensors,
 };
 use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
@@ -149,112 +142,13 @@ impl RoleRuntimeLoop {
     }
 
     pub(super) fn tick_validator_role_work_once(&mut self) -> std::result::Result<(), String> {
-        let Some(validator) = self.config.role_wallet_address else {
-            return Ok(());
-        };
-        if runtime_role_wallet_registration(
-            self.config.role,
-            self.config.role_wallet_address,
-            &self.server.gateway().node.chain,
-        ) != "validator"
-        {
-            return Ok(());
-        }
-        let observation = validator_role_work_observation(&self.server.gateway().node, validator);
-        let receipt_to_fetch = observation.artifact_missing_receipts.iter().next().copied();
-        let mut receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
-        let mut status_changed = false;
-        if self.runtime_state.record_validator_work_observation(
-            observation.assigned_receipts,
-            observation.unattested_receipts,
-            observation.artifact_ready_receipts,
-            observation.artifact_missing_receipts,
-        ) {
-            status_changed = true;
-        }
-        if receipt_to_submit.is_none()
-            && let Some(receipt_id) = receipt_to_fetch
-        {
-            let fetch_report = fetch_validator_role_missing_tensors(
-                &mut self.server.gateway_mut().node,
-                &self.p2p_service,
-                receipt_id,
-            )?;
-            if fetch_report.attempts > 0
-                || fetch_report.successes > 0
-                || fetch_report.failures > 0
-                || fetch_report.tensors_inserted > 0
-            {
-                self.runtime_state.record_validator_remote_tensor_fetch(
-                    fetch_report.attempts,
-                    fetch_report.successes,
-                    fetch_report.failures,
-                    fetch_report.bytes,
-                    fetch_report.tensors_inserted,
-                );
-                let observation =
-                    validator_role_work_observation(&self.server.gateway().node, validator);
-                receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
-                self.runtime_state.record_validator_work_observation(
-                    observation.assigned_receipts,
-                    observation.unattested_receipts,
-                    observation.artifact_ready_receipts,
-                    observation.artifact_missing_receipts,
-                );
-                status_changed = true;
-            }
-        }
-        if let Some(receipt_id) = receipt_to_submit {
-            let announcement_checkpoint =
-                chain_announcement_checkpoint(&self.server.gateway().node.chain);
-            if let Some(submission) = submit_validator_role_attestation(
-                &mut self.server.gateway_mut().node,
-                validator,
-                receipt_id,
-            )? {
-                publish_new_chain_announcements(
-                    &self.p2p_service,
-                    &announcement_checkpoint,
-                    &self.server.gateway().node.chain,
-                )?;
-                self.store
-                    .persist_chain(&self.server.gateway().node.chain)
-                    .map_err(|error| {
-                        format!("failed to persist validator attestation state: {error}")
-                    })?;
-                self.runtime_state
-                    .record_validator_attestation_submission(submission.attestations_submitted);
-                let observation =
-                    validator_role_work_observation(&self.server.gateway().node, validator);
-                self.runtime_state.record_validator_work_observation(
-                    observation.assigned_receipts,
-                    observation.unattested_receipts,
-                    observation.artifact_ready_receipts,
-                    observation.artifact_missing_receipts,
-                );
-                status_changed = true;
-            }
-        }
-        let announcement_checkpoint =
-            chain_announcement_checkpoint(&self.server.gateway().node.chain);
-        if let Some(submission) =
-            submit_validator_role_block_vote(&mut self.server.gateway_mut().node, validator)?
-        {
-            publish_new_chain_announcements(
-                &self.p2p_service,
-                &announcement_checkpoint,
-                &self.server.gateway().node.chain,
-            )?;
-            self.store
-                .persist_chain(&self.server.gateway().node.chain)
-                .map_err(|error| {
-                    format!("failed to persist validator block vote state: {error}")
-                })?;
-            self.runtime_state
-                .record_validator_block_vote_submission(submission.block_votes_submitted);
-            status_changed = true;
-        }
-        if status_changed {
+        if tick_validator_role_worker_once(
+            &self.config,
+            &self.store,
+            &mut self.server,
+            &self.p2p_service,
+            &mut self.runtime_state,
+        )? {
             self.write_status()?;
         }
         Ok(())
