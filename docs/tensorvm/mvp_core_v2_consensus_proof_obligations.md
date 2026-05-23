@@ -14,6 +14,9 @@ The useful-PoW work model that separates structural header validity from economi
 in [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 The verifier evidence model for recomputable or challengeable check leaves is defined in
 [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+The local dirty v2-block candidate is audited in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md); it does not yet discharge
+these obligations.
 
 ## Current Verdict
 

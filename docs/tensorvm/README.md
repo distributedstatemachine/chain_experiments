@@ -16,6 +16,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP core signature authentication boundary](mvp_core_signature_authentication_boundary.md)
 - [MVP core v2 state invariants](mvp_core_v2_state_invariants.md)
 - [MVP core proof completion audit](mvp_core_proof_completion_audit.md)
+- [MVP core candidate v2 block audit](mvp_core_candidate_v2_block_audit.md)
 - [MVP core proof traceability matrix](mvp_core_proof_traceability_matrix.md)
 - [MVP core mechanization checklist](mvp_core_mechanization_checklist.md)
 - [MVP v2 consensus proof obligations](mvp_core_v2_consensus_proof_obligations.md)

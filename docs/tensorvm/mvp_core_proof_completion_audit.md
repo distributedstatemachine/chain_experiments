@@ -14,6 +14,10 @@ be critical, call our bad assumptions and create a doc. do not write code, just 
 This audit uses the current worktree as evidence. It does not mark the goal complete. The proof corpus is
 materially stronger than before, but the full reviewed v2 MVP core is still not sound.
 
+The local dirty v2-block candidate is audited separately in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). That candidate is useful
+implementation direction, but it is build-failing and does not discharge the proof obligations.
+
 ## Verdict
 
 Current result: **not complete**.

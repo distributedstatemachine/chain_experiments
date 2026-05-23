@@ -6,6 +6,10 @@ Purpose: tie every current proof claim to the Rust surface, evidence class, allo
 and next gate. This document is a control surface for avoiding accidental overclaiming. It is not a proof by
 itself and it does not upgrade any blocked theorem.
 
+The current dirty v2-block candidate is audited in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md). Dirty or build-failing code
+does not upgrade traceability status.
+
 Assumption categories and discharge gates are tracked in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md). A traceability row can
 move to a stronger status only when its assumption-discharge category has been satisfied.

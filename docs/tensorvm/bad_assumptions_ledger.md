@@ -6,6 +6,10 @@ Purpose: record assumptions that would make TensorVM soundness claims misleading
 not a code change and not a mechanized proof. It is a guardrail for future specs, proofs, release notes, and
 implementation work.
 
+Dirty or build-failing candidate implementation work is not treated as discharged proof evidence in this
+ledger. The local v2-block candidate is tracked separately in
+[`mvp_core_candidate_v2_block_audit.md`](mvp_core_candidate_v2_block_audit.md).
+
 ## Severity Legend
 
 | Severity | Meaning |
@@ -40,6 +44,7 @@ implementation work.
 | BA-020 | "A hash root automatically proves the intended consensus object." | High | Current roots deterministically hash encoded current-state objects, but current blocks do not contain v2 selected receipt roots or aggregate check roots. | A root binds only the bytes it encodes under a hash assumption; it does not prove eligibility, selection, verifier transcripts, or v2 state transitions unless those fields are encoded. | Current roots are deterministic commitments to their current encoded objects. | Specify canonical leaf schemas, prove pre-hash injectivity, import hash collision resistance, and add v2 selected receipt/check roots; see `mvp_core_canonical_encoding_commitment_model.md`. |
 | BA-021 | "A nonce over a verification commitment proves useful-work dominance." | High | Current blocks have no v2 nonce/target predicate, and even a future predicate would prove only hash success unless transcript cost, target validity, and sharing/caching assumptions are modeled. | A valid nonce can be ordinary PoW over bytes. It does not prove verification work dominated nonce grinding, or that the winning proposer personally performed the verification. | Useful-verification PoW is a target theorem plus an economic assumption. | Add the structural v2 PoW predicate, validate target/difficulty from parent state, bind checks to selected receipts, and document cost parameters; see `mvp_core_useful_pow_work_model.md`. |
 | BA-022 | "Aggregating signed checks roots proves verifier execution." | High | Attestations can carry `checks_root` values, and block-level roots can aggregate those values, but the chain still needs recomputation or challenge openings to prove transcript truth. | A root over signed claims is still a root over claims. It does not prove the underlying verifier relation unless every leaf is recomputable, directly verified, or challengeable. | Aggregated check roots can be evidence commitments, not semantic verifier-execution proof. | Define `CheckLeaf`, transcript, opening, challenge-window, and reward-finality semantics; see `mvp_core_verifier_evidence_model.md`. |
+| BA-023 | "A v2-shaped dirty candidate implementation discharges the proof obligations." | Critical | The local v2-block candidate adds useful fields but fails `cargo check -p tensor_vm --all-targets` and still lacks parent-state validation, semantic check leaves, receipt lifecycle, difficulty economics, and fallback semantics. | Build-failing or partial code can be useful evidence for the next implementation slice, but it cannot prove consensus soundness. | The candidate is directionally aligned but not proof-sound. | Make the implementation build-clean, commit it, add adversarial tests, and discharge each theorem gate; see `mvp_core_candidate_v2_block_audit.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -61,6 +66,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
     target, cost, and transcript-sharing assumptions.
 11. Say **evidence commitment** for an aggregate checks root until verifier transcripts are recomputable or
     challengeable.
+12. Say **candidate v2 block surface** for dirty or build-failing v2-shaped code, not completed v2
+    consensus.
 
 ## Claims We Can Make Today
 
@@ -83,6 +90,8 @@ These are defensible with current docs/code evidence:
 - A future useful-PoW theorem must separately prove structural header validity and state the economic
   work-dominance assumption.
 - Semantic verifier execution requires recomputable or challengeable evidence, not only signed Valid bits.
+- A local dirty v2-block candidate currently demonstrates implementation direction but not proof
+  completion.
 
 ## Claims We Must Not Make Today
 
@@ -102,6 +111,7 @@ These would overstate the current MVP:
 - "A current receipt/state root proves v2 canonical blockspace or block-level verification checks."
 - "A nonce over `checks_root` proves useful-work dominance."
 - "An aggregate root over signed `checks_root` values proves validators executed the verifier."
+- "The dirty v2-shaped block candidate proves the MVP core sound."
 
 ## Proof Hygiene Checklist
 
