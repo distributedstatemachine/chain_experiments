@@ -74,6 +74,8 @@ pub struct NodeRuntimeState {
     pending_network_payloads: PendingNetworkPayloads,
     miner_assigned_jobs_seen: BTreeSet<Hash>,
     miner_unreceipted_jobs: BTreeSet<Hash>,
+    miner_receipts_submitted: usize,
+    miner_tensors_inserted: usize,
 }
 
 impl NodeRuntimeState {
@@ -113,6 +115,14 @@ impl NodeRuntimeState {
         !self.miner_unreceipted_jobs.is_empty()
     }
 
+    pub fn miner_receipts_submitted(&self) -> usize {
+        self.miner_receipts_submitted
+    }
+
+    pub fn miner_tensors_inserted(&self) -> usize {
+        self.miner_tensors_inserted
+    }
+
     pub fn record_served_request(&mut self) {
         self.served_requests = self.served_requests.saturating_add(1);
     }
@@ -138,6 +148,17 @@ impl NodeRuntimeState {
         self.miner_assigned_jobs_seen = assigned_jobs;
         self.miner_unreceipted_jobs = unreceipted_jobs;
         changed
+    }
+
+    pub fn record_miner_receipt_submission(
+        &mut self,
+        receipts_submitted: usize,
+        tensors_inserted: usize,
+    ) {
+        self.miner_receipts_submitted = self
+            .miner_receipts_submitted
+            .saturating_add(receipts_submitted);
+        self.miner_tensors_inserted = self.miner_tensors_inserted.saturating_add(tensors_inserted);
     }
 }
 
@@ -602,6 +623,9 @@ mod tests {
         assert_eq!(state.miner_assigned_jobs_seen(), 1);
         assert_eq!(state.miner_unreceipted_jobs(), 0);
         assert!(!state.miner_work_ready());
+        state.record_miner_receipt_submission(1, 3);
+        assert_eq!(state.miner_receipts_submitted(), 1);
+        assert_eq!(state.miner_tensors_inserted(), 3);
     }
 
     #[test]

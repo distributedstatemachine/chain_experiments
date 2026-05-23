@@ -449,6 +449,8 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_MINER_WORK_READY=$(status_value role_miner_work_ready "$STATUS")
     SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN=$(status_value role_miner_assigned_jobs_seen "$STATUS")
     SERVICE_ROLE_MINER_UNRECEIPTED_JOBS=$(status_value role_miner_unreceipted_jobs "$STATUS")
+    SERVICE_ROLE_MINER_RECEIPTS_SUBMITTED=$(status_value role_miner_receipts_submitted "$STATUS")
+    SERVICE_ROLE_MINER_TENSORS_INSERTED=$(status_value role_miner_tensors_inserted "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
@@ -506,6 +508,8 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_MINER_WORK_READY" = "true" ] || [ "$SERVICE_ROLE_MINER_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_MINER_UNRECEIPTED_JOBS" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_MINER_RECEIPTS_SUBMITTED" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_MINER_TENSORS_INSERTED" || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
@@ -578,6 +582,8 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_MINER_WORK_READY" = "false" ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_MINER_UNRECEIPTED_JOBS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_MINER_RECEIPTS_SUBMITTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_MINER_TENSORS_INSERTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
     esac
     case "$service" in
@@ -763,6 +769,7 @@ all_operator_role_status=true
 all_operator_role_runtime_commands=true
 all_operator_role_wallets_registered=true
 all_operator_miner_work_status=true
+all_operator_miner_receipt_status=true
 all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true

@@ -114,8 +114,12 @@ The local bundle is useful and should remain the first operational target:
 - Miner role loops now scan the loaded chain state for jobs assigned to their registered miner wallet,
   persist `role_miner_work_ready`, `role_miner_assigned_jobs_seen`, and
   `role_miner_unreceipted_jobs` in role runtime status, and expose those fields through
-  `tvmd service status`. This is read-only role-owned work detection; receipt submission still remains in
-  the deterministic local producer path until the miner loop owns tensor execution and receipt gossip.
+  `tvmd service status`. Miner role loops can now submit receipts for assigned unreceipted jobs through
+  `ChainCommand::SubmitReceipt`, insert served tensor artifacts into their local node, publish receipt
+  announcements through the existing p2p announcement path, and report `role_miner_receipts_submitted` plus
+  `role_miner_tensors_inserted`. Deterministic block-header catch-up can still replay already-receipted
+  jobs before miners see unreceipted live work, so the full local runtime still does not require every miner
+  to report positive receipt submission yet.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
@@ -256,9 +260,9 @@ Required fix:
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
 decoded network-event ingestion counters, decoded job/receipt/attestation payload application counters,
-role wallet address and registration status, miner-assigned work readiness counters, latest-height, real
-libp2p connected-peer counters, and runtime-observed job, receipt, attestation, and block gossip counters
-from the long-running command. Local
+role wallet address and registration status, miner-assigned work readiness counters, miner receipt
+submission/tensor-insertion counters, latest-height, real libp2p connected-peer counters, and
+runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
 block production now publishes typed
 `NewJobPayload`, `NewReceiptPayload`, and `NewAttestationPayload` messages, legacy `NewJob`,
 `NewReceipt`, and `NewAttestation` hash announcements, and height-bearing `NewBlockHeader`

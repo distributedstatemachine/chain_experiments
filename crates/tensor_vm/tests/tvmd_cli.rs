@@ -1159,6 +1159,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("miner_work_ready="));
         assert!(stdout.contains("miner_assigned_jobs_seen="));
         assert!(stdout.contains("miner_unreceipted_jobs="));
+        assert!(stdout.contains("miner_receipts_submitted="));
+        assert!(stdout.contains("miner_tensors_inserted="));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
@@ -1188,6 +1190,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_miner_work_ready="));
         assert!(status.contains("role_miner_assigned_jobs_seen="));
         assert!(status.contains("role_miner_unreceipted_jobs="));
+        assert!(status.contains("role_miner_receipts_submitted="));
+        assert!(status.contains("role_miner_tensors_inserted="));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));

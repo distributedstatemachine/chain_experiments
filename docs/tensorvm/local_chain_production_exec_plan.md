@@ -560,3 +560,120 @@ Decision notes:
   explicitly instead of hanging the full gate.
 - The missing workflow document remains the standing blocker and is not treated as satisfied by this
   checkpoint.
+
+## Iteration 7: Submit Miner Receipts From Role Loop
+
+Readiness requirement:
+Move the first mutating miner-owned work step into the miner role loop: when a registered miner role sees an
+assigned job in its loaded/shared chain state with no receipt from that miner, execute the job with the
+existing CPU reference miner role, insert the served tensor artifacts into the local node, submit the receipt
+through `ChainCommand::SubmitReceipt`, persist the updated chain, and publish receipt announcements through
+the existing libp2p/shared node event path. Keep existing deterministic local production and validator/proposer
+semantics unchanged for this slice.
+
+Files likely touched:
+- `crates/tensor_vm/src/node.rs`
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/tarpaulin_report.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Goal-supervisor-style read-only check before implementation after the Iteration 6 commit.
+- Read-only codebase exploration for the safest miner receipt submission boundary, tensor insertion, and
+  receipt gossip path.
+- Read-only test/coverage exploration for focused miner receipt production tests and checker/status coverage.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Focused binary/unit coverage proving a miner role step submits exactly one receipt for an assigned,
+  unreceipted TensorOp job through `ChainCommand::SubmitReceipt` and stores served tensors.
+- Negative coverage proving unregistered, unassigned, or already-receipted jobs do not produce duplicate
+  receipts.
+- Runtime-state/status coverage for miner receipt submission counters.
+- Process-level role-run/status coverage proving new miner receipt counters are surfaced without changing
+  the existing role command contract.
+- Static Compose/checker coverage for any new receipt-production status fields parsed by the checker.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --lib node::tests`
+- `cargo test -p tensor_vm --bin tvmd role`
+- `cargo test -p tensor_vm --bin tvmd role_loop`
+- `cargo test -p tensor_vm --bin tvmd miner_role`
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm local_testnet --release`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- Miner role code can mutate local chain state by submitting its own receipt through the shared chain engine
+  and not through private local-only shortcuts.
+- Miner role receipt submission inserts tensor artifacts into the local node and publishes receipt
+  announcements through the existing p2p announcement helpers.
+- Direct role-run stdout, `role-runtime.status`, and `tvmd service status` expose miner receipt submission
+  counters.
+- Existing local synthetic producer, validator attestation production, settlement, and proposer block
+  production continue to behave as before.
+
+Out of scope:
+- Requiring live Compose miners to report positive receipt submission while deterministic block-header
+  catch-up can still replay already-receipted jobs first.
+- Producing validator attestations in validator containers.
+- Replacing deterministic proposer block replay or synthetic local production.
+- Serving miner-produced tensors over remote validator request-response.
+- Treating the missing `docs/tensorvm/codex_5_5_local_chain_workflow.md` requirement as satisfied; the file
+  remains absent from tracked files and Git history, and the standing blocker remains active.
+
+Validation log:
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --lib node::tests`: passed; 15 node runtime tests.
+- `cargo test -p tensor_vm --bin tvmd role`: passed; 8 binary unit tests.
+- `cargo test -p tensor_vm --bin tvmd role_loop`: passed; 2 binary unit tests.
+- `cargo test -p tensor_vm --bin tvmd miner_role`: passed; 4 binary unit tests, including miner receipt
+  submission and duplicate/unassigned skip coverage.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 process-level role/status test.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 static Compose/checker spec-shape test.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 library local-testnet tests plus the local CPU
+  seed CLI test.
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`: passed.
+- `cargo tarpaulin --workspace --offline`: passed; 250 instrumented tests, 99.21% workspace coverage
+  (`10835/10921` lines), 99.96% `tensor_vm` coverage (`9990/9994` lines).
+
+Full Docker gate status:
+- `/bin/bash -lc "TENSORVM_LOCAL_CPU_EXPLORER_PORT=18080 deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh"`:
+  failed against the already-running Compose cluster at the bounded gateway health probe:
+
+```text
+curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received
+local CPU testnet check failed: gateway route is not reachable: /rpc/health
+```
+
+- This remains the live Compose gateway-health blocker for the full local Docker gate. The Docker Compose
+  config and static checker shape gates passed, but this iteration does not claim the full Docker gate
+  passed.
+
+Decision notes:
+- Implemented miner-owned receipt submission inside the role loop for the first assigned unreceipted job
+  observed by a registered miner wallet, using `CpuReferenceMinerRole` for execution and
+  `ChainCommand::SubmitReceipt` for chain mutation.
+- Inserted the served tensor artifacts into the local node before persisting and publishing receipt
+  announcements through the existing p2p announcement helper.
+- Surfaced `miner_receipts_submitted` and `miner_tensors_inserted` through direct role-run stdout,
+  `role-runtime.status`, and `tvmd service status`, and taught the local checker to parse the new counters.
+- Kept miner assignment checks aligned with the existing local scheduler convention of using current
+  finalized randomness; persisting per-job assignment provenance remains future work if historical
+  unreceipted jobs need original-beacon assignment reconstruction.
+- The missing workflow document remains the standing blocker and is not treated as satisfied by this
+  checkpoint.

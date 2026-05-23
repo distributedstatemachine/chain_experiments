@@ -6,10 +6,10 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    ChainProfile, CliCommand, Faucet, JobScheduler, Libp2pControlPlaneConfig, LocalChain,
-    NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole, NodeRuntimeState, NodeStore,
-    PeerRecord, PendingNetworkPayloads, PrimitiveType, RpcGateway, RpcHttpServer, RpcNode,
-    RpcPolicy, Tensor, TensorVmLibp2pService, VerificationResult,
+    ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
+    Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole,
+    NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads, PrimitiveType, RpcGateway,
+    RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService, VerificationResult,
     api::P2pMessage,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
@@ -19,7 +19,9 @@ use tensor_vm::{
     hash::hex,
     localnet::produce_synthetic_cpu_round_with_tensors,
     node::{NetworkEventContext, attestation_announcement_hash, ingest_network_messages},
-    parse_cli_args, spawn_libp2p_service,
+    parse_cli_args,
+    roles::CpuReferenceMinerRole,
+    spawn_libp2p_service,
     testnet::{LocalTestnet, PublicTestnetCriteria, TestnetConfig},
     types::{Address, Hash, address, hash_bytes},
 };
@@ -383,7 +385,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -400,6 +402,8 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_miner_work_ready"),
         role_runtime_status_field(data_dir, "role_miner_assigned_jobs_seen"),
         role_runtime_status_field(data_dir, "role_miner_unreceipted_jobs"),
+        role_runtime_status_field(data_dir, "role_miner_receipts_submitted"),
+        role_runtime_status_field(data_dir, "role_miner_tensors_inserted"),
         role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
         role_runtime_status_field(data_dir, "role_produced_blocks"),
@@ -793,6 +797,56 @@ fn miner_has_receipt_for_job(chain: &LocalChain, miner: Address, job_id: Hash) -
         .any(|receipt| receipt.job_id() == job_id && receipt.miner() == miner)
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct MinerRoleReceiptSubmission {
+    receipts_submitted: usize,
+    tensors_inserted: usize,
+}
+
+fn submit_miner_role_receipt(
+    node: &mut RpcNode,
+    miner: Address,
+    job_id: Hash,
+) -> std::result::Result<Option<MinerRoleReceiptSubmission>, String> {
+    if !node.chain.state.miners.contains_key(&miner) {
+        return Ok(None);
+    }
+    let scheduler = JobScheduler::with_small_shape((8, 8, 8));
+    let assignment =
+        scheduler.assign_miners(&node.chain, job_id, &node.chain.state.finalized_randomness);
+    if !assignment.miners.contains(&miner) || miner_has_receipt_for_job(&node.chain, miner, job_id)
+    {
+        return Ok(None);
+    }
+    let Some(job) = node.chain.state.jobs.get(&job_id).cloned() else {
+        return Ok(None);
+    };
+    let bundle = CpuReferenceMinerRole::new(miner)
+        .execute_job(&job, node.chain.state.height, 1)
+        .map_err(|error| format!("miner role failed to execute job {}: {error}", hex(&job_id)))?;
+    if bundle.receipt.job_id() != job_id || bundle.receipt.miner() != miner {
+        return Err("miner role produced receipt for the wrong job or miner".to_owned());
+    }
+    let served_tensors = bundle.served_tensors();
+    node.chain
+        .apply_command(ChainCommand::SubmitReceipt(bundle.receipt))
+        .map_err(|error| {
+            format!(
+                "miner role failed to submit receipt {}: {error}",
+                hex(&job_id)
+            )
+        })?;
+    let mut tensors_inserted = 0usize;
+    for tensor in served_tensors {
+        node.insert_tensor(tensor);
+        tensors_inserted = tensors_inserted.saturating_add(1);
+    }
+    Ok(Some(MinerRoleReceiptSubmission {
+        receipts_submitted: 1,
+        tensors_inserted,
+    }))
+}
+
 fn run_role_runtime_loop(config: ServiceRuntimeConfig) -> std::result::Result<String, String> {
     let mut runtime = RoleRuntimeLoop::start(config)?;
     runtime.run_until_max_requests()?;
@@ -988,10 +1042,42 @@ impl RoleRuntimeLoop {
             return Ok(());
         }
         let observation = miner_role_work_observation(&self.server.gateway().node.chain, miner);
+        let job_to_submit = observation.unreceipted_jobs.iter().next().copied();
+        let mut status_changed = false;
         if self
             .runtime_state
             .record_miner_work_observation(observation.assigned_jobs, observation.unreceipted_jobs)
         {
+            status_changed = true;
+        }
+        if let Some(job_id) = job_to_submit {
+            let announcement_checkpoint =
+                chain_announcement_checkpoint(&self.server.gateway().node.chain);
+            if let Some(submission) =
+                submit_miner_role_receipt(&mut self.server.gateway_mut().node, miner, job_id)?
+            {
+                publish_new_chain_announcements(
+                    &self.p2p_service,
+                    &announcement_checkpoint,
+                    &self.server.gateway().node.chain,
+                )?;
+                self.store
+                    .persist_chain(&self.server.gateway().node.chain)
+                    .map_err(|error| format!("failed to persist miner receipt state: {error}"))?;
+                self.runtime_state.record_miner_receipt_submission(
+                    submission.receipts_submitted,
+                    submission.tensors_inserted,
+                );
+                let observation =
+                    miner_role_work_observation(&self.server.gateway().node.chain, miner);
+                self.runtime_state.record_miner_work_observation(
+                    observation.assigned_jobs,
+                    observation.unreceipted_jobs,
+                );
+                status_changed = true;
+            }
+        }
+        if status_changed {
             self.write_status()?;
         }
         Ok(())
@@ -1043,7 +1129,7 @@ impl RoleRuntimeLoop {
         let network = &self.config.node.network;
         let network_events = self.runtime_state.network_events();
         format!(
-            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
             self.config.runtime_command,
             self.config.role.label(),
             self.config.node.profile.label(),
@@ -1062,6 +1148,8 @@ impl RoleRuntimeLoop {
             self.runtime_state.miner_work_ready(),
             self.runtime_state.miner_assigned_jobs_seen(),
             self.runtime_state.miner_unreceipted_jobs(),
+            self.runtime_state.miner_receipts_submitted(),
+            self.runtime_state.miner_tensors_inserted(),
             network.rpc_listen,
             network.p2p_listen,
             self.p2p_service.connected_peer_count(),
@@ -1125,6 +1213,8 @@ struct RoleRuntimeStatusSnapshot {
     miner_work_ready: bool,
     miner_assigned_jobs_seen: usize,
     miner_unreceipted_jobs: usize,
+    miner_receipts_submitted: usize,
+    miner_tensors_inserted: usize,
 }
 
 impl RoleRuntimeStatusSnapshot {
@@ -1166,6 +1256,8 @@ impl RoleRuntimeStatusSnapshot {
             miner_work_ready: state.miner_work_ready(),
             miner_assigned_jobs_seen: state.miner_assigned_jobs_seen(),
             miner_unreceipted_jobs: state.miner_unreceipted_jobs(),
+            miner_receipts_submitted: state.miner_receipts_submitted(),
+            miner_tensors_inserted: state.miner_tensors_inserted(),
         }
     }
 }
@@ -1176,7 +1268,7 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role.label(),
         config.node.profile.label(),
@@ -1187,6 +1279,8 @@ fn write_role_runtime_status(
         snapshot.miner_work_ready,
         snapshot.miner_assigned_jobs_seen,
         snapshot.miner_unreceipted_jobs,
+        snapshot.miner_receipts_submitted,
+        snapshot.miner_tensors_inserted,
         snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
@@ -2173,6 +2267,118 @@ mod tests {
     }
 
     #[test]
+    fn miner_role_submits_assigned_unreceipted_tensor_op_once() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-receipt-submit"]));
+        let miner = address(b"miner-receipt-submit-miner");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        let scheduler = JobScheduler::with_small_shape((2, 2, 2));
+        let job = scheduler.generate_small_matmul(
+            chain.state.epoch,
+            chain.state.height,
+            &chain.state.finalized_randomness,
+            chain
+                .state
+                .height
+                .saturating_add(chain.params.receipt_submission_window),
+        );
+        let job_id = job.job_id;
+        chain
+            .apply_command(ChainCommand::SubmitJob(tensor_vm::JobState::TensorOp(job)))
+            .unwrap();
+        let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+
+        let submission = submit_miner_role_receipt(&mut node, miner, job_id)
+            .unwrap()
+            .expect("assigned unreceipted job should submit a receipt");
+
+        assert_eq!(submission.receipts_submitted, 1);
+        assert_eq!(submission.tensors_inserted, 3);
+        assert_eq!(node.chain.state.receipts.len(), 1);
+        let receipt = node
+            .chain
+            .state
+            .receipts
+            .values()
+            .next()
+            .expect("receipt should be stored");
+        assert_eq!(receipt.job_id(), job_id);
+        assert_eq!(receipt.miner(), miner);
+        assert_tensor_count(&node, 3);
+        let observation = miner_role_work_observation(&node.chain, miner);
+        assert_eq!(observation.assigned_jobs, BTreeSet::from([job_id]));
+        assert!(observation.unreceipted_jobs.is_empty());
+    }
+
+    #[test]
+    fn miner_role_receipt_submission_skips_duplicate_unregistered_and_unassigned_work() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-receipt-skip"]));
+        chain.params.replication_factor = 1;
+        let miner_a = address(b"miner-receipt-skip-a");
+        let miner_b = address(b"miner-receipt-skip-b");
+        let unknown = address(b"miner-receipt-skip-unknown");
+        chain
+            .register_miner(miner_a, chain.params.miner_min_stake)
+            .unwrap();
+        chain
+            .register_miner(miner_b, chain.params.miner_min_stake)
+            .unwrap();
+        let scheduler = JobScheduler::with_small_shape((2, 2, 2));
+        let job = scheduler.generate_small_matmul(
+            chain.state.epoch,
+            chain.state.height,
+            &chain.state.finalized_randomness,
+            chain
+                .state
+                .height
+                .saturating_add(chain.params.receipt_submission_window),
+        );
+        let job_id = job.job_id;
+        chain
+            .apply_command(ChainCommand::SubmitJob(tensor_vm::JobState::TensorOp(job)))
+            .unwrap();
+        let assignment = JobScheduler::with_small_shape((8, 8, 8)).assign_miners(
+            &chain,
+            job_id,
+            &chain.state.finalized_randomness,
+        );
+        let assigned = assignment.miners[0];
+        let unassigned = [miner_a, miner_b]
+            .into_iter()
+            .find(|miner| *miner != assigned)
+            .expect("replication factor one should leave one registered miner unassigned");
+        let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+
+        assert!(
+            submit_miner_role_receipt(&mut node, unknown, job_id)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            submit_miner_role_receipt(&mut node, unassigned, job_id)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(node.chain.state.receipts.len(), 0);
+
+        assert!(
+            submit_miner_role_receipt(&mut node, assigned, job_id)
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(node.chain.state.receipts.len(), 1);
+        assert_tensor_count(&node, 3);
+        assert!(
+            submit_miner_role_receipt(&mut node, assigned, job_id)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(node.chain.state.receipts.len(), 1);
+        assert_tensor_count(&node, 3);
+    }
+
+    #[test]
     fn chain_profile_labels_drive_runtime_synthetic_jobs() {
         let local = chain_profile_from_label("local_cpu").unwrap();
         let testnet = chain_profile_from_label("public_testnet").unwrap();
@@ -2191,6 +2397,22 @@ mod tests {
         let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
         let gateway = RpcGateway::new(node, RpcPolicy::default());
         RpcHttpServer::bind("127.0.0.1:0", gateway).unwrap()
+    }
+
+    fn assert_tensor_count(node: &RpcNode, expected: usize) {
+        let response = node.handle(&tensor_vm::RpcRequest {
+            method: "GET".to_owned(),
+            path: "/tensor/latest".to_owned(),
+            body: Vec::new(),
+        });
+        assert_eq!(response.status, 200);
+        assert!(
+            response
+                .body
+                .contains(&format!("\"tensor_count\":{expected}")),
+            "unexpected tensor latest response: {}",
+            response.body
+        );
     }
 
     #[test]
