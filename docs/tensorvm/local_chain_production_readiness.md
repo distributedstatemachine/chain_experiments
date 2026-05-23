@@ -106,6 +106,11 @@ The local bundle is useful and should remain the first operational target:
   `tvmd proposer run` for gateway/proposer duties, the other miners run `tvmd miner run`, validators run
   `tvmd validator run`, `tvmd service status` reports `runtime_command`, and the checker fails unless all
   15 operators report the role command expected for their Compose service.
+- Counted role runtimes now derive a chain address from their configured wallet label, persist
+  `role_wallet_address`, `role_wallet_registration`, and `role_wallet_registered` in role runtime status,
+  and expose those fields through `tvmd service status`. Compose wallet labels now match the deterministic
+  seeded `LocalTestnet` miner and validator addresses, and the checker fails unless every counted operator
+  reports a registered role wallet for its service class.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
@@ -160,6 +165,10 @@ The first chain-core cleanup slices are already in the tree:
 - Network event ordering, invalid event accounting, decoded payload ingestion, pending-payload retry, and
   block-header application dispatch now live in the reusable node runtime driver. `tvmd` adapts that driver
   to the existing service-owned block catch-up callback while deterministic replay remains service-specific.
+- Role runtimes now bind their configured wallet to a deterministic chain address and report whether that
+  address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
+  wallet labels for counted miner and validator operators, and the checker requires those registrations
+  before accepting operator readiness.
 
 These are foundation pieces, not completion. The local runtime still needs role-owned loops and network-visible
 state transitions before it satisfies the local CPU spec as a production-grade local chain.
@@ -238,8 +247,9 @@ Required fix:
 Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
 decoded network-event ingestion counters, decoded job/receipt/attestation payload application counters,
-latest-height, real libp2p connected-peer counters, and runtime-observed job, receipt, attestation, and
-block gossip counters from the long-running command. Local block production now publishes typed
+role wallet address and registration status, latest-height, real libp2p connected-peer counters, and
+runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
+block production now publishes typed
 `NewJobPayload`, `NewReceiptPayload`, and `NewAttestationPayload` messages, legacy `NewJob`,
 `NewReceipt`, and `NewAttestation` hash announcements, and height-bearing `NewBlockHeader`
 announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the runtime loop;

@@ -245,3 +245,107 @@ Out of scope:
 - Added library coverage for producer versus non-producer block-header dispatch, invalid runtime message
   accounting, direct payload application, invalid payload handling, and out-of-order receipt/attestation
   retry after the job payload arrives.
+
+## Iteration 4: Bind Role Runtime Identities
+
+Readiness requirement:
+Before moving receipt and attestation production into independent role processes, bind each long-running
+`miner run`, `validator run`, and `proposer run` process to the chain address it is configured to operate
+as, prove that address is registered in the loaded chain state, and expose the result through role runtime
+status and the local checker.
+
+Files likely touched:
+- `crates/tensor_vm/src/main.rs`
+- `crates/tensor_vm/tests/tvmd_cli.rs`
+- `crates/tensor_vm/tests/local_cpu_compose.rs`
+- `deploy/tensorvm/local-cpu/docker-compose.yml`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `docs/tensorvm/local_chain_production_readiness.md`
+- `docs/tensorvm/implementation_status.md`
+- `docs/tensorvm/local_chain_production_exec_plan.md`
+
+Subagents to run:
+- Read-only codebase exploration for role runtime identity binding.
+- Read-only test/coverage exploration for role runtime identity binding.
+- Diff verification before commit, using the available verifier-style subagent path.
+
+Tests/checkers to add or update:
+- Process-level role-run/status coverage proving role wallet addresses and registration status are surfaced.
+- Local CPU Compose/checker coverage proving configured wallets map to seeded chain miner/validator
+  addresses.
+- Keep existing role runtime, network ingest, and local-testnet gates green.
+
+Commands to run before commit:
+- `cargo fmt`
+- `cargo fmt --check`
+- `cargo check -p tensor_vm --all-targets`
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
+- `cargo test -p tensor_vm --bin tvmd role`
+- `cargo test -p tensor_vm --bin tvmd network_ingest`
+- `cargo test -p tensor_vm local_testnet --release`
+- `cargo tarpaulin --workspace --offline`
+
+Expected observable evidence:
+- `role-runtime.status` records a stable role wallet address and whether that address is registered for the
+  runtime role in the loaded chain.
+- `tvmd service status` exposes the same role identity fields from persisted node status.
+- Local Compose wallets match the seeded `LocalTestnet` miner and validator addresses, so future role-owned
+  receipt and attestation producers can submit through the shared chain engine without being rejected as
+  unknown operators.
+- The local checker fails if any counted role runtime is not bound to a registered chain role address.
+
+Out of scope:
+- Producing receipts in miner containers.
+- Producing attestations in validator containers.
+- Replacing deterministic proposer block replay or synthetic local production.
+- Treating the missing `docs/tensorvm/codex_5_5_local_chain_workflow.md` requirement as satisfied; the file
+  remains absent from tracked files and Git history, and the standing blocker remains active.
+
+## Iteration 4 Validation Log
+
+Result: implemented and locally validated, with the full Docker runtime gate deferred for this narrow
+identity-binding slice.
+
+Changes made:
+- `miner run`, `validator run`, and `proposer run` now derive a stable role wallet address from the wallet
+  argument, check that address against the loaded chain state, and persist the result in
+  `role-runtime.status`.
+- `tvmd service status` and direct role-run stdout expose `role_wallet_address`,
+  `role_wallet_registration`, and `role_wallet_registered`.
+- Local CPU Compose now uses the seeded `LocalTestnet` wallet labels (`testnet-miner-*` and
+  `testnet-validator-*`) instead of unregistered `local-*.key` labels for counted operators.
+- `check-local-testnet.sh` fails unless every counted operator reports a non-`none`, registered role
+  wallet, and unless miner services map to miner registration and validator services map to validator
+  registration.
+
+Validation evidence:
+- `cargo fmt`: passed.
+- `cargo fmt --check`: passed.
+- `cargo check -p tensor_vm --all-targets`: passed.
+- `cargo test -p tensor_vm --bin tvmd role_wallet`: passed; 1 binary unit test.
+- `cargo test -p tensor_vm --test tvmd_cli role_run_commands_serve_through_role_specific_surfaces`:
+  passed; 1 integration test.
+- `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`:
+  passed; 1 integration test.
+- `cargo test -p tensor_vm --bin tvmd role`: passed; 2 binary unit tests.
+- `cargo test -p tensor_vm --bin tvmd network_ingest`: passed; 1 binary unit test.
+- `cargo test -p tensor_vm local_testnet --release`: passed; 5 library tests plus the local CPU seed CLI
+  test.
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`: passed.
+- `cargo tarpaulin --workspace --offline`: passed; 250 instrumented tests, 99.21% workspace coverage
+  (`10814/10900` lines), 99.96% `tensor_vm` coverage (`9969/9973` lines).
+
+Not run:
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml build`
+- `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml up --wait`
+- `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh`
+- `deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh`
+
+Decision notes:
+- This iteration deliberately binds and checks runtime identities before moving receipt and attestation
+  production into separate role processes.
+- `miner-00` still runs `proposer_run` for local gateway/proposer duties, but its wallet registration is
+  checked as a seeded miner address because the Compose service remains a miner operator.
+- The missing workflow document remains the standing blocker and is not treated as satisfied by this
+  checkpoint.

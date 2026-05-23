@@ -272,11 +272,13 @@ acceptance-criterion test map is in [`coverage_matrix.md`](coverage_matrix.md).
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
   readiness, role-specific `tvmd proposer run`, `tvmd miner run`, and `tvmd validator run` entrypoints
-  checked through `runtime_command` status, runtime policy that prevents miner and validator roles from
-  becoming local block producers, authenticated host gateway route checks, a seeded local CPU chain exposed
-  through the gateway with settled matmul and LinearTrainingStep receipts, plus live synthetic CPU job
-  production on the bootstrap gateway with typed job, receipt, and attestation payloads gossiped, decoded,
-  and applied through `ChainCommand::SubmitJob`, `ChainCommand::SubmitReceipt`, and
+  checked through `runtime_command` status, registered role wallet address and role registration status
+  persisted through `role-runtime.status` and checked through `tvmd service status`, runtime policy that
+  prevents miner and validator roles from becoming local block producers, authenticated host gateway route
+  checks, a seeded local CPU chain exposed through the gateway with settled matmul and LinearTrainingStep
+  receipts, plus live synthetic CPU job production on the bootstrap gateway with typed job, receipt, and
+  attestation payloads gossiped, decoded, and applied through `ChainCommand::SubmitJob`,
+  `ChainCommand::SubmitReceipt`, and
   `ChainCommand::SubmitAttestation` on non-producers, so post-startup blocks advance through receipts,
   attestations, settlement, proposer selection, and finality instead of a static snapshot, miner rewards,
   finality, data availability, a standalone explorer service that polls the TensorVM `/explorer/ws`
@@ -397,7 +399,7 @@ generated launch-ready preflight manifest round trip, a generated short-run evid
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
 that persists a settled two-block local chain, a role-run command test that proves `tvmd miner run`,
 `tvmd validator run`, and `tvmd proposer run` serve through role-specific surfaces with mandatory libp2p startup, then proves
-bounded service startup can generate live synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
+registered local-testnet role wallet addresses are exposed through role-run stdout and `tvmd service status`, bounded service startup can generate live synthetic CPU jobs and advance `/chain/head` past that seed, plus a supervised
 `tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
 lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,

@@ -21,7 +21,7 @@ use tensor_vm::{
     node::{NetworkEventContext, attestation_announcement_hash, ingest_network_messages},
     parse_cli_args, spawn_libp2p_service,
     testnet::{LocalTestnet, PublicTestnetCriteria, TestnetConfig},
-    types::{Hash, hash_bytes},
+    types::{Address, Hash, address, hash_bytes},
 };
 
 fn main() {
@@ -383,7 +383,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -394,6 +394,9 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_loop_role"),
         role_runtime_status_field(data_dir, "role_chain_profile"),
         role_runtime_status_field(data_dir, "role_can_produce_blocks"),
+        role_runtime_status_field(data_dir, "role_wallet_address"),
+        role_runtime_status_field(data_dir, "role_wallet_registration"),
+        role_runtime_status_field(data_dir, "role_wallet_registered"),
         role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
         role_runtime_status_field(data_dir, "role_produced_blocks"),
@@ -504,6 +507,7 @@ fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<Strin
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         runtime_command: "miner_run",
         role: RuntimeRole::Miner,
+        role_wallet_address: Some(role_wallet_address(config.wallet)?),
         node: runtime_node_config(
             config.data_dir,
             RuntimeRole::Miner,
@@ -525,6 +529,7 @@ fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<S
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         runtime_command: "validator_run",
         role: RuntimeRole::Validator,
+        role_wallet_address: Some(role_wallet_address(config.wallet)?),
         node: runtime_node_config(
             config.data_dir,
             RuntimeRole::Validator,
@@ -545,6 +550,7 @@ fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<St
     let service_report = serve_service_with_runtime(ServiceRuntimeConfig {
         runtime_command: "proposer_run",
         role: RuntimeRole::Proposer,
+        role_wallet_address: Some(role_wallet_address(config.wallet)?),
         node: runtime_node_config(
             config.data_dir,
             RuntimeRole::Proposer,
@@ -572,6 +578,7 @@ fn serve_service(
     serve_service_with_runtime(ServiceRuntimeConfig {
         runtime_command: "service_serve",
         role: RuntimeRole::Service,
+        role_wallet_address: None,
         node: runtime_node_config(
             data_dir,
             RuntimeRole::Service,
@@ -650,7 +657,63 @@ fn runtime_node_config(
 struct ServiceRuntimeConfig<'a> {
     runtime_command: &'a str,
     role: RuntimeRole,
+    role_wallet_address: Option<Address>,
     node: NodeConfig,
+}
+
+fn role_wallet_address(wallet: &str) -> std::result::Result<Address, String> {
+    let wallet = wallet.trim();
+    if wallet.is_empty() {
+        return Err("wallet argument is empty".to_owned());
+    }
+    Ok(address(wallet.as_bytes()))
+}
+
+fn runtime_role_wallet_address_text(address: Option<Address>) -> String {
+    address
+        .map(|address| hex(&address))
+        .unwrap_or_else(|| "none".to_owned())
+}
+
+fn runtime_role_wallet_registration(
+    role: RuntimeRole,
+    address: Option<Address>,
+    chain: &LocalChain,
+) -> &'static str {
+    let Some(address) = address else {
+        return "none";
+    };
+    match role {
+        RuntimeRole::Miner => {
+            if chain.state.miners.contains_key(&address) {
+                "miner"
+            } else {
+                "unregistered"
+            }
+        }
+        RuntimeRole::Validator => {
+            if chain.state.validators.contains_key(&address) {
+                "validator"
+            } else {
+                "unregistered"
+            }
+        }
+        RuntimeRole::Proposer if chain.state.miners.contains_key(&address) => "miner",
+        RuntimeRole::Proposer if chain.state.validators.contains_key(&address) => "validator",
+        RuntimeRole::Proposer => "unregistered",
+        RuntimeRole::Service => "none",
+    }
+}
+
+fn runtime_role_wallet_registered(
+    role: RuntimeRole,
+    address: Option<Address>,
+    chain: &LocalChain,
+) -> bool {
+    !matches!(
+        runtime_role_wallet_registration(role, address, chain),
+        "none" | "unregistered"
+    )
 }
 
 fn serve_service_with_runtime(
@@ -719,6 +782,8 @@ fn serve_service_with_runtime(
             &server,
             &p2p_service,
             local_producer,
+            config.role,
+            config.role_wallet_address,
         ),
     )?;
     if block_interval.is_some() {
@@ -744,6 +809,8 @@ fn serve_service_with_runtime(
                             &server,
                             &p2p_service,
                             local_producer,
+                            config.role,
+                            config.role_wallet_address,
                         ),
                     )?;
                 }
@@ -776,6 +843,8 @@ fn serve_service_with_runtime(
                         &server,
                         &p2p_service,
                         local_producer,
+                        config.role,
+                        config.role_wallet_address,
                     ),
                 )?;
             }
@@ -799,6 +868,8 @@ fn serve_service_with_runtime(
                             &server,
                             &p2p_service,
                             local_producer,
+                            config.role,
+                            config.role_wallet_address,
                         ),
                     )?;
                 }
@@ -820,17 +891,30 @@ fn serve_service_with_runtime(
                     &server,
                     &p2p_service,
                     local_producer,
+                    config.role,
+                    config.role_wallet_address,
                 ),
             )?;
         }
     }
     let network_events = runtime_state.network_events();
     Ok(format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+        "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
         config.runtime_command,
         config.role.label(),
         config.node.profile.label(),
         config.node.can_produce_local_blocks(),
+        runtime_role_wallet_address_text(config.role_wallet_address),
+        runtime_role_wallet_registration(
+            config.role,
+            config.role_wallet_address,
+            &server.gateway().node.chain
+        ),
+        runtime_role_wallet_registered(
+            config.role,
+            config.role_wallet_address,
+            &server.gateway().node.chain
+        ),
         network.rpc_listen,
         network.p2p_listen,
         p2p_service.connected_peer_count(),
@@ -877,6 +961,9 @@ struct RoleRuntimeStatusSnapshot {
     p2p_latest_observed_block_hash: [u8; 32],
     p2p_observed_block_hashes: Vec<[u8; 32]>,
     network_events: NetworkEventIngest,
+    role_wallet_address: Option<Address>,
+    role_wallet_registration: &'static str,
+    role_wallet_registered: bool,
 }
 
 impl RoleRuntimeStatusSnapshot {
@@ -885,7 +972,10 @@ impl RoleRuntimeStatusSnapshot {
         server: &RpcHttpServer,
         p2p_service: &TensorVmLibp2pService,
         local_producer: bool,
+        role: RuntimeRole,
+        role_wallet_address: Option<Address>,
     ) -> Self {
+        let chain = &server.gateway().node.chain;
         Self {
             served_requests: state.served_requests(),
             produced_blocks: state.produced_blocks(),
@@ -901,6 +991,17 @@ impl RoleRuntimeStatusSnapshot {
             p2p_latest_observed_block_hash: p2p_service.latest_observed_block_hash(),
             p2p_observed_block_hashes: p2p_service.observed_block_hashes(),
             network_events: state.network_events(),
+            role_wallet_address,
+            role_wallet_registration: runtime_role_wallet_registration(
+                role,
+                role_wallet_address,
+                chain,
+            ),
+            role_wallet_registered: runtime_role_wallet_registered(
+                role,
+                role_wallet_address,
+                chain,
+            ),
         }
     }
 }
@@ -911,11 +1012,14 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role.label(),
         config.node.profile.label(),
         config.node.can_produce_local_blocks(),
+        runtime_role_wallet_address_text(snapshot.role_wallet_address),
+        snapshot.role_wallet_registration,
+        snapshot.role_wallet_registered,
         snapshot.local_producer,
         snapshot.served_requests,
         snapshot.produced_blocks,
@@ -1668,6 +1772,83 @@ mod tests {
         assert_eq!(RuntimeRole::Miner.label(), "miner");
         assert_eq!(RuntimeRole::Validator.label(), "validator");
         assert_eq!(RuntimeRole::Proposer.label(), "proposer");
+    }
+
+    #[test]
+    fn role_wallet_registration_matches_loaded_chain_role() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"role-wallet-registration"]));
+        let miner = address(b"runtime-wallet-miner");
+        let validator = address(b"runtime-wallet-validator");
+        let unknown = address(b"runtime-wallet-unknown");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        chain
+            .register_validator(validator, chain.params.validator_min_stake)
+            .unwrap();
+
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Miner, Some(miner), &chain),
+            "miner"
+        );
+        assert!(runtime_role_wallet_registered(
+            RuntimeRole::Miner,
+            Some(miner),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Validator, Some(validator), &chain),
+            "validator"
+        );
+        assert!(runtime_role_wallet_registered(
+            RuntimeRole::Validator,
+            Some(validator),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Proposer, Some(miner), &chain),
+            "miner"
+        );
+        assert!(runtime_role_wallet_registered(
+            RuntimeRole::Proposer,
+            Some(miner),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Miner, Some(validator), &chain),
+            "unregistered"
+        );
+        assert!(!runtime_role_wallet_registered(
+            RuntimeRole::Miner,
+            Some(validator),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Validator, Some(miner), &chain),
+            "unregistered"
+        );
+        assert!(!runtime_role_wallet_registered(
+            RuntimeRole::Validator,
+            Some(miner),
+            &chain
+        ));
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Proposer, Some(unknown), &chain),
+            "unregistered"
+        );
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Service, None, &chain),
+            "none"
+        );
+        assert_eq!(
+            runtime_role_wallet_registration(RuntimeRole::Service, Some(miner), &chain),
+            "none"
+        );
+        assert!(!runtime_role_wallet_registered(
+            RuntimeRole::Service,
+            None,
+            &chain
+        ));
     }
 
     #[test]

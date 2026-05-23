@@ -436,6 +436,9 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_LOOP_ROLE=$(status_value role_loop_role "$STATUS")
     SERVICE_ROLE_CHAIN_PROFILE=$(status_value role_chain_profile "$STATUS")
     SERVICE_ROLE_CAN_PRODUCE_BLOCKS=$(status_value role_can_produce_blocks "$STATUS")
+    SERVICE_ROLE_WALLET_ADDRESS=$(status_value role_wallet_address "$STATUS")
+    SERVICE_ROLE_WALLET_REGISTRATION=$(status_value role_wallet_registration "$STATUS")
+    SERVICE_ROLE_WALLET_REGISTERED=$(status_value role_wallet_registered "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
     SERVICE_ROLE_NETWORK_APPLIED_BLOCKS=$(status_value role_network_applied_blocks "$STATUS")
@@ -484,6 +487,12 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_CHAIN_PROFILE" = "local_cpu" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_CAN_PRODUCE_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_WALLET_ADDRESS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_WALLET_ADDRESS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_WALLET_ADDRESS" != "none" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_WALLET_REGISTRATION" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_WALLET_REGISTRATION" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_WALLET_REGISTERED" = "true" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_PRODUCED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
@@ -549,6 +558,10 @@ while [ "$attempt" -lt 60 ]; do
     case "$service" in
       miner-00) [ "$SERVICE_ROLE_LOOP_ROLE" = "proposer" ] || { STATUS_MISMATCH=true; continue; } ;;
       *) [ "$SERVICE_ROLE_LOOP_ROLE" = "$SERVICE_ROLE" ] || { STATUS_MISMATCH=true; continue; } ;;
+    esac
+    case "$service" in
+      miner-*) [ "$SERVICE_ROLE_WALLET_REGISTRATION" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
+      validator-*) [ "$SERVICE_ROLE_WALLET_REGISTRATION" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
     esac
     [ "$SERVICE_ROLE_LOOP_READY" = "true" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
@@ -727,6 +740,7 @@ all_operator_network_state_root=${ALL_OPERATOR_NETWORK_STATE_ROOT}
 all_operator_network_head_convergence=true
 all_operator_role_status=true
 all_operator_role_runtime_commands=true
+all_operator_role_wallets_registered=true
 all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true

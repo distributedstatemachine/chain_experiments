@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use libp2p::PeerId;
 use tensor_vm::hash::hex;
+use tensor_vm::types::address;
 
 fn workspace_root() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -1077,9 +1078,15 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         let rpc_port = free_local_port();
         let listen = format!("127.0.0.1:{rpc_port}");
         let mut args = vec![role.to_owned(), "run".to_owned(), "--wallet".to_owned()];
+        let (wallet, expected_registration) = match role {
+            "miner" => ("testnet-miner-0", "miner"),
+            "validator" => ("testnet-validator-0", "validator"),
+            "proposer" => ("testnet-miner-0", "miner"),
+            _ => unreachable!("covered role set"),
+        };
         if role == "miner" {
             args.extend([
-                "miner.key".to_owned(),
+                wallet.to_owned(),
                 "--device".to_owned(),
                 "cpu".to_owned(),
                 "--node".to_owned(),
@@ -1087,13 +1094,13 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
             ]);
         } else if role == "validator" {
             args.extend([
-                "validator.key".to_owned(),
+                wallet.to_owned(),
                 "--node".to_owned(),
                 "/ip4/127.0.0.1/tcp/4002".to_owned(),
             ]);
         } else {
             args.extend([
-                "proposer.key".to_owned(),
+                wallet.to_owned(),
                 "--node".to_owned(),
                 "/ip4/127.0.0.1/tcp/4003".to_owned(),
             ]);
@@ -1142,9 +1149,13 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains(&format!("runtime_command={role}_run")));
         assert!(stdout.contains("chain_profile=local_cpu"));
         let role_can_produce_blocks = if role == "proposer" { "true" } else { "false" };
+        let wallet_address = hex(&address(wallet.as_bytes()));
         assert!(stdout.contains(&format!(
             "role_can_produce_blocks={role_can_produce_blocks}"
         )));
+        assert!(stdout.contains(&format!("role_wallet_address={wallet_address}")));
+        assert!(stdout.contains(&format!("role_wallet_registration={expected_registration}")));
+        assert!(stdout.contains("role_wallet_registered=true"));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
@@ -1168,6 +1179,9 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains(&format!(
             "role_can_produce_blocks={role_can_produce_blocks}"
         )));
+        assert!(status.contains(&format!("role_wallet_address={wallet_address}")));
+        assert!(status.contains(&format!("role_wallet_registration={expected_registration}")));
+        assert!(status.contains("role_wallet_registered=true"));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));
         assert!(status.contains("role_network_applied_blocks=0"));

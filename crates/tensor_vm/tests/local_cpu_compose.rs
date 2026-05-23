@@ -92,6 +92,12 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\""));
     assert!(compose.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\""));
     assert!(compose.contains("TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"));
+    assert!(compose.contains("TENSORVM_WALLET: testnet-miner-0"));
+    assert!(compose.contains("TENSORVM_WALLET: testnet-miner-9"));
+    assert!(compose.contains("TENSORVM_WALLET: testnet-validator-0"));
+    assert!(compose.contains("TENSORVM_WALLET: testnet-validator-4"));
+    assert!(!compose.contains("TENSORVM_WALLET: local-miner-"));
+    assert!(!compose.contains("TENSORVM_WALLET: local-validator-"));
     assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
     assert!(env_file.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER=false"));
@@ -189,6 +195,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_status_count=15",
         "CANDIDATE_NETWORK_HEAD_HEIGHT",
         "role_can_produce_blocks",
+        "role_wallet_address",
+        "role_wallet_registration",
+        "role_wallet_registered",
         "role_chain_profile",
         "role_local_producer",
         "role_network_applied_blocks",
@@ -226,6 +235,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_network_head_convergence=true",
         "all_operator_role_status=true",
         "all_operator_role_runtime_commands=true",
+        "all_operator_role_wallets_registered=true",
         "all_operator_chain_profiles=true",
         "all_operator_role_production_policy=true",
         "all_operator_role_runtime_counters=true",
