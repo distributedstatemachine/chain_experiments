@@ -15,17 +15,13 @@ use super::{
         validator_role_work_observation,
     },
     runtime_config::{RuntimeRole, ServiceRuntimeConfig, runtime_role_wallet_registration},
+    runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_status::{
-        RuntimeP2pReport, RuntimeStatusSnapshot, format_role_runtime_report,
-        write_role_runtime_status,
+        RuntimeStatusSnapshot, format_role_runtime_report, write_role_runtime_status,
     },
-    shared::p2p_identity_report,
     validator_fetch::fetch_validator_role_missing_tensors,
 };
-use tensor_vm::{
-    ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NodeRuntimeState, NodeStore, RpcGateway,
-    RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService, spawn_libp2p_service,
-};
+use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
 pub(super) struct RoleRuntimeLoop {
     config: ServiceRuntimeConfig,
@@ -36,71 +32,17 @@ pub(super) struct RoleRuntimeLoop {
     block_interval: Option<Duration>,
     next_block_at: Option<Instant>,
     runtime_state: NodeRuntimeState,
-    p2p_peer_id: String,
-    p2p_topics: usize,
-    p2p_request_response_protocols: usize,
-    bootstrap_peer_count: usize,
-    identity: String,
-    max_transmit_bytes: usize,
-    request_timeout_seconds: u64,
-    max_concurrent_streams: usize,
-    idle_timeout_seconds: u64,
+    p2p_metadata: RuntimeP2pMetadata,
 }
 
 impl RoleRuntimeLoop {
     pub(super) fn start(config: ServiceRuntimeConfig) -> std::result::Result<Self, String> {
-        let network = &config.node.network;
-        let store = NodeStore::open(config.node.data_dir());
-        let chain = store.load_chain().map_err(|error| {
-            format!(
-                "failed to load node store {}: {error}",
-                config.node.data_dir().display()
-            )
-        })?;
-        let bootstrap_addresses = if store.peer_book_store().path().exists() {
-            store
-                .peer_book_store()
-                .load_bootstrap_addresses()
-                .map_err(|error| {
-                    format!(
-                        "failed to load libp2p peer book {}: {error}",
-                        config.node.data_dir().display()
-                    )
-                })?
-        } else {
-            Vec::new()
-        };
-        let bootstrap_peer_count = bootstrap_addresses.len();
-        let p2p_config = Libp2pControlPlaneConfig {
-            listen_addresses: vec![network.p2p_listen.clone()],
-            bootstrap_addresses,
-            identity_seed: network.identity_seed,
-            ..Libp2pControlPlaneConfig::default()
-        };
-        let max_transmit_bytes = p2p_config.max_gossipsub_transmit_bytes;
-        let request_timeout_seconds = p2p_config.request_timeout_seconds;
-        let max_concurrent_streams = p2p_config.max_concurrent_request_streams;
-        let idle_timeout_seconds = p2p_config.idle_connection_timeout_seconds;
-        let p2p_service = spawn_libp2p_service(p2p_config)
-            .map_err(|error| format!("failed to start mandatory libp2p service: {error}"))?;
-        let p2p_peer_id = p2p_service.peer_id().to_string();
-        let p2p_topics = p2p_service.info().subscribed_topics.len();
-        let p2p_request_response_protocols = p2p_service.info().request_response_protocols.len();
-        let identity = p2p_identity_report(network.identity_seed);
-        let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
-        let gateway = RpcGateway::new(
-            node,
-            RpcPolicy {
-                auth_token: Some(network.auth_token.clone()),
-                ..RpcPolicy::default()
-            },
-        );
-        let server = RpcHttpServer::bind(&network.rpc_listen, gateway).map_err(|error| {
-            format!(
-                "failed to bind service listener {}: {error}",
-                network.rpc_listen
-            )
-        })?;
+        let RuntimeServices {
+            store,
+            server,
+            p2p_service,
+            p2p_metadata,
+        } = start_runtime_services(&config)?;
         let block_interval = config.node.synthetic_block_interval();
         let next_block_at = block_interval.map(|interval| Instant::now() + interval);
         let local_producer = config.node.local_synthetic_producer();
@@ -113,15 +55,7 @@ impl RoleRuntimeLoop {
             block_interval,
             next_block_at,
             runtime_state: NodeRuntimeState::default(),
-            p2p_peer_id,
-            p2p_topics,
-            p2p_request_response_protocols,
-            bootstrap_peer_count,
-            identity,
-            max_transmit_bytes,
-            request_timeout_seconds,
-            max_concurrent_streams,
-            idle_timeout_seconds,
+            p2p_metadata,
         })
     }
 
@@ -417,20 +351,6 @@ impl RoleRuntimeLoop {
 
     pub(super) fn report(&self) -> String {
         let snapshot = self.status_snapshot();
-        format_role_runtime_report(
-            &self.config,
-            &snapshot,
-            &RuntimeP2pReport {
-                peer_id: &self.p2p_peer_id,
-                topics: self.p2p_topics,
-                request_response_protocols: self.p2p_request_response_protocols,
-                bootstrap_peer_count: self.bootstrap_peer_count,
-                identity: &self.identity,
-                max_transmit_bytes: self.max_transmit_bytes,
-                request_timeout_seconds: self.request_timeout_seconds,
-                max_concurrent_streams: self.max_concurrent_streams,
-                idle_timeout_seconds: self.idle_timeout_seconds,
-            },
-        )
+        format_role_runtime_report(&self.config, &snapshot, &self.p2p_metadata.report())
     }
 }

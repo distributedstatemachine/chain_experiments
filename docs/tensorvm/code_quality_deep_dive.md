@@ -213,6 +213,8 @@ spaghetti around.
   `main_tests/runtime_state.rs`, leaving `main_tests.rs` as module wiring plus shared helpers.
 - Iteration 90 extracted shared binary test helpers into `main_tests/support.rs`, leaving
   `main_tests.rs` as imports and submodule wiring for the split test files.
+- Iteration 91 extracted role runtime service startup and owned p2p report metadata into
+  `main/runtime_services.rs`, narrowing `main/runtime_loop.rs` toward loop behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
