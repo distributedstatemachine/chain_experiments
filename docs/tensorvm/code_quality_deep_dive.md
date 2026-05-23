@@ -139,6 +139,8 @@ spaghetti around.
   behaviour construction into `p2p/behaviour.rs`, leaving node and service startup in the facade.
 - Iteration 53 moved the libp2p service handle, public service accessors, lifecycle drop, and
   background worker loop into `p2p/service.rs`, leaving node construction and service tests in the facade.
+- Iteration 54 moved libp2p node construction, transport setup, listen binding, and bootstrap dialing
+  into `p2p/node.rs`, leaving the parent module as the public configuration facade plus p2p tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -537,7 +539,7 @@ Several files are far past a healthy size boundary:
 | --- | --- |
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
-| `crates/tensor_vm/src/p2p.rs` | libp2p node startup facade and integration-style p2p tests |
+| `crates/tensor_vm/src/p2p.rs` | p2p public configuration facade and integration-style tests |
 | `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
