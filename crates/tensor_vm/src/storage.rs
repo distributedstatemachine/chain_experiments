@@ -5,7 +5,7 @@ use crate::chain::{
 };
 use crate::codec;
 use crate::error::{Result, TvmError};
-use crate::jobs::{LinearTrainingStepReceipt, PrimitiveType, TensorOpReceipt};
+use crate::jobs::PrimitiveType;
 use crate::p2p::PeerBookStore;
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{FreivaldsParams, ValidatorAttestation, VerificationResult};
@@ -742,10 +742,12 @@ fn storage_job_codec_error(error: codec::CodecError) -> TvmError {
         codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
         codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
         codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
+        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
         codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
         codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
         codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
         codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
+        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
     }
 }
 
@@ -753,41 +755,7 @@ fn encode_receipts(out: &mut Vec<u8>, receipts: &BTreeMap<Hash, ReceiptState>) {
     write_len(out, receipts.len());
     for (receipt_id, receipt) in receipts {
         write_hash(out, receipt_id);
-        match receipt {
-            ReceiptState::TensorOp(receipt) => {
-                out.push(1);
-                write_hash(out, &receipt.receipt_id);
-                write_hash(out, &receipt.job_id);
-                write_hash(out, &receipt.miner);
-                write_hash(out, &receipt.program_hash);
-                write_hash_vec(out, &receipt.input_roots);
-                write_hash_vec(out, &receipt.output_roots);
-                write_hash(out, &receipt.trace_root);
-                write_u64(out, receipt.tensor_work_units);
-                write_u64(out, receipt.execution_time_ms);
-                write_u64(out, receipt.submitted_at_block);
-                write_hash(out, &receipt.signature);
-            }
-            ReceiptState::LinearTrainingStep(receipt) => {
-                out.push(2);
-                write_hash(out, &receipt.receipt_id);
-                write_hash(out, &receipt.job_id);
-                write_hash(out, &receipt.miner);
-                write_hash(out, &receipt.model_id);
-                write_u64(out, receipt.step);
-                write_hash(out, &receipt.weight_root_before);
-                write_hash(out, &receipt.batch_root);
-                write_hash(out, &receipt.y_root);
-                write_hash(out, &receipt.loss_commitment);
-                write_hash(out, &receipt.grad_w_root);
-                write_hash(out, &receipt.weight_root_after);
-                write_hash(out, &receipt.trace_root);
-                write_u64(out, receipt.tensor_work_units);
-                write_u64(out, receipt.execution_time_ms);
-                write_u64(out, receipt.submitted_at_block);
-                write_hash(out, &receipt.signature);
-            }
-        }
+        out.extend_from_slice(&codec::encode_receipt_payload(receipt));
     }
 }
 
@@ -795,43 +763,25 @@ fn decode_receipts(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Receip
     let mut receipts = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
-        let receipt = match reader.read_u8()? {
-            1 => ReceiptState::TensorOp(TensorOpReceipt {
-                receipt_id: reader.read_hash()?,
-                job_id: reader.read_hash()?,
-                miner: reader.read_hash()?,
-                program_hash: reader.read_hash()?,
-                input_roots: reader.read_hash_vec()?,
-                output_roots: reader.read_hash_vec()?,
-                trace_root: reader.read_hash()?,
-                tensor_work_units: reader.read_u64()?,
-                execution_time_ms: reader.read_u64()?,
-                submitted_at_block: reader.read_u64()?,
-                signature: reader.read_hash()?,
-            }),
-            2 => ReceiptState::LinearTrainingStep(LinearTrainingStepReceipt {
-                receipt_id: reader.read_hash()?,
-                job_id: reader.read_hash()?,
-                miner: reader.read_hash()?,
-                model_id: reader.read_hash()?,
-                step: reader.read_u64()?,
-                weight_root_before: reader.read_hash()?,
-                batch_root: reader.read_hash()?,
-                y_root: reader.read_hash()?,
-                loss_commitment: reader.read_hash()?,
-                grad_w_root: reader.read_hash()?,
-                weight_root_after: reader.read_hash()?,
-                trace_root: reader.read_hash()?,
-                tensor_work_units: reader.read_u64()?,
-                execution_time_ms: reader.read_u64()?,
-                submitted_at_block: reader.read_u64()?,
-                signature: reader.read_hash()?,
-            }),
-            _ => return Err(TvmError::Storage("unknown receipt tag")),
-        };
+        let receipt = codec::decode_receipt_payload_from(reader.input, &mut reader.offset, None)
+            .map_err(storage_receipt_codec_error)?;
         receipts.insert(key, receipt);
     }
     Ok(receipts)
+}
+
+fn storage_receipt_codec_error(error: codec::CodecError) -> TvmError {
+    match error {
+        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
+        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
+        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
+        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
+        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
+        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
+        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
+        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
+        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
+    }
 }
 
 fn encode_attestations(
@@ -1090,13 +1040,6 @@ fn write_option_hash(out: &mut Vec<u8>, value: &Option<Hash>) {
     }
 }
 
-fn write_hash_vec(out: &mut Vec<u8>, hashes: &[Hash]) {
-    write_len(out, hashes.len());
-    for hash in hashes {
-        write_hash(out, hash);
-    }
-}
-
 fn hardware_class_code(hardware_class: HardwareClass) -> u8 {
     match hardware_class {
         HardwareClass::Cpu => 1,
@@ -1191,14 +1134,6 @@ impl<'a> StateReader<'a> {
             1 => Ok(Some(self.read_hash()?)),
             _ => Err(TvmError::Storage("invalid optional hash")),
         }
-    }
-
-    fn read_hash_vec(&mut self) -> Result<Vec<Hash>> {
-        let mut hashes = Vec::with_capacity(self.read_len()?);
-        for _ in 0..hashes.capacity() {
-            hashes.push(self.read_hash()?);
-        }
-        Ok(hashes)
     }
 
     fn finish(&self) -> Result<()> {

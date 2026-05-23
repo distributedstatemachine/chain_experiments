@@ -2,7 +2,7 @@ use crate::api::P2pMessage;
 use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
 use crate::codec::{self, CodecError};
 use crate::error::{Result as TvmResult, TvmError};
-use crate::jobs::{LinearTrainingStepReceipt, PrimitiveType, TensorOpReceipt};
+use crate::jobs::PrimitiveType;
 use crate::tensor::{DType, Tensor};
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
@@ -1435,93 +1435,35 @@ fn job_codec_error(error: CodecError) -> TvmError {
         CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
         CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing job payload bytes"),
         CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
+        CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
         CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
         CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
         CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
         CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
+        CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
     }
 }
 
 pub fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
-    let mut out = Vec::new();
-    match receipt {
-        ReceiptState::TensorOp(receipt) => {
-            out.push(1);
-            write_hash(&mut out, &receipt.receipt_id);
-            write_hash(&mut out, &receipt.job_id);
-            write_hash(&mut out, &receipt.miner);
-            write_hash(&mut out, &receipt.program_hash);
-            write_hash_vec(&mut out, &receipt.input_roots);
-            write_hash_vec(&mut out, &receipt.output_roots);
-            write_hash(&mut out, &receipt.trace_root);
-            write_u64(&mut out, receipt.tensor_work_units);
-            write_u64(&mut out, receipt.execution_time_ms);
-            write_u64(&mut out, receipt.submitted_at_block);
-            write_hash(&mut out, &receipt.signature);
-        }
-        ReceiptState::LinearTrainingStep(receipt) => {
-            out.push(2);
-            write_hash(&mut out, &receipt.receipt_id);
-            write_hash(&mut out, &receipt.job_id);
-            write_hash(&mut out, &receipt.miner);
-            write_hash(&mut out, &receipt.model_id);
-            write_u64(&mut out, receipt.step);
-            write_hash(&mut out, &receipt.weight_root_before);
-            write_hash(&mut out, &receipt.batch_root);
-            write_hash(&mut out, &receipt.y_root);
-            write_hash(&mut out, &receipt.loss_commitment);
-            write_hash(&mut out, &receipt.grad_w_root);
-            write_hash(&mut out, &receipt.weight_root_after);
-            write_hash(&mut out, &receipt.trace_root);
-            write_u64(&mut out, receipt.tensor_work_units);
-            write_u64(&mut out, receipt.execution_time_ms);
-            write_u64(&mut out, receipt.submitted_at_block);
-            write_hash(&mut out, &receipt.signature);
-        }
-    }
-    out
+    codec::encode_receipt_payload(receipt)
 }
 
 pub fn decode_receipt_payload(input: &[u8]) -> TvmResult<ReceiptState> {
-    let mut reader = Reader::new(input);
-    let receipt = match reader.read_u8()? {
-        1 => ReceiptState::TensorOp(TensorOpReceipt {
-            receipt_id: reader.read_hash()?,
-            job_id: reader.read_hash()?,
-            miner: reader.read_hash()?,
-            program_hash: reader.read_hash()?,
-            input_roots: read_hash_vec(&mut reader, MAX_RECEIPT_HASHES)?,
-            output_roots: read_hash_vec(&mut reader, MAX_RECEIPT_HASHES)?,
-            trace_root: reader.read_hash()?,
-            tensor_work_units: reader.read_u64()?,
-            execution_time_ms: reader.read_u64()?,
-            submitted_at_block: reader.read_u64()?,
-            signature: reader.read_hash()?,
-        }),
-        2 => ReceiptState::LinearTrainingStep(LinearTrainingStepReceipt {
-            receipt_id: reader.read_hash()?,
-            job_id: reader.read_hash()?,
-            miner: reader.read_hash()?,
-            model_id: reader.read_hash()?,
-            step: reader.read_u64()?,
-            weight_root_before: reader.read_hash()?,
-            batch_root: reader.read_hash()?,
-            y_root: reader.read_hash()?,
-            loss_commitment: reader.read_hash()?,
-            grad_w_root: reader.read_hash()?,
-            weight_root_after: reader.read_hash()?,
-            trace_root: reader.read_hash()?,
-            tensor_work_units: reader.read_u64()?,
-            execution_time_ms: reader.read_u64()?,
-            submitted_at_block: reader.read_u64()?,
-            signature: reader.read_hash()?,
-        }),
-        _ => return Err(TvmError::InvalidReceipt("unknown receipt payload tag")),
-    };
-    if !reader.is_done() {
-        return Err(TvmError::InvalidReceipt("trailing receipt payload bytes"));
+    codec::decode_receipt_payload(input, Some(MAX_RECEIPT_HASHES)).map_err(receipt_codec_error)
+}
+
+fn receipt_codec_error(error: CodecError) -> TvmError {
+    match error {
+        CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
+        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing receipt payload bytes"),
+        CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
+        CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
+        CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
+        CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
+        CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
+        CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
+        CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
     }
-    Ok(receipt)
 }
 
 pub fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8> {
@@ -1773,13 +1715,6 @@ fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
     }
 }
 
-fn write_hash_vec(out: &mut Vec<u8>, values: &[Hash]) {
-    write_u64(out, values.len() as u64);
-    for value in values {
-        write_hash(out, value);
-    }
-}
-
 fn write_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     write_u64(out, bytes.len() as u64);
     out.extend_from_slice(bytes);
@@ -1886,18 +1821,6 @@ fn read_usize_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<usiz
     Ok(values)
 }
 
-fn read_hash_vec(reader: &mut Reader<'_>, max_len: usize) -> TvmResult<Vec<Hash>> {
-    let len = read_usize(reader)?;
-    if len > max_len {
-        return Err(TvmError::InvalidReceipt("hash vector too large"));
-    }
-    let mut values = Vec::with_capacity(len);
-    for _ in 0..len {
-        values.push(reader.read_hash()?);
-    }
-    Ok(values)
-}
-
 fn read_bool(reader: &mut Reader<'_>) -> TvmResult<bool> {
     match reader.read_u8()? {
         0 => Ok(false),
@@ -1932,7 +1855,10 @@ fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
 mod tests {
     use super::*;
     use crate::chain::{BlockVote, JobState, ReceiptState};
-    use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob};
+    use crate::jobs::{
+        LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
+        TensorOpReceipt,
+    };
     use crate::scheduler::SyntheticLocalJobSource;
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};

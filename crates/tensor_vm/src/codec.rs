@@ -1,5 +1,7 @@
-use crate::chain::{BlockVote, JobState, TensorBlock};
-use crate::jobs::{LinearTrainingStepJob, MatmulJob, PrimitiveType};
+use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
+use crate::jobs::{
+    LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
+};
 use crate::tensor::DType;
 use crate::types::Hash;
 use crate::verify::VerificationResult;
@@ -12,10 +14,12 @@ pub(crate) enum CodecError {
     Truncated,
     TrailingBytes,
     UnknownJobTag,
+    UnknownReceiptTag,
     UnknownDType,
     InvalidOptionalU64,
     UsizeOverflow,
     ShapeVectorTooLarge,
+    HashVectorTooLarge,
 }
 
 pub(crate) fn dtype_tag(dtype: DType) -> u8 {
@@ -219,6 +223,101 @@ pub(crate) fn decode_job_payload_from(
     }
 }
 
+pub(crate) fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
+    let mut out = Vec::new();
+    match receipt {
+        ReceiptState::TensorOp(receipt) => {
+            out.push(1);
+            write_hash(&mut out, &receipt.receipt_id);
+            write_hash(&mut out, &receipt.job_id);
+            write_hash(&mut out, &receipt.miner);
+            write_hash(&mut out, &receipt.program_hash);
+            write_hash_vec(&mut out, &receipt.input_roots);
+            write_hash_vec(&mut out, &receipt.output_roots);
+            write_hash(&mut out, &receipt.trace_root);
+            write_u64(&mut out, receipt.tensor_work_units);
+            write_u64(&mut out, receipt.execution_time_ms);
+            write_u64(&mut out, receipt.submitted_at_block);
+            write_hash(&mut out, &receipt.signature);
+        }
+        ReceiptState::LinearTrainingStep(receipt) => {
+            out.push(2);
+            write_hash(&mut out, &receipt.receipt_id);
+            write_hash(&mut out, &receipt.job_id);
+            write_hash(&mut out, &receipt.miner);
+            write_hash(&mut out, &receipt.model_id);
+            write_u64(&mut out, receipt.step);
+            write_hash(&mut out, &receipt.weight_root_before);
+            write_hash(&mut out, &receipt.batch_root);
+            write_hash(&mut out, &receipt.y_root);
+            write_hash(&mut out, &receipt.loss_commitment);
+            write_hash(&mut out, &receipt.grad_w_root);
+            write_hash(&mut out, &receipt.weight_root_after);
+            write_hash(&mut out, &receipt.trace_root);
+            write_u64(&mut out, receipt.tensor_work_units);
+            write_u64(&mut out, receipt.execution_time_ms);
+            write_u64(&mut out, receipt.submitted_at_block);
+            write_hash(&mut out, &receipt.signature);
+        }
+    }
+    out
+}
+
+pub(crate) fn decode_receipt_payload(
+    input: &[u8],
+    max_hashes: Option<usize>,
+) -> Result<ReceiptState, CodecError> {
+    let mut offset = 0;
+    let receipt = decode_receipt_payload_from(input, &mut offset, max_hashes)?;
+    if offset != input.len() {
+        return Err(CodecError::TrailingBytes);
+    }
+    Ok(receipt)
+}
+
+pub(crate) fn decode_receipt_payload_from(
+    input: &[u8],
+    offset: &mut usize,
+    max_hashes: Option<usize>,
+) -> Result<ReceiptState, CodecError> {
+    match read_u8(input, offset)? {
+        1 => Ok(ReceiptState::TensorOp(TensorOpReceipt {
+            receipt_id: read_hash(input, offset)?,
+            job_id: read_hash(input, offset)?,
+            miner: read_hash(input, offset)?,
+            program_hash: read_hash(input, offset)?,
+            input_roots: read_hash_vec(input, offset, max_hashes)?,
+            output_roots: read_hash_vec(input, offset, max_hashes)?,
+            trace_root: read_hash(input, offset)?,
+            tensor_work_units: read_u64(input, offset)?,
+            execution_time_ms: read_u64(input, offset)?,
+            submitted_at_block: read_u64(input, offset)?,
+            signature: read_hash(input, offset)?,
+        })),
+        2 => Ok(ReceiptState::LinearTrainingStep(
+            LinearTrainingStepReceipt {
+                receipt_id: read_hash(input, offset)?,
+                job_id: read_hash(input, offset)?,
+                miner: read_hash(input, offset)?,
+                model_id: read_hash(input, offset)?,
+                step: read_u64(input, offset)?,
+                weight_root_before: read_hash(input, offset)?,
+                batch_root: read_hash(input, offset)?,
+                y_root: read_hash(input, offset)?,
+                loss_commitment: read_hash(input, offset)?,
+                grad_w_root: read_hash(input, offset)?,
+                weight_root_after: read_hash(input, offset)?,
+                trace_root: read_hash(input, offset)?,
+                tensor_work_units: read_u64(input, offset)?,
+                execution_time_ms: read_u64(input, offset)?,
+                submitted_at_block: read_u64(input, offset)?,
+                signature: read_hash(input, offset)?,
+            },
+        )),
+        _ => Err(CodecError::UnknownReceiptTag),
+    }
+}
+
 fn write_hash(out: &mut Vec<u8>, hash: &Hash) {
     out.extend_from_slice(hash);
 }
@@ -235,6 +334,13 @@ fn write_usize_vec(out: &mut Vec<u8>, values: &[usize]) {
     write_usize(out, values.len());
     for value in values {
         write_usize(out, *value);
+    }
+}
+
+fn write_hash_vec(out: &mut Vec<u8>, values: &[Hash]) {
+    write_usize(out, values.len());
+    for value in values {
+        write_hash(out, value);
     }
 }
 
@@ -290,6 +396,24 @@ fn read_usize_vec(
     let mut values = Vec::with_capacity(len);
     for _ in 0..len {
         values.push(read_usize(input, offset)?);
+    }
+    Ok(values)
+}
+
+fn read_hash_vec(
+    input: &[u8],
+    offset: &mut usize,
+    max_hashes: Option<usize>,
+) -> Result<Vec<Hash>, CodecError> {
+    let len = read_usize(input, offset)?;
+    if let Some(max_hashes) = max_hashes
+        && len > max_hashes
+    {
+        return Err(CodecError::HashVectorTooLarge);
+    }
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(read_hash(input, offset)?);
     }
     Ok(values)
 }
@@ -472,6 +596,86 @@ mod tests {
         let truncated = encode_job_payload(&linear_job);
         assert_eq!(
             decode_job_payload(&truncated[..truncated.len() - 1], Some(16)),
+            Err(CodecError::Truncated)
+        );
+    }
+
+    #[test]
+    fn receipt_payloads_roundtrip_stream_and_reject_malformed_edges() {
+        const TENSOR_INPUT_ROOTS_LEN_OFFSET: usize = 1 + 32 + 32 + 32 + 32;
+
+        let tensor_receipt = ReceiptState::TensorOp(TensorOpReceipt {
+            receipt_id: hash(34),
+            job_id: hash(35),
+            miner: hash(36),
+            program_hash: hash(37),
+            input_roots: vec![hash(38), hash(39)],
+            output_roots: vec![hash(40)],
+            trace_root: hash(41),
+            tensor_work_units: 42,
+            execution_time_ms: 43,
+            submitted_at_block: 44,
+            signature: hash(45),
+        });
+        let linear_receipt = ReceiptState::LinearTrainingStep(LinearTrainingStepReceipt {
+            receipt_id: hash(46),
+            job_id: hash(47),
+            miner: hash(48),
+            model_id: hash(49),
+            step: 50,
+            weight_root_before: hash(51),
+            batch_root: hash(52),
+            y_root: hash(53),
+            loss_commitment: hash(54),
+            grad_w_root: hash(55),
+            weight_root_after: hash(56),
+            trace_root: hash(57),
+            tensor_work_units: 58,
+            execution_time_ms: 59,
+            submitted_at_block: 60,
+            signature: hash(61),
+        });
+
+        for receipt in [tensor_receipt.clone(), linear_receipt.clone()] {
+            let payload = encode_receipt_payload(&receipt);
+            assert_eq!(
+                decode_receipt_payload(&payload, Some(16)),
+                Ok(receipt.clone())
+            );
+
+            let mut offset = 0;
+            assert_eq!(
+                decode_receipt_payload_from(&payload, &mut offset, None),
+                Ok(receipt)
+            );
+            assert_eq!(offset, payload.len());
+        }
+
+        let mut unknown_receipt_tag = encode_receipt_payload(&tensor_receipt);
+        unknown_receipt_tag[0] = 9;
+        assert_eq!(
+            decode_receipt_payload(&unknown_receipt_tag, Some(16)),
+            Err(CodecError::UnknownReceiptTag)
+        );
+
+        let mut trailing = encode_receipt_payload(&tensor_receipt);
+        trailing.push(0);
+        assert_eq!(
+            decode_receipt_payload(&trailing, Some(16)),
+            Err(CodecError::TrailingBytes)
+        );
+
+        let mut oversized_hashes = encode_receipt_payload(&tensor_receipt);
+        oversized_hashes[TENSOR_INPUT_ROOTS_LEN_OFFSET..TENSOR_INPUT_ROOTS_LEN_OFFSET + 8]
+            .copy_from_slice(&17_u64.to_le_bytes());
+        assert_eq!(
+            decode_receipt_payload(&oversized_hashes, Some(16)),
+            Err(CodecError::HashVectorTooLarge)
+        );
+
+        let truncated = encode_receipt_payload(&linear_receipt);
+        assert_eq!(
+            decode_receipt_payload(&truncated[..truncated.len() - 1], Some(16)),
             Err(CodecError::Truncated)
         );
     }
