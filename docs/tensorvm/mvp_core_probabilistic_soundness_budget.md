@@ -9,6 +9,9 @@ round counts, composition rule, receipt volume, and the assumptions that let pro
 This document does not make the full MVP core sound. It only budgets the verifier-local algebraic checks
 inside the current sound kernel.
 
+The receipt-lifecycle seed model required for the non-adaptivity assumption is specified in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+
 ## Current Parameters
 
 Current Rust evidence:

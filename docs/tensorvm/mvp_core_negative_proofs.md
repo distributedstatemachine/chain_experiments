@@ -9,6 +9,8 @@ PoW consensus claim.
 
 The target invariants that would kill these counterexamples are mapped in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
+The lifecycle seed model needed to kill `CEX-006` is specified in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 
 This is not a code change and not a mechanized proof. It is a negative proof ledger for the formal manifest.
 

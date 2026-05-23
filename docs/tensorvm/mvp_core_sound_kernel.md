@@ -13,6 +13,8 @@ The theorem import boundary for this kernel is made explicit in
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 Verifier-local false-accept budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
+The receipt-lifecycle seed model for the hidden-challenge assumption is specified in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 
 ## Kernel Claim
 

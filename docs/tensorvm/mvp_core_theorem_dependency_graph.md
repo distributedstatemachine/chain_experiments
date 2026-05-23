@@ -76,6 +76,8 @@ Assumption discharge rules live in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md).
 Verifier-local false-accept budgets live in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
+Receipt-lifecycle seed requirements live in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 V2 state invariants live in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 

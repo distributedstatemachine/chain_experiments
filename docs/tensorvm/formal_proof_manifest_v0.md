@@ -24,6 +24,8 @@ Related boundary documents:
   depend on which assumptions and where blocked v2 consensus imports must stop.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
   verifier-local false-accept budgets and the composition rules for receipt volume.
+- [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md) defines the seed
+  stability theorem needed for non-adaptive Freivalds and random-linear challenges.
 - [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md) defines the state invariants that
   must be preserved before finality can imply v2 block validity.
 - [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md) maps the sound-kernel

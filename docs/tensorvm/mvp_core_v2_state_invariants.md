@@ -6,6 +6,9 @@ Purpose: state the invariants that must be preserved before TensorVM can honestl
 implies valid useful-verification PoW over canonical blockspace. The existing proof docs list target
 objects and counterexamples; this document turns them into state-transition invariants.
 
+The receipt-lifecycle seed invariant used by `INV-002` is specified in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+
 This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
 mechanization.
 

@@ -9,6 +9,8 @@ The import graph that separates completed kernel proofs from blocked v2 nodes is
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
 Verifier-local probability budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
+Receipt-lifecycle seed requirements are specified in
+[`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
 
 This is not a mechanized proof artifact. It is the checklist a mechanized proof package should satisfy
 before any claim moves from "paper proof" to "formal proof."
