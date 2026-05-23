@@ -12,6 +12,8 @@ The canonical encoding and commitment model for selected roots and check roots i
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The useful-PoW work model that separates structural header validity from economic work dominance is defined
 in [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+The verifier evidence model for recomputable or challengeable check leaves is defined in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
 ## Current Verdict
 
@@ -151,11 +153,13 @@ Dependencies:
 - receipt artifact availability during validation.
 - transcript formats for Freivalds, random-linear checks, and DA checks.
 - challenge/opening format for hidden details.
+- verifier evidence model linking signed statements to recomputable or challengeable leaves.
 
 Counterexamples killed:
 
 - Per-receipt arbitrary `checks_root`.
 - Quorum saying "Valid" without recomputable verifier evidence.
+- Aggregate roots over signed `checks_root` claims without transcript truth.
 
 Current status: implementation-blocked.
 
@@ -174,11 +178,13 @@ Dependencies:
 - V2-CHK-001
 - canonical check leaf order
 - hash collision-resistance assumption
+- verifier evidence model
 
 Counterexamples killed:
 
 - Proposer mines over a bogus checks root.
 - Validators cannot reproduce the verification commitment.
+- Block root aggregates signed but false check claims.
 
 Current status: implementation-blocked.
 

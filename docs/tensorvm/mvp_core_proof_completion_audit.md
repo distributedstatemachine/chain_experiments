@@ -167,6 +167,8 @@ The canonical encoding and commitment boundary is specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The useful-PoW work model is specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+The verifier evidence model is specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 The blocked v2 state invariants are listed in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 The proof-to-implementation claim boundary is summarized in

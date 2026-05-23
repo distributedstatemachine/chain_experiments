@@ -296,6 +296,38 @@ Separate structural useful-PoW validity from economic useful-work dominance. Add
 parent-state target validation, retarget bounds, and measured cost assumptions as specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
 
+### CEX-009: Aggregated Checks Roots Can Aggregate False Claims
+
+Witness construction for an insufficient future repair:
+
+```text
+For a selected receipt r, assigned validators sign:
+  result = Valid
+  data_availability_passed = true
+  checks_root = h_fake
+Aggregate h_fake into a receipt-level or block-level checks root.
+Do not require recomputation of the verifier transcript and do not provide a challenge opening path.
+```
+
+Accepted by the insufficient repair:
+
+- The attestation signatures can be valid.
+- The aggregate root can be deterministic and collision-resistant for the signed `checks_root` values.
+- The block can bind the aggregate root exactly.
+
+Why this disproves the semantic verifier-execution theorem:
+
+The root proves commitment to signed check claims. It does not prove those claims were produced by
+`verify_tensor_op`, `verify_linear_training_step`, or any approved verifier transcript. A false but signed
+claim remains false after aggregation unless every leaf is recomputable, directly verified, or challengeable
+within consensus state.
+
+Repair gate:
+
+Define a `CheckLeaf` and `VerifierTranscript` schema, bind attestation signatures to those leaves, and add
+direct recomputation or challenge openings as specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+
 ## Manifest Corrections Required
 
 The formal manifest should interpret current claims this way:
@@ -310,6 +342,7 @@ The formal manifest should interpret current claims this way:
 | Validation seed | Assignment is deterministic from current finalized randomness. | Assignment is stable for the receipt lifecycle. |
 | Signatures | Reference signing tests message-flow shape. | Reference signing proves production authentication. |
 | Useful-PoW work | A valid nonce can prove hash-target success over a validated header. | A valid nonce proves useful-work dominance or proposer-local verification. |
+| Verifier evidence | An aggregate checks root can commit signed check claims. | An aggregate checks root proves those claims came from real verifier execution. |
 
 ## Proof Upgrade Order
 
@@ -323,6 +356,7 @@ The minimum proof repair order is:
 6. Downgrade quorum theorem language to syntactic until verifier evidence is recomputable or challengeable.
 7. Replace reference signatures with a production signature scheme before making authentication claims.
 8. Discharge the useful-PoW work model before claiming useful-work dominance.
+9. Discharge the verifier evidence model before claiming semantic verifier execution.
 
 ## Current Judgment
 

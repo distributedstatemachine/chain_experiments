@@ -26,6 +26,8 @@ Related boundary documents:
   separates pre-hash canonical encoding, hash/Merkle binding, and consensus-object meaning.
 - [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md) separates structural
   useful-PoW header validity from economic useful-work dominance.
+- [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md) defines the missing
+  recomputable/challengeable evidence bridge from signed Valid statements to semantic verifier execution.
 - [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
   verifier-local false-accept budgets and the composition rules for receipt volume.
 - [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md) defines the seed
@@ -446,7 +448,7 @@ The current chain admission path does not recompute `verify_tensor_op` or `verif
 does not derive `checks_root` from tensor artifacts. A quorum therefore proves signed assigned-validator
 statements, not that those validators actually executed the verifier correctly. That stronger claim needs
 recomputable check leaves, block-level `checks_root`, challenge openings, or another evidence-binding
-surface.
+surface; see [`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
 ### TVM-SET-001: Local Settlement Requires Quorum And Agreement
 
@@ -567,6 +569,9 @@ receipt transcript recomputation
 challenge opening format
 ```
 
+The semantic evidence requirements for these objects are specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
+
 ### TVM-POW-001: Useful-Verification PoW Validity
 
 Target statement:
@@ -647,6 +652,7 @@ Current fallback is the v1 proposer-selection fallback, not a v2 PoW-skip block 
 | Field training proves useful ML training | Field SGD-shaped algebra is not real-valued ML convergence. | Claim deterministic algebraic transition only. |
 | Receipt map root is canonical blockspace | A global map root does not define selected eligible receipts. | Need deterministic settled-receipt selector and blockspace caps. |
 | Per-receipt checks_root proves block proposer verified | Blocks do not aggregate or validate a canonical transcript. | Need block-level checks_root and challenge path. |
+| Aggregate checks_root proves verifier execution | A root over signed check claims is still a root over claims. | Need recomputable or challengeable verifier evidence. |
 | Stake finality implies useful-PoW validity | Current votes only check known block hash and signature/stake. | Votes must require v2 block validation. |
 | Reference signatures imply production authentication | `sign` is a hash helper. | Use real signature assumptions and production crypto. |
 | Local containers are independent operators | They are separate local participants, not independent principals. | Public evidence must prove independent operators. |

@@ -39,6 +39,7 @@ implementation work.
 | BA-019 | "One Freivalds round over the current 31-bit field is cryptographic-scale soundness." | High | The current field is `2^31 - 1`, default `full_rounds` is `1`, and LinearTrainingStep has two single random-linear equality checks. | The default per-relation false-accept budget is about `1 / 2^31`, and receipt-volume union bounds can make that too weak for broad consensus claims. Validator quorum cannot be multiplied in while quorum is syntactic. | Current verifier checks have explicit finite-field probabilistic bounds under assumptions. | Set a target soundness budget, receipt-volume limit, round count, and random-linear repetition story; see `mvp_core_probabilistic_soundness_budget.md`. |
 | BA-020 | "A hash root automatically proves the intended consensus object." | High | Current roots deterministically hash encoded current-state objects, but current blocks do not contain v2 selected receipt roots or aggregate check roots. | A root binds only the bytes it encodes under a hash assumption; it does not prove eligibility, selection, verifier transcripts, or v2 state transitions unless those fields are encoded. | Current roots are deterministic commitments to their current encoded objects. | Specify canonical leaf schemas, prove pre-hash injectivity, import hash collision resistance, and add v2 selected receipt/check roots; see `mvp_core_canonical_encoding_commitment_model.md`. |
 | BA-021 | "A nonce over a verification commitment proves useful-work dominance." | High | Current blocks have no v2 nonce/target predicate, and even a future predicate would prove only hash success unless transcript cost, target validity, and sharing/caching assumptions are modeled. | A valid nonce can be ordinary PoW over bytes. It does not prove verification work dominated nonce grinding, or that the winning proposer personally performed the verification. | Useful-verification PoW is a target theorem plus an economic assumption. | Add the structural v2 PoW predicate, validate target/difficulty from parent state, bind checks to selected receipts, and document cost parameters; see `mvp_core_useful_pow_work_model.md`. |
+| BA-022 | "Aggregating signed checks roots proves verifier execution." | High | Attestations can carry `checks_root` values, and block-level roots can aggregate those values, but the chain still needs recomputation or challenge openings to prove transcript truth. | A root over signed claims is still a root over claims. It does not prove the underlying verifier relation unless every leaf is recomputable, directly verified, or challengeable. | Aggregated check roots can be evidence commitments, not semantic verifier-execution proof. | Define `CheckLeaf`, transcript, opening, challenge-window, and reward-finality semantics; see `mvp_core_verifier_evidence_model.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -58,6 +59,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
    retrieval.
 10. Say **PoW over a verification commitment** unless the useful-work dominance model is discharged with
     target, cost, and transcript-sharing assumptions.
+11. Say **evidence commitment** for an aggregate checks root until verifier transcripts are recomputable or
+    challengeable.
 
 ## Claims We Can Make Today
 
@@ -79,6 +82,7 @@ These are defensible with current docs/code evidence:
   reviewed v2 consensus object.
 - A future useful-PoW theorem must separately prove structural header validity and state the economic
   work-dominance assumption.
+- Semantic verifier execution requires recomputable or challengeable evidence, not only signed Valid bits.
 
 ## Claims We Must Not Make Today
 
@@ -97,6 +101,7 @@ These would overstate the current MVP:
 - "One default Freivalds round over the 31-bit field is enough for all production consensus volume."
 - "A current receipt/state root proves v2 canonical blockspace or block-level verification checks."
 - "A nonce over `checks_root` proves useful-work dominance."
+- "An aggregate root over signed `checks_root` values proves validators executed the verifier."
 
 ## Proof Hygiene Checklist
 

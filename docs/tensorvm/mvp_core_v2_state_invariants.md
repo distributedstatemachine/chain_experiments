@@ -12,6 +12,8 @@ The canonical encoding and commitment model used by `INV-006` and `INV-008` is s
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The useful-PoW work model used by `INV-009` is specified in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+The verifier evidence model used by `INV-007` and `INV-008` is specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
 This document does not implement v2 and does not mark v2 sound. It is a proof target for future code and
 mechanization.
@@ -57,8 +59,8 @@ required witness fields and vote admission does not require v2 validation.
 | INV-004 | Canonical selected receipt set is deterministic and cap-respecting. | settled receipt pool, TWU cap, byte cap, count cap, deterministic order. | Applying a v2 block either selects exactly `canonical_selected_receipts(S, beacon, caps)` or rejects. | Current block has no selected receipt root. |
 | INV-005 | Nonselected eligible receipts carry over unless expired or invalidated. | carry-over state and expiry rules. | Block application marks selected receipts spent and preserves unselected eligible receipts according to the rule. | No v2 carry-over transition exists. |
 | INV-006 | Selected receipt root binds the canonical selected set. | `settled_receipt_set_root` and canonical leaf encoding. | Recompute root from selected leaves and reject mismatches before votes count. | Current `receipt_root` binds global map content, not selected blockspace. |
-| INV-007 | Check leaves are recomputable. | check leaf schema, verifier transcript roots, DA proof root, challenge openings. | Every selected receipt has a recomputable leaf under parent state and block beacon. | Per-attestation `checks_root` is arbitrary statement evidence. |
-| INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root and selected order. | Recompute aggregate root from all check leaves and reject mismatches. | Current block has no aggregate `checks_root`. |
+| INV-007 | Check leaves are recomputable or challengeable. | check leaf schema, verifier transcript roots, DA proof root, challenge openings. | Every selected receipt has a leaf that can be recomputed under parent state and block beacon, or disproven by a consensus-valid opening. | Per-attestation `checks_root` is arbitrary statement evidence unless bound to transcript evidence. |
+| INV-008 | Block `checks_root` binds every selected check leaf. | aggregate check root, selected order, evidence schema version. | Recompute aggregate root from all selected check leaves or validate openings against it; reject mismatches before semantic claims. | Aggregate roots over signed claims do not prove transcript truth. |
 | INV-009 | Useful-PoW header is bound to validated content. | parent, selected root, checks root, beacon, proposer, target, nonce, parameter version. | Nonce target is checked over exactly the fields validated by block validity; economic useful-work claims separately satisfy the work model. | Current block has no target/nonce predicate, and useful-work dominance is unmodeled. |
 | INV-010 | Proposer is v2 eligible. | validator registry, eligibility rules, useful-PoW result. | Block admission rejects arbitrary proposers and excludes TensorWork proposer selection. | Current production accepts a supplied proposer and current selector can use TensorWork. |
 | INV-011 | State and reward roots are deterministic after valid v2 apply. | v2 apply transition, state root, reward root, spent/carry-over updates. | Applying the same valid block to the same parent yields one child state and matching roots. | Current roots are v1/reference global-map roots. |

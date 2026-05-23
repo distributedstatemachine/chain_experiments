@@ -29,6 +29,8 @@ The canonical encoding and commitment boundary is tracked in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 The useful-PoW work and economics boundary is tracked in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+The verifier evidence boundary is tracked in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
 ## Adversary Capabilities
 
@@ -42,7 +44,7 @@ The useful-PoW work and economics boundary is tracked in
 | Block proposal | Produce blocks with arbitrary proposers or superseded TensorWork selection. | None for reviewed v2; current behavior is reference-only. | v2 proposer eligibility and useful-PoW validation. |
 | Useful-PoW economics | Grind nonces over cheap, empty, cached, or shared verification commitments and still claim useful work. | None for reviewed v2; current behavior has no useful-PoW predicate. | Work floor, target validation, retarget bounds, transcript-acquisition model, and conservative wording. |
 | Blockspace | Omit, reorder, or substitute settled receipts. | None for reviewed v2. | Canonical selected-receipt pool, caps, expiry, spent/carry-over rules, and selected root. |
-| Verification transcript | Mine over arbitrary or incomplete checks roots. | Per-attestation checks roots exist as statements only. | Block-level checks root, check leaves, recomputation, and openings. |
+| Verification transcript | Mine over arbitrary, incomplete, or merely signed checks roots. | Per-attestation checks roots exist as statements only. | Block-level checks root, check leaves, recomputation, openings, and challenge-window reward semantics. |
 | Finality | Vote for a known current block that is not a valid v2 useful-PoW block. | Current vote path checks voter syntax and stake. | Finality vote admission must require `validate_block_v2`. |
 | Data availability | Withhold tensors, serve only one peer, drop data after local tests, or serve unavailable artifacts publicly. | Root-matched fetch can reject wrong payloads. | Public retention measurements and independent serving evidence. |
 | Network scheduling | Delay messages, reorder attestations, partition local peers, or exploit timeout ambiguity. | Not modeled in the current proof kernel. | Explicit synchrony/partial-synchrony assumptions and fallback rules. |
@@ -63,6 +65,7 @@ Future proof statements must declare these parameters instead of relying on pros
 | Signature scheme and domains | Actor authentication. | Reference helper only. |
 | Hash model and security level | Commitment binding and PoW. | Assumed, not parameterized in theorems. |
 | Verification, transcript acquisition, and nonce costs | Useful-work dominance claims. | Missing as a discharged model. |
+| Verifier evidence and challenge-window liveness | Semantic attestation and checks-root claims. | Missing as a discharged model. |
 
 ## Claims The Current Model Supports
 

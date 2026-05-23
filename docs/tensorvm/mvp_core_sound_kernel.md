@@ -15,6 +15,8 @@ Verifier-local false-accept budgets are recorded in
 [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 The receipt-lifecycle seed model for the hidden-challenge assumption is specified in
 [`mvp_core_receipt_lifecycle_seed_model.md`](mvp_core_receipt_lifecycle_seed_model.md).
+The semantic verifier-evidence bridge that is still outside the current sound kernel is specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 The signature/authentication boundary is specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 The canonical encoding and commitment boundary is specified in
@@ -317,6 +319,7 @@ These are not defensible as current proof claims:
 | TensorWork-selected miners are v2 proposers | v2 says TensorWork does not select block proposers. |
 | Receipt map root is canonical blockspace | The current block commits the global receipt map, not a deterministic selected settled-receipt set. |
 | Attestation quorum proves verifier execution | The chain counts signed statements and does not recompute verifier transcripts. |
+| Aggregate checks roots prove verifier execution | A root over signed `checks_root` claims still needs recomputable or challengeable transcript evidence. |
 | Remote tensor fetch proves public DA | Root-matched fetch proves only verification-time retrieval by one runtime. |
 | Reference signatures prove production authentication | The current signing helper is a hash relation, not production crypto. |
 | Local tensor serving proves public DA | Local fetches do not prove independent public retention. |
@@ -334,6 +337,7 @@ These are not defensible as current proof claims:
 | Signature unforgeability or reference-signature caveat | Receipt, attestation, vote statements | Statements may not prove actor control. |
 | Artifact availability during verification | Verifier semantic claims | Validators cannot recompute required checks. |
 | Validator honesty or challenge evidence | Quorum-to-semantics bridge | Signed Valid statements may not reflect actual verification. |
+| Verifier evidence and challenge-window liveness | Checks-root-to-semantics bridge | Aggregate check commitments may be false or unchallengeable. |
 
 ## Upgrade Gates To Expand The Kernel
 

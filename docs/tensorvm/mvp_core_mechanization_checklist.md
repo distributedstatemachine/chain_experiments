@@ -15,6 +15,8 @@ Signature/authentication boundaries are specified in
 [`mvp_core_signature_authentication_boundary.md`](mvp_core_signature_authentication_boundary.md).
 Canonical encoding and commitment boundaries are specified in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
+Verifier evidence boundaries are specified in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 
 This is not a mechanized proof artifact. It is the checklist a mechanized proof package should satisfy
 before any claim moves from "paper proof" to "formal proof."
@@ -42,6 +44,7 @@ Do not mechanize these as completed theorems yet:
 ```text
 canonical settled-receipt blockspace
 block-level checks_root recomputability
+semantic verifier evidence for signed Valid statements
 useful-verification PoW validity
 finality implies v2 block validity
 zero-receipt PoW-skip fallback liveness
@@ -107,6 +110,7 @@ implementation support.
 | Key ownership | `assumption key_ownership` | Actor claims | Operational/cryptographic assumption. |
 | Artifact availability during verification | `assumption verifier_artifacts_available` | Verifier semantic claims | Network/runtime property. |
 | Validator honesty or challenge evidence | `assumption validators_report_truthfully_or_can_be_challenged` | Quorum-to-semantics bridge | Current quorum is syntactic. |
+| Verifier evidence and challenge-window liveness | `assumption verifier_evidence_recomputable_or_challengeable` | Checks-root-to-semantics bridge | Aggregate roots over signed claims are not enough. |
 | Rust/formal equivalence | `assumption rust_matches_formal_model` | All code-backed theorems | Requires extraction/conformance work. |
 
 Every theorem file should import assumptions deliberately. Do not hide these in comments.

@@ -84,6 +84,8 @@ Canonical encoding and commitment boundaries live in
 [`mvp_core_canonical_encoding_commitment_model.md`](mvp_core_canonical_encoding_commitment_model.md).
 Useful-PoW work and economics boundaries live in
 [`mvp_core_useful_pow_work_model.md`](mvp_core_useful_pow_work_model.md).
+Verifier evidence boundaries live in
+[`mvp_core_verifier_evidence_model.md`](mvp_core_verifier_evidence_model.md).
 V2 state invariants live in
 [`mvp_core_v2_state_invariants.md`](mvp_core_v2_state_invariants.md).
 
@@ -93,8 +95,8 @@ V2 state invariants live in
 | --- | --- | --- | --- |
 | `V2-BLK-001 canonical_selected_receipts` | `blocked-v2` | settled-receipt pool, eligibility, expiry, caps, spent/carry-over, deterministic order. | Required consensus state is missing. |
 | `V2-BLK-002 selected_receipt_root_binding` | `blocked-v2` | `V2-BLK-001`, canonical selected receipt leaf encoding, hash binding. | Current block has global `receipt_root`, not selected settled receipt root. |
-| `V2-CHK-001 check_leaf_recomputable` | `blocked-v2` | verifier kernel, artifact availability, transcript formats, challenge openings. | No block-level check leaf format or recomputation transition. |
-| `V2-CHK-002 block_checks_root_binding` | `blocked-v2` | `V2-BLK-001`, `V2-CHK-001`, canonical check leaf order. | Current block has no aggregate `checks_root`. |
+| `V2-CHK-001 check_leaf_recomputable` | `blocked-v2` | verifier kernel, artifact availability, transcript formats, challenge openings, verifier evidence model. | No committed semantic check leaf format or recomputation/challenge transition. |
+| `V2-CHK-002 block_checks_root_binding` | `blocked-v2` | `V2-BLK-001`, `V2-CHK-001`, canonical check leaf order, verifier evidence model. | Aggregate roots over statements do not prove transcript truth without recomputation or challenge openings. |
 | `V2-POW-001 useful_verification_pow_valid` | `blocked-v2` | `V2-BLK-002`, `V2-CHK-002`, target, nonce, beacon, proposer, hash model, useful-work cost model for economic claims. | Current block has no target/nonce and no useful-PoW predicate; work dominance is also unmodeled. |
 | `V2-PROP-001 proposer_eligible` | `blocked-v2` | validator registry, `V2-POW-001`, removal of TensorWork proposer path. | Current path can use caller-supplied proposer or TensorWork selection. |
 | `V2-STATE-001 valid_v2_block_transition` | `blocked-v2` | `V2-BLK-*`, `V2-CHK-*`, `V2-POW-001`, reward/state root transition. | No v2 selected-receipt apply transition. |
@@ -120,6 +122,7 @@ These imports would create false proof claims:
 | `V2-PROP-001 -> settled TensorWork` | The reviewed v2 spec excludes TensorWork from proposer selection. |
 | `V2-FIN-002 -> current submit_block_vote` | Current vote admission does not require v2 block validation. |
 | `valid nonce -> useful-work dominance` | A nonce proves hash-target success, not that verification work dominated nonce grinding. |
+| `aggregate checks_root -> verifier execution` | A root over signed check claims does not prove the verifier relation without transcript recomputation or challenge openings. |
 
 ## Mechanization Import Rule
 
