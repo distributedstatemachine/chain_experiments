@@ -201,6 +201,8 @@ spaghetti around.
   starting the large `main_tests.rs` split along runtime behavior boundaries.
 - Iteration 84 moved miner role observation and receipt-submission tests into
   `main_tests/miner_role.rs`, reducing the binary test module's mixed role-test surface.
+- Iteration 85 moved validator role observation, attestation, block-vote, and remote tensor-fetch
+  tests into `main_tests/validator_role.rs`, keeping role-specific binary tests with their behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
