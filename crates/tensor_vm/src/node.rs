@@ -81,6 +81,11 @@ pub struct NodeRuntimeState {
     validator_artifact_ready_receipts: BTreeSet<Hash>,
     validator_artifact_missing_receipts: BTreeSet<Hash>,
     validator_attestations_submitted: usize,
+    validator_remote_tensor_fetch_attempts: usize,
+    validator_remote_tensor_fetch_successes: usize,
+    validator_remote_tensor_fetch_failures: usize,
+    validator_remote_tensor_fetch_bytes: usize,
+    validator_remote_tensors_inserted: usize,
 }
 
 impl NodeRuntimeState {
@@ -152,6 +157,26 @@ impl NodeRuntimeState {
         self.validator_attestations_submitted
     }
 
+    pub fn validator_remote_tensor_fetch_attempts(&self) -> usize {
+        self.validator_remote_tensor_fetch_attempts
+    }
+
+    pub fn validator_remote_tensor_fetch_successes(&self) -> usize {
+        self.validator_remote_tensor_fetch_successes
+    }
+
+    pub fn validator_remote_tensor_fetch_failures(&self) -> usize {
+        self.validator_remote_tensor_fetch_failures
+    }
+
+    pub fn validator_remote_tensor_fetch_bytes(&self) -> usize {
+        self.validator_remote_tensor_fetch_bytes
+    }
+
+    pub fn validator_remote_tensors_inserted(&self) -> usize {
+        self.validator_remote_tensors_inserted
+    }
+
     pub fn record_served_request(&mut self) {
         self.served_requests = self.served_requests.saturating_add(1);
     }
@@ -212,6 +237,31 @@ impl NodeRuntimeState {
         self.validator_attestations_submitted = self
             .validator_attestations_submitted
             .saturating_add(attestations_submitted);
+    }
+
+    pub fn record_validator_remote_tensor_fetch(
+        &mut self,
+        attempts: usize,
+        successes: usize,
+        failures: usize,
+        bytes: usize,
+        tensors_inserted: usize,
+    ) {
+        self.validator_remote_tensor_fetch_attempts = self
+            .validator_remote_tensor_fetch_attempts
+            .saturating_add(attempts);
+        self.validator_remote_tensor_fetch_successes = self
+            .validator_remote_tensor_fetch_successes
+            .saturating_add(successes);
+        self.validator_remote_tensor_fetch_failures = self
+            .validator_remote_tensor_fetch_failures
+            .saturating_add(failures);
+        self.validator_remote_tensor_fetch_bytes = self
+            .validator_remote_tensor_fetch_bytes
+            .saturating_add(bytes);
+        self.validator_remote_tensors_inserted = self
+            .validator_remote_tensors_inserted
+            .saturating_add(tensors_inserted);
     }
 }
 
@@ -346,6 +396,8 @@ pub fn ingest_network_messages<C: NetworkEventContext + ?Sized>(
             | P2pMessage::TensorChunkResponse { .. }
             | P2pMessage::RequestTensorRow { .. }
             | P2pMessage::TensorRowResponse { .. }
+            | P2pMessage::RequestTensorByCommitmentRoot { .. }
+            | P2pMessage::TensorByCommitmentRootResponse { .. }
             | P2pMessage::RequestProgram(_)
             | P2pMessage::ProgramResponse { .. } => {
                 ingested.invalid_events = ingested.invalid_events.saturating_add(1);
@@ -701,6 +753,12 @@ mod tests {
         assert!(!state.validator_work_ready());
         state.record_validator_attestation_submission(1);
         assert_eq!(state.validator_attestations_submitted(), 1);
+        state.record_validator_remote_tensor_fetch(3, 2, 1, 128, 2);
+        assert_eq!(state.validator_remote_tensor_fetch_attempts(), 3);
+        assert_eq!(state.validator_remote_tensor_fetch_successes(), 2);
+        assert_eq!(state.validator_remote_tensor_fetch_failures(), 1);
+        assert_eq!(state.validator_remote_tensor_fetch_bytes(), 128);
+        assert_eq!(state.validator_remote_tensors_inserted(), 2);
     }
 
     #[test]

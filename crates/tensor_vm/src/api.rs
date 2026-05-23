@@ -41,6 +41,13 @@ pub enum P2pMessage {
         row_index: u64,
         values: Vec<u64>,
     },
+    RequestTensorByCommitmentRoot {
+        commitment_root: Hash,
+    },
+    TensorByCommitmentRootResponse {
+        commitment_root: Hash,
+        payload: Option<Vec<u8>>,
+    },
     RequestProgram(Hash),
     ProgramResponse {
         program_hash: Hash,

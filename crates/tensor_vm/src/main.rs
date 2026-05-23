@@ -16,10 +16,12 @@ use tensor_vm::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
-    encode_attestation_payload, encode_job_payload, encode_receipt_payload,
+    decode_tensor_payload, encode_attestation_payload, encode_job_payload, encode_receipt_payload,
     hash::hex,
     jobs::LinearTrainingStepOutput,
-    localnet::produce_synthetic_cpu_round_with_tensors,
+    localnet::{
+        produce_synthetic_cpu_round_with_profile, produce_synthetic_cpu_round_with_tensors,
+    },
     node::{NetworkEventContext, attestation_announcement_hash, ingest_network_messages},
     parse_cli_args,
     roles::{
@@ -389,7 +391,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         .filter(|balance| **balance > 0)
         .count();
     Ok(format!(
-        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
+        "command=service_status\ndata_dir={}\noperator_name={}\noperator_id={}\nrole={}\nruntime_command={}\nrole_runtime_command={}\nrole_loop_ready={}\nrole_loop_role={}\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\nnode_multiaddr={}\np2p_peer_id={}\nheight={}\nepoch={}\nblock_count={}\nlatest_block_height={latest_block_height}\nlatest_block_hash={}\nstate_root={}\nblock_log_root={}\nfinalized_block_count={finalized_block_count}\nfirst_live_block_height={first_live_block_height}\nfirst_live_block_hash={}\nregistered_miner_count={}\nregistered_validator_count={}\njob_count={}\nreceipt_count={}\nsettled_receipt_count={}\nattestation_count={attestation_count}\nreward_account_count={reward_account_count}\nmodel_count={}\nbootstrap_peer_count={bootstrap_peer_count}\nnode_store_ready=true\nstatus_source=node_store",
         status.data_dir.display(),
         ready_file_field(data_dir, "operator_name"),
         ready_file_field(data_dir, "operator_id"),
@@ -413,6 +415,11 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
         role_runtime_status_field(data_dir, "role_validator_unattested_receipts"),
         role_runtime_status_field(data_dir, "role_validator_artifact_ready_receipts"),
         role_runtime_status_field(data_dir, "role_validator_artifact_missing_receipts"),
+        role_runtime_status_field(data_dir, "role_validator_remote_tensor_fetch_attempts"),
+        role_runtime_status_field(data_dir, "role_validator_remote_tensor_fetch_successes"),
+        role_runtime_status_field(data_dir, "role_validator_remote_tensor_fetch_failures"),
+        role_runtime_status_field(data_dir, "role_validator_remote_tensor_fetch_bytes"),
+        role_runtime_status_field(data_dir, "role_validator_remote_tensors_inserted"),
         role_runtime_status_field(data_dir, "role_validator_attestations_submitted"),
         role_runtime_status_field(data_dir, "role_local_producer"),
         role_runtime_status_field(data_dir, "role_served_requests"),
@@ -807,10 +814,11 @@ fn miner_has_receipt_for_job(chain: &LocalChain, miner: Address, job_id: Hash) -
         .any(|receipt| receipt.job_id() == job_id && receipt.miner() == miner)
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct MinerRoleReceiptSubmission {
     receipts_submitted: usize,
     tensors_inserted: usize,
+    served_tensors: Vec<Tensor>,
 }
 
 fn submit_miner_role_receipt(
@@ -847,13 +855,14 @@ fn submit_miner_role_receipt(
             )
         })?;
     let mut tensors_inserted = 0usize;
-    for tensor in served_tensors {
-        node.insert_tensor(tensor);
+    for tensor in &served_tensors {
+        node.insert_tensor(tensor.clone());
         tensors_inserted = tensors_inserted.saturating_add(1);
     }
     Ok(Some(MinerRoleReceiptSubmission {
         receipts_submitted: 1,
         tensors_inserted,
+        served_tensors,
     }))
 }
 
@@ -910,6 +919,139 @@ fn validator_has_attested_for_receipt(
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ValidatorRoleAttestationSubmission {
     attestations_submitted: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct ValidatorRemoteTensorFetchReport {
+    attempts: usize,
+    successes: usize,
+    failures: usize,
+    bytes: usize,
+    tensors_inserted: usize,
+}
+
+fn fetch_validator_role_missing_tensors(
+    node: &mut RpcNode,
+    p2p_service: &TensorVmLibp2pService,
+    receipt_id: Hash,
+) -> std::result::Result<ValidatorRemoteTensorFetchReport, String> {
+    let Some(receipt) = node.chain.state.receipts.get(&receipt_id).cloned() else {
+        return Ok(ValidatorRemoteTensorFetchReport::default());
+    };
+    let missing_roots = validator_receipt_required_remote_roots(node, &receipt);
+    if missing_roots.is_empty() {
+        return Ok(ValidatorRemoteTensorFetchReport::default());
+    }
+    let peers = p2p_service.connected_peer_ids();
+    let mut report = ValidatorRemoteTensorFetchReport::default();
+    if peers.is_empty() {
+        report.failures = missing_roots.len();
+        return Ok(report);
+    }
+    for root in missing_roots {
+        let mut fetched = false;
+        let mut failed_response_recorded = false;
+        for peer in &peers {
+            report.attempts = report.attempts.saturating_add(1);
+            let response = p2p_service.request_response(
+                *peer,
+                P2pMessage::RequestTensorByCommitmentRoot {
+                    commitment_root: root,
+                },
+                Duration::from_secs(2),
+            );
+            let Ok(response) = response else {
+                continue;
+            };
+            match validator_remote_tensor_response(root, response) {
+                ValidatorRemoteTensorResponse::Found { tensor, bytes } => {
+                    node.insert_tensor(tensor.clone());
+                    p2p_service.register_tensor(tensor);
+                    report.bytes = report.bytes.saturating_add(bytes);
+                    report.successes = report.successes.saturating_add(1);
+                    report.tensors_inserted = report.tensors_inserted.saturating_add(1);
+                    fetched = true;
+                    break;
+                }
+                ValidatorRemoteTensorResponse::Missing => {}
+                ValidatorRemoteTensorResponse::Invalid => {
+                    record_validator_remote_fetch_failure(
+                        &mut report,
+                        &mut failed_response_recorded,
+                    );
+                }
+            }
+        }
+        if !fetched && !failed_response_recorded {
+            report.failures = report.failures.saturating_add(1);
+        }
+    }
+    Ok(report)
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ValidatorRemoteTensorResponse {
+    Found { tensor: Tensor, bytes: usize },
+    Missing,
+    Invalid,
+}
+
+fn validator_remote_tensor_response(
+    requested_root: Hash,
+    response: P2pMessage,
+) -> ValidatorRemoteTensorResponse {
+    let P2pMessage::TensorByCommitmentRootResponse {
+        commitment_root,
+        payload,
+    } = response
+    else {
+        return ValidatorRemoteTensorResponse::Missing;
+    };
+    if commitment_root != requested_root {
+        return ValidatorRemoteTensorResponse::Invalid;
+    }
+    let Some(payload) = payload else {
+        return ValidatorRemoteTensorResponse::Missing;
+    };
+    let bytes = payload.len();
+    let Ok(tensor) = decode_tensor_payload(&payload) else {
+        return ValidatorRemoteTensorResponse::Invalid;
+    };
+    if tensor.commitment_root() != requested_root {
+        return ValidatorRemoteTensorResponse::Invalid;
+    }
+    ValidatorRemoteTensorResponse::Found { tensor, bytes }
+}
+
+fn record_validator_remote_fetch_failure(
+    report: &mut ValidatorRemoteTensorFetchReport,
+    recorded_for_root: &mut bool,
+) {
+    if !*recorded_for_root {
+        report.failures = report.failures.saturating_add(1);
+        *recorded_for_root = true;
+    }
+}
+
+fn validator_receipt_required_remote_roots(node: &RpcNode, receipt: &ReceiptState) -> Vec<Hash> {
+    let mut roots = Vec::new();
+    match receipt {
+        ReceiptState::TensorOp(receipt) => {
+            roots.extend(receipt.input_roots.iter().copied());
+            roots.extend(receipt.output_roots.iter().copied());
+        }
+        ReceiptState::LinearTrainingStep(receipt) => {
+            roots.push(receipt.y_root);
+            roots.push(receipt.grad_w_root);
+            roots.push(receipt.weight_root_after);
+        }
+    }
+    roots.sort();
+    roots.dedup();
+    roots
+        .into_iter()
+        .filter(|root| !node.contains_tensor_commitment_root(root))
+        .collect()
 }
 
 fn submit_validator_role_attestation(
@@ -1259,6 +1401,9 @@ impl RoleRuntimeLoop {
                     submission.receipts_submitted,
                     submission.tensors_inserted,
                 );
+                for tensor in submission.served_tensors {
+                    self.p2p_service.register_tensor(tensor);
+                }
                 let observation =
                     miner_role_work_observation(&self.server.gateway().node.chain, miner);
                 self.runtime_state.record_miner_work_observation(
@@ -1287,7 +1432,8 @@ impl RoleRuntimeLoop {
             return Ok(());
         }
         let observation = validator_role_work_observation(&self.server.gateway().node, validator);
-        let receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
+        let receipt_to_fetch = observation.artifact_missing_receipts.iter().next().copied();
+        let mut receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
         let mut status_changed = false;
         if self.runtime_state.record_validator_work_observation(
             observation.assigned_receipts,
@@ -1296,6 +1442,43 @@ impl RoleRuntimeLoop {
             observation.artifact_missing_receipts,
         ) {
             status_changed = true;
+        }
+        if receipt_to_submit.is_none()
+            && let Some(receipt_id) = receipt_to_fetch
+        {
+            let fetch_report = fetch_validator_role_missing_tensors(
+                &mut self.server.gateway_mut().node,
+                &self.p2p_service,
+                receipt_id,
+            )?;
+            if fetch_report.attempts > 0
+                || fetch_report.successes > 0
+                || fetch_report.failures > 0
+                || fetch_report.tensors_inserted > 0
+            {
+                self.runtime_state.record_validator_remote_tensor_fetch(
+                    fetch_report.attempts,
+                    fetch_report.successes,
+                    fetch_report.failures,
+                    fetch_report.bytes,
+                    fetch_report.tensors_inserted,
+                );
+                self.store
+                    .persist_chain(&self.server.gateway().node.chain)
+                    .map_err(|error| {
+                        format!("failed to persist validator remote tensor fetch state: {error}")
+                    })?;
+                let observation =
+                    validator_role_work_observation(&self.server.gateway().node, validator);
+                receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
+                self.runtime_state.record_validator_work_observation(
+                    observation.assigned_receipts,
+                    observation.unattested_receipts,
+                    observation.artifact_ready_receipts,
+                    observation.artifact_missing_receipts,
+                );
+                status_changed = true;
+            }
         }
         if let Some(receipt_id) = receipt_to_submit {
             let announcement_checkpoint =
@@ -1380,7 +1563,7 @@ impl RoleRuntimeLoop {
         let network = &self.config.node.network;
         let network_events = self.runtime_state.network_events();
         format!(
-            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_attestations_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
+            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_remote_tensor_fetch_attempts={}\nvalidator_remote_tensor_fetch_successes={}\nvalidator_remote_tensor_fetch_failures={}\nvalidator_remote_tensor_fetch_bytes={}\nvalidator_remote_tensors_inserted={}\nvalidator_attestations_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
             self.config.runtime_command,
             self.config.role.label(),
             self.config.node.profile.label(),
@@ -1406,6 +1589,11 @@ impl RoleRuntimeLoop {
             self.runtime_state.validator_unattested_receipts(),
             self.runtime_state.validator_artifact_ready_receipts(),
             self.runtime_state.validator_artifact_missing_receipts(),
+            self.runtime_state.validator_remote_tensor_fetch_attempts(),
+            self.runtime_state.validator_remote_tensor_fetch_successes(),
+            self.runtime_state.validator_remote_tensor_fetch_failures(),
+            self.runtime_state.validator_remote_tensor_fetch_bytes(),
+            self.runtime_state.validator_remote_tensors_inserted(),
             self.runtime_state.validator_attestations_submitted(),
             network.rpc_listen,
             network.p2p_listen,
@@ -1477,6 +1665,11 @@ struct RoleRuntimeStatusSnapshot {
     validator_unattested_receipts: usize,
     validator_artifact_ready_receipts: usize,
     validator_artifact_missing_receipts: usize,
+    validator_remote_tensor_fetch_attempts: usize,
+    validator_remote_tensor_fetch_successes: usize,
+    validator_remote_tensor_fetch_failures: usize,
+    validator_remote_tensor_fetch_bytes: usize,
+    validator_remote_tensors_inserted: usize,
     validator_attestations_submitted: usize,
 }
 
@@ -1526,6 +1719,12 @@ impl RoleRuntimeStatusSnapshot {
             validator_unattested_receipts: state.validator_unattested_receipts(),
             validator_artifact_ready_receipts: state.validator_artifact_ready_receipts(),
             validator_artifact_missing_receipts: state.validator_artifact_missing_receipts(),
+            validator_remote_tensor_fetch_attempts: state.validator_remote_tensor_fetch_attempts(),
+            validator_remote_tensor_fetch_successes: state
+                .validator_remote_tensor_fetch_successes(),
+            validator_remote_tensor_fetch_failures: state.validator_remote_tensor_fetch_failures(),
+            validator_remote_tensor_fetch_bytes: state.validator_remote_tensor_fetch_bytes(),
+            validator_remote_tensors_inserted: state.validator_remote_tensors_inserted(),
             validator_attestations_submitted: state.validator_attestations_submitted(),
         }
     }
@@ -1537,7 +1736,7 @@ fn write_role_runtime_status(
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
-        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
+        "role_runtime_command={}\nrole_loop_role={}\nrole_loop_ready=true\nrole_chain_profile={}\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nrole_miner_work_ready={}\nrole_miner_assigned_jobs_seen={}\nrole_miner_unreceipted_jobs={}\nrole_miner_receipts_submitted={}\nrole_miner_tensors_inserted={}\nrole_validator_work_ready={}\nrole_validator_assigned_receipts_seen={}\nrole_validator_unattested_receipts={}\nrole_validator_artifact_ready_receipts={}\nrole_validator_artifact_missing_receipts={}\nrole_validator_remote_tensor_fetch_attempts={}\nrole_validator_remote_tensor_fetch_successes={}\nrole_validator_remote_tensor_fetch_failures={}\nrole_validator_remote_tensor_fetch_bytes={}\nrole_validator_remote_tensors_inserted={}\nrole_validator_attestations_submitted={}\nrole_local_producer={}\nrole_served_requests={}\nrole_produced_blocks={}\nrole_network_applied_blocks={}\nrole_network_events_ingested={}\nrole_network_block_events_ingested={}\nrole_network_block_headers_ingested={}\nrole_network_job_events_ingested={}\nrole_network_job_payloads_ingested={}\nrole_network_job_payloads_applied={}\nrole_network_receipt_events_ingested={}\nrole_network_receipt_payloads_ingested={}\nrole_network_receipt_payloads_applied={}\nrole_network_attestation_events_ingested={}\nrole_network_attestation_payloads_ingested={}\nrole_network_attestation_payloads_applied={}\nrole_network_peer_events_ingested={}\nrole_network_invalid_events={}\nrole_latest_height={}\nrole_p2p_connected_peers={}\nrole_p2p_observed_blocks={}\nrole_p2p_observed_jobs={}\nrole_p2p_observed_receipts={}\nrole_p2p_observed_attestations={}\nrole_p2p_latest_observed_block_height={}\nrole_p2p_latest_observed_block_hash={}\nrole_p2p_observed_block_hashes={}\n",
         config.runtime_command,
         config.role.label(),
         config.node.profile.label(),
@@ -1555,6 +1754,11 @@ fn write_role_runtime_status(
         snapshot.validator_unattested_receipts,
         snapshot.validator_artifact_ready_receipts,
         snapshot.validator_artifact_missing_receipts,
+        snapshot.validator_remote_tensor_fetch_attempts,
+        snapshot.validator_remote_tensor_fetch_successes,
+        snapshot.validator_remote_tensor_fetch_failures,
+        snapshot.validator_remote_tensor_fetch_bytes,
+        snapshot.validator_remote_tensors_inserted,
         snapshot.validator_attestations_submitted,
         snapshot.local_producer,
         snapshot.served_requests,
@@ -1654,6 +1858,7 @@ fn catch_up_to_announced_block(
     let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
     server.gateway_mut().node.chain = catchup.chain;
     for tensor in catchup.tensors {
+        p2p_service.register_tensor(tensor.clone());
         server.gateway_mut().node.insert_tensor(tensor);
     }
     if let Some(block) = block_at_height(&server.gateway().node.chain, target_height) {
@@ -1782,14 +1987,15 @@ fn produce_and_publish_synthetic_round(
     profile: &ChainProfile,
 ) -> std::result::Result<Option<Hash>, String> {
     let announcement_checkpoint = chain_announcement_checkpoint(&server.gateway().node.chain);
-    if server
-        .gateway_mut()
-        .node
-        .produce_synthetic_cpu_round_with_profile(profile)
-        .map_err(|error| format!("synthetic CPU round failed: {error}"))?
-        .is_none()
-    {
+    let Some(round) =
+        produce_synthetic_cpu_round_with_profile(&mut server.gateway_mut().node.chain, profile)
+            .map_err(|error| format!("synthetic CPU round failed: {error}"))?
+    else {
         return Ok(None);
+    };
+    for tensor in round.tensors {
+        p2p_service.register_tensor(tensor.clone());
+        server.gateway_mut().node.insert_tensor(tensor);
     }
     let Some(block) = server.gateway().node.chain.blocks.last() else {
         return Ok(None);
@@ -2809,6 +3015,156 @@ mod tests {
     }
 
     #[test]
+    fn validator_remote_tensor_response_rejects_corrupt_or_mismatched_payloads() {
+        let tensor =
+            Tensor::from_vec(vec![2, 2], tensor_vm::DType::FieldElement, vec![1, 3, 5, 7]).unwrap();
+        let requested_root = tensor.commitment_root();
+        let payload = tensor_vm::encode_tensor_payload(&tensor);
+        assert_eq!(
+            validator_remote_tensor_response(
+                requested_root,
+                P2pMessage::TensorByCommitmentRootResponse {
+                    commitment_root: requested_root,
+                    payload: Some(payload.clone()),
+                },
+            ),
+            ValidatorRemoteTensorResponse::Found {
+                tensor: tensor.clone(),
+                bytes: payload.len(),
+            }
+        );
+        assert_eq!(
+            validator_remote_tensor_response(
+                requested_root,
+                P2pMessage::TensorByCommitmentRootResponse {
+                    commitment_root: requested_root,
+                    payload: None,
+                },
+            ),
+            ValidatorRemoteTensorResponse::Missing
+        );
+        assert_eq!(
+            validator_remote_tensor_response(
+                requested_root,
+                P2pMessage::TensorByCommitmentRootResponse {
+                    commitment_root: hash_bytes(b"test", &[b"wrong-response-root"]),
+                    payload: Some(payload.clone()),
+                },
+            ),
+            ValidatorRemoteTensorResponse::Invalid
+        );
+        assert_eq!(
+            validator_remote_tensor_response(
+                requested_root,
+                P2pMessage::TensorByCommitmentRootResponse {
+                    commitment_root: requested_root,
+                    payload: Some(vec![255, 0, 1]),
+                },
+            ),
+            ValidatorRemoteTensorResponse::Invalid
+        );
+        let other_tensor =
+            Tensor::from_vec(vec![2, 2], tensor_vm::DType::FieldElement, vec![2, 3, 5, 7]).unwrap();
+        assert_eq!(
+            validator_remote_tensor_response(
+                requested_root,
+                P2pMessage::TensorByCommitmentRootResponse {
+                    commitment_root: requested_root,
+                    payload: Some(tensor_vm::encode_tensor_payload(&other_tensor)),
+                },
+            ),
+            ValidatorRemoteTensorResponse::Invalid
+        );
+    }
+
+    #[test]
+    fn validator_role_fetches_remote_tensors_before_attesting() {
+        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-remote-fetch"]));
+        chain.params.freivalds.validators_per_job = 1;
+        let miner = address(b"validator-remote-fetch-miner");
+        let validator = address(b"validator-remote-fetch-validator");
+        chain
+            .register_miner(miner, chain.params.miner_min_stake)
+            .unwrap();
+        chain
+            .register_validator(validator, chain.params.validator_min_stake)
+            .unwrap();
+        let scheduler = JobScheduler::with_small_shape((2, 2, 2));
+        let job = scheduler.generate_small_matmul(
+            chain.state.epoch,
+            chain.state.height,
+            &chain.state.finalized_randomness,
+            chain
+                .state
+                .height
+                .saturating_add(chain.params.receipt_submission_window),
+        );
+        let job_state = tensor_vm::JobState::TensorOp(job);
+        chain
+            .apply_command(ChainCommand::SubmitJob(job_state.clone()))
+            .unwrap();
+        let bundle = CpuReferenceMinerRole::new(miner)
+            .execute_job(&job_state, chain.state.height, 1)
+            .unwrap();
+        let receipt_id = bundle.receipt_id();
+        chain
+            .apply_command(ChainCommand::SubmitReceipt(bundle.receipt.clone()))
+            .unwrap();
+        let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
+
+        let port = free_tcp_port();
+        let provider = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(hash_bytes(b"test", &[b"validator-remote-fetch-provider"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        for tensor in bundle.served_tensors() {
+            provider.register_tensor(tensor);
+        }
+        let requester = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![format!(
+                "/ip4/127.0.0.1/tcp/{port}/p2p/{}",
+                provider.peer_id()
+            )],
+            identity_seed: Some(hash_bytes(b"test", &[b"validator-remote-fetch-requester"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        wait_for_connected_role_services(&provider, &requester);
+
+        let observation = validator_role_work_observation(&node, validator);
+        assert_eq!(
+            observation.artifact_missing_receipts,
+            BTreeSet::from([receipt_id])
+        );
+        let report =
+            fetch_validator_role_missing_tensors(&mut node, &requester, receipt_id).unwrap();
+        assert_eq!(report.successes, 3);
+        assert_eq!(report.failures, 0);
+        assert_eq!(report.tensors_inserted, 3);
+        assert!(report.attempts >= 3);
+        assert!(report.bytes > 0);
+        assert_tensor_count(&node, 3);
+
+        let observation = validator_role_work_observation(&node, validator);
+        assert_eq!(
+            observation.artifact_ready_receipts,
+            BTreeSet::from([receipt_id])
+        );
+        assert!(observation.artifact_missing_receipts.is_empty());
+        let submission = submit_validator_role_attestation(&mut node, validator, receipt_id)
+            .unwrap()
+            .expect("remote-fetched tensors should allow attestation");
+        assert_eq!(submission.attestations_submitted, 1);
+        assert_eq!(
+            node.chain.state.attestations[&receipt_id][0].result,
+            VerificationResult::Valid
+        );
+    }
+
+    #[test]
     fn chain_profile_labels_drive_runtime_synthetic_jobs() {
         let local = chain_profile_from_label("local_cpu").unwrap();
         let testnet = chain_profile_from_label("public_testnet").unwrap();
@@ -2849,6 +3205,28 @@ mod tests {
         for tensor in bundle.served_tensors() {
             node.insert_tensor(tensor);
         }
+    }
+
+    fn free_tcp_port() -> u16 {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    fn wait_for_connected_role_services(
+        service_a: &TensorVmLibp2pService,
+        service_b: &TensorVmLibp2pService,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline
+            && (service_a.connected_peer_count() == 0 || service_b.connected_peer_count() == 0)
+        {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(service_a.connected_peer_count(), 1);
+        assert_eq!(service_b.connected_peer_count(), 1);
     }
 
     #[test]

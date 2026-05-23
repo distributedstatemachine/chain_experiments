@@ -1166,6 +1166,11 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("validator_unattested_receipts="));
         assert!(stdout.contains("validator_artifact_ready_receipts="));
         assert!(stdout.contains("validator_artifact_missing_receipts="));
+        assert!(stdout.contains("validator_remote_tensor_fetch_attempts="));
+        assert!(stdout.contains("validator_remote_tensor_fetch_successes="));
+        assert!(stdout.contains("validator_remote_tensor_fetch_failures="));
+        assert!(stdout.contains("validator_remote_tensor_fetch_bytes="));
+        assert!(stdout.contains("validator_remote_tensors_inserted="));
         assert!(stdout.contains("validator_attestations_submitted="));
         assert!(stdout.contains("local_producer=false"));
         assert!(stdout.contains("p2p_runtime=libp2p"));
@@ -1203,6 +1208,11 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_validator_unattested_receipts="));
         assert!(status.contains("role_validator_artifact_ready_receipts="));
         assert!(status.contains("role_validator_artifact_missing_receipts="));
+        assert!(status.contains("role_validator_remote_tensor_fetch_attempts="));
+        assert!(status.contains("role_validator_remote_tensor_fetch_successes="));
+        assert!(status.contains("role_validator_remote_tensor_fetch_failures="));
+        assert!(status.contains("role_validator_remote_tensor_fetch_bytes="));
+        assert!(status.contains("role_validator_remote_tensors_inserted="));
         assert!(status.contains("role_validator_attestations_submitted="));
         assert!(status.contains("role_local_producer=false"));
         assert!(status.contains("role_served_requests=1"));

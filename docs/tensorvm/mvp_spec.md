@@ -2060,7 +2060,7 @@ tvmd public-evidence network-observation \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
   --gossip-topics 5 \
-  --request-response-protocols 3 \
+  --request-response-protocols 4 \
   --bootstrap-peers 2 \
   --max-transmit-bytes 1048576 \
   --request-timeout-seconds 10 \

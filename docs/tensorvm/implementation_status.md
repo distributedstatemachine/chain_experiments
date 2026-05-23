@@ -105,16 +105,23 @@ settled-receipt blockspace remains an open core upgrade. See
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
-  tensor chunks, tensor rows, and program fetches, `tvmd service peer add` bootstrap seeding,
-  `tvmd service readiness` short startup checks for the mandatory libp2p control-plane runtime,
-  `tvmd service serve` long-running startup of the same runtime, DNS/TCP bootstrap dialing with redial after
-  disconnect, local job/receipt/attestation announcements and height-bearing block-header announcement
-  publishing over Gossipsub, decoded inbound message queues consumed by the role runtime,
+  tensor chunks, tensor rows, root-addressed full tensor payloads, and program fetches,
+  `tvmd service peer add` bootstrap seeding, `tvmd service readiness` short startup checks for the
+  mandatory libp2p control-plane runtime, `tvmd service serve` long-running startup of the same runtime,
+  DNS/TCP bootstrap dialing with redial after disconnect, service-level bounded request-response calls,
+  local tensor registration for request serving, local job/receipt/attestation announcements and
+  height-bearing block-header announcement publishing over Gossipsub, decoded inbound message queues
+  consumed by the role runtime,
   pending receipt/attestation payload retry when gossip arrives before prerequisite jobs or receipts,
   runtime-observed consensus-gossip counters, latest observed block heights, bounded observed block-hash
   sets, network-event ingestion counters, and network-applied block counters exposed through role status,
   and durable libp2p bootstrap peer-book storage with checksum validation and `/p2p/<peer-id>` dial
   multiaddr loading
+- Validator role remote tensor fetch: assigned validator role loops can request missing receipt tensor
+  artifacts by commitment root over libp2p request-response, decode and verify fetched tensors against the
+  requested roots, insert them into local runtime storage, and submit the resulting attestation through
+  `ChainCommand::SubmitAttestation`; role status exposes fetch attempts, successes, failures, bytes, and
+  inserted tensors
 - Documented network-stack recommendation that makes libp2p the mandatory MVP runtime for consensus
   propagation and bounded tensor/program fetches
 - Node/tensor RPC route handling, state-root-bearing `/chain/head` responses, service and per-surface

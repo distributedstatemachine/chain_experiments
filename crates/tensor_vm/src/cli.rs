@@ -4519,7 +4519,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 "--gossip-topics",
                 "5",
                 "--request-response-protocols",
-                "3",
+                "4",
                 "--bootstrap-peers",
                 "2",
                 "--max-transmit-bytes",
@@ -4538,7 +4538,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
-                request_response_protocol_count: 3,
+                request_response_protocol_count: 4,
                 bootstrap_peer_count: 2,
                 max_transmit_bytes: 1_048_576,
                 request_timeout_seconds: 10,
@@ -5266,7 +5266,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
-                request_response_protocol_count: 3,
+                request_response_protocol_count: 4,
                 bootstrap_peer_count: 2,
                 max_transmit_bytes: 1_048_576,
                 request_timeout_seconds: 10,
@@ -5882,7 +5882,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
                 gossip_topic_count: 5,
-                request_response_protocol_count: 3,
+                request_response_protocol_count: 4,
                 bootstrap_peer_count: 2,
                 max_transmit_bytes: 1_048_576,
                 request_timeout_seconds: 10,
@@ -5896,7 +5896,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001",
             observed_at_unix_seconds: 1_700_000_000,
             gossip_topic_count: 5,
-            request_response_protocol_count: 3,
+            request_response_protocol_count: 4,
             bootstrap_peer_count: 2,
             max_transmit_bytes: 1_048_576,
             request_timeout_seconds: 10,
@@ -5915,7 +5915,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(
             network_observation,
             format!(
-                "network_runtime_observation={},{peer_id},/dns/node-a.tensorvm.net/tcp/4001,1700000000,5,3,2,1048576,10,128,60,{},{}",
+                "network_runtime_observation={},{peer_id},/dns/node-a.tensorvm.net/tcp/4001,1700000000,5,4,2,1048576,10,128,60,{},{}",
                 hex(&observation_input.operator_id),
                 hex(&observation_root),
                 hex(&observation_signature)
@@ -5987,7 +5987,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             "invalid receipt: operator id argument is empty"
         );
         let network_observation_zero_count =
-            network_observation.replace(",1700000000,5,3,2,", ",1700000000,0,3,2,");
+            network_observation.replace(",1700000000,5,4,2,", ",1700000000,0,4,2,");
         assert_eq!(
             public_evidence_record_root_from_line(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
@@ -6029,7 +6029,7 @@ command=service_serve
 p2p_runtime=libp2p
 p2p_peer_id={peer_id}
 p2p_gossipsub_topics=5
-p2p_request_response_protocols=3
+p2p_request_response_protocols=4
 p2p_bootstrap_peers=2
 p2p_max_transmit_bytes=1048576
 p2p_request_timeout_seconds=10

@@ -23,7 +23,8 @@ That filtered test run covers:
 These tests exercise the CPU reference path with the default local 10-miner/5-validator shape, separate
 local participant identities and libp2p endpoints, a live mandatory libp2p control-plane startup under
 default features, real loopback libp2p delivery across every TensorVM gossip topic and request-response
-message family, local block production, matmul receipt validation/attestation/settlement/rewards,
+message family, service-level root-addressed tensor request-response fetches, validator role remote tensor
+fetch before attestation, local block production, matmul receipt validation/attestation/settlement/rewards,
 LinearTrainingStep validation and state transition, local tensor-server availability, no simulation or
 local-only networking-shim credit, and the explicit separation between local evidence and the 7-day public
 deployment gate.

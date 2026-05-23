@@ -4,14 +4,14 @@ use crate::error::{Result as TvmResult, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
 };
-use crate::tensor::DType;
+use crate::tensor::{DType, Tensor};
 use crate::types::{Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
 use futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -25,6 +25,8 @@ const PEER_BOOK_MAGIC: &[u8] = b"TENSORVM_LIBP2P_PEER_BOOK_V1\n";
 const PEER_BOOK_DIGEST_LEN: usize = 32;
 const MAX_JOB_SHAPE_DIMS: usize = 16;
 const MAX_RECEIPT_HASHES: usize = 16;
+const MAX_TENSOR_SHAPE_DIMS: usize = 16;
+const MAX_TENSOR_VALUES: usize = 1_000_000;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -43,7 +45,7 @@ pub fn recommended_network_stack() -> NetworkStackRecommendation {
             "rust-libp2p is the mandatory TensorVM P2P runtime dependency",
             "gossipsub carries block, job, receipt, attestation, and peer announcements",
             "identify advertises TensorVM protocol support to connected peers",
-            "request-response streams carry tensor rows, tensor chunks, and program fetches",
+            "request-response streams carry tensor roots, rows, chunks, and program fetches",
             "the TensorVM MVP uses libp2p for both consensus propagation and bounded tensor/program fetches",
         ],
     }
@@ -70,10 +72,11 @@ impl GossipTopic {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RequestResponseProtocol {
     TensorChunk,
     TensorRow,
+    TensorByRoot,
     Program,
 }
 
@@ -82,6 +85,7 @@ impl RequestResponseProtocol {
         match self {
             Self::TensorChunk => "/tensorchain/1/tensor/chunk",
             Self::TensorRow => "/tensorchain/1/tensor/row",
+            Self::TensorByRoot => "/tensorchain/1/tensor/by-root",
             Self::Program => "/tensorchain/1/program",
         }
     }
@@ -113,6 +117,7 @@ impl Default for Libp2pControlPlaneConfig {
             request_response_protocols: vec![
                 RequestResponseProtocol::TensorChunk,
                 RequestResponseProtocol::TensorRow,
+                RequestResponseProtocol::TensorByRoot,
                 RequestResponseProtocol::Program,
             ],
             listen_addresses: Vec::new(),
@@ -126,12 +131,19 @@ impl Default for Libp2pControlPlaneConfig {
     }
 }
 
+pub type P2pRequestResponseBehaviour =
+    libp2p::request_response::json::Behaviour<P2pMessage, P2pMessage>;
+type P2pRequestResponseEvent = libp2p::request_response::Event<P2pMessage, P2pMessage>;
+
 #[derive(libp2p::swarm::NetworkBehaviour)]
 pub struct TensorVmNetworkBehaviour {
     pub gossipsub: libp2p::gossipsub::Behaviour,
     pub identify: libp2p::identify::Behaviour,
     pub kademlia: libp2p::kad::Behaviour<libp2p::kad::store::MemoryStore>,
-    pub request_response: libp2p::request_response::json::Behaviour<P2pMessage, P2pMessage>,
+    pub tensor_chunk_request_response: P2pRequestResponseBehaviour,
+    pub tensor_row_request_response: P2pRequestResponseBehaviour,
+    pub tensor_by_root_request_response: P2pRequestResponseBehaviour,
+    pub program_request_response: P2pRequestResponseBehaviour,
 }
 
 pub struct TensorVmLibp2pNode {
@@ -160,13 +172,29 @@ pub struct TensorVmLibp2pService {
     latest_observed_block_height: Arc<AtomicU64>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
     observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
+    connected_peer_ids: Arc<Mutex<Vec<PeerId>>>,
+    tensor_store: Arc<Mutex<BTreeMap<Hash, Tensor>>>,
     observed_message_rx: Mutex<mpsc::Receiver<P2pMessage>>,
     publish_tx: mpsc::Sender<P2pMessage>,
+    request_tx: mpsc::Sender<RequestResponseCommand>,
     stop: Arc<AtomicBool>,
     worker: Option<thread::JoinHandle<()>>,
 }
 
 const OBSERVED_BLOCK_HASH_LIMIT: usize = 256;
+
+struct RequestResponseCommand {
+    peer_id: PeerId,
+    protocol: RequestResponseProtocol,
+    request: P2pMessage,
+    response_tx: mpsc::SyncSender<std::result::Result<P2pMessage, &'static str>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct PendingRequestKey {
+    protocol: RequestResponseProtocol,
+    request_id: libp2p::request_response::OutboundRequestId,
+}
 
 impl TensorVmLibp2pService {
     pub fn info(&self) -> &TensorVmLibp2pServiceInfo {
@@ -216,6 +244,13 @@ impl TensorVmLibp2pService {
             .unwrap_or_default()
     }
 
+    pub fn connected_peer_ids(&self) -> Vec<PeerId> {
+        self.connected_peer_ids
+            .lock()
+            .map(|peer_ids| peer_ids.clone())
+            .unwrap_or_default()
+    }
+
     pub fn drain_observed_messages(&self) -> Vec<P2pMessage> {
         let receiver = self
             .observed_message_rx
@@ -233,6 +268,41 @@ impl TensorVmLibp2pService {
         self.publish_tx
             .send(message)
             .map_err(|_| TvmError::InvalidReceipt("libp2p publish worker stopped"))
+    }
+
+    pub fn register_tensor(&self, tensor: Tensor) {
+        if let Ok(mut tensors) = self.tensor_store.lock() {
+            tensors.insert(tensor.tensor_id(), tensor);
+        }
+    }
+
+    pub fn request_response(
+        &self,
+        peer_id: PeerId,
+        request: P2pMessage,
+        timeout: Duration,
+    ) -> TvmResult<P2pMessage> {
+        if !is_request_response_request(&request) {
+            return Err(TvmError::InvalidReceipt(
+                "message is not a request-response request",
+            ));
+        }
+        let protocol = request_response_protocol_for_message(&request).ok_or(
+            TvmError::InvalidReceipt("request-response protocol missing"),
+        )?;
+        let (response_tx, response_rx) = mpsc::sync_channel(1);
+        self.request_tx
+            .send(RequestResponseCommand {
+                peer_id,
+                protocol,
+                request,
+                response_tx,
+            })
+            .map_err(|_| TvmError::InvalidReceipt("libp2p request worker stopped"))?;
+        response_rx
+            .recv_timeout(timeout)
+            .map_err(|_| TvmError::InvalidReceipt("libp2p request-response timeout"))?
+            .map_err(TvmError::InvalidReceipt)
     }
 }
 
@@ -330,7 +400,12 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
     let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
     let worker_observed_block_hashes = Arc::clone(&observed_block_hashes);
+    let connected_peer_ids = Arc::new(Mutex::new(Vec::new()));
+    let worker_connected_peer_ids = Arc::clone(&connected_peer_ids);
+    let tensor_store = Arc::new(Mutex::new(BTreeMap::new()));
+    let worker_tensor_store = Arc::clone(&tensor_store);
     let (publish_tx, publish_rx) = mpsc::channel();
+    let (request_tx, request_rx) = mpsc::channel::<RequestResponseCommand>();
     let (observed_message_tx, observed_message_rx) = mpsc::channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -370,8 +445,11 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 latest_observed_block_height: worker_latest_observed_block_height.as_ref(),
                 latest_observed_block_hash: worker_latest_observed_block_hash.as_ref(),
                 observed_block_hashes: worker_observed_block_hashes.as_ref(),
+                connected_peer_ids: worker_connected_peer_ids.as_ref(),
+                tensor_store: worker_tensor_store.as_ref(),
                 observed_message_tx: &observed_message_tx,
             };
+            let mut pending_requests = HashMap::new();
 
             while !worker_stop.load(Ordering::Relaxed) {
                 while let Ok(message) = publish_rx.try_recv() {
@@ -379,11 +457,44 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                         let _ = node.swarm.behaviour_mut().gossipsub.publish(topic, payload);
                     }
                 }
+                while let Ok(command) = request_rx.try_recv() {
+                    if request_response_protocol_for_message(&command.request)
+                        != Some(command.protocol)
+                        || !node
+                            .request_response_protocols
+                            .iter()
+                            .any(|protocol| protocol == command.protocol.as_str())
+                    {
+                        let _ = command
+                            .response_tx
+                            .send(Err("message is not a request-response request"));
+                        continue;
+                    }
+                    let request_id = send_request_for_protocol(
+                        &mut node.swarm,
+                        command.protocol,
+                        &command.peer_id,
+                        command.request,
+                    );
+                    pending_requests.insert(
+                        PendingRequestKey {
+                            protocol: command.protocol,
+                            request_id,
+                        },
+                        command.response_tx,
+                    );
+                }
                 if let Ok(event) =
                     tokio::time::timeout(Duration::from_millis(100), node.swarm.select_next_some())
                         .await
                 {
-                    handle_swarm_event(event, &mut peer_connections, &event_metrics);
+                    handle_swarm_event(
+                        event,
+                        &mut peer_connections,
+                        &event_metrics,
+                        &mut pending_requests,
+                        &mut node.swarm,
+                    );
                 }
                 if !bootstrap_multiaddrs.is_empty()
                     && peer_connections.is_empty()
@@ -412,8 +523,11 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             latest_observed_block_height,
             latest_observed_block_hash,
             observed_block_hashes,
+            connected_peer_ids,
+            tensor_store,
             observed_message_rx: Mutex::new(observed_message_rx),
             publish_tx,
+            request_tx,
             stop,
             worker: Some(worker),
         }),
@@ -433,6 +547,8 @@ struct ServiceEventMetrics<'a> {
     latest_observed_block_height: &'a AtomicU64,
     latest_observed_block_hash: &'a Mutex<Hash>,
     observed_block_hashes: &'a Mutex<VecDeque<Hash>>,
+    connected_peer_ids: &'a Mutex<Vec<PeerId>>,
+    tensor_store: &'a Mutex<BTreeMap<Hash, Tensor>>,
     observed_message_tx: &'a mpsc::Sender<P2pMessage>,
 }
 
@@ -440,6 +556,11 @@ fn handle_swarm_event(
     event: SwarmEvent<TensorVmNetworkBehaviourEvent>,
     peer_connections: &mut HashMap<PeerId, usize>,
     metrics: &ServiceEventMetrics<'_>,
+    pending_requests: &mut HashMap<
+        PendingRequestKey,
+        mpsc::SyncSender<std::result::Result<P2pMessage, &'static str>>,
+    >,
+    swarm: &mut Swarm<TensorVmNetworkBehaviour>,
 ) {
     match event {
         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
@@ -447,6 +568,7 @@ fn handle_swarm_event(
             metrics
                 .connected_peer_count
                 .store(peer_connections.len(), Ordering::Relaxed);
+            update_connected_peer_ids(metrics.connected_peer_ids, peer_connections);
         }
         SwarmEvent::ConnectionClosed { peer_id, .. } => {
             if let Some(connection_count) = peer_connections.get_mut(&peer_id) {
@@ -458,6 +580,7 @@ fn handle_swarm_event(
             metrics
                 .connected_peer_count
                 .store(peer_connections.len(), Ordering::Relaxed);
+            update_connected_peer_ids(metrics.connected_peer_ids, peer_connections);
         }
         SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::Gossipsub(
             libp2p::gossipsub::Event::Message { message, .. },
@@ -517,8 +640,218 @@ fn handle_swarm_event(
                 }
             }
         }
+        SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorChunkRequestResponse(event)) => {
+            handle_request_response_event(
+                RequestResponseProtocol::TensorChunk,
+                event,
+                metrics,
+                pending_requests,
+                swarm,
+            );
+        }
+        SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorRowRequestResponse(event)) => {
+            handle_request_response_event(
+                RequestResponseProtocol::TensorRow,
+                event,
+                metrics,
+                pending_requests,
+                swarm,
+            );
+        }
+        SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorByRootRequestResponse(
+            event,
+        )) => {
+            handle_request_response_event(
+                RequestResponseProtocol::TensorByRoot,
+                event,
+                metrics,
+                pending_requests,
+                swarm,
+            );
+        }
+        SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::ProgramRequestResponse(event)) => {
+            handle_request_response_event(
+                RequestResponseProtocol::Program,
+                event,
+                metrics,
+                pending_requests,
+                swarm,
+            );
+        }
         _ => {}
     }
+}
+
+fn update_connected_peer_ids(
+    connected_peer_ids: &Mutex<Vec<PeerId>>,
+    peer_connections: &HashMap<PeerId, usize>,
+) {
+    if let Ok(mut peer_ids) = connected_peer_ids.lock() {
+        *peer_ids = peer_connections.keys().copied().collect();
+        peer_ids.sort_by_key(|peer_id| peer_id.to_string());
+    }
+}
+
+fn handle_request_response_event(
+    protocol: RequestResponseProtocol,
+    event: P2pRequestResponseEvent,
+    metrics: &ServiceEventMetrics<'_>,
+    pending_requests: &mut HashMap<
+        PendingRequestKey,
+        mpsc::SyncSender<std::result::Result<P2pMessage, &'static str>>,
+    >,
+    swarm: &mut Swarm<TensorVmNetworkBehaviour>,
+) {
+    match event {
+        libp2p::request_response::Event::Message { message, .. } => match message {
+            libp2p::request_response::Message::Request {
+                request, channel, ..
+            } => {
+                if !is_request_response_request(&request)
+                    || request_response_protocol_for_message(&request) != Some(protocol)
+                {
+                    return;
+                }
+                let response = response_for_request(&request, metrics.tensor_store);
+                let _ = send_response_for_protocol(swarm, protocol, channel, response);
+            }
+            libp2p::request_response::Message::Response {
+                request_id,
+                response,
+            } => {
+                let key = PendingRequestKey {
+                    protocol,
+                    request_id,
+                };
+                if let Some(response_tx) = pending_requests.remove(&key) {
+                    if request_response_protocol_for_message(&response) == Some(protocol) {
+                        let _ = response_tx.send(Ok(response));
+                    } else {
+                        let _ = response_tx.send(Err("libp2p request-response protocol mismatch"));
+                    }
+                }
+            }
+        },
+        libp2p::request_response::Event::OutboundFailure { request_id, .. } => {
+            let key = PendingRequestKey {
+                protocol,
+                request_id,
+            };
+            if let Some(response_tx) = pending_requests.remove(&key) {
+                let _ = response_tx.send(Err("libp2p request-response failed"));
+            }
+        }
+        _ => {}
+    }
+}
+
+fn request_response_behaviour_mut(
+    swarm: &mut Swarm<TensorVmNetworkBehaviour>,
+    protocol: RequestResponseProtocol,
+) -> &mut P2pRequestResponseBehaviour {
+    match protocol {
+        RequestResponseProtocol::TensorChunk => {
+            &mut swarm.behaviour_mut().tensor_chunk_request_response
+        }
+        RequestResponseProtocol::TensorRow => {
+            &mut swarm.behaviour_mut().tensor_row_request_response
+        }
+        RequestResponseProtocol::TensorByRoot => {
+            &mut swarm.behaviour_mut().tensor_by_root_request_response
+        }
+        RequestResponseProtocol::Program => &mut swarm.behaviour_mut().program_request_response,
+    }
+}
+
+fn send_request_for_protocol(
+    swarm: &mut Swarm<TensorVmNetworkBehaviour>,
+    protocol: RequestResponseProtocol,
+    peer_id: &PeerId,
+    request: P2pMessage,
+) -> libp2p::request_response::OutboundRequestId {
+    request_response_behaviour_mut(swarm, protocol).send_request(peer_id, request)
+}
+
+fn send_response_for_protocol(
+    swarm: &mut Swarm<TensorVmNetworkBehaviour>,
+    protocol: RequestResponseProtocol,
+    channel: libp2p::request_response::ResponseChannel<P2pMessage>,
+    response: P2pMessage,
+) -> Result<(), P2pMessage> {
+    request_response_behaviour_mut(swarm, protocol).send_response(channel, response)
+}
+
+fn response_for_request(
+    request: &P2pMessage,
+    tensor_store: &Mutex<BTreeMap<Hash, Tensor>>,
+) -> P2pMessage {
+    match request {
+        P2pMessage::RequestTensorByCommitmentRoot { commitment_root } => {
+            let payload = tensor_store
+                .lock()
+                .ok()
+                .and_then(|tensors| tensor_by_commitment_root(&tensors, commitment_root).cloned())
+                .map(|tensor| encode_tensor_payload(&tensor));
+            P2pMessage::TensorByCommitmentRootResponse {
+                commitment_root: *commitment_root,
+                payload,
+            }
+        }
+        P2pMessage::RequestTensorRow {
+            tensor_id,
+            row_index,
+        } => {
+            let values = tensor_store
+                .lock()
+                .ok()
+                .and_then(|tensors| tensors.get(tensor_id).cloned())
+                .and_then(|tensor| tensor.row(*row_index as usize).ok().map(|row| row.to_vec()))
+                .unwrap_or_default();
+            P2pMessage::TensorRowResponse {
+                tensor_id: *tensor_id,
+                row_index: *row_index,
+                values,
+            }
+        }
+        P2pMessage::RequestTensorChunk {
+            tensor_id,
+            chunk_index,
+        } => {
+            let bytes = tensor_store
+                .lock()
+                .ok()
+                .and_then(|tensors| tensors.get(tensor_id).cloned())
+                .and_then(|tensor| {
+                    tensor
+                        .opening(*chunk_index, crate::tensor::DEFAULT_CHUNK_SIZE)
+                        .ok()
+                        .map(|opening| opening.chunk_bytes)
+                })
+                .unwrap_or_default();
+            P2pMessage::TensorChunkResponse {
+                tensor_id: *tensor_id,
+                chunk_index: *chunk_index,
+                bytes,
+            }
+        }
+        P2pMessage::RequestProgram(program_hash) => P2pMessage::ProgramResponse {
+            program_hash: *program_hash,
+            bytes: Vec::new(),
+        },
+        _ => P2pMessage::ProgramResponse {
+            program_hash: [0; 32],
+            bytes: Vec::new(),
+        },
+    }
+}
+
+fn tensor_by_commitment_root<'a>(
+    tensors: &'a BTreeMap<Hash, Tensor>,
+    commitment_root: &Hash,
+) -> Option<&'a Tensor> {
+    tensors
+        .values()
+        .find(|tensor| tensor.commitment_root() == *commitment_root)
 }
 
 fn remember_observed_block_hash(block_hashes: &mut VecDeque<Hash>, block_hash: Hash) {
@@ -568,29 +901,47 @@ fn build_libp2p_behaviour(
     let local_peer_id = PeerId::from(keypair.public());
     let kademlia_store = libp2p::kad::store::MemoryStore::new(local_peer_id);
     let kademlia = libp2p::kad::Behaviour::new(local_peer_id, kademlia_store);
-    let request_protocols = config
-        .request_response_protocols
-        .iter()
-        .map(|protocol| {
-            Ok((
-                request_response_stream_protocol(*protocol)?,
-                libp2p::request_response::ProtocolSupport::Full,
-            ))
-        })
-        .collect::<TvmResult<Vec<_>>>()?;
-    let request_response = libp2p::request_response::json::Behaviour::new(
-        request_protocols,
-        libp2p::request_response::Config::default()
-            .with_request_timeout(Duration::from_secs(config.request_timeout_seconds))
-            .with_max_concurrent_streams(config.max_concurrent_request_streams),
-    );
-
     Ok(TensorVmNetworkBehaviour {
         gossipsub,
         identify,
         kademlia,
-        request_response,
+        tensor_chunk_request_response: build_request_response_behaviour(
+            config,
+            RequestResponseProtocol::TensorChunk,
+        )?,
+        tensor_row_request_response: build_request_response_behaviour(
+            config,
+            RequestResponseProtocol::TensorRow,
+        )?,
+        tensor_by_root_request_response: build_request_response_behaviour(
+            config,
+            RequestResponseProtocol::TensorByRoot,
+        )?,
+        program_request_response: build_request_response_behaviour(
+            config,
+            RequestResponseProtocol::Program,
+        )?,
     })
+}
+
+fn build_request_response_behaviour(
+    config: &Libp2pControlPlaneConfig,
+    protocol: RequestResponseProtocol,
+) -> TvmResult<P2pRequestResponseBehaviour> {
+    let request_protocols = if config.request_response_protocols.contains(&protocol) {
+        vec![(
+            request_response_stream_protocol(protocol)?,
+            libp2p::request_response::ProtocolSupport::Full,
+        )]
+    } else {
+        Vec::new()
+    };
+    Ok(libp2p::request_response::json::Behaviour::new(
+        request_protocols,
+        libp2p::request_response::Config::default()
+            .with_request_timeout(Duration::from_secs(config.request_timeout_seconds))
+            .with_max_concurrent_streams(config.max_concurrent_request_streams),
+    ))
 }
 
 pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
@@ -608,6 +959,8 @@ pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
         | P2pMessage::TensorChunkResponse { .. }
         | P2pMessage::RequestTensorRow { .. }
         | P2pMessage::TensorRowResponse { .. }
+        | P2pMessage::RequestTensorByCommitmentRoot { .. }
+        | P2pMessage::TensorByCommitmentRootResponse { .. }
         | P2pMessage::RequestProgram(_)
         | P2pMessage::ProgramResponse { .. } => None,
     }
@@ -623,6 +976,10 @@ pub fn request_response_protocol_for_message(
         P2pMessage::RequestTensorRow { .. } | P2pMessage::TensorRowResponse { .. } => {
             Some(RequestResponseProtocol::TensorRow)
         }
+        P2pMessage::RequestTensorByCommitmentRoot { .. }
+        | P2pMessage::TensorByCommitmentRootResponse { .. } => {
+            Some(RequestResponseProtocol::TensorByRoot)
+        }
         P2pMessage::RequestProgram(_) | P2pMessage::ProgramResponse { .. } => {
             Some(RequestResponseProtocol::Program)
         }
@@ -636,6 +993,16 @@ pub fn request_response_protocol_for_message(
         | P2pMessage::NewAttestationPayload { .. }
         | P2pMessage::PeerInfo { .. } => None,
     }
+}
+
+fn is_request_response_request(message: &P2pMessage) -> bool {
+    matches!(
+        message,
+        P2pMessage::RequestTensorChunk { .. }
+            | P2pMessage::RequestTensorRow { .. }
+            | P2pMessage::RequestTensorByCommitmentRoot { .. }
+            | P2pMessage::RequestProgram(_)
+    )
 }
 
 pub fn gossipsub_ident_topic(topic: GossipTopic) -> libp2p::gossipsub::IdentTopic {
@@ -742,6 +1109,18 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
                 write_u64(&mut out, *value);
             }
         }
+        P2pMessage::RequestTensorByCommitmentRoot { commitment_root } => {
+            out.push(16);
+            write_hash(&mut out, commitment_root);
+        }
+        P2pMessage::TensorByCommitmentRootResponse {
+            commitment_root,
+            payload,
+        } => {
+            out.push(17);
+            write_hash(&mut out, commitment_root);
+            write_optional_bytes(&mut out, payload.as_deref());
+        }
         P2pMessage::RequestProgram(hash) => {
             out.push(9);
             write_hash(&mut out, hash);
@@ -813,6 +1192,13 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
                 values,
             }
         }
+        16 => P2pMessage::RequestTensorByCommitmentRoot {
+            commitment_root: reader.read_hash()?,
+        },
+        17 => P2pMessage::TensorByCommitmentRootResponse {
+            commitment_root: reader.read_hash()?,
+            payload: read_optional_bytes(&mut reader)?,
+        },
         9 => P2pMessage::RequestProgram(reader.read_hash()?),
         10 => P2pMessage::ProgramResponse {
             program_hash: reader.read_hash()?,
@@ -827,6 +1213,35 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         return Err(TvmError::InvalidReceipt("trailing p2p bytes"));
     }
     Ok(message)
+}
+
+pub fn encode_tensor_payload(tensor: &Tensor) -> Vec<u8> {
+    let mut out = Vec::new();
+    write_usize_vec(&mut out, tensor.shape());
+    out.push(tensor.dtype().tag());
+    write_u64(&mut out, tensor.as_slice().len() as u64);
+    for value in tensor.as_slice() {
+        write_u64(&mut out, *value);
+    }
+    out
+}
+
+pub fn decode_tensor_payload(input: &[u8]) -> TvmResult<Tensor> {
+    let mut reader = Reader::new(input);
+    let shape = read_usize_vec(&mut reader, MAX_TENSOR_SHAPE_DIMS)?;
+    let dtype = dtype_from_tag(reader.read_u8()?)?;
+    let len = read_usize(&mut reader)?;
+    if len > MAX_TENSOR_VALUES {
+        return Err(TvmError::InvalidReceipt("tensor payload too large"));
+    }
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(reader.read_u64()?);
+    }
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt("trailing tensor payload bytes"));
+    }
+    Tensor::from_vec(shape, dtype, values)
 }
 
 pub fn encode_job_payload(job: &JobState) -> Vec<u8> {
@@ -1256,6 +1671,16 @@ fn write_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(bytes);
 }
 
+fn write_optional_bytes(out: &mut Vec<u8>, bytes: Option<&[u8]>) {
+    match bytes {
+        Some(bytes) => {
+            out.push(1);
+            write_bytes(out, bytes);
+        }
+        None => out.push(0),
+    }
+}
+
 fn write_string(out: &mut Vec<u8>, value: &str) {
     write_u64(out, value.len() as u64);
     out.extend_from_slice(value.as_bytes());
@@ -1320,6 +1745,14 @@ fn read_optional_u64(reader: &mut Reader<'_>) -> TvmResult<Option<u64>> {
         0 => Ok(None),
         1 => Ok(Some(reader.read_u64()?)),
         _ => Err(TvmError::InvalidReceipt("invalid optional u64 tag")),
+    }
+}
+
+fn read_optional_bytes(reader: &mut Reader<'_>) -> TvmResult<Option<Vec<u8>>> {
+    match reader.read_u8()? {
+        0 => Ok(None),
+        1 => Ok(Some(reader.read_bytes()?)),
+        _ => Err(TvmError::InvalidReceipt("invalid optional bytes tag")),
     }
 }
 
@@ -1417,6 +1850,9 @@ mod tests {
     fn p2p_messages_roundtrip() {
         let h = hash_bytes(b"test", &[b"h"]);
         let peer = address(b"peer");
+        let tensor = Tensor::from_vec(vec![1, 3], DType::FieldElement, vec![9, 8, 7]).unwrap();
+        let tensor_root = tensor.commitment_root();
+        let tensor_payload = encode_tensor_payload(&tensor);
         let job = JobState::TensorOp(MatmulJob::synthetic(0, 1, 2, 3, 4, &h, 10));
         let miner = address(b"payload-miner");
         let receipt = ReceiptState::TensorOp(
@@ -1487,6 +1923,17 @@ mod tests {
                 row_index: 9,
                 values: vec![4, 5, 6],
             },
+            P2pMessage::RequestTensorByCommitmentRoot {
+                commitment_root: tensor_root,
+            },
+            P2pMessage::TensorByCommitmentRootResponse {
+                commitment_root: tensor_root,
+                payload: Some(tensor_payload),
+            },
+            P2pMessage::TensorByCommitmentRootResponse {
+                commitment_root: h,
+                payload: None,
+            },
             P2pMessage::RequestProgram(h),
             P2pMessage::ProgramResponse {
                 program_hash: h,
@@ -1498,6 +1945,27 @@ mod tests {
         for message in messages {
             assert_eq!(decode_message(&encode_message(&message)).unwrap(), message);
         }
+    }
+
+    #[test]
+    fn tensor_payloads_roundtrip_and_reject_malformed_edges() {
+        let tensor = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
+        let payload = encode_tensor_payload(&tensor);
+        assert_eq!(decode_tensor_payload(&payload).unwrap(), tensor);
+
+        let mut trailing = payload.clone();
+        trailing.push(0);
+        assert!(decode_tensor_payload(&trailing).is_err());
+
+        let mut oversized_shape = Vec::new();
+        write_u64(&mut oversized_shape, (MAX_TENSOR_SHAPE_DIMS + 1) as u64);
+        assert!(decode_tensor_payload(&oversized_shape).is_err());
+
+        let mut oversized_values = Vec::new();
+        write_usize_vec(&mut oversized_values, &[1]);
+        oversized_values.push(DType::FieldElement.tag());
+        write_u64(&mut oversized_values, (MAX_TENSOR_VALUES + 1) as u64);
+        assert!(decode_tensor_payload(&oversized_values).is_err());
     }
 
     #[test]
@@ -1763,6 +2231,12 @@ mod tests {
             None
         );
         assert_eq!(
+            gossip_topic_for_message(&P2pMessage::RequestTensorByCommitmentRoot {
+                commitment_root: h,
+            }),
+            None
+        );
+        assert_eq!(
             request_response_protocol_for_message(&P2pMessage::RequestTensorChunk {
                 tensor_id: h,
                 chunk_index: 0,
@@ -1775,6 +2249,12 @@ mod tests {
                 row_index: 0,
             }),
             Some(RequestResponseProtocol::TensorRow)
+        );
+        assert_eq!(
+            request_response_protocol_for_message(&P2pMessage::RequestTensorByCommitmentRoot {
+                commitment_root: h,
+            }),
+            Some(RequestResponseProtocol::TensorByRoot)
         );
         assert_eq!(
             request_response_protocol_for_message(&P2pMessage::RequestProgram(h)),
@@ -1815,6 +2295,12 @@ mod tests {
                 .to_string(),
             "/tensorchain/1/tensor/row"
         );
+        assert_eq!(
+            request_response_stream_protocol(RequestResponseProtocol::TensorByRoot)
+                .unwrap()
+                .to_string(),
+            "/tensorchain/1/tensor/by-root"
+        );
     }
 
     #[test]
@@ -1827,10 +2313,14 @@ mod tests {
             node.subscribed_topics
                 .contains(&"/tensorchain/1/blocks".to_owned())
         );
-        assert_eq!(node.request_response_protocols.len(), 3);
+        assert_eq!(node.request_response_protocols.len(), 4);
         assert!(
             node.request_response_protocols
                 .contains(&"/tensorchain/1/tensor/chunk".to_owned())
+        );
+        assert!(
+            node.request_response_protocols
+                .contains(&"/tensorchain/1/tensor/by-root".to_owned())
         );
         assert_eq!(node.identify_protocol, "/tensorchain/1/identify");
     }
@@ -1897,7 +2387,7 @@ mod tests {
         assert!(!service.peer_id().to_string().is_empty());
         assert_eq!(service.info().identify_protocol, "/tensorchain/1/identify");
         assert_eq!(service.info().subscribed_topics.len(), 5);
-        assert_eq!(service.info().request_response_protocols.len(), 3);
+        assert_eq!(service.info().request_response_protocols.len(), 4);
         std::thread::sleep(Duration::from_millis(150));
     }
 
@@ -1920,6 +2410,70 @@ mod tests {
         .unwrap();
 
         wait_for_connected_services(&service_a, &service_b);
+    }
+
+    #[test]
+    fn libp2p_service_fetches_tensor_by_commitment_root() {
+        let port = free_tcp_port();
+        let tensor =
+            Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![11, 13, 17, 19]).unwrap();
+        let commitment_root = tensor.commitment_root();
+        let service_a = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec![format!("/ip4/127.0.0.1/tcp/{port}")],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-fetch-a"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+        service_a.register_tensor(tensor.clone());
+        let bootstrap_address = format!("/ip4/127.0.0.1/tcp/{port}/p2p/{}", service_a.peer_id());
+        let service_b = spawn_libp2p_service(Libp2pControlPlaneConfig {
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".to_owned()],
+            bootstrap_addresses: vec![bootstrap_address],
+            identity_seed: Some(hash_bytes(b"test", &[b"libp2p-service-fetch-b"])),
+            ..Libp2pControlPlaneConfig::default()
+        })
+        .unwrap();
+
+        wait_for_connected_services(&service_a, &service_b);
+        assert!(
+            service_b
+                .connected_peer_ids()
+                .contains(&service_a.peer_id())
+        );
+        let response = service_b
+            .request_response(
+                service_a.peer_id(),
+                P2pMessage::RequestTensorByCommitmentRoot { commitment_root },
+                Duration::from_secs(5),
+            )
+            .unwrap();
+        let P2pMessage::TensorByCommitmentRootResponse {
+            commitment_root: response_root,
+            payload: Some(payload),
+        } = response
+        else {
+            panic!("expected tensor-by-root response");
+        };
+        assert_eq!(response_root, commitment_root);
+        assert_eq!(decode_tensor_payload(&payload).unwrap(), tensor);
+
+        let missing_root = hash_bytes(b"test", &[b"missing-tensor-root"]);
+        let response = service_b
+            .request_response(
+                service_a.peer_id(),
+                P2pMessage::RequestTensorByCommitmentRoot {
+                    commitment_root: missing_root,
+                },
+                Duration::from_secs(5),
+            )
+            .unwrap();
+        assert_eq!(
+            response,
+            P2pMessage::TensorByCommitmentRootResponse {
+                commitment_root: missing_root,
+                payload: None,
+            }
+        );
     }
 
     #[test]
@@ -2117,6 +2671,8 @@ mod tests {
             }
 
             let tensor_id = hash_bytes(b"test", &[b"gate-0-libp2p-tensor"]);
+            let tensor = Tensor::from_vec(vec![1, 3], DType::FieldElement, vec![3, 5, 8]).unwrap();
+            let commitment_root = tensor.commitment_root();
             let program_hash = hash_bytes(b"test", &[b"gate-0-libp2p-program"]);
             let request_response_messages = [
                 (
@@ -2142,6 +2698,13 @@ mod tests {
                     },
                 ),
                 (
+                    P2pMessage::RequestTensorByCommitmentRoot { commitment_root },
+                    P2pMessage::TensorByCommitmentRootResponse {
+                        commitment_root,
+                        payload: Some(encode_tensor_payload(&tensor)),
+                    },
+                ),
+                (
                     P2pMessage::RequestProgram(program_hash),
                     P2pMessage::ProgramResponse {
                         program_hash,
@@ -2150,14 +2713,17 @@ mod tests {
                 ),
             ];
             for (request, response) in request_response_messages {
-                let request_id = consumer
-                    .swarm
-                    .behaviour_mut()
-                    .request_response
-                    .send_request(&producer.peer_id, request.clone());
+                let protocol = request_response_protocol_for_message(&request).unwrap();
+                let request_id = send_request_for_protocol(
+                    &mut consumer.swarm,
+                    protocol,
+                    &producer.peer_id,
+                    request.clone(),
+                );
                 wait_for_request_response(
                     &mut producer,
                     &mut consumer,
+                    protocol,
                     &request,
                     &response,
                     request_id,
@@ -2420,6 +2986,7 @@ mod tests {
     async fn wait_for_request_response(
         producer: &mut TensorVmLibp2pNode,
         consumer: &mut TensorVmLibp2pNode,
+        protocol: RequestResponseProtocol,
         expected_request: &P2pMessage,
         response: &P2pMessage,
         expected_request_id: libp2p::request_response::OutboundRequestId,
@@ -2431,8 +2998,7 @@ mod tests {
                 futures::pin_mut!(producer_event, consumer_event);
                 futures::select! {
                     event = producer_event => {
-                        if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::RequestResponse(
-                            libp2p::request_response::Event::Message {
+                        if let Some(libp2p::request_response::Event::Message {
                                 peer,
                                 message:
                                     libp2p::request_response::Message::Request {
@@ -2440,30 +3006,28 @@ mod tests {
                                         channel,
                                         ..
                                     },
-                            },
-                        )) = event
+                            }) = request_response_event_for_protocol(event, protocol)
                         {
                             assert_eq!(peer, consumer.peer_id);
                             assert_eq!(&request, expected_request);
-                            producer
-                                .swarm
-                                .behaviour_mut()
-                                .request_response
-                                .send_response(channel, response.clone())
+                            send_response_for_protocol(
+                                &mut producer.swarm,
+                                protocol,
+                                channel,
+                                response.clone(),
+                            )
                                 .unwrap();
                         }
                     }
                     event = consumer_event => {
-                        if let SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::RequestResponse(
-                            libp2p::request_response::Event::Message {
+                        if let Some(libp2p::request_response::Event::Message {
                                 peer,
                                 message:
                                     libp2p::request_response::Message::Response {
                                         request_id,
                                         response: actual_response,
                                     },
-                            },
-                        )) = event
+                            }) = request_response_event_for_protocol(event, protocol)
                         {
                             assert_eq!(peer, producer.peer_id);
                             assert_eq!(request_id, expected_request_id);
@@ -2476,6 +3040,37 @@ mod tests {
         })
         .await
         .expect("libp2p request-response exchange must complete");
+    }
+
+    fn request_response_event_for_protocol(
+        event: SwarmEvent<TensorVmNetworkBehaviourEvent>,
+        protocol: RequestResponseProtocol,
+    ) -> Option<P2pRequestResponseEvent> {
+        match (protocol, event) {
+            (
+                RequestResponseProtocol::TensorChunk,
+                SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorChunkRequestResponse(
+                    event,
+                )),
+            )
+            | (
+                RequestResponseProtocol::TensorRow,
+                SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorRowRequestResponse(
+                    event,
+                )),
+            )
+            | (
+                RequestResponseProtocol::TensorByRoot,
+                SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::TensorByRootRequestResponse(
+                    event,
+                )),
+            )
+            | (
+                RequestResponseProtocol::Program,
+                SwarmEvent::Behaviour(TensorVmNetworkBehaviourEvent::ProgramRequestResponse(event)),
+            ) => Some(event),
+            _ => None,
+        }
     }
 
     #[test]

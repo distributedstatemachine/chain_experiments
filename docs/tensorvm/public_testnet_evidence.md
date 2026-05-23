@@ -199,7 +199,7 @@ finality_history_signature=<finality-signature-hex>
 operator_identity_attestation_records=15
 operator=miner,<address-hex>,<operator-id-hex>,https://operator-a.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
 operator=validator,<address-hex>,<operator-id-hex>,https://operator-b.tensorvm.net/tensorvm.json,<unix-seconds>,<operator-signature-hex>
-network_runtime_observation=<operator-id-hex>,<libp2p-peer-id>,/dns/node-a.tensorvm.net/tcp/4001,<unix-seconds>,5,3,2,1048576,10,128,60,<observation-root-hex>,<observation-signature-hex>
+network_runtime_observation=<operator-id-hex>,<libp2p-peer-id>,/dns/node-a.tensorvm.net/tcp/4001,<unix-seconds>,5,4,2,1048576,10,128,60,<observation-root-hex>,<observation-signature-hex>
 network_runtime_observation_records=<operator-count>
 network_runtime_observation_root=<network-runtime-root-hex>
 network_runtime_observation_signature=<network-runtime-signature-hex>
@@ -409,7 +409,7 @@ tvmd public-evidence network-observation \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
   --gossip-topics 5 \
-  --request-response-protocols 3 \
+  --request-response-protocols 4 \
   --bootstrap-peers 2 \
   --max-transmit-bytes 1048576 \
   --request-timeout-seconds 10 \

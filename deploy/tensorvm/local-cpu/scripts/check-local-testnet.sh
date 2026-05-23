@@ -456,6 +456,11 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_VALIDATOR_UNATTESTED_RECEIPTS=$(status_value role_validator_unattested_receipts "$STATUS")
     SERVICE_ROLE_VALIDATOR_ARTIFACT_READY_RECEIPTS=$(status_value role_validator_artifact_ready_receipts "$STATUS")
     SERVICE_ROLE_VALIDATOR_ARTIFACT_MISSING_RECEIPTS=$(status_value role_validator_artifact_missing_receipts "$STATUS")
+    SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_ATTEMPTS=$(status_value role_validator_remote_tensor_fetch_attempts "$STATUS")
+    SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_SUCCESSES=$(status_value role_validator_remote_tensor_fetch_successes "$STATUS")
+    SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_FAILURES=$(status_value role_validator_remote_tensor_fetch_failures "$STATUS")
+    SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES=$(status_value role_validator_remote_tensor_fetch_bytes "$STATUS")
+    SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED=$(status_value role_validator_remote_tensors_inserted "$STATUS")
     SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED=$(status_value role_validator_attestations_submitted "$STATUS")
     SERVICE_ROLE_LOCAL_PRODUCER=$(status_value role_local_producer "$STATUS")
     SERVICE_ROLE_PRODUCED_BLOCKS=$(status_value role_produced_blocks "$STATUS")
@@ -521,6 +526,11 @@ while [ "$attempt" -lt 60 ]; do
     is_u64 "$SERVICE_ROLE_VALIDATOR_UNATTESTED_RECEIPTS" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_VALIDATOR_ARTIFACT_READY_RECEIPTS" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_VALIDATOR_ARTIFACT_MISSING_RECEIPTS" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_ATTEMPTS" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_SUCCESSES" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_FAILURES" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES" || { STATUS_MISMATCH=true; continue; }
+    is_u64 "$SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED" || { STATUS_MISMATCH=true; continue; }
     is_u64 "$SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED" || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_LOCAL_PRODUCER" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_LOCAL_PRODUCER" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
@@ -606,6 +616,11 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_VALIDATOR_UNATTESTED_RECEIPTS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_ARTIFACT_READY_RECEIPTS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_ARTIFACT_MISSING_RECEIPTS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_ATTEMPTS" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_SUCCESSES" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_FAILURES" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED" -eq 0 ] || { STATUS_MISMATCH=true; continue; }
         ;;
     esac
@@ -794,6 +809,7 @@ all_operator_role_wallets_registered=true
 all_operator_miner_work_status=true
 all_operator_miner_receipt_status=true
 all_operator_validator_attestation_status=true
+all_operator_validator_remote_tensor_fetch_status=true
 all_operator_chain_profiles=true
 all_operator_role_production_policy=true
 all_operator_role_runtime_counters=true

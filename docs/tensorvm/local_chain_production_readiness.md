@@ -136,8 +136,12 @@ The local bundle is useful and should remain the first operational target:
   artifacts, submit assigned attestations through `ChainCommand::SubmitAttestation`, publish attestation
   announcements through the existing p2p announcement path, and report `role_validator_work_ready`,
   `role_validator_artifact_ready_receipts`, `role_validator_artifact_missing_receipts`, and
-  `role_validator_attestations_submitted`. Remote tensor request-response is still out of scope for this
-  slice, so live Compose validators are not required to report positive validator-owned submissions yet.
+  `role_validator_attestations_submitted`. Validator role loops can now issue bounded libp2p
+  request-response fetches for missing receipt tensor roots, verify the fetched tensor payloads against the
+  requested commitment roots before inserting them locally, and report remote fetch attempts, successes,
+  failures, bytes, and inserted tensor counters through role status. Deterministic block-header catch-up can
+  still replay already-attested receipts before validators see unhandled live work, so live Compose
+  validators are not required to report positive validator-owned submissions yet.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
   readiness, serve, and status output. Only the local CPU profile enables deterministic synthetic block
@@ -652,9 +656,10 @@ event driver, with `tvmd` retaining only the service-specific deterministic catc
 commands now enter explicit role-run loop wrappers and a named runtime loop boundary instead of constructing
 the generic service loop inline. CPU miner execution and validator verification now live behind role-owned
 library components, miner receipt submission and validator attestation submission have role-loop paths for
-locally available work, and proposer block assembly still needs to move into its role loop. Runtime role
-policy now prevents miner and validator roles from becoming local block producers even if they inherit local
-block-interval configuration.
+locally available work, validators can fetch missing receipt tensors over the libp2p request-response path
+before submitting attestations, and proposer block assembly still needs to move into its role loop. Runtime
+role policy now prevents miner and validator roles from becoming local block producers even if they inherit
+local block-interval configuration.
 
 ### Phase 4: Make Compose Participants Actually Participate
 
@@ -730,10 +735,10 @@ local evidence remains explicitly non-public
 
 Keep this incremental:
 
-1. Add remote tensor request-response fetching so validator-owned attestations are not limited to local
-   tensor artifacts.
-2. Wire proposer/block production through network-visible state.
-3. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
+1. Wire proposer/block production through network-visible state.
+2. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
+3. Replace the remaining deterministic replay allowance with hard checker assertions for positive
+   role-owned miner and validator work once proposer assembly is network-derived.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

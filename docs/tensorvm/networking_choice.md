@@ -29,7 +29,7 @@ propagation; every node path uses libp2p multiaddrs and the rust-libp2p runtime.
 1. Keep one production network runtime: libp2p.
 2. Implement Gossipsub for block/job/receipt/attestation/peer announcements.
 3. Implement Kademlia-backed bootstrap/discovery for independent nodes.
-4. Implement request-response for tensor rows/chunks and program fetches.
+4. Implement request-response for root-addressed tensors, tensor rows/chunks, and program fetches.
 5. Keep tensor payloads bounded for v0 with connection and stream limits in the libp2p runtime config.
 6. Do not add a TensorVM feature gate or fallback transport that bypasses libp2p.
 

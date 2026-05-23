@@ -4845,7 +4845,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             })
             .expect("Gate 0 must construct the mandatory libp2p control-plane runtime");
         assert_eq!(libp2p_service.info().subscribed_topics.len(), 5);
-        assert_eq!(libp2p_service.info().request_response_protocols.len(), 3);
+        assert_eq!(libp2p_service.info().request_response_protocols.len(), 4);
         assert!(
             libp2p_service
                 .info()
