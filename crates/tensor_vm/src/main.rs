@@ -1645,11 +1645,6 @@ impl RoleRuntimeLoop {
                     fetch_report.bytes,
                     fetch_report.tensors_inserted,
                 );
-                self.store
-                    .persist_chain(&self.server.gateway().node.chain)
-                    .map_err(|error| {
-                        format!("failed to persist validator remote tensor fetch state: {error}")
-                    })?;
                 let observation =
                     validator_role_work_observation(&self.server.gateway().node, validator);
                 receipt_to_submit = observation.artifact_ready_receipts.iter().next().copied();
@@ -2441,6 +2436,90 @@ mod tests {
         assert_eq!(persisted.state().rewards.balance(&user), 100);
         let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
         assert!(status.contains("role_served_requests=1"));
+
+        drop(runtime);
+        std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
+    }
+
+    #[test]
+    fn validator_remote_tensor_fetch_status_does_not_persist_chain() {
+        let data_dir = unique_temp_data_dir("validator-fetch-no-persist");
+        let _ = std::fs::remove_dir_all(&data_dir);
+        let data_dir_text = data_dir.to_string_lossy().into_owned();
+        let validator = address(b"validator-fetch-no-persist-validator");
+        let mut chain = Chain::with_params(
+            ChainParams {
+                freivalds: FreivaldsParams {
+                    validators_per_job: 1,
+                    ..FreivaldsParams::default()
+                },
+                ..ChainParams::default()
+            },
+            hash_bytes(b"test", &[b"validator-fetch-no-persist"]),
+        );
+        let miner = address(b"validator-fetch-no-persist-miner");
+        chain
+            .register_miner(miner, chain.params().miner_min_stake)
+            .unwrap();
+        chain
+            .register_validator(validator, chain.params().validator_min_stake)
+            .unwrap();
+        let scheduler = JobScheduler::with_small_shape((2, 2, 2));
+        let job = scheduler.generate_small_matmul(
+            chain.state().epoch,
+            chain.state().height,
+            &chain.state().finalized_randomness,
+            chain
+                .state()
+                .height
+                .saturating_add(chain.params().receipt_submission_window),
+        );
+        let job_state = tensor_vm::JobState::TensorOp(job);
+        chain
+            .apply_command(ChainCommand::SubmitJob(job_state.clone()))
+            .unwrap();
+        let bundle = CpuReferenceMinerRole::new(miner)
+            .execute_job(&job_state, chain.state().height, 1)
+            .unwrap();
+        chain
+            .apply_command(ChainCommand::SubmitReceipt(bundle.receipt))
+            .unwrap();
+        let store = NodeStore::open(data_dir.clone());
+        store.persist_chain(&chain).unwrap();
+        let snapshot_modified = file_modified_at(store.snapshot_store().path());
+        let chain_state_modified = file_modified_at(store.chain_state_store().path());
+        thread::sleep(Duration::from_millis(1_100));
+        let config = ServiceRuntimeConfig {
+            runtime_command: "validator_run",
+            role: RuntimeRole::Validator,
+            role_wallet_address: Some(validator),
+            node: runtime_node_config(
+                &data_dir_text,
+                RuntimeRole::Validator,
+                "127.0.0.1:0",
+                "/ip4/127.0.0.1/tcp/0",
+                Some(hash_bytes(b"test", &[data_dir_text.as_bytes()])),
+                "secret",
+                0,
+            )
+            .unwrap(),
+        };
+        let mut runtime = RoleRuntimeLoop::start(config).unwrap();
+
+        runtime.tick_validator_role_work_once().unwrap();
+
+        assert_eq!(
+            file_modified_at(store.snapshot_store().path()),
+            snapshot_modified
+        );
+        assert_eq!(
+            file_modified_at(store.chain_state_store().path()),
+            chain_state_modified
+        );
+        assert_eq!(store.load_chain().unwrap(), chain);
+        let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
+        assert!(status.contains("validator_remote_tensor_fetch_failures=3"));
+        assert!(status.contains("validator_attestations_submitted=0"));
 
         drop(runtime);
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");

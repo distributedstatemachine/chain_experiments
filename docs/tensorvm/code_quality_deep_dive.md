@@ -51,6 +51,9 @@ spaghetti around.
   model ID, and the `ChainCommand::RegisterModel` path propagates that instead of overwriting model state.
 - Iteration 9 added command variants and events for account transfer and reward claim, then routed
   non-reference `apply_transaction` writes through `ChainCommand` instead of direct imperative helpers.
+- Iteration 10 stopped validator remote tensor-fetch bookkeeping from persisting unchanged chain state.
+  Runtime status still records fetch failures/successes, but snapshot and chain-state files are no longer
+  rewritten when no consensus data changed.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -631,7 +634,8 @@ Fix:
 5. Introduce typed status snapshots and JSON outputs.
 6. Move local CPU checker policy into Rust.
 7. Replace hand-rolled CLI parsing with `clap`.
-8. Stop persisting chain state on read-only RPC requests. Completed in Iteration 5.
+8. Stop persisting chain state on read-only runtime activity. Read-only RPC was completed in Iteration 5,
+   and validator remote tensor-fetch status bookkeeping was completed in Iteration 10.
 9. Split `main.rs`, `cli.rs`, `p2p.rs`, `rpc.rs`, and `storage.rs` by ownership.
 10. Replace stringly errors with typed domain errors.
 11. Move large inline tests into focused module or integration test files.
