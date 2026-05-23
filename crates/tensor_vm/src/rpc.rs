@@ -2291,7 +2291,7 @@ mod tests {
         chain.submit_job(JobState::TensorOp(matmul_job));
         chain.submit_job(JobState::LinearTrainingStep(linear_job));
         chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
-        chain.state.settled_receipts.insert(receipt.receipt_id);
+        chain.mark_receipt_settled_for_testing(receipt.receipt_id);
         chain.register_validator(cpu_miner, 10_000).unwrap();
         chain.produce_block(cpu_miner, 1000).unwrap();
         let rpc = RpcNode::new(chain);

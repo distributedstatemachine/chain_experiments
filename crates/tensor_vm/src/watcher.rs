@@ -582,10 +582,7 @@ mod tests {
             no_quorum_linear.receipt_id,
             ReceiptState::LinearTrainingStep(no_quorum_linear),
         );
-        chain
-            .state
-            .settled_receipts
-            .insert(tensor_receipt.receipt_id);
+        chain.mark_receipt_settled_for_testing(tensor_receipt.receipt_id);
 
         for (receipt_id, job_id, primitive_type) in [
             (

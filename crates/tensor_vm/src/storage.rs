@@ -1469,7 +1469,7 @@ mod tests {
             LinearTrainingStepReceipt::from_job(&linear, miner, &weights, 2, 7).unwrap();
         chain.submit_job(JobState::LinearTrainingStep(linear));
         chain.submit_linear_receipt(linear_receipt.clone()).unwrap();
-        chain.state.settled_receipts.insert(receipt.receipt_id);
+        chain.mark_receipt_settled_for_testing(receipt.receipt_id);
         chain
             .state
             .data_unavailable_receipts

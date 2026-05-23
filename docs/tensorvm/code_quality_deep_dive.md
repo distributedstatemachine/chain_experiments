@@ -68,6 +68,8 @@ spaghetti around.
   `ChainCommand::CreditReward` instead of calling `RewardState::credit` directly.
 - Iteration 17 moved non-chain test fixture height/epoch writes behind a crate-test-only chain position
   helper, keeping those setup mutations out of scheduler/localnet/profile tests.
+- Iteration 18 moved non-chain settled-receipt fixture inserts behind a crate-test-only helper, leaving
+  settlement ownership inside `chain/*` instead of scattered storage/RPC/watcher tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

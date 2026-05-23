@@ -264,6 +264,11 @@ impl Chain {
         self.state.height = height;
         self.state.epoch = epoch;
     }
+
+    #[cfg(test)]
+    pub(crate) fn mark_receipt_settled_for_testing(&mut self, receipt_id: Hash) {
+        self.state.settled_receipts.insert(receipt_id);
+    }
 }
 
 #[cfg(test)]
