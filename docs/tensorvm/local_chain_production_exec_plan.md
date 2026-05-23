@@ -6,12 +6,12 @@ feature-sized iterations are summarized after validation and push, and older det
 ## Current State
 
 - Active feature: Iteration 11, canonical useful-verification block validity over deterministic
-  settled-receipt blockspace is implemented locally and under final validation.
+  settled-receipt blockspace is implemented, validated, and pushed.
 - Required resumed Gate 0 was run first: `cargo test -p tensor_vm local_testnet --release` passed with
   5 release local-testnet library tests and the seed CLI integration test.
-- Current head and remote: `07f2b052b998d0a18974f824c07ce2d50d29d33c`
-  (`Add TensorVM canonical encoding commitment model`) is both local `HEAD` and `origin/main`.
-  `git status --short --branch` showed `## main...origin/main` plus untracked `goal.md`.
+- Iteration 11 feature commit before this evidence update:
+  `e6129d1915562a1e865579e347d8cfb85855089e` (`Add TensorVM difficulty retarget model and local v2
+  updates`) is on `origin/main`.
 - Iteration 10 was implemented and pushed as `2d6609e Add remote validator tensor fetch`, with follow-up
   evidence commit `1687f86 Record iteration 10 push evidence`. Later proof/doc commits landed on top:
   `e20a879`, `41a20aa`, and `07f2b05`.
@@ -187,11 +187,14 @@ Verifier review:
 
 Resumed Iteration 11 checkpoint:
 - `git status --short --branch`: `## main...origin/main` plus untracked `goal.md`.
-- `git rev-parse HEAD`: `07f2b052b998d0a18974f824c07ce2d50d29d33c`.
-- `git ls-remote origin refs/heads/main`: `07f2b052b998d0a18974f824c07ce2d50d29d33c refs/heads/main`.
+- Starting `git rev-parse HEAD`: `07f2b052b998d0a18974f824c07ce2d50d29d33c`.
+- Starting `git ls-remote origin refs/heads/main`:
+  `07f2b052b998d0a18974f824c07ce2d50d29d33c refs/heads/main`.
 - First executable gate: `cargo test -p tensor_vm local_testnet --release` passed before exploration or
   edits.
 - Subagents completed: readiness mapper, codebase explorer, test coverage explorer, checker/docs explorer.
+- Feature commit after validation: `e6129d1915562a1e865579e347d8cfb85855089e`, confirmed on
+  `origin/main`.
 
 Post-implementation validation currently passed:
 - `cargo check -p tensor_vm --all-targets`
@@ -207,7 +210,8 @@ Post-implementation validation currently passed:
 - `cargo test -p tensor_vm --test local_cpu_compose local_cpu_compose_bundle_matches_spec_artifact_shape`
 - `cargo test -p tensor_vm local_testnet --release`
 - `docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml config --quiet`
-- `cargo tarpaulin --workspace --offline`: passed with 256 tests and 98.51% workspace line coverage.
+- `cargo tarpaulin --workspace --offline`: passed with 257 tests and 98.51% workspace line coverage
+  (11,272/11,442 lines).
 - `git diff --check`
 - Gateway `/health` re-check remains blocked:
   `curl: (28) Operation timed out after 15002 milliseconds with 0 bytes received`.
