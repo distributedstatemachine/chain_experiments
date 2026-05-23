@@ -161,6 +161,8 @@ spaghetti around.
   removing duplicate snapshot readers while keeping chain-state domain codecs in `storage/chain_state.rs`.
 - Iteration 64 moved the binary runtime test module out of `main.rs` into `main_tests.rs`, keeping
   test paths stable while reducing the production binary file to runtime code.
+- Iteration 65 extracted `service_status` and `service_block` formatting into `main/status.rs`,
+  giving the binary service-status reporting code a focused owner behind unchanged CLI dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
