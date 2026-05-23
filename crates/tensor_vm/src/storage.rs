@@ -1,6 +1,6 @@
 use crate::chain::{
     AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainState, HardwareClass, JobState,
-    LocalChain, MinerState, ModelState, ReceiptState, RewardState, TensorBlock, ValidatorState,
+    MinerState, ModelState, ReceiptState, RewardState, TensorBlock, ValidatorState,
 };
 use crate::error::{Result, TvmError};
 use crate::jobs::{
@@ -41,7 +41,7 @@ pub struct ChainSnapshot {
 }
 
 impl ChainSnapshot {
-    pub fn from_chain(chain: &LocalChain) -> Self {
+    pub fn from_chain(chain: &Chain) -> Self {
         Self {
             height: chain.state.height,
             epoch: chain.state.epoch,
@@ -148,7 +148,7 @@ impl SnapshotStore {
         ChainSnapshot::decode(&bytes)
     }
 
-    pub fn save_chain(&self, chain: &LocalChain) -> Result<ChainSnapshot> {
+    pub fn save_chain(&self, chain: &Chain) -> Result<ChainSnapshot> {
         let snapshot = ChainSnapshot::from_chain(chain);
         self.save(&snapshot)?;
         Ok(snapshot)
@@ -198,7 +198,7 @@ impl BlockLogStore {
         Ok(())
     }
 
-    pub fn append_chain(&self, chain: &LocalChain) -> Result<()> {
+    pub fn append_chain(&self, chain: &Chain) -> Result<()> {
         for block in &chain.blocks {
             self.append_block(block)?;
         }
@@ -212,7 +212,7 @@ impl BlockLogStore {
         self.load_blocks()
     }
 
-    pub fn sync_chain(&self, chain: &LocalChain) -> Result<Vec<TensorBlock>> {
+    pub fn sync_chain(&self, chain: &Chain) -> Result<Vec<TensorBlock>> {
         let existing = self.load_blocks_or_empty()?;
         if existing.len() > chain.blocks.len() {
             return Err(TvmError::Storage("block log ahead of chain"));
@@ -228,7 +228,7 @@ impl BlockLogStore {
         self.load_blocks_or_empty()
     }
 
-    pub fn replace_chain(&self, chain: &LocalChain) -> Result<Vec<TensorBlock>> {
+    pub fn replace_chain(&self, chain: &Chain) -> Result<Vec<TensorBlock>> {
         if let Some(parent) = self.path.parent()
             && !parent.as_os_str().is_empty()
         {
@@ -295,7 +295,7 @@ impl ChainStateStore {
         &self.path
     }
 
-    pub fn save_chain(&self, chain: &LocalChain) -> Result<()> {
+    pub fn save_chain(&self, chain: &Chain) -> Result<()> {
         if let Some(parent) = self.path.parent()
             && !parent.as_os_str().is_empty()
         {
@@ -311,7 +311,7 @@ impl ChainStateStore {
         Ok(())
     }
 
-    pub fn load_chain(&self) -> Result<LocalChain> {
+    pub fn load_chain(&self) -> Result<Chain> {
         let bytes =
             fs::read(&self.path).map_err(|_| TvmError::Storage("failed to read chain state"))?;
         decode_chain_state_file(&bytes)
@@ -381,7 +381,7 @@ impl NodeStore {
         &self.peer_book_store
     }
 
-    pub fn persist_chain(&self, chain: &LocalChain) -> Result<NodeStoreStatus> {
+    pub fn persist_chain(&self, chain: &Chain) -> Result<NodeStoreStatus> {
         let blocks = self.block_log_store.sync_chain(chain)?;
         self.chain_state_store.save_chain(chain)?;
         let snapshot = self.snapshot_store.save_chain(chain)?;
@@ -407,7 +407,7 @@ impl NodeStore {
         self.validate_parts(snapshot, blocks)
     }
 
-    pub fn load_chain(&self) -> Result<LocalChain> {
+    pub fn load_chain(&self) -> Result<Chain> {
         let snapshot = self.snapshot_store.load()?;
         let blocks = self.block_log_store.load_blocks_or_empty()?;
         let chain = self.chain_state_store.load_chain()?;
@@ -463,7 +463,7 @@ impl ChainStore for NodeStore {
     }
 }
 
-fn encode_chain_state_file(chain: &LocalChain) -> Vec<u8> {
+fn encode_chain_state_file(chain: &Chain) -> Vec<u8> {
     let payload = encode_chain_state_payload(chain);
     let digest = hash_bytes(b"tensor-vm-state-file-v1", &[&payload]);
     let mut encoded =
@@ -474,7 +474,7 @@ fn encode_chain_state_file(chain: &LocalChain) -> Vec<u8> {
     encoded
 }
 
-fn decode_chain_state_file(bytes: &[u8]) -> Result<LocalChain> {
+fn decode_chain_state_file(bytes: &[u8]) -> Result<Chain> {
     if !bytes.starts_with(CHAIN_STATE_MAGIC) {
         return Err(TvmError::Storage("invalid chain state magic"));
     }
@@ -490,7 +490,7 @@ fn decode_chain_state_file(bytes: &[u8]) -> Result<LocalChain> {
     decode_chain_state_payload(payload)
 }
 
-fn encode_chain_state_payload(chain: &LocalChain) -> Vec<u8> {
+fn encode_chain_state_payload(chain: &Chain) -> Vec<u8> {
     let mut out = Vec::new();
     encode_chain_params(&mut out, &chain.params);
     encode_chain_state(&mut out, &chain.state);
@@ -501,7 +501,7 @@ fn encode_chain_state_payload(chain: &LocalChain) -> Vec<u8> {
     out
 }
 
-fn decode_chain_state_payload(bytes: &[u8]) -> Result<LocalChain> {
+fn decode_chain_state_payload(bytes: &[u8]) -> Result<Chain> {
     let mut reader = StateReader::new(bytes);
     let params = decode_chain_params(&mut reader)?;
     let state = decode_chain_state(&mut reader)?;
@@ -511,7 +511,7 @@ fn decode_chain_state_payload(bytes: &[u8]) -> Result<LocalChain> {
         blocks.push(decode_block_payload(reader.read_exact(BLOCK_PAYLOAD_LEN)?)?);
     }
     reader.finish()?;
-    Ok(LocalChain {
+    Ok(Chain {
         params,
         state,
         blocks,
@@ -1377,7 +1377,7 @@ mod tests {
     use crate::types::{address, hash_bytes};
     use crate::verify::AttestationStatement;
 
-    fn durable_chain_fixture(label: &[u8]) -> LocalChain {
+    fn durable_chain_fixture(label: &[u8]) -> Chain {
         let beacon = hash_bytes(b"test", &[label]);
         let params = ChainParams {
             replication_factor: 2,
@@ -1392,7 +1392,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"durable-miner");
         let validator = address(b"durable-validator");
         chain
@@ -1489,7 +1489,7 @@ mod tests {
 
     #[test]
     fn snapshot_roundtrips_through_bytes_and_detects_tampering() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"snapshot-genesis"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-genesis"]));
         let miner = address(b"snapshot-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -1546,7 +1546,7 @@ mod tests {
 
     #[test]
     fn snapshot_store_writes_and_reads_file() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"snapshot-store-genesis"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-store-genesis"]));
         let miner = address(b"snapshot-store-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -1573,7 +1573,7 @@ mod tests {
 
     #[test]
     fn block_log_store_appends_loads_and_detects_tampering() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"block-log-genesis"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-genesis"]));
         let miner = address(b"block-log-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -1610,7 +1610,7 @@ mod tests {
 
     #[test]
     fn block_log_sync_appends_only_missing_blocks_and_rejects_mismatches() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"block-log-sync"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-sync"]));
         let miner = address(b"block-log-sync-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -1633,7 +1633,7 @@ mod tests {
             hash_bytes(b"tensor-vm-block-log-file-root-v1", &[&[]])
         );
 
-        let first = LocalChain {
+        let first = Chain {
             blocks: vec![chain.blocks[0].clone()],
             ..chain.clone()
         };
@@ -1648,7 +1648,7 @@ mod tests {
             Err(TvmError::Storage("block log ahead of chain"))
         );
 
-        let mut different = LocalChain::new(hash_bytes(b"test", &[b"block-log-sync-other"]));
+        let mut different = Chain::new(hash_bytes(b"test", &[b"block-log-sync-other"]));
         different
             .register_miner(miner, different.params.miner_min_stake)
             .unwrap();
@@ -1667,7 +1667,7 @@ mod tests {
 
     #[test]
     fn block_log_replace_chain_overwrites_ahead_log() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"block-log-replace"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-replace"]));
         let miner = address(b"block-log-replace-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -1697,7 +1697,7 @@ mod tests {
         assert_eq!(replaced, shorter.blocks);
         assert_eq!(store.load_blocks().unwrap(), shorter.blocks);
 
-        let empty = LocalChain::new(hash_bytes(b"test", &[b"block-log-replace-empty"]));
+        let empty = Chain::new(hash_bytes(b"test", &[b"block-log-replace-empty"]));
         assert!(store.replace_chain(&empty).unwrap().is_empty());
         assert!(store.load_blocks().unwrap().is_empty());
 
@@ -1706,7 +1706,7 @@ mod tests {
 
     #[test]
     fn node_store_persists_snapshot_block_log_and_peer_book_paths() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"node-store"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store"]));
         let miner = address(b"node-store-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -2051,7 +2051,7 @@ mod tests {
 
     #[test]
     fn node_store_detects_snapshot_and_block_log_disagreement() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"node-store-mismatch"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store-mismatch"]));
         let miner = address(b"node-store-mismatch-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -2103,7 +2103,7 @@ mod tests {
             Err(TvmError::Storage("invalid block log length"))
         );
 
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"block-log-parent"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-parent"]));
         let miner = address(b"block-log-parent-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)

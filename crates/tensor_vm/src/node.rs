@@ -1,6 +1,6 @@
 use crate::{
     api::P2pMessage,
-    chain::{BlockAdmission, ChainCommand, ChainEngine, LocalChain},
+    chain::{BlockAdmission, Chain, ChainCommand, ChainEngine},
     p2p::{
         decode_attestation_payload, decode_block_payload, decode_block_vote_payload,
         decode_job_payload, decode_receipt_payload,
@@ -335,7 +335,7 @@ pub trait NetworkPayloadProcessor {
 }
 
 pub trait NetworkEventContext {
-    fn chain(&mut self) -> &mut LocalChain;
+    fn chain(&mut self) -> &mut Chain;
 
     fn apply_block_payload(
         &mut self,
@@ -545,7 +545,7 @@ fn is_block_payload(message: &P2pMessage) -> bool {
 }
 
 pub fn apply_network_job_payload(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     job_id: Hash,
     payload: &[u8],
 ) -> std::result::Result<(), NetworkPayloadError> {
@@ -569,7 +569,7 @@ pub fn apply_network_job_payload(
 }
 
 pub fn apply_network_block_payload(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     height: u64,
     block_hash: Hash,
     payload: &[u8],
@@ -621,7 +621,7 @@ pub fn apply_network_block_payload(
 }
 
 pub fn apply_network_block_vote_payload(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     block_hash: Hash,
     validator: Hash,
     payload: &[u8],
@@ -660,7 +660,7 @@ pub fn apply_network_block_vote_payload(
 }
 
 pub fn apply_network_receipt_payload(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     receipt_id: Hash,
     payload: &[u8],
 ) -> NetworkPayloadApply {
@@ -691,7 +691,7 @@ pub fn apply_network_receipt_payload(
 }
 
 pub fn apply_network_attestation_payload(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     attestation_id: Hash,
     payload: &[u8],
 ) -> NetworkPayloadApply {
@@ -731,11 +731,11 @@ pub fn apply_network_attestation_payload(
 }
 
 pub struct ChainNetworkPayloadProcessor<'a> {
-    chain: &'a mut LocalChain,
+    chain: &'a mut Chain,
 }
 
 impl<'a> ChainNetworkPayloadProcessor<'a> {
-    pub fn new(chain: &'a mut LocalChain) -> Self {
+    pub fn new(chain: &'a mut Chain) -> Self {
         Self { chain }
     }
 }
@@ -1012,7 +1012,7 @@ impl PendingNetworkPayloads {
 mod tests {
     use super::*;
     use crate::{
-        chain::{BlockVote, JobState, LocalChain, ReceiptState},
+        chain::{BlockVote, Chain, JobState, ReceiptState},
         p2p::encode_block_payload,
         p2p::{
             encode_attestation_payload, encode_block_vote_payload, encode_job_payload,
@@ -1339,7 +1339,7 @@ mod tests {
     }
 
     struct TestNetworkEventContext {
-        chain: LocalChain,
+        chain: Chain,
         applied_payloads: Vec<(u64, Hash)>,
         applied_blocks: usize,
     }
@@ -1347,7 +1347,7 @@ mod tests {
     impl TestNetworkEventContext {
         fn new(seed_label: &[u8]) -> Self {
             Self {
-                chain: LocalChain::new(hash_bytes(
+                chain: Chain::new(hash_bytes(
                     b"tensor-vm-node-event-context-test",
                     &[seed_label],
                 )),
@@ -1358,7 +1358,7 @@ mod tests {
     }
 
     impl NetworkEventContext for TestNetworkEventContext {
-        fn chain(&mut self) -> &mut LocalChain {
+        fn chain(&mut self) -> &mut Chain {
             &mut self.chain
         }
 
@@ -1562,7 +1562,7 @@ mod tests {
     fn block_payload_application_admits_next_head_and_rejects_bad_edges() {
         let seed = hash_bytes(b"test", &[b"network-block-payload"]);
         let validator = hash_bytes(b"test", &[b"network-block-validator"]);
-        let mut producer = LocalChain::new(seed);
+        let mut producer = Chain::new(seed);
         producer.register_validator(validator, 10_000).unwrap();
         producer.produce_block(validator, 1_000).unwrap();
         let mut consumer = producer.clone();
@@ -1663,7 +1663,7 @@ mod tests {
         let future_hash = future.hash();
         assert_eq!(
             apply_network_block_payload(
-                &mut LocalChain::new(seed),
+                &mut Chain::new(seed),
                 future.height,
                 future_hash,
                 &encode_block_payload(&future),

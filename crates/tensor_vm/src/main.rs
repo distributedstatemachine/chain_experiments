@@ -6,8 +6,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tensor_vm::{
-    BlockVote, ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
-    Libp2pControlPlaneConfig, LocalChain, NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole,
+    BlockVote, Chain, ChainCommand, ChainEngine, ChainProfile, CliCommand, Faucet, JobScheduler,
+    Libp2pControlPlaneConfig, NetworkConfig, NetworkEventIngest, NodeConfig, NodeRole,
     NodeRuntimeState, NodeStore, PeerRecord, PendingNetworkPayloads, PrimitiveType, ReceiptState,
     RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, SyntheticLocalJobSource, Tensor,
     TensorVmLibp2pService,
@@ -226,7 +226,7 @@ fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
         }
     }
 
-    let chain = LocalChain::new(hash_bytes(
+    let chain = Chain::new(hash_bytes(
         b"tensor-vm-service-genesis",
         &[data_dir.as_bytes()],
     ));
@@ -644,7 +644,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     ))
 }
 
-fn finality_threshold_stake(chain: &LocalChain, total_validator_stake: u64) -> u64 {
+fn finality_threshold_stake(chain: &Chain, total_validator_stake: u64) -> u64 {
     let numerator = chain.params.finality_stake_numerator;
     let denominator = chain.params.finality_stake_denominator.max(1);
     total_validator_stake
@@ -883,7 +883,7 @@ fn runtime_role_wallet_address_text(address: Option<Address>) -> String {
 fn runtime_role_wallet_registration(
     role: RuntimeRole,
     address: Option<Address>,
-    chain: &LocalChain,
+    chain: &Chain,
 ) -> &'static str {
     let Some(address) = address else {
         return "none";
@@ -912,7 +912,7 @@ fn runtime_role_wallet_registration(
 fn runtime_role_wallet_registered(
     role: RuntimeRole,
     address: Option<Address>,
-    chain: &LocalChain,
+    chain: &Chain,
 ) -> bool {
     !matches!(
         runtime_role_wallet_registration(role, address, chain),
@@ -926,7 +926,7 @@ struct MinerRoleWorkObservation {
     unreceipted_jobs: BTreeSet<Hash>,
 }
 
-fn miner_role_work_observation(chain: &LocalChain, miner: Address) -> MinerRoleWorkObservation {
+fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     let assignment_seed = chain.state.finalized_randomness;
     let mut observation = MinerRoleWorkObservation::default();
@@ -943,7 +943,7 @@ fn miner_role_work_observation(chain: &LocalChain, miner: Address) -> MinerRoleW
     observation
 }
 
-fn miner_has_receipt_for_job(chain: &LocalChain, miner: Address, job_id: Hash) -> bool {
+fn miner_has_receipt_for_job(chain: &Chain, miner: Address, job_id: Hash) -> bool {
     chain
         .state
         .receipts
@@ -1037,11 +1037,7 @@ fn validator_role_work_observation(
     observation
 }
 
-fn validator_has_attested_for_receipt(
-    chain: &LocalChain,
-    validator: Address,
-    receipt_id: Hash,
-) -> bool {
+fn validator_has_attested_for_receipt(chain: &Chain, validator: Address, receipt_id: Hash) -> bool {
     chain
         .state
         .attestations
@@ -1294,7 +1290,7 @@ fn submit_validator_role_block_vote(
     }))
 }
 
-fn validator_has_block_vote(chain: &LocalChain, validator: Address, block_hash: Hash) -> bool {
+fn validator_has_block_vote(chain: &Chain, validator: Address, block_hash: Hash) -> bool {
     chain
         .state
         .block_votes
@@ -2040,7 +2036,7 @@ struct RuntimeNetworkEventContext<'a> {
 }
 
 impl NetworkEventContext for RuntimeNetworkEventContext<'_> {
-    fn chain(&mut self) -> &mut LocalChain {
+    fn chain(&mut self) -> &mut Chain {
         &mut self.server.gateway_mut().node.chain
     }
 
@@ -2118,7 +2114,7 @@ struct ChainAnnouncementCheckpoint {
     block_votes: BTreeSet<(Hash, Address)>,
 }
 
-fn chain_announcement_checkpoint(chain: &LocalChain) -> ChainAnnouncementCheckpoint {
+fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementCheckpoint {
     ChainAnnouncementCheckpoint {
         jobs: chain.state.jobs.keys().copied().collect(),
         receipts: chain.state.receipts.keys().copied().collect(),
@@ -2130,7 +2126,7 @@ fn chain_announcement_checkpoint(chain: &LocalChain) -> ChainAnnouncementCheckpo
 fn publish_new_chain_announcements(
     p2p_service: &TensorVmLibp2pService,
     before: &ChainAnnouncementCheckpoint,
-    chain: &LocalChain,
+    chain: &Chain,
 ) -> std::result::Result<(), String> {
     for (job_id, job) in &chain.state.jobs {
         if !before.jobs.contains(job_id) {
@@ -2198,7 +2194,7 @@ fn publish_new_chain_announcements(
     Ok(())
 }
 
-fn attestation_announcement_hashes(chain: &LocalChain) -> impl Iterator<Item = Hash> + '_ {
+fn attestation_announcement_hashes(chain: &Chain) -> impl Iterator<Item = Hash> + '_ {
     chain
         .state
         .attestations
@@ -2206,7 +2202,7 @@ fn attestation_announcement_hashes(chain: &LocalChain) -> impl Iterator<Item = H
         .flat_map(|attestations| attestations.iter().map(attestation_announcement_hash))
 }
 
-fn block_vote_announcement_keys(chain: &LocalChain) -> impl Iterator<Item = (Hash, Address)> + '_ {
+fn block_vote_announcement_keys(chain: &Chain) -> impl Iterator<Item = (Hash, Address)> + '_ {
     chain
         .state
         .block_votes
@@ -2336,7 +2332,7 @@ mod tests {
         ));
         let data_dir_text = data_dir.to_string_lossy().into_owned();
         let store = NodeStore::open(data_dir.clone());
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"service-init-recovery"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"service-init-recovery"]));
         let miner = address(b"service-init-recovery-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -2573,7 +2569,7 @@ mod tests {
 
     #[test]
     fn role_wallet_registration_matches_loaded_chain_role() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"role-wallet-registration"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"role-wallet-registration"]));
         let miner = address(b"runtime-wallet-miner");
         let validator = address(b"runtime-wallet-validator");
         let unknown = address(b"runtime-wallet-unknown");
@@ -2659,7 +2655,7 @@ mod tests {
 
     #[test]
     fn miner_role_work_observation_tracks_assigned_unreceipted_jobs() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-work-observation"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-work-observation"]));
         let miner = address(b"miner-work-observation-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -2698,7 +2694,7 @@ mod tests {
 
     #[test]
     fn miner_role_work_observation_ignores_unassigned_miners() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-work-unassigned"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-work-unassigned"]));
         let miner = address(b"miner-work-assigned");
         let unassigned = address(b"miner-work-unassigned");
         chain
@@ -2726,7 +2722,7 @@ mod tests {
 
     #[test]
     fn miner_role_submits_assigned_unreceipted_tensor_op_once() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-receipt-submit"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-receipt-submit"]));
         let miner = address(b"miner-receipt-submit-miner");
         chain
             .register_miner(miner, chain.params.miner_min_stake)
@@ -2771,7 +2767,7 @@ mod tests {
 
     #[test]
     fn miner_role_receipt_submission_skips_duplicate_unregistered_and_unassigned_work() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"miner-receipt-skip"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-receipt-skip"]));
         chain.params.replication_factor = 1;
         let miner_a = address(b"miner-receipt-skip-a");
         let miner_b = address(b"miner-receipt-skip-b");
@@ -2838,7 +2834,7 @@ mod tests {
 
     #[test]
     fn validator_role_work_observation_tracks_assigned_unattested_receipts() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-work-observation"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-work-observation"]));
         let miner = address(b"validator-work-miner");
         let validator = address(b"validator-work-validator");
         chain
@@ -2899,7 +2895,7 @@ mod tests {
     #[test]
     fn validator_role_attestation_submission_skips_missing_unregistered_unassigned_and_duplicates()
     {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-attestation-skip"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-attestation-skip"]));
         chain.params.freivalds.validators_per_job = 1;
         let miner = address(b"validator-attestation-miner");
         let validator_a = address(b"validator-attestation-a");
@@ -2993,7 +2989,7 @@ mod tests {
 
     #[test]
     fn validator_role_block_vote_submission_finalizes_only_through_votes() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-block-vote"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-block-vote"]));
         let validators = [
             address(b"validator-block-vote-a"),
             address(b"validator-block-vote-b"),
@@ -3105,7 +3101,7 @@ mod tests {
 
     #[test]
     fn validator_role_fetches_remote_tensors_before_attesting() {
-        let mut chain = LocalChain::new(hash_bytes(b"test", &[b"validator-remote-fetch"]));
+        let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-remote-fetch"]));
         chain.params.freivalds.validators_per_job = 1;
         let miner = address(b"validator-remote-fetch-miner");
         let validator = address(b"validator-remote-fetch-validator");
@@ -3205,7 +3201,7 @@ mod tests {
         assert!(chain_profile_from_label("staging").is_err());
     }
 
-    fn test_rpc_server(chain: LocalChain) -> RpcHttpServer {
+    fn test_rpc_server(chain: Chain) -> RpcHttpServer {
         let node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
         let gateway = RpcGateway::new(node, RpcPolicy::default());
         RpcHttpServer::bind("127.0.0.1:0", gateway).unwrap()

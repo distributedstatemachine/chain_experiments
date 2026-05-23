@@ -1,8 +1,8 @@
-use super::LocalChain;
+use super::Chain;
 use crate::challenge::ChallengeOutcome;
 use crate::error::{Result, TvmError};
 
-pub fn apply_outcome(chain: &mut LocalChain, outcome: ChallengeOutcome) -> Result<()> {
+pub fn apply_outcome(chain: &mut Chain, outcome: ChallengeOutcome) -> Result<()> {
     match outcome {
         ChallengeOutcome::Rejected { .. } => Ok(()),
         ChallengeOutcome::ProvenInvalid {

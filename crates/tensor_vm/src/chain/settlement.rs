@@ -1,10 +1,10 @@
-use super::{ChainEvent, LocalChain, ReceiptState};
+use super::{Chain, ChainEvent, ReceiptState};
 use crate::jobs::LinearTrainingStepReceipt;
 use crate::types::{Address, Hash};
 use crate::verify::VerificationResult;
 use std::collections::{BTreeMap, BTreeSet};
 
-pub(super) fn redundant_agreement_count(chain: &LocalChain, receipt_id: &Hash) -> usize {
+pub(super) fn redundant_agreement_count(chain: &Chain, receipt_id: &Hash) -> usize {
     let Some(receipt) = chain.state.receipts.get(receipt_id) else {
         return 0;
     };
@@ -17,7 +17,7 @@ pub(super) fn redundant_agreement_count(chain: &LocalChain, receipt_id: &Hash) -
     agreeing_miners.len()
 }
 
-pub(super) fn has_redundant_agreement(chain: &LocalChain, receipt_id: &Hash) -> bool {
+pub(super) fn has_redundant_agreement(chain: &Chain, receipt_id: &Hash) -> bool {
     if !chain.state.receipts.contains_key(receipt_id) {
         return false;
     }
@@ -27,11 +27,7 @@ pub(super) fn has_redundant_agreement(chain: &LocalChain, receipt_id: &Hash) -> 
     redundant_agreement_count(chain, receipt_id) >= chain.params.agreement_quorum
 }
 
-pub(super) fn settle_epoch(
-    chain: &mut LocalChain,
-    miner_reward_pool: u64,
-    validator_reward_pool: u64,
-) {
+pub(super) fn settle_epoch(chain: &mut Chain, miner_reward_pool: u64, validator_reward_pool: u64) {
     let mut newly_settled = Vec::new();
     for (receipt_id, receipt) in &chain.state.receipts {
         if chain.state.settled_receipts.contains(receipt_id) {
@@ -96,7 +92,7 @@ pub(super) fn settle_epoch(
 }
 
 pub(super) fn events(
-    chain: &LocalChain,
+    chain: &Chain,
     settled_before: &BTreeSet<Hash>,
     rewards_before: &BTreeMap<Address, u64>,
 ) -> Vec<ChainEvent> {
@@ -142,7 +138,7 @@ pub(super) fn receipts_agree(left: &ReceiptState, right: &ReceiptState) -> bool 
 }
 
 pub(super) fn has_conflicting_linear_receipt(
-    chain: &LocalChain,
+    chain: &Chain,
     receipt_id: Hash,
     receipt: &LinearTrainingStepReceipt,
 ) -> bool {

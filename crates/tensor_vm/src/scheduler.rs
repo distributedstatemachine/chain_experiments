@@ -1,4 +1,4 @@
-use crate::chain::{JobState, LocalChain};
+use crate::chain::{Chain, JobState};
 use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob};
 use crate::tensor::{DType, Tensor};
 use crate::types::{Address, Hash, hash_bytes, hash_to_u128};
@@ -23,7 +23,7 @@ pub struct JobScheduler {
 }
 
 pub trait JobSource {
-    fn next_job(&mut self, chain: &LocalChain) -> Option<JobState>;
+    fn next_job(&mut self, chain: &Chain) -> Option<JobState>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,7 +36,7 @@ impl SyntheticLocalJobSource {
         Self { scheduler }
     }
 
-    pub fn next_matmul_job(&mut self, chain: &LocalChain) -> MatmulJob {
+    pub fn next_matmul_job(&mut self, chain: &Chain) -> MatmulJob {
         self.scheduler.generate_small_matmul(
             chain.state.epoch,
             chain.state.height,
@@ -48,7 +48,7 @@ impl SyntheticLocalJobSource {
         )
     }
 
-    pub fn next_linear_training_job(&mut self, chain: &LocalChain) -> LinearTrainingStepJob {
+    pub fn next_linear_training_job(&mut self, chain: &Chain) -> LinearTrainingStepJob {
         let weights = Self::linear_training_weights();
         let height = chain.state.height.to_le_bytes();
         LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
@@ -94,7 +94,7 @@ impl Default for SyntheticLocalJobSource {
 }
 
 impl JobSource for SyntheticLocalJobSource {
-    fn next_job(&mut self, chain: &LocalChain) -> Option<JobState> {
+    fn next_job(&mut self, chain: &Chain) -> Option<JobState> {
         if chain.state.height.is_multiple_of(2) {
             Some(JobState::TensorOp(self.next_matmul_job(chain)))
         } else {
@@ -135,7 +135,7 @@ impl JobScheduler {
 
     pub fn assign_validators(
         &self,
-        chain: &LocalChain,
+        chain: &Chain,
         receipt_id: Hash,
         seed: &Hash,
     ) -> ValidatorAssignment {
@@ -160,7 +160,7 @@ impl JobScheduler {
         }
     }
 
-    pub fn assign_miners(&self, chain: &LocalChain, job_id: Hash, seed: &Hash) -> MinerAssignment {
+    pub fn assign_miners(&self, chain: &Chain, job_id: Hash, seed: &Hash) -> MinerAssignment {
         let mut candidates: Vec<_> = chain.state.miners.values().collect();
         candidates.sort_by_key(|miner| {
             let draw = hash_bytes(
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn synthetic_job_source_uses_chain_epoch_height_and_deadline() {
         let beacon = hash_bytes(b"test", &[b"synthetic-source"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         chain.state.epoch = 7;
         chain.state.height = 10;
         chain.params.receipt_submission_window = 13;
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn synthetic_job_source_default_matches_local_cpu_profile_shape() {
         let beacon = hash_bytes(b"test", &[b"synthetic-default-source"]);
-        let chain = LocalChain::new(beacon);
+        let chain = Chain::new(beacon);
         let mut source = SyntheticLocalJobSource::default();
 
         let Some(JobState::TensorOp(job)) = source.next_job(&chain) else {
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn synthetic_job_source_emits_linear_training_steps_on_odd_heights() {
         let beacon = hash_bytes(b"test", &[b"synthetic-linear-source"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         chain.state.epoch = 3;
         chain.state.height = 11;
         chain.params.receipt_submission_window = 13;
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn validator_assignment_is_deterministic_and_bounded() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         for i in 0..12 {
             chain
                 .register_validator(address(format!("validator-{i}").as_bytes()), 10_000)
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn validator_assignment_is_bound_to_receipt_id() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         chain.params.freivalds.validators_per_job = 4;
         for i in 0..32 {
             chain
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn miner_assignment_uses_replication_factor() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         for i in 0..10 {
             chain
                 .register_miner(address(format!("miner-{i}").as_bytes()), 100)
@@ -350,7 +350,7 @@ mod tests {
     #[test]
     fn miner_assignment_prefers_operator_separation() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let shared_operator = address(b"shared-operator");
         for i in 0..4 {
             chain
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     fn miner_assignment_falls_back_when_operator_diversity_is_insufficient() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let shared_operator = address(b"only-operator");
         for i in 0..5 {
             chain

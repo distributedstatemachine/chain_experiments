@@ -46,7 +46,7 @@ The current local finality theorem is narrower:
 
 ```text
 If submit_block_vote finalizes block hash h through the local reference path, then enough unique registered
-validator stake signed h, h is the hash of a known LocalChain block, and the block passes the local
+validator stake signed h, h is the hash of a known `Chain` block, and the block passes the local
 useful-PoW validity predicate against a reconstructed parent-like state view.
 ```
 
@@ -246,7 +246,7 @@ Accepted by current core:
 
 - `assigned_validators` calls `JobScheduler::assign_validators` with
   `chain.state.finalized_randomness`.
-- `LocalChain::validation_seed(receipt_id)` also derives from the current `finalized_randomness`.
+- `Chain::validation_seed(receipt_id)` also derives from the current `finalized_randomness`.
 - Receipt state does not store the validation seed fixed at admission.
 
 Why this disproves the lifecycle theorem:

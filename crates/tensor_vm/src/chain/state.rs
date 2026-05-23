@@ -434,7 +434,7 @@ pub struct ChainState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LocalChain {
+pub struct Chain {
     pub params: ChainParams,
     pub state: ChainState,
     pub blocks: Vec<TensorBlock>,

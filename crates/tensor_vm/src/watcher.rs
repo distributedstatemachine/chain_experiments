@@ -1,4 +1,4 @@
-use crate::chain::{LocalChain, ReceiptState};
+use crate::chain::{Chain, ReceiptState};
 use crate::types::{Address, Hash};
 use crate::verify::VerificationResult;
 use std::collections::BTreeSet;
@@ -89,7 +89,7 @@ impl ChainWatcher {
         Self { config }
     }
 
-    pub fn scan(&self, chain: &LocalChain) -> WatchReport {
+    pub fn scan(&self, chain: &Chain) -> WatchReport {
         let mut report = WatchReport::default();
         self.scan_attestations(chain, &mut report);
         self.scan_receipt_settlement_blockers(chain, &mut report);
@@ -99,7 +99,7 @@ impl ChainWatcher {
         report
     }
 
-    fn scan_attestations(&self, chain: &LocalChain, report: &mut WatchReport) {
+    fn scan_attestations(&self, chain: &Chain, report: &mut WatchReport) {
         let mut invalid_receipts = BTreeSet::new();
         let mut unavailable_receipts = BTreeSet::new();
 
@@ -185,7 +185,7 @@ impl ChainWatcher {
         }
     }
 
-    fn scan_receipt_settlement_blockers(&self, chain: &LocalChain, report: &mut WatchReport) {
+    fn scan_receipt_settlement_blockers(&self, chain: &Chain, report: &mut WatchReport) {
         for (receipt_id, receipt) in &chain.state.receipts {
             if chain.state.settled_receipts.contains(receipt_id) {
                 continue;
@@ -215,7 +215,7 @@ impl ChainWatcher {
         }
     }
 
-    fn scan_linear_transition_conflicts(&self, chain: &LocalChain, report: &mut WatchReport) {
+    fn scan_linear_transition_conflicts(&self, chain: &Chain, report: &mut WatchReport) {
         let mut reported = BTreeSet::new();
         for (left_id, left) in &chain.state.receipts {
             let ReceiptState::LinearTrainingStep(left) = left else {
@@ -257,7 +257,7 @@ impl ChainWatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{ChainParams, JobState, LocalChain};
+    use crate::chain::{Chain, ChainParams, JobState};
     use crate::field;
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn watcher_reports_invalid_receipts_and_data_withholding() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator_a = address(b"validator-a");
         let validator_b = address(b"validator-b");
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn watcher_flags_validator_misconduct_in_audited_state() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -378,7 +378,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -415,7 +415,7 @@ mod tests {
     #[test]
     fn watcher_flags_malformed_attestation_evidence() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         let unknown_validator = address(b"unknown-validator");
@@ -496,7 +496,7 @@ mod tests {
     #[test]
     fn watcher_reports_missing_quorum_and_respects_config_flags() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         chain.register_miner(miner, 100).unwrap();
         let job = MatmulJob::synthetic(0, 0, 4, 4, 4, &beacon, 10);
@@ -534,7 +534,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"watcher-skip-miner");
         let validator = address(b"watcher-skip-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -637,7 +637,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();

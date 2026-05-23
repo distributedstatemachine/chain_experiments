@@ -41,8 +41,8 @@ pub mod watcher;
 
 pub use chain::{
     AccountState, BlockVote, BlockspaceCaps, BlockspaceSelection, Chain, ChainCommand, ChainEngine,
-    ChainEvent, ChainParams, ChainState, HardwareClass, JobState, LocalChain, MinerState,
-    ReceiptState, RewardAllocation, RewardState, ValidatorState,
+    ChainEvent, ChainParams, ChainState, HardwareClass, JobState, MinerState, ReceiptState,
+    RewardAllocation, RewardState, ValidatorState,
 };
 pub use challenge::{ChallengeOutcome, FraudChallenge, TensorOpChallengeInput, TraceStep};
 pub use cli::{

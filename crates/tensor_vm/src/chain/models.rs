@@ -1,9 +1,9 @@
-use super::{LocalChain, ModelState};
+use super::{Chain, ModelState};
 use crate::error::{Result, TvmError};
 use crate::types::Hash;
 
 pub fn register(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     model_id: Hash,
     architecture_hash: Hash,
     weight_root: Hash,
@@ -23,7 +23,7 @@ pub fn register(
 }
 
 pub fn apply_transition(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     model_id: &Hash,
     step: u64,
     weight_root_before: &Hash,

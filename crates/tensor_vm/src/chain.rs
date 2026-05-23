@@ -28,14 +28,12 @@ pub use engine::{BlockAdmission, BlockInvalidReason, ChainCommand, ChainEngine, 
 #[cfg(test)]
 use settlement::{has_conflicting_linear_receipt, receipts_agree};
 pub use state::{
-    AccountState, BlockVote, BlockspaceCaps, BlockspaceSelection, ChainParams, ChainState,
-    HardwareClass, JobState, LocalChain, MinerState, ModelState, ReceiptState, RewardAllocation,
-    RewardState, TensorBlock, Transaction, ValidatorState,
+    AccountState, BlockVote, BlockspaceCaps, BlockspaceSelection, Chain, ChainParams, ChainState,
+    HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardAllocation, RewardState,
+    TensorBlock, Transaction, ValidatorState,
 };
 
-pub type Chain = LocalChain;
-
-impl LocalChain {
+impl Chain {
     pub fn new(finalized_randomness: Hash) -> Self {
         Self::with_params(ChainParams::default(), finalized_randomness)
     }
@@ -442,7 +440,7 @@ mod tests {
             agreement_quorum: 1,
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"miner");
         chain.register_miner(miner, 100).unwrap();
         let validators: Vec<_> = (0..5)
@@ -503,7 +501,7 @@ mod tests {
     #[test]
     fn chain_tracks_accounts_jobs_and_transfers() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let alice = address(b"alice");
         let bob = address(b"bob");
         chain.credit_account(alice, 1_000);
@@ -532,7 +530,7 @@ mod tests {
     #[test]
     fn reward_allocation_matches_mvp_split_and_credits_proposer_and_treasury() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let proposer = address(b"reward-proposer");
         chain
             .register_validator(proposer, chain.params.validator_min_stake)
@@ -563,7 +561,7 @@ mod tests {
     #[test]
     fn reward_block_production_failure_does_not_credit_proposer() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let proposer = address(b"unknown-reward-proposer");
         let rewards_before = chain.state.rewards.clone();
 
@@ -578,7 +576,7 @@ mod tests {
     #[test]
     fn validation_seed_is_bound_to_finalized_randomness_and_receipt() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let chain = LocalChain::new(beacon);
+        let chain = Chain::new(beacon);
         let receipt_a = hash_bytes(b"test", &[b"receipt-a"]);
         let receipt_b = hash_bytes(b"test", &[b"receipt-b"]);
         assert_ne!(
@@ -586,7 +584,7 @@ mod tests {
             chain.validation_seed(&receipt_b)
         );
 
-        let other_chain = LocalChain::new(hash_bytes(b"test", &[b"other-beacon"]));
+        let other_chain = Chain::new(hash_bytes(b"test", &[b"other-beacon"]));
         assert_ne!(
             chain.validation_seed(&receipt_a),
             other_chain.validation_seed(&receipt_a)
@@ -596,7 +594,7 @@ mod tests {
     #[test]
     fn chain_applies_register_transfer_and_claim_reward_transactions() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner-tx");
         let validator = address(b"validator-tx");
         let receiver = address(b"receiver");
@@ -659,7 +657,7 @@ mod tests {
     #[test]
     fn miner_root_commits_to_operator_identity() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"operator-root-miner");
         chain
             .register_miner_with_operator(
@@ -679,7 +677,7 @@ mod tests {
     #[test]
     fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"boundary-miner");
         let validator = address(b"boundary-validator");
         let receiver = address(b"boundary-receiver");
@@ -932,7 +930,7 @@ mod tests {
     #[test]
     fn invalid_attestations_do_not_create_quorum() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         chain.register_miner(miner, 100).unwrap();
         let validator = address(b"validator");
@@ -964,7 +962,7 @@ mod tests {
     #[test]
     fn quorum_and_agreement_helpers_reject_unknown_receipts() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validator = address(b"orphan-validator");
         chain.register_validator(validator, 10_000).unwrap();
         let receipt_id = hash_bytes(b"test", &[b"orphan-receipt"]);
@@ -992,7 +990,7 @@ mod tests {
     #[test]
     fn unavailable_data_attestation_penalizes_receipt_miner_once() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"unavailable-miner");
         chain.register_miner(miner, 100).unwrap();
         let validators: Vec<_> = (0..2)
@@ -1043,7 +1041,7 @@ mod tests {
     #[test]
     fn mismatched_attestation_metadata_penalizes_validator_and_is_rejected() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"mismatch-miner");
         let validator = address(b"mismatch-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1091,7 +1089,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miners: Vec<_> = (0..3)
             .map(|i| address(format!("agreement-miner-{i}").as_bytes()))
             .collect();
@@ -1156,7 +1154,7 @@ mod tests {
     #[test]
     fn duplicate_receipts_and_validator_attestations_are_rejected() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1221,7 +1219,7 @@ mod tests {
     #[test]
     fn forged_attestation_stake_is_rejected() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1263,7 +1261,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"assignment-miner");
         chain.register_miner(miner, 100).unwrap();
         let validators: Vec<_> = (0..6)
@@ -1313,7 +1311,7 @@ mod tests {
     #[test]
     fn proposer_selection_uses_validator_stake() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validator = address(b"validator");
         chain.register_validator(validator, 10_000).unwrap();
         assert_eq!(chain.proposer_for_next_epoch(&beacon), Some(validator));
@@ -1322,7 +1320,7 @@ mod tests {
     #[test]
     fn fallback_proposer_handles_zero_stake_validator_records() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validator = address(b"zero-stake-validator");
         chain.register_validator(validator, 10_000).unwrap();
         chain.state.validators.get_mut(&validator).unwrap().stake = 0;
@@ -1333,7 +1331,7 @@ mod tests {
     #[test]
     fn proposer_selection_ignores_tensorwork() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"settled-miner");
         let validator = address(b"validator-proposer");
         chain.register_miner(miner, 100).unwrap();
@@ -1361,7 +1359,7 @@ mod tests {
     #[test]
     fn blocks_advance_height_and_commit_state() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let proposer = address(b"proposer");
         chain.register_validator(proposer, 10_000).unwrap();
         let block = chain.produce_block(proposer, 1_000).unwrap();
@@ -1373,7 +1371,7 @@ mod tests {
     #[test]
     fn block_finality_requires_two_thirds_validator_stake() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validators: Vec<_> = (0..3)
             .map(|i| address(format!("finality-validator-{i}").as_bytes()))
             .collect();
@@ -1407,9 +1405,9 @@ mod tests {
     #[test]
     fn block_finality_ignores_invalid_direct_vote_records() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        assert!(!LocalChain::new(beacon).has_block_finality(&hash_bytes(b"test", &[b"no-stake"])));
+        assert!(!Chain::new(beacon).has_block_finality(&hash_bytes(b"test", &[b"no-stake"])));
 
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validators: Vec<_> = (0..3)
             .map(|i| address(format!("invalid-finality-validator-{i}").as_bytes()))
             .collect();
@@ -1437,7 +1435,7 @@ mod tests {
     #[test]
     fn block_votes_reject_invalid_useful_pow_and_checks_root() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let validator = address(b"block-validity-validator");
         chain.register_validator(validator, 10_000).unwrap();
         let block = chain.produce_block(validator, 1_000).unwrap();
@@ -1485,7 +1483,7 @@ mod tests {
     #[test]
     fn produced_blocks_mark_selected_settled_receipts_included_once() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"included-receipt-miner");
         let validator = address(b"included-receipt-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1517,7 +1515,7 @@ mod tests {
     #[test]
     fn block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"root-miner");
         let validator = address(b"root-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1594,7 +1592,7 @@ mod tests {
     #[test]
     fn model_transition_enforces_single_sequential_weight_root() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let model_id = hash_bytes(b"test", &[b"model"]);
         let architecture = hash_bytes(b"test", &[b"architecture"]);
         let config = hash_bytes(b"test", &[b"config"]);
@@ -1628,7 +1626,7 @@ mod tests {
     #[test]
     fn challenge_outcome_slashes_miner_and_credits_treasury() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         chain.register_miner(miner, 100).unwrap();
         chain
@@ -1651,7 +1649,7 @@ mod tests {
         params.freivalds.minimum_stake_numerator = 1;
         params.freivalds.minimum_stake_denominator = 1;
         params.agreement_quorum = 1;
-        let mut chain = LocalChain::with_params(params, beacon);
+        let mut chain = Chain::with_params(params, beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();

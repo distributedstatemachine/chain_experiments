@@ -1,4 +1,4 @@
-use crate::chain::LocalChain;
+use crate::chain::Chain;
 use crate::types::{Address, address, hash_bytes};
 use crate::verify::row_sample_detection_probability;
 
@@ -356,7 +356,7 @@ pub fn zero_work_liveness_study(
     blocks: u64,
 ) -> ZeroWorkLivenessStudy {
     let beacon = hash_bytes(b"tensor-vm-zero-work-study-v1", &[]);
-    let mut chain = LocalChain::new(beacon);
+    let mut chain = Chain::new(beacon);
     for i in 0..miner_count {
         chain
             .register_miner(address(format!("study-miner-{i}").as_bytes()), 100)

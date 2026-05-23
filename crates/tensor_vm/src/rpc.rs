@@ -1,4 +1,4 @@
-use crate::chain::{HardwareClass, JobState, LocalChain, Transaction};
+use crate::chain::{Chain, HardwareClass, JobState, Transaction};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -36,7 +36,7 @@ pub struct RpcResponse {
 
 #[derive(Clone, Debug)]
 pub struct RpcNode {
-    pub chain: LocalChain,
+    pub chain: Chain,
     pub txpool: TxPool,
     pub faucet: Option<Faucet>,
     tensors: BTreeMap<Hash, Tensor>,
@@ -203,7 +203,7 @@ impl RpcHttpServer {
 }
 
 impl RpcNode {
-    pub fn new(chain: LocalChain) -> Self {
+    pub fn new(chain: Chain) -> Self {
         Self {
             chain,
             txpool: TxPool::default(),
@@ -212,7 +212,7 @@ impl RpcNode {
         }
     }
 
-    pub fn with_faucet(chain: LocalChain, faucet: Faucet) -> Self {
+    pub fn with_faucet(chain: Chain, faucet: Faucet) -> Self {
         Self {
             chain,
             txpool: TxPool::default(),
@@ -924,7 +924,7 @@ fn json_u64_array(values: &[u64]) -> String {
     format!("[{}]", parts.join(","))
 }
 
-fn explorer_summary(chain: &LocalChain) -> ExplorerSummary {
+fn explorer_summary(chain: &Chain) -> ExplorerSummary {
     ExplorerSummary {
         height: chain.state.height,
         epoch: chain.state.epoch,
@@ -942,7 +942,7 @@ fn explorer_summary(chain: &LocalChain) -> ExplorerSummary {
     }
 }
 
-fn explorer_account(chain: &LocalChain, address: &Address) -> ExplorerAccount {
+fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAccount {
     let miner = chain.state.miners.get(address);
     let validator = chain.state.validators.get(address);
     let balance = chain
@@ -974,7 +974,7 @@ fn explorer_account(chain: &LocalChain, address: &Address) -> ExplorerAccount {
     }
 }
 
-fn explorer_blocks(chain: &LocalChain, limit: usize) -> Vec<ExplorerBlock> {
+fn explorer_blocks(chain: &Chain, limit: usize) -> Vec<ExplorerBlock> {
     chain
         .blocks
         .iter()
@@ -991,7 +991,7 @@ fn explorer_blocks(chain: &LocalChain, limit: usize) -> Vec<ExplorerBlock> {
         .collect()
 }
 
-fn explorer_miners(chain: &LocalChain) -> Vec<ExplorerMiner> {
+fn explorer_miners(chain: &Chain) -> Vec<ExplorerMiner> {
     chain
         .state
         .miners
@@ -1010,7 +1010,7 @@ fn explorer_miners(chain: &LocalChain) -> Vec<ExplorerMiner> {
         .collect()
 }
 
-fn explorer_validators(chain: &LocalChain) -> Vec<ExplorerValidator> {
+fn explorer_validators(chain: &Chain) -> Vec<ExplorerValidator> {
     chain
         .state
         .validators
@@ -1026,7 +1026,7 @@ fn explorer_validators(chain: &LocalChain) -> Vec<ExplorerValidator> {
         .collect()
 }
 
-fn explorer_receipts(chain: &LocalChain, limit: usize) -> Vec<ExplorerReceipt> {
+fn explorer_receipts(chain: &Chain, limit: usize) -> Vec<ExplorerReceipt> {
     chain
         .state
         .receipts
@@ -1056,7 +1056,7 @@ fn explorer_receipts(chain: &LocalChain, limit: usize) -> Vec<ExplorerReceipt> {
         .collect()
 }
 
-fn explorer_jobs(chain: &LocalChain, limit: usize) -> Vec<ExplorerJob> {
+fn explorer_jobs(chain: &Chain, limit: usize) -> Vec<ExplorerJob> {
     chain
         .state
         .jobs
@@ -1081,7 +1081,7 @@ fn explorer_jobs(chain: &LocalChain, limit: usize) -> Vec<ExplorerJob> {
 }
 
 fn explorer_overview(
-    chain: &LocalChain,
+    chain: &Chain,
     block_limit: usize,
     receipt_limit: usize,
     job_limit: usize,
@@ -1464,7 +1464,7 @@ fn job_json(job: &JobState) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{ChainParams, HardwareClass, JobState, LocalChain};
+    use crate::chain::{Chain, ChainParams, HardwareClass, JobState};
     use crate::jobs::{LinearTrainingStepJob, LinearTrainingStepSpec, MatmulJob, TensorOpReceipt};
     use crate::tensor::{DType, Tensor};
     use crate::types::{address, hash_bytes};
@@ -1473,7 +1473,7 @@ mod tests {
     #[test]
     fn node_rpc_serves_head_and_blocks() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let proposer = address(b"proposer");
         chain.register_validator(proposer, 10_000).unwrap();
         chain.produce_block(proposer, 1000).unwrap();
@@ -1515,7 +1515,7 @@ mod tests {
     #[test]
     fn node_rpc_serves_miner_and_validator_state() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -1545,7 +1545,7 @@ mod tests {
     #[test]
     fn node_rpc_serves_current_jobs_and_job_lookup() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let job = MatmulJob::synthetic(0, 9, 4, 5, 6, &beacon, 20);
         let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
         let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
@@ -1598,7 +1598,7 @@ mod tests {
     #[test]
     fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"rpc-service-miner");
         let user = address(b"rpc-faucet-user");
         chain.register_miner(miner, 100).unwrap();
@@ -1762,7 +1762,7 @@ mod tests {
         });
         assert_eq!(duplicate.status, 400);
 
-        let missing_faucet = RpcNode::new(LocalChain::new(beacon)).handle(&RpcRequest {
+        let missing_faucet = RpcNode::new(Chain::new(beacon)).handle(&RpcRequest {
             method: "GET".to_owned(),
             path: "/faucet".to_owned(),
             body: Vec::new(),
@@ -1773,7 +1773,7 @@ mod tests {
     #[test]
     fn mutable_rpc_applies_transactions_and_queues_submissions() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut rpc = RpcNode::new(LocalChain::new(beacon));
+        let mut rpc = RpcNode::new(Chain::new(beacon));
         let miner = address(b"rpc-miner");
         let receiver = address(b"rpc-receiver");
 
@@ -1833,7 +1833,7 @@ mod tests {
     #[test]
     fn mutable_rpc_rejects_bad_transaction_payloads_without_mutating_state() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut rpc = RpcNode::new(LocalChain::new(beacon));
+        let mut rpc = RpcNode::new(Chain::new(beacon));
         let sender = address(b"rpc-sender");
         let receiver = address(b"rpc-receiver");
         let response = rpc.handle_mut(&RpcRequest {
@@ -1875,7 +1875,7 @@ mod tests {
     fn rpc_rejects_malformed_requests_and_missing_resources() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let missing = hash_bytes(b"test", &[b"missing"]);
-        let mut rpc = RpcNode::new(LocalChain::new(beacon));
+        let mut rpc = RpcNode::new(Chain::new(beacon));
 
         assert_eq!(rpc.handle_http_text("").status, 400);
         assert_eq!(rpc.handle_http_text("\r\n").status, 400);
@@ -1962,7 +1962,7 @@ mod tests {
         );
 
         let user = address(b"exhausted-faucet-user");
-        let mut exhausted = RpcNode::with_faucet(LocalChain::new(beacon), Faucet::new(50, 100));
+        let mut exhausted = RpcNode::with_faucet(Chain::new(beacon), Faucet::new(50, 100));
         assert_eq!(
             exhausted
                 .handle_mut(&RpcRequest {
@@ -2027,7 +2027,7 @@ mod tests {
     #[test]
     fn rpc_serves_receipts_and_status_text_edges() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"rpc-receipt-miner");
         chain.register_miner(miner, 100).unwrap();
         let job = MatmulJob::synthetic(0, 42, 2, 2, 2, &beacon, 10);
@@ -2077,7 +2077,7 @@ mod tests {
 
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let gateway = RpcGateway::new(
-            RpcNode::new(LocalChain::new(beacon)),
+            RpcNode::new(Chain::new(beacon)),
             RpcPolicy {
                 max_body_bytes: 2,
                 ..RpcPolicy::default()
@@ -2149,7 +2149,7 @@ mod tests {
             "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
         );
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"ws-miner");
         chain.register_miner(miner, 100).unwrap();
         chain.register_validator(miner, 10_000).unwrap();
@@ -2207,7 +2207,7 @@ mod tests {
     #[test]
     fn explorer_websocket_views_cover_chain_collections_and_bad_commands() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let cpu_miner = address(b"ws-cpu-miner");
         let consumer_gpu_miner = address(b"ws-consumer-gpu-miner");
         let datacenter_gpu_miner = address(b"ws-datacenter-gpu-miner");
@@ -2330,7 +2330,7 @@ mod tests {
     fn rpc_gateway_enforces_auth_body_limits_and_rate_limits() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let mut gateway = RpcGateway::new(
-            RpcNode::new(LocalChain::new(beacon)),
+            RpcNode::new(Chain::new(beacon)),
             RpcPolicy {
                 auth_token: Some("secret".to_owned()),
                 max_body_bytes: 8,
@@ -2369,7 +2369,7 @@ mod tests {
 
     #[test]
     fn tensor_rpc_serves_descriptor_rows_chunks_and_openings() {
-        let chain = LocalChain::new(hash_bytes(b"test", &[b"beacon"]));
+        let chain = Chain::new(hash_bytes(b"test", &[b"beacon"]));
         let mut rpc = RpcNode::new(chain);
         let empty_latest = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
@@ -2407,10 +2407,8 @@ mod tests {
 
     #[test]
     fn rpc_node_synthetic_round_retains_live_tensors_for_rpc_fetch() {
-        let mut empty_rpc = RpcNode::new(LocalChain::new(hash_bytes(
-            b"test",
-            &[b"rpc-empty-synthetic"],
-        )));
+        let mut empty_rpc =
+            RpcNode::new(Chain::new(hash_bytes(b"test", &[b"rpc-empty-synthetic"])));
         assert_eq!(empty_rpc.produce_synthetic_cpu_round().unwrap(), None);
 
         let params = ChainParams {
@@ -2423,8 +2421,7 @@ mod tests {
             },
             ..ChainParams::default()
         };
-        let mut chain =
-            LocalChain::with_params(params, hash_bytes(b"test", &[b"rpc-live-tensors"]));
+        let mut chain = Chain::with_params(params, hash_bytes(b"test", &[b"rpc-live-tensors"]));
         for index in 0..2 {
             chain
                 .register_miner(
@@ -2494,7 +2491,7 @@ mod tests {
         use std::net::{Shutdown, TcpStream};
 
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let gateway = RpcGateway::new(RpcNode::new(LocalChain::new(beacon)), RpcPolicy::default());
+        let gateway = RpcGateway::new(RpcNode::new(Chain::new(beacon)), RpcPolicy::default());
         let mut server = match RpcHttpServer::bind("127.0.0.1:0", gateway) {
             Ok(server) => server,
             Err(error) if error.kind() == ErrorKind::PermissionDenied => return,
@@ -2528,7 +2525,7 @@ mod tests {
         use std::net::{Shutdown, TcpStream};
 
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"ws-http-miner");
         chain.register_miner(miner, 100).unwrap();
         chain.register_validator(miner, 10_000).unwrap();
@@ -2573,14 +2570,14 @@ mod tests {
     fn rpc_http_server_rejects_bad_websocket_routes_and_auth() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let bad_route = serve_one_http_request(
-            RpcGateway::new(RpcNode::new(LocalChain::new(beacon)), RpcPolicy::default()),
+            RpcGateway::new(RpcNode::new(Chain::new(beacon)), RpcPolicy::default()),
             b"GET /wrong/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
         );
         assert!(bad_route.starts_with("HTTP/1.1 404 Not Found"));
 
         let unauthorized = serve_one_http_request(
             RpcGateway::new(
-                RpcNode::new(LocalChain::new(beacon)),
+                RpcNode::new(Chain::new(beacon)),
                 RpcPolicy {
                     auth_token: Some("secret".to_owned()),
                     max_body_bytes: 1024,
@@ -2659,7 +2656,7 @@ mod tests {
 
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        let rpc = RpcNode::new(LocalChain::new(hash_bytes(b"test", &[b"beacon"])));
+        let rpc = RpcNode::new(Chain::new(hash_bytes(b"test", &[b"beacon"])));
         let server_thread = std::thread::spawn(move || {
             let (mut server, _) = listener.accept().unwrap();
             rpc.serve_explorer_websocket_once(&mut server).unwrap();

@@ -1,4 +1,4 @@
-use crate::chain::{HardwareClass, JobState, LocalChain, ReceiptState};
+use crate::chain::{Chain, HardwareClass, JobState, ReceiptState};
 use crate::field::Elem;
 use crate::jobs::PrimitiveType;
 use crate::study::matmul_verification_cost_study;
@@ -34,7 +34,7 @@ pub struct TelemetrySnapshot {
 }
 
 impl TelemetrySnapshot {
-    pub fn from_chain(chain: &LocalChain) -> Self {
+    pub fn from_chain(chain: &Chain) -> Self {
         let block_count = chain.blocks.len();
         let average_block_time = if block_count <= 1 {
             0.0
@@ -237,7 +237,7 @@ fn receipt_submitted_at_block(receipt: &ReceiptState) -> u64 {
     receipt.submitted_at_block()
 }
 
-fn average_verification_cost_ratio(chain: &LocalChain) -> f64 {
+fn average_verification_cost_ratio(chain: &Chain) -> f64 {
     let mut total_ratio = 0.0;
     let mut counted = 0_usize;
     for receipt in chain.state.receipts.values() {
@@ -260,7 +260,7 @@ fn average_verification_cost_ratio(chain: &LocalChain) -> f64 {
     }
 }
 
-fn estimated_bandwidth_per_validator(chain: &LocalChain) -> f64 {
+fn estimated_bandwidth_per_validator(chain: &Chain) -> f64 {
     let total_bytes: u64 = chain
         .state
         .receipts
@@ -271,7 +271,7 @@ fn estimated_bandwidth_per_validator(chain: &LocalChain) -> f64 {
     ratio_u64(total_bytes, chain.state.validators.len() as u64)
 }
 
-fn estimate_receipt_verification_bytes(chain: &LocalChain, receipt: &ReceiptState) -> u64 {
+fn estimate_receipt_verification_bytes(chain: &Chain, receipt: &ReceiptState) -> u64 {
     let elem_bytes = std::mem::size_of::<Elem>() as u64;
     match receipt {
         ReceiptState::TensorOp(receipt) => {
@@ -307,7 +307,7 @@ fn tensor_elements(shape: &[usize]) -> u64 {
         .fold(1_u64, |acc, value| acc.saturating_mul(*value as u64))
 }
 
-fn estimated_gpu_utilization(chain: &LocalChain) -> f64 {
+fn estimated_gpu_utilization(chain: &Chain) -> f64 {
     let mut weighted_utilization = 0_u64;
     let mut total_gpu_weight = 0_u64;
     for miner in chain.state.miners.values() {
@@ -325,7 +325,7 @@ fn estimated_gpu_utilization(chain: &LocalChain) -> f64 {
     )
 }
 
-fn hardware_class_participation(chain: &LocalChain) -> usize {
+fn hardware_class_participation(chain: &Chain) -> usize {
     let classes: BTreeSet<HardwareClass> = chain
         .state
         .miners
@@ -335,7 +335,7 @@ fn hardware_class_participation(chain: &LocalChain) -> usize {
     classes.len()
 }
 
-fn redundant_compute_overhead(chain: &LocalChain) -> f64 {
+fn redundant_compute_overhead(chain: &Chain) -> f64 {
     let mut groups = BTreeSet::new();
     for receipt in chain.state.receipts.values() {
         groups.insert(receipt_agreement_key(receipt));
@@ -378,7 +378,7 @@ fn encode_hashes(out: &mut Vec<u8>, hashes: &[Hash]) {
     }
 }
 
-fn estimated_cost_to_attack_one_epoch(chain: &LocalChain) -> u64 {
+fn estimated_cost_to_attack_one_epoch(chain: &Chain) -> u64 {
     let total_stake: u64 = chain
         .state
         .validators
@@ -396,7 +396,7 @@ fn estimated_cost_to_attack_one_epoch(chain: &LocalChain) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{JobState, LocalChain};
+    use crate::chain::{Chain, JobState};
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, PrimitiveType,
         TensorOpReceipt,
@@ -408,7 +408,7 @@ mod tests {
     #[test]
     fn telemetry_reports_block_timing_and_concentration() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"validator");
         chain.register_miner(miner, 100).unwrap();
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn telemetry_reports_receipt_age_and_verification_cost_ratio() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"miner");
         let validator = address(b"receipt-age-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -463,7 +463,7 @@ mod tests {
     #[test]
     fn telemetry_reports_linear_receipt_bandwidth_and_missing_job_edges() {
         let beacon = hash_bytes(b"test", &[b"linear-telemetry-beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"linear-telemetry-miner");
         let validator = address(b"linear-telemetry-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -527,7 +527,7 @@ mod tests {
     #[test]
     fn telemetry_reports_security_compute_and_economic_success_metrics() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let miner = address(b"telemetry-miner");
         let validator = address(b"telemetry-validator");
         chain.register_miner(miner, 100).unwrap();
@@ -572,7 +572,7 @@ mod tests {
     #[test]
     fn telemetry_reports_hardware_classes_and_gpu_utilization() {
         let beacon = hash_bytes(b"test", &[b"hardware-beacon"]);
-        let mut chain = LocalChain::new(beacon);
+        let mut chain = Chain::new(beacon);
         let cpu = address(b"hardware-cpu");
         let consumer_gpu = address(b"hardware-consumer-gpu");
         let datacenter_gpu = address(b"hardware-datacenter-gpu");

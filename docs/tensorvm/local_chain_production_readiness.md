@@ -186,7 +186,8 @@ That is enough for a useful local demonstration. It is not enough for a producti
 
 The first chain-core cleanup slices are already in the tree:
 
-- `LocalChain` is exposed through a profile-neutral `Chain` alias and `ChainEngine` command/event facade.
+- The core state machine is exposed as profile-neutral `Chain`; the old `LocalChain` compatibility alias is
+  gone, and `ChainEngine` remains the command/event facade.
 - `NodeStore` implements a `ChainStore` boundary for loading and persisting chain state.
 - `ChainProfile` and `NodeConfig` let local CPU, public testnet, and future mainnet construct the same
   deterministic chain engine from profile values.
@@ -382,10 +383,10 @@ The profiles should differ by configuration, adapters, and launch topology, not 
 
 ### Current Coupling To Reduce
 
-`LocalChain` still owns state, parameters, registration, transaction application, receipt submission,
+`Chain` still owns state, parameters, registration, transaction application, receipt submission,
 attestation validation, and finality helpers in one type. Settlement, proposer selection, deterministic
 commitment roots, and block assembly have been split into internal `chain::settlement`, `chain::proposer`,
-`chain::roots`, and `chain::blocks` modules, with the public `LocalChain`/`ChainEngine` API preserved.
+`chain::roots`, and `chain::blocks` modules, with the public `Chain`/`ChainEngine` API preserved.
 
 That is practical for a reference core, but it makes it easy for local/testnet helpers to bypass real
 runtime boundaries.
@@ -631,13 +632,13 @@ still needs hard checker assertions.
 
 ### Phase 2: Extract Chain Engine Boundaries
 
-- Rename `LocalChain` to a profile-neutral `Chain` or wrap it behind `ChainEngine`.
+- Keep the profile-neutral `Chain` core type and continue moving write access behind `ChainEngine`.
 - Move validation, settlement, proposer selection, and state views into separate modules.
 - Preserve all existing behavior and tests.
-- Keep `LocalChain` as a compatibility type alias temporarily if needed.
+- Do not reintroduce a `LocalChain` compatibility alias.
 
-Status: complete for the current production chain-core split. `Chain`, `ChainEngine`, `ChainCommand`, and
-`ChainEvent` exist. Proposer selection now lives behind `chain::proposer`,
+Status: complete for the core rename and current production chain-core split. `Chain`, `ChainEngine`,
+`ChainCommand`, and `ChainEvent` exist. Proposer selection now lives behind `chain::proposer`,
 epoch settlement/redundant-agreement logic now lives behind `chain::settlement`, deterministic
 content/state roots now live behind `chain::roots`, block assembly now lives behind `chain::blocks`, and
 chain parameters/state/domain view types now live behind `chain::state` while preserving the

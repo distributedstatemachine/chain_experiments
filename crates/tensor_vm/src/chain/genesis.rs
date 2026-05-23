@@ -1,9 +1,9 @@
-use super::state::{ChainParams, ChainState, LocalChain, RewardState};
+use super::state::{Chain, ChainParams, ChainState, RewardState};
 use crate::types::Hash;
 use std::collections::{BTreeMap, BTreeSet};
 
-pub fn with_params(params: ChainParams, finalized_randomness: Hash) -> LocalChain {
-    LocalChain {
+pub fn with_params(params: ChainParams, finalized_randomness: Hash) -> Chain {
+    Chain {
         params,
         state: ChainState {
             height: 0,

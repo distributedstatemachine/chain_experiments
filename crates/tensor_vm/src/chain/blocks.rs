@@ -2,18 +2,14 @@ use super::roots::{
     attestation_root, block_checks_root, reward_root, selected_receipt_root, state_root,
 };
 use super::{
-    BlockAdmission, BlockInvalidReason, BlockspaceCaps, BlockspaceSelection, ChainCommand,
-    ChainEngine, ChainState, LocalChain, ReceiptState, TensorBlock,
+    BlockAdmission, BlockInvalidReason, BlockspaceCaps, BlockspaceSelection, Chain, ChainCommand,
+    ChainEngine, ChainState, ReceiptState, TensorBlock,
 };
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash, hash_bytes, sign, verify_signature};
 use std::collections::BTreeSet;
 
-pub(super) fn produce(
-    chain: &mut LocalChain,
-    proposer: Address,
-    timestamp: u64,
-) -> Result<TensorBlock> {
+pub(super) fn produce(chain: &mut Chain, proposer: Address, timestamp: u64) -> Result<TensorBlock> {
     if !chain.state.validators.contains_key(&proposer) {
         return Err(TvmError::UnknownValidator);
     }
@@ -77,7 +73,7 @@ pub(super) fn produce(
 }
 
 pub(super) fn produce_with_rewards(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     proposer: Address,
     timestamp: u64,
     fixed_block_reward: u64,
@@ -100,7 +96,7 @@ pub(super) fn produce_with_rewards(
     }
 }
 
-pub(super) fn prepare_parent_state(chain: &mut LocalChain) -> Result<()> {
+pub(super) fn prepare_parent_state(chain: &mut Chain) -> Result<()> {
     let settled_before = chain.state.settled_receipts.clone();
     chain.apply_command(ChainCommand::SettleEpoch {
         miner_reward_pool: 1_000,
@@ -128,7 +124,7 @@ pub(super) fn prepare_parent_state(chain: &mut LocalChain) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<BlockAdmission> {
+pub(super) fn admit(chain: &mut Chain, block: TensorBlock) -> Result<BlockAdmission> {
     let block_hash = block.hash();
     let height = block.height;
     if let Some(existing) = chain
@@ -253,11 +249,7 @@ pub(super) fn canonical_blockspace(
     }
 }
 
-pub(super) fn validate(
-    chain: &LocalChain,
-    block: &TensorBlock,
-    strict_state_root: bool,
-) -> Result<()> {
+pub(super) fn validate(chain: &Chain, block: &TensorBlock, strict_state_root: bool) -> Result<()> {
     if !chain.state.validators.contains_key(&block.proposer) {
         return Err(TvmError::UnknownValidator);
     }
@@ -324,7 +316,7 @@ pub(super) fn validate(
     Ok(())
 }
 
-pub(super) fn selected_receipts(chain: &LocalChain, block: &TensorBlock) -> Vec<Hash> {
+pub(super) fn selected_receipts(chain: &Chain, block: &TensorBlock) -> Vec<Hash> {
     let block_hash = block.hash();
     chain
         .state
@@ -342,7 +334,7 @@ pub(super) fn selected_receipts(chain: &LocalChain, block: &TensorBlock) -> Vec<
         })
 }
 
-fn parent_state_for_validation(chain: &LocalChain, block: &TensorBlock) -> ChainState {
+fn parent_state_for_validation(chain: &Chain, block: &TensorBlock) -> ChainState {
     let mut parent_state = chain.state.clone();
     let block_hash = block.hash();
     parent_state.height = block.height;
@@ -371,7 +363,7 @@ fn parent_state_for_validation(chain: &LocalChain, block: &TensorBlock) -> Chain
     parent_state
 }
 
-fn expected_parent_beacon(chain: &LocalChain, block: &TensorBlock) -> Hash {
+fn expected_parent_beacon(chain: &Chain, block: &TensorBlock) -> Hash {
     if block.height == 0 {
         return chain.state.genesis_randomness;
     }
@@ -383,7 +375,7 @@ fn expected_parent_beacon(chain: &LocalChain, block: &TensorBlock) -> Hash {
         .unwrap_or(chain.state.finalized_randomness)
 }
 
-fn parent_matches(chain: &LocalChain, block: &TensorBlock) -> bool {
+fn parent_matches(chain: &Chain, block: &TensorBlock) -> bool {
     if block.height == 0 {
         return block.parent_hash == [0; 32];
     }

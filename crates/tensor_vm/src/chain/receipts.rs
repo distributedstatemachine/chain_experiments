@@ -1,17 +1,17 @@
-use super::{JobState, LocalChain, ReceiptState};
+use super::{Chain, JobState, ReceiptState};
 use crate::error::{Result, TvmError};
 use crate::jobs::{LinearTrainingStepReceipt, TensorOpReceipt};
 use crate::types::Hash;
 
-pub fn submit_job(chain: &mut LocalChain, job: JobState) {
+pub fn submit_job(chain: &mut Chain, job: JobState) {
     chain.state.jobs.insert(job.job_id(), job);
 }
 
-pub fn job<'a>(chain: &'a LocalChain, job_id: &Hash) -> Option<&'a JobState> {
+pub fn job<'a>(chain: &'a Chain, job_id: &Hash) -> Option<&'a JobState> {
     chain.state.jobs.get(job_id)
 }
 
-pub fn submit_tensor_op(chain: &mut LocalChain, receipt: TensorOpReceipt) -> Result<()> {
+pub fn submit_tensor_op(chain: &mut Chain, receipt: TensorOpReceipt) -> Result<()> {
     if !chain.state.miners.contains_key(&receipt.miner) {
         return Err(TvmError::UnknownMiner);
     }
@@ -29,7 +29,7 @@ pub fn submit_tensor_op(chain: &mut LocalChain, receipt: TensorOpReceipt) -> Res
 }
 
 pub fn submit_linear_training_step(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     receipt: LinearTrainingStepReceipt,
 ) -> Result<()> {
     if !chain.state.miners.contains_key(&receipt.miner) {

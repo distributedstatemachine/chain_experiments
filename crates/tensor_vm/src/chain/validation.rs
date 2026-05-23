@@ -1,11 +1,11 @@
-use super::{BlockVote, LocalChain, blocks};
+use super::{BlockVote, Chain, blocks};
 use crate::error::{Result, TvmError};
 use crate::scheduler::JobScheduler;
 use crate::types::{Address, Hash, hash_bytes};
 use crate::verify::{ValidatorAttestation, VerificationResult};
 use std::collections::BTreeSet;
 
-pub fn submit_attestation(chain: &mut LocalChain, attestation: ValidatorAttestation) -> Result<()> {
+pub fn submit_attestation(chain: &mut Chain, attestation: ValidatorAttestation) -> Result<()> {
     let validator_stake = chain
         .state
         .validators
@@ -74,7 +74,7 @@ pub fn submit_attestation(chain: &mut LocalChain, attestation: ValidatorAttestat
     Ok(())
 }
 
-pub fn has_attestation_quorum(chain: &LocalChain, receipt_id: &Hash) -> bool {
+pub fn has_attestation_quorum(chain: &Chain, receipt_id: &Hash) -> bool {
     let attestations = match chain.state.attestations.get(receipt_id) {
         Some(attestations) => attestations,
         None => return false,
@@ -115,11 +115,11 @@ pub fn has_attestation_quorum(chain: &LocalChain, receipt_id: &Hash) -> bool {
         && valid_stake.saturating_mul(stake_den) >= assigned_stake.saturating_mul(stake_num)
 }
 
-fn is_assigned_validator(chain: &LocalChain, validator: Address, receipt_id: Hash) -> bool {
+fn is_assigned_validator(chain: &Chain, validator: Address, receipt_id: Hash) -> bool {
     assigned_validators(chain, receipt_id).contains(&validator)
 }
 
-fn assigned_validators(chain: &LocalChain, receipt_id: Hash) -> BTreeSet<Address> {
+fn assigned_validators(chain: &Chain, receipt_id: Hash) -> BTreeSet<Address> {
     JobScheduler::default()
         .assign_validators(chain, receipt_id, &chain.state.finalized_randomness)
         .validators
@@ -127,7 +127,7 @@ fn assigned_validators(chain: &LocalChain, receipt_id: Hash) -> BTreeSet<Address
         .collect()
 }
 
-pub fn submit_block_vote(chain: &mut LocalChain, vote: BlockVote) -> Result<()> {
+pub fn submit_block_vote(chain: &mut Chain, vote: BlockVote) -> Result<()> {
     let validator = chain
         .state
         .validators
@@ -174,7 +174,7 @@ pub fn submit_block_vote(chain: &mut LocalChain, vote: BlockVote) -> Result<()> 
     Ok(())
 }
 
-pub fn has_block_finality(chain: &LocalChain, block_hash: &Hash) -> bool {
+pub fn has_block_finality(chain: &Chain, block_hash: &Hash) -> bool {
     let total_stake: u64 = chain
         .state
         .validators

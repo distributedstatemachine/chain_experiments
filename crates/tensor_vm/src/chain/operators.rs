@@ -1,13 +1,13 @@
-use super::{HardwareClass, LocalChain, MinerState, ValidatorState, accounts};
+use super::{Chain, HardwareClass, MinerState, ValidatorState, accounts};
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash};
 
-pub fn register_miner(chain: &mut LocalChain, address: Address, stake: u64) -> Result<()> {
+pub fn register_miner(chain: &mut Chain, address: Address, stake: u64) -> Result<()> {
     register_miner_with_profile_and_operator(chain, address, stake, address, HardwareClass::Cpu, 0)
 }
 
 pub fn register_miner_with_operator(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     address: Address,
     stake: u64,
     operator_id: Hash,
@@ -23,7 +23,7 @@ pub fn register_miner_with_operator(
 }
 
 pub fn register_miner_with_profile(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     address: Address,
     stake: u64,
     hardware_class: HardwareClass,
@@ -40,7 +40,7 @@ pub fn register_miner_with_profile(
 }
 
 pub fn register_miner_with_profile_and_operator(
-    chain: &mut LocalChain,
+    chain: &mut Chain,
     address: Address,
     stake: u64,
     operator_id: Hash,
@@ -78,7 +78,7 @@ pub fn register_miner_with_profile_and_operator(
     Ok(())
 }
 
-pub fn register_validator(chain: &mut LocalChain, address: Address, stake: u64) -> Result<()> {
+pub fn register_validator(chain: &mut Chain, address: Address, stake: u64) -> Result<()> {
     if stake < chain.params.validator_min_stake {
         return Err(TvmError::InsufficientStake);
     }

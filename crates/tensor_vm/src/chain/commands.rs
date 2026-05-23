@@ -1,10 +1,10 @@
 use super::{
-    BlockAdmission, ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState, LocalChain,
+    BlockAdmission, Chain, ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState,
     ReceiptState, TensorBlock, settlement,
 };
 use crate::error::{Result, TvmError};
 
-impl ChainEngine for LocalChain {
+impl ChainEngine for Chain {
     fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>> {
         match command {
             ChainCommand::RegisterMiner { address, stake } => {

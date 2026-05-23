@@ -1,8 +1,8 @@
-use super::{AccountState, LocalChain};
+use super::{AccountState, Chain};
 use crate::error::{Result, TvmError};
 use crate::types::Address;
 
-pub fn ensure(chain: &mut LocalChain, address: Address) -> &mut AccountState {
+pub fn ensure(chain: &mut Chain, address: Address) -> &mut AccountState {
     chain.state.accounts.entry(address).or_insert(AccountState {
         address,
         balance: 0,
@@ -10,12 +10,12 @@ pub fn ensure(chain: &mut LocalChain, address: Address) -> &mut AccountState {
     })
 }
 
-pub fn credit(chain: &mut LocalChain, address: Address, amount: u64) {
+pub fn credit(chain: &mut Chain, address: Address, amount: u64) {
     let account = ensure(chain, address);
     account.balance = account.balance.saturating_add(amount);
 }
 
-pub fn transfer(chain: &mut LocalChain, from: Address, to: Address, amount: u64) -> Result<()> {
+pub fn transfer(chain: &mut Chain, from: Address, to: Address, amount: u64) -> Result<()> {
     let from_account = ensure(chain, from);
     if from_account.balance < amount {
         return Err(TvmError::InvalidReceipt("insufficient account balance"));
@@ -27,7 +27,7 @@ pub fn transfer(chain: &mut LocalChain, from: Address, to: Address, amount: u64)
     Ok(())
 }
 
-pub fn claim_reward(chain: &mut LocalChain, address: Address) -> Result<()> {
+pub fn claim_reward(chain: &mut Chain, address: Address) -> Result<()> {
     let reward = chain.state.rewards.balance(&address);
     if reward == 0 {
         return Err(TvmError::InvalidReceipt("no reward to claim"));

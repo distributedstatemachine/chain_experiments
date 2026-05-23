@@ -1,5 +1,5 @@
 use crate::ExplorerSummary;
-use crate::chain::{BlockVote, ChainParams, JobState, LocalChain, TensorBlock, Transaction};
+use crate::chain::{BlockVote, Chain, ChainParams, JobState, TensorBlock, Transaction};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -3433,7 +3433,7 @@ fn match_public_operator_address(
 
 #[derive(Clone, Debug)]
 pub struct LocalTestnet {
-    pub chain: LocalChain,
+    pub chain: Chain,
     pub faucet: Faucet,
     pub miners: Vec<Address>,
     pub validators: Vec<Address>,
@@ -3499,7 +3499,7 @@ impl LocalTestnet {
         params: ChainParams,
         finalized_randomness: Hash,
     ) -> Self {
-        let mut chain = LocalChain::with_params(params, finalized_randomness);
+        let mut chain = Chain::with_params(params, finalized_randomness);
         let mut miners = Vec::with_capacity(config.miner_count);
         let mut validators = Vec::with_capacity(config.validator_count);
         let mut participant_endpoints =

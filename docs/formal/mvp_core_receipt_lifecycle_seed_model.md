@@ -16,7 +16,7 @@ Current Rust behavior:
 
 - `validation::seed(finalized_randomness, receipt_id)` derives the verifier seed from finalized randomness
   and the receipt id.
-- `LocalChain::validation_seed(receipt_id)` calls `validation::seed(&state.finalized_randomness,
+- `Chain::validation_seed(receipt_id)` calls `validation::seed(&state.finalized_randomness,
   receipt_id)`.
 - `chain::validation::assigned_validators` calls `JobScheduler::assign_validators(chain, receipt_id,
   &chain.state.finalized_randomness)`.
