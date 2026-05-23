@@ -267,13 +267,13 @@ impl RpcNode {
             ("GET", "/rpc/health") => self.health("rpc"),
             ("GET", "/chain/head") => self.ok(format!(
                 "{{\"height\":{},\"epoch\":{},\"block_count\":{},\"state_root\":\"{}\"}}",
-                self.chain.state.height,
-                self.chain.state.epoch,
+                self.chain.state().height(),
+                self.chain.state().epoch(),
                 self.chain.blocks.len(),
                 hex(&self.chain.state_root())
             )),
             ("GET", "/epoch/current") => {
-                self.ok(format!("{{\"epoch\":{}}}", self.chain.state.epoch))
+                self.ok(format!("{{\"epoch\":{}}}", self.chain.state().epoch()))
             }
             ("GET", "/jobs/current") => self.jobs_current(),
             ("GET", "/explorer/health") => self.health("explorer"),
@@ -377,7 +377,7 @@ impl RpcNode {
         let Ok(receipt_id) = parse_hash(receipt_id) else {
             return self.bad_request("invalid receipt id");
         };
-        let Some(receipt) = self.chain.state.receipts.get(&receipt_id) else {
+        let Some(receipt) = self.chain.state().receipts().get(&receipt_id) else {
             return self.not_found("receipt not found");
         };
         self.ok(format!(
@@ -430,7 +430,7 @@ impl RpcNode {
         let Some(faucet) = self.faucet.as_mut() else {
             return self.not_found("faucet not configured");
         };
-        match faucet.claim(address, self.chain.state.epoch) {
+        match faucet.claim(address, self.chain.state().epoch()) {
             Ok(amount) => match self
                 .chain
                 .apply_command(ChainCommand::CreditReward { address, amount })
@@ -499,7 +499,7 @@ impl RpcNode {
     }
 
     fn jobs_current(&self) -> RpcResponse {
-        let jobs: Vec<_> = self.chain.state.jobs.values().map(job_json).collect();
+        let jobs: Vec<_> = self.chain.state().jobs().values().map(job_json).collect();
         self.ok(format!("{{\"jobs\":[{}]}}", jobs.join(",")))
     }
 
@@ -507,7 +507,7 @@ impl RpcNode {
         let Ok(job_id) = parse_hash(job_id) else {
             return self.bad_request("invalid job id");
         };
-        let Some(job) = self.chain.state.jobs.get(&job_id) else {
+        let Some(job) = self.chain.state().jobs().get(&job_id) else {
             return self.not_found("job not found");
         };
         self.ok(job_json(job))
@@ -517,7 +517,7 @@ impl RpcNode {
         let Ok(address) = parse_hash(address) else {
             return self.bad_request("invalid miner address");
         };
-        let Some(miner) = self.chain.state.miners.get(&address) else {
+        let Some(miner) = self.chain.state().miners().get(&address) else {
             return self.not_found("miner not found");
         };
         self.ok(format!(
@@ -532,7 +532,7 @@ impl RpcNode {
         let Ok(address) = parse_hash(address) else {
             return self.bad_request("invalid validator address");
         };
-        let Some(validator) = self.chain.state.validators.get(&address) else {
+        let Some(validator) = self.chain.state().validators().get(&address) else {
             return self.not_found("validator not found");
         };
         self.ok(format!(
@@ -627,8 +627,8 @@ impl RpcNode {
     fn health(&self, service: &str) -> RpcResponse {
         self.ok(format!(
             "{{\"status\":\"ok\",\"service\":\"{service}\",\"height\":{},\"epoch\":{},\"block_count\":{},\"faucet_configured\":{}}}",
-            self.chain.state.height,
-            self.chain.state.epoch,
+            self.chain.state().height(),
+            self.chain.state().epoch(),
             self.chain.blocks.len(),
             self.faucet.is_some()
         ))
@@ -923,25 +923,25 @@ fn json_u64_array(values: &[u64]) -> String {
 
 fn explorer_summary(chain: &Chain) -> ExplorerSummary {
     ExplorerSummary {
-        height: chain.state.height,
-        epoch: chain.state.epoch,
+        height: chain.state().height(),
+        epoch: chain.state().epoch(),
         block_count: chain.blocks.len(),
-        miner_count: chain.state.miners.len(),
-        validator_count: chain.state.validators.len(),
-        job_count: chain.state.jobs.len(),
-        model_count: chain.state.model_states.len(),
-        attestation_count: chain.state.attestations.values().map(Vec::len).sum(),
-        receipt_count: chain.state.receipts.len(),
-        settled_receipt_count: chain.state.settled_receipts.len(),
-        finalized_block_count: chain.state.finalized_blocks.len(),
-        treasury_balance: chain.state.rewards.treasury(),
-        total_reward_balance: chain.state.rewards.total_balance(),
+        miner_count: chain.state().miners().len(),
+        validator_count: chain.state().validators().len(),
+        job_count: chain.state().jobs().len(),
+        model_count: chain.state().model_states().len(),
+        attestation_count: chain.state().attestations().values().map(Vec::len).sum(),
+        receipt_count: chain.state().receipts().len(),
+        settled_receipt_count: chain.state().settled_receipts().len(),
+        finalized_block_count: chain.state().finalized_blocks().len(),
+        treasury_balance: chain.state().rewards().treasury(),
+        total_reward_balance: chain.state().rewards().total_balance(),
     }
 }
 
 fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAccount {
-    let miner = chain.state.miners.get(address);
-    let validator = chain.state.validators.get(address);
+    let miner = chain.state().miners().get(address);
+    let validator = chain.state().validators().get(address);
     let balance = chain
         .state
         .accounts
@@ -953,7 +953,7 @@ fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAccount {
         is_miner: miner.is_some(),
         is_validator: validator.is_some(),
         balance,
-        reward_balance: chain.state.rewards.balance(address),
+        reward_balance: chain.state().rewards().balance(address),
         stake: miner
             .map(|miner| miner.stake)
             .or_else(|| validator.map(|validator| validator.stake))
@@ -1002,7 +1002,7 @@ fn explorer_miners(chain: &Chain) -> Vec<ExplorerMiner> {
             pending_tensor_work: miner.pending_tensor_work,
             hardware_class: hardware_class_label(miner.hardware_class).to_owned(),
             gpu_utilization_bps: miner.gpu_utilization_bps,
-            reward_balance: chain.state.rewards.balance(&miner.address),
+            reward_balance: chain.state().rewards().balance(&miner.address),
         })
         .collect()
 }
@@ -1018,7 +1018,7 @@ fn explorer_validators(chain: &Chain) -> Vec<ExplorerValidator> {
             reputation: validator.reputation,
             valid_attestations: validator.valid_attestations,
             missed_assignments: validator.missed_assignments,
-            reward_balance: chain.state.rewards.balance(&validator.address),
+            reward_balance: chain.state().rewards().balance(&validator.address),
         })
         .collect()
 }
@@ -1047,7 +1047,7 @@ fn explorer_receipts(chain: &Chain, limit: usize) -> Vec<ExplorerReceipt> {
                 tensor_work_units: receipt.tensor_work_units(),
                 attestation_count: validator_attestations.len(),
                 validator_attestations,
-                settled: chain.state.settled_receipts.contains(receipt_id),
+                settled: chain.state().settled_receipts().contains(receipt_id),
             }
         })
         .collect()
@@ -1750,7 +1750,7 @@ mod tests {
             body: Vec::new(),
         });
         assert_eq!(claim.status, 200);
-        assert_eq!(rpc.chain.state.rewards.balance(&user), 100);
+        assert_eq!(rpc.chain.state().rewards().balance(&user), 100);
         assert_eq!(rpc.faucet.as_ref().unwrap().balance(), 900);
 
         let duplicate = rpc.handle_mut(&RpcRequest {
@@ -1759,7 +1759,7 @@ mod tests {
             body: Vec::new(),
         });
         assert_eq!(duplicate.status, 400);
-        assert_eq!(rpc.chain.state.rewards.balance(&user), 100);
+        assert_eq!(rpc.chain.state().rewards().balance(&user), 100);
         assert_eq!(rpc.faucet.as_ref().unwrap().balance(), 900);
 
         let missing_faucet = RpcNode::new(Chain::new(beacon)).handle(&RpcRequest {
@@ -1783,7 +1783,7 @@ mod tests {
             body: format!("register_miner {}", hex(&miner)).into_bytes(),
         });
         assert_eq!(response.status, 202);
-        assert!(rpc.chain.state.miners.contains_key(&miner));
+        assert!(rpc.chain.state().miners().contains_key(&miner));
 
         rpc.chain.credit_account(miner, 100);
         let response = rpc.handle_mut(&RpcRequest {
@@ -1792,7 +1792,10 @@ mod tests {
             body: format!("transfer {} {} 70", hex(&miner), hex(&receiver)).into_bytes(),
         });
         assert_eq!(response.status, 202);
-        assert_eq!(rpc.chain.state.accounts.get(&receiver).unwrap().balance, 70);
+        assert_eq!(
+            rpc.chain.state().accounts().get(&receiver).unwrap().balance,
+            70
+        );
 
         let tx_receipt = hash_bytes(b"test", &[b"tx-receipt"]);
         let response = rpc.handle_mut(&RpcRequest {
@@ -1835,8 +1838,8 @@ mod tests {
             body: format!("submit_attestation {}", hex(&tx_attestation)).into_bytes(),
         });
         assert_eq!(duplicate.status, 202);
-        assert!(rpc.chain.state.receipts.is_empty());
-        assert!(rpc.chain.state.attestations.is_empty());
+        assert!(rpc.chain.state().receipts().is_empty());
+        assert!(rpc.chain.state().attestations().is_empty());
 
         let receipt = hash_bytes(b"test", &[b"receipt"]);
         let response = rpc.handle_mut(&RpcRequest {

@@ -78,6 +78,8 @@ spaghetti around.
   helpers, so missing job/receipt/attestation setup no longer mutates maps directly outside `chain/*`.
 - Iteration 22 added read-only `ChainState` accessors and started moving the binary runtime/reporting
   surface away from direct public field reads.
+- Iteration 23 moved RPC handlers and RPC tests onto the `ChainState` accessors, reducing another external
+  service surface's dependence on public state fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
