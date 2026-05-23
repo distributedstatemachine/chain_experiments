@@ -90,6 +90,8 @@ spaghetti around.
   attestation fixture mutations isolated to watcher tests.
 - Iteration 28 moved storage snapshot metadata, chain-state encoding, and storage test temp-name reads
   onto `ChainState` accessors without changing storage fixture mutations.
+- Iteration 29 moved the zero-work liveness study's proposer randomness read onto the `ChainState`
+  accessor, removing another standalone production reach-through.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

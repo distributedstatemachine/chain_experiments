@@ -369,7 +369,7 @@ pub fn zero_work_liveness_study(
     }
     let mut proposers = Vec::with_capacity(blocks as usize);
     for height in 0..blocks {
-        let Some(proposer) = chain.proposer_for_next_epoch(&chain.state.finalized_randomness)
+        let Some(proposer) = chain.proposer_for_next_epoch(&chain.state().finalized_randomness())
         else {
             break;
         };
