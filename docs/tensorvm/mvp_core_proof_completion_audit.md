@@ -168,7 +168,7 @@ The MVP core is formally proven sound.
 
 ## Next Documentation Move
 
-If this remains docs-only, the next useful artifact is a theorem-by-theorem mechanization checklist that
-names the exact future Lean/TorchLean modules, definitions, assumptions, and proof dependencies for the
-sound kernel only. Do not mechanize or claim the blocked v2 consensus theorems until the implementation
+The next docs-only artifact has been created as [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md).
+If this remains docs-only after that, the next useful move is to keep the checklist synchronized with code
+changes and refuse to move any blocked consensus theorem into the sound kernel until the implementation
 exposes the required objects.

@@ -13,6 +13,8 @@ Related boundary documents:
 
 - [`mvp_core_proof_completion_audit.md`](mvp_core_proof_completion_audit.md) audits the formal-proof goal
   requirement by requirement and records the current completion verdict.
+- [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md) maps the sound-kernel
+  theorem set to future Lean/TorchLean modules, assumptions, and proof dependencies.
 - [`mvp_core_sound_kernel.md`](mvp_core_sound_kernel.md) defines the narrow proof kernel that is defensible
   today.
 - [`mvp_core_data_availability_boundary.md`](mvp_core_data_availability_boundary.md) separates
