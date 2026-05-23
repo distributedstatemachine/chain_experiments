@@ -1521,7 +1521,7 @@ mod tests {
         let job_id = job.job_id();
         let payload = encode_job_payload(&job);
         let mut chain = testnet.chain.clone();
-        chain.state.jobs.remove(&job_id);
+        chain.remove_job_for_testing(&job_id);
 
         assert_eq!(
             apply_network_job_payload(&mut chain, job_id, &payload),
@@ -1699,16 +1699,16 @@ mod tests {
         let payload = encode_receipt_payload(&receipt);
 
         let mut missing_job_chain = testnet.chain.clone();
-        missing_job_chain.state.jobs.remove(&receipt.job_id());
-        missing_job_chain.state.receipts.remove(&receipt_id);
+        missing_job_chain.remove_job_for_testing(&receipt.job_id());
+        missing_job_chain.remove_receipt_for_testing(&receipt_id);
         assert_eq!(
             apply_network_receipt_payload(&mut missing_job_chain, receipt_id, &payload),
             NetworkPayloadApply::Pending
         );
 
         let mut apply_chain = testnet.chain.clone();
-        apply_chain.state.receipts.remove(&receipt_id);
-        apply_chain.state.attestations.remove(&receipt_id);
+        apply_chain.remove_receipt_for_testing(&receipt_id);
+        apply_chain.remove_attestations_for_testing(&receipt_id);
         assert_eq!(
             apply_network_receipt_payload(&mut apply_chain, receipt_id, &payload),
             NetworkPayloadApply::Applied
@@ -1770,24 +1770,15 @@ mod tests {
         let payload = encode_attestation_payload(&attestation);
 
         let mut missing_receipt_chain = testnet.chain.clone();
-        missing_receipt_chain
-            .state
-            .receipts
-            .remove(&attestation.receipt_id);
-        missing_receipt_chain
-            .state
-            .attestations
-            .remove(&attestation.receipt_id);
+        missing_receipt_chain.remove_receipt_for_testing(&attestation.receipt_id);
+        missing_receipt_chain.remove_attestations_for_testing(&attestation.receipt_id);
         assert_eq!(
             apply_network_attestation_payload(&mut missing_receipt_chain, attestation_id, &payload,),
             NetworkPayloadApply::Pending
         );
 
         let mut apply_chain = testnet.chain.clone();
-        apply_chain
-            .state
-            .attestations
-            .remove(&attestation.receipt_id);
+        apply_chain.remove_attestations_for_testing(&attestation.receipt_id);
         assert_eq!(
             apply_network_attestation_payload(&mut apply_chain, attestation_id, &payload),
             NetworkPayloadApply::Applied
@@ -1867,9 +1858,9 @@ mod tests {
         let attestation_id = attestation_announcement_hash(&attestation);
 
         let mut chain = testnet.chain.clone();
-        chain.state.jobs.remove(&job_id);
-        chain.state.receipts.remove(&receipt_id);
-        chain.state.attestations.remove(&receipt_id);
+        chain.remove_job_for_testing(&job_id);
+        chain.remove_receipt_for_testing(&receipt_id);
+        chain.remove_attestations_for_testing(&receipt_id);
         let mut pending = PendingNetworkPayloads::default();
         pending.queue_receipt(receipt_id, encode_receipt_payload(&receipt));
         pending.queue_attestation(attestation_id, encode_attestation_payload(&attestation));
@@ -1928,9 +1919,9 @@ mod tests {
             applied_payloads: Vec::new(),
             applied_blocks: 0,
         };
-        context.chain.state.jobs.remove(&job_id);
-        context.chain.state.receipts.remove(&receipt_id);
-        context.chain.state.attestations.remove(&receipt_id);
+        context.chain.remove_job_for_testing(&job_id);
+        context.chain.remove_receipt_for_testing(&receipt_id);
+        context.chain.remove_attestations_for_testing(&receipt_id);
         let mut pending = PendingNetworkPayloads::default();
 
         let ingested = ingest_network_messages(

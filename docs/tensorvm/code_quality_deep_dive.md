@@ -74,6 +74,8 @@ spaghetti around.
   crate-test-only `Chain` helper, making those consensus bypasses explicit test setup.
 - Iteration 20 moved the storage durability fixture's data-unavailable marker and treasury setup behind
   crate-test-only `Chain` helpers instead of reaching into state internals.
+- Iteration 21 moved node network-payload dependency deletion fixtures behind crate-test-only `Chain`
+  helpers, so missing job/receipt/attestation setup no longer mutates maps directly outside `chain/*`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -281,6 +281,21 @@ impl Chain {
     }
 
     #[cfg(test)]
+    pub(crate) fn remove_job_for_testing(&mut self, job_id: &Hash) {
+        self.state.jobs.remove(job_id);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn remove_receipt_for_testing(&mut self, receipt_id: &Hash) {
+        self.state.receipts.remove(receipt_id);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn remove_attestations_for_testing(&mut self, receipt_id: &Hash) {
+        self.state.attestations.remove(receipt_id);
+    }
+
+    #[cfg(test)]
     pub(crate) fn set_reward_treasury_for_testing(&mut self, treasury: u64) {
         self.state.rewards =
             RewardState::from_parts(self.state.rewards.balances().clone(), treasury);
