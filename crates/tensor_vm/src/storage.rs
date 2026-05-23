@@ -822,8 +822,9 @@ fn decode_block_votes(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Vec
     let mut block_votes = BTreeMap::new();
     for _ in 0..reader.read_len()? {
         let block_hash = reader.read_hash()?;
-        let mut votes = Vec::with_capacity(reader.read_len()?);
-        for _ in 0..votes.capacity() {
+        let vote_count = reader.read_len()?;
+        let mut votes = Vec::with_capacity(vote_count);
+        for _ in 0..vote_count {
             let vote =
                 codec::decode_block_vote_payload(reader.read_exact(codec::BLOCK_VOTE_PAYLOAD_LEN)?)
                     .ok_or(TvmError::Storage("invalid block vote payload length"))?;

@@ -123,6 +123,8 @@ spaghetti around.
   codec helpers, leaving p2p and storage responsible only for envelopes and error domains.
 - Iteration 45 collapsed repeated codec-error boundary mapping in p2p and storage while keeping
   the existing p2p trailing-payload messages and storage error strings intact.
+- Iteration 46 made block-vote vector decoding loop over the decoded count directly instead of
+  relying on vector capacity as an implicit counter.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
