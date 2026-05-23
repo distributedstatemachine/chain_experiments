@@ -177,6 +177,8 @@ spaghetti around.
   testnet and storage dependencies out of the binary entrypoint.
 - Iteration 72 moved status-file parsing and hash-list report formatting into `main/status.rs`,
   removing the remaining status helper ownership from `main.rs`.
+- Iteration 73 moved runtime role/config construction and role command wrappers into
+  `main/runtime.rs`, leaving `main.rs` close to CLI dispatch plus shared seed/identity helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -4,14 +4,24 @@ use super::roles::{
     submit_validator_role_block_vote, validator_remote_tensor_response,
     validator_role_work_observation,
 };
-use super::runtime::RoleRuntimeLoop;
+use super::runtime::{
+    RoleRunLoop, RoleRuntimeLoop, RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig,
+    chain_profile_from_label, runtime_node_config, runtime_role_wallet_registered,
+    runtime_role_wallet_registration,
+};
 use super::*;
-use std::{collections::BTreeSet, path::Path, thread, time::Instant};
+use std::{
+    collections::BTreeSet,
+    path::Path,
+    thread,
+    time::{Duration, Instant},
+};
 use tensor_vm::{
-    ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, Faucet, FreivaldsParams,
-    JobScheduler, Libp2pControlPlaneConfig, NetworkEventIngest, NetworkPayloadApply,
-    NodeRuntimeState, NodeStore, PendingNetworkPayloads, ReceiptState, RpcGateway, RpcHttpServer,
-    RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService, ValidatorAttestation, VerificationResult,
+    Chain, ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, ChainProfile,
+    Faucet, FreivaldsParams, JobScheduler, Libp2pControlPlaneConfig, NetworkEventIngest,
+    NetworkPayloadApply, NodeConfig, NodeRuntimeState, NodeStore, PendingNetworkPayloads,
+    ReceiptState, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
+    ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
     node::{

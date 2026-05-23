@@ -5,7 +5,6 @@ use std::{
 };
 
 use super::{
-    RuntimeRole, ServiceRuntimeConfig,
     network::{
         chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
         publish_new_chain_announcements,
@@ -16,14 +15,308 @@ use super::{
         submit_miner_role_receipt, submit_validator_role_attestation,
         submit_validator_role_block_vote, validator_role_work_observation,
     },
-    runtime_role_wallet_address_text, runtime_role_wallet_registered,
-    runtime_role_wallet_registration,
     status::{RuntimeStatusSnapshot, hex_hash_list, write_role_runtime_status},
 };
 use tensor_vm::{
-    ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NodeRuntimeState, NodeStore, RpcGateway,
-    RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService, hash::hex, spawn_libp2p_service,
+    Chain, ChainProfile, ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NetworkConfig,
+    NodeConfig, NodeRole, NodeRuntimeState, NodeStore, RpcGateway, RpcHttpServer, RpcNode,
+    RpcPolicy, TensorVmLibp2pService,
+    hash::hex,
+    spawn_libp2p_service,
+    types::{Address, address},
 };
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct RoleServiceConfig<'a> {
+    pub(super) wallet: &'a str,
+    pub(super) device: Option<&'a str>,
+    pub(super) node: &'a str,
+    pub(super) listen: &'a str,
+    pub(super) p2p_listen: &'a str,
+    pub(super) data_dir: &'a str,
+    pub(super) identity_seed: Option<[u8; 32]>,
+    pub(super) auth_token: &'a str,
+    pub(super) max_requests: usize,
+}
+
+pub(super) fn run_miner_service(
+    config: RoleServiceConfig<'_>,
+) -> std::result::Result<String, String> {
+    RoleRunLoop::miner().run(config)
+}
+
+pub(super) fn run_validator_service(
+    config: RoleServiceConfig<'_>,
+) -> std::result::Result<String, String> {
+    RoleRunLoop::validator().run(config)
+}
+
+pub(super) fn run_proposer_service(
+    config: RoleServiceConfig<'_>,
+) -> std::result::Result<String, String> {
+    RoleRunLoop::proposer().run(config)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RoleRunLoopKind {
+    Miner,
+    Validator,
+    Proposer,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct RoleRunLoop {
+    kind: RoleRunLoopKind,
+}
+
+impl RoleRunLoop {
+    pub(super) fn miner() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Miner,
+        }
+    }
+
+    pub(super) fn validator() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Validator,
+        }
+    }
+
+    pub(super) fn proposer() -> Self {
+        Self {
+            kind: RoleRunLoopKind::Proposer,
+        }
+    }
+
+    fn runtime_command(self) -> &'static str {
+        match self.kind {
+            RoleRunLoopKind::Miner => "miner_run",
+            RoleRunLoopKind::Validator => "validator_run",
+            RoleRunLoopKind::Proposer => "proposer_run",
+        }
+    }
+
+    fn runtime_role(self) -> RuntimeRole {
+        match self.kind {
+            RoleRunLoopKind::Miner => RuntimeRole::Miner,
+            RoleRunLoopKind::Validator => RuntimeRole::Validator,
+            RoleRunLoopKind::Proposer => RuntimeRole::Proposer,
+        }
+    }
+
+    pub(super) fn service_runtime_config(
+        self,
+        config: RoleServiceConfig<'_>,
+    ) -> std::result::Result<ServiceRuntimeConfig, String> {
+        let role = self.runtime_role();
+        Ok(ServiceRuntimeConfig {
+            runtime_command: self.runtime_command(),
+            role,
+            role_wallet_address: Some(role_wallet_address(config.wallet)?),
+            node: runtime_node_config(
+                config.data_dir,
+                role,
+                config.listen,
+                config.p2p_listen,
+                config.identity_seed,
+                config.auth_token,
+                config.max_requests,
+            )?,
+        })
+    }
+
+    fn run(self, config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
+        let service_report = run_role_runtime_loop(self.service_runtime_config(config)?)?;
+        Ok(self.format_report(config, &service_report))
+    }
+
+    pub(super) fn format_report(
+        self,
+        config: RoleServiceConfig<'_>,
+        service_report: &str,
+    ) -> String {
+        match self.kind {
+            RoleRunLoopKind::Miner => format!(
+                "command=miner_run\nrole=miner\nwallet={}\ndevice={}\nnode={}\nrole_runtime_ready=true\n{service_report}",
+                config.wallet,
+                config.device.unwrap_or("unknown"),
+                config.node
+            ),
+            RoleRunLoopKind::Validator => format!(
+                "command=validator_run\nrole=validator\nwallet={}\nnode={}\nreference_verifier_ready=true\nrole_runtime_ready=true\n{service_report}",
+                config.wallet, config.node
+            ),
+            RoleRunLoopKind::Proposer => format!(
+                "command=proposer_run\nrole=proposer\nwallet={}\nnode={}\nproposer_ready=true\nrole_runtime_ready=true\n{service_report}",
+                config.wallet, config.node
+            ),
+        }
+    }
+}
+
+pub(super) fn serve_service(
+    listen: &str,
+    p2p_listen: &str,
+    data_dir: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
+) -> std::result::Result<String, String> {
+    run_role_runtime_loop(ServiceRuntimeConfig {
+        runtime_command: "service_serve",
+        role: RuntimeRole::Service,
+        role_wallet_address: None,
+        node: runtime_node_config(
+            data_dir,
+            RuntimeRole::Service,
+            listen,
+            p2p_listen,
+            identity_seed,
+            auth_token,
+            max_requests,
+        )?,
+    })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum RuntimeRole {
+    Service,
+    Miner,
+    Validator,
+    Proposer,
+}
+
+impl RuntimeRole {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Service => "service",
+            Self::Miner => "miner",
+            Self::Validator => "validator",
+            Self::Proposer => "proposer",
+        }
+    }
+
+    pub(super) fn node_role(self) -> NodeRole {
+        match self {
+            Self::Service => NodeRole::Gateway,
+            Self::Miner => NodeRole::Miner,
+            Self::Validator => NodeRole::Validator,
+            Self::Proposer => NodeRole::Proposer,
+        }
+    }
+}
+
+fn runtime_chain_profile() -> std::result::Result<ChainProfile, String> {
+    let label = std::env::var("TENSORVM_CHAIN_PROFILE").unwrap_or_else(|_| "local_cpu".to_owned());
+    chain_profile_from_label(&label)
+}
+
+pub(super) fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, String> {
+    ChainProfile::from_label(label).ok_or_else(|| {
+        format!(
+            "unsupported TENSORVM_CHAIN_PROFILE {label:?}; expected local_cpu, public_testnet, or mainnet"
+        )
+    })
+}
+
+pub(super) fn runtime_node_config(
+    data_dir: &str,
+    role: RuntimeRole,
+    listen: &str,
+    p2p_listen: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
+) -> std::result::Result<NodeConfig, String> {
+    Ok(
+        NodeConfig::new(runtime_chain_profile()?, role.node_role(), data_dir)
+            .with_network(
+                NetworkConfig::new(listen, p2p_listen)
+                    .with_identity_seed(identity_seed)
+                    .with_auth_token(auth_token)
+                    .with_max_requests(max_requests),
+            )
+            .with_block_interval(runtime_block_interval())
+            .with_local_producer(runtime_local_block_producer()),
+    )
+}
+
+#[derive(Debug)]
+pub(super) struct ServiceRuntimeConfig {
+    pub(super) runtime_command: &'static str,
+    pub(super) role: RuntimeRole,
+    pub(super) role_wallet_address: Option<Address>,
+    pub(super) node: NodeConfig,
+}
+
+fn role_wallet_address(wallet: &str) -> std::result::Result<Address, String> {
+    let wallet = wallet.trim();
+    if wallet.is_empty() {
+        return Err("wallet argument is empty".to_owned());
+    }
+    Ok(address(wallet.as_bytes()))
+}
+
+pub(super) fn runtime_role_wallet_address_text(address: Option<Address>) -> String {
+    address
+        .map(|address| hex(&address))
+        .unwrap_or_else(|| "none".to_owned())
+}
+
+pub(super) fn runtime_role_wallet_registration(
+    role: RuntimeRole,
+    address: Option<Address>,
+    chain: &Chain,
+) -> &'static str {
+    let Some(address) = address else {
+        return "none";
+    };
+    match role {
+        RuntimeRole::Miner => {
+            if chain.state().miners().contains_key(&address) {
+                "miner"
+            } else {
+                "unregistered"
+            }
+        }
+        RuntimeRole::Validator => {
+            if chain.state().validators().contains_key(&address) {
+                "validator"
+            } else {
+                "unregistered"
+            }
+        }
+        RuntimeRole::Proposer if chain.state().validators().contains_key(&address) => "validator",
+        RuntimeRole::Proposer => "unregistered",
+        RuntimeRole::Service => "none",
+    }
+}
+
+pub(super) fn runtime_role_wallet_registered(
+    role: RuntimeRole,
+    address: Option<Address>,
+    chain: &Chain,
+) -> bool {
+    !matches!(
+        runtime_role_wallet_registration(role, address, chain),
+        "none" | "unregistered"
+    )
+}
+
+fn runtime_block_interval() -> Option<Duration> {
+    std::env::var("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|millis| *millis > 0)
+        .map(Duration::from_millis)
+}
+
+fn runtime_local_block_producer() -> bool {
+    match std::env::var("TENSORVM_LOCAL_CPU_ROLE_PRODUCER") {
+        Ok(value) => matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"),
+        Err(_) => false,
+    }
+}
 
 pub(super) fn run_role_runtime_loop(
     config: ServiceRuntimeConfig,

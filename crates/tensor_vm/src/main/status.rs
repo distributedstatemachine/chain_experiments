@@ -1,4 +1,4 @@
-use super::{
+use super::runtime::{
     RuntimeRole, ServiceRuntimeConfig, runtime_role_wallet_address_text,
     runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
