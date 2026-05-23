@@ -1780,6 +1780,11 @@ Start smaller if network bandwidth is constrained.
 
 ## 29. Networking
 
+The network boundary is consensus-critical. In the MVP, every counted miner, validator, and validator
+proposer is a separate long-running node process with its own durable state, libp2p identity, listen
+address, peer connections, and role loop. Consensus progress must be observable as interprocess messages
+between these nodes, not as one `tvmd` process mutating shared memory on behalf of multiple roles.
+
 Required P2P messages:
 
 ```text
@@ -1795,6 +1800,33 @@ RequestProgram
 ProgramResponse
 PeerInfo
 ```
+
+Required process-boundary rules:
+
+```text
+jobs move from workload source to miners through libp2p gossip or node RPC submission
+miner receipts move from miner processes to validators through libp2p gossip or node RPC submission
+validator tensor fetches use request-response or node RPC against the serving miner process
+validator attestations move from validator processes to the network through libp2p gossip or node RPC submission
+validator-proposed blocks move through libp2p block gossip
+finality votes move through validator node messages
+node stores are updated only after the local node validates an inbound network/RPC event through the shared chain engine
+```
+
+Rejected shortcuts:
+
+```text
+one tvmd process creating jobs, receipts, attestations, blocks, and votes for all roles
+direct in-memory propagation between counted operators
+service-loop callbacks that mutate another role's state without a network/RPC event
+single-process tests counted as multi-participant acceptance evidence
+checker-only status fields that are not backed by interprocess node messages
+compatibility paths that preserve the old service-owned local producer
+```
+
+Pure unit tests may call the chain engine directly to test deterministic state transitions. Any local-chain,
+Gate 0, public-testnet, or production-readiness acceptance claim must use separate node processes and
+interprocess libp2p/RPC messages.
 
 ---
 
@@ -1833,6 +1865,26 @@ GET /tensor/:tensor_id/opening/:chunk_index
 ---
 
 ## 31. CLI
+
+`tvmd` is a process launcher, operator CLI, and local node adapter. It is not the consensus orchestrator.
+The binary may parse config, initialize durable storage, start a role node, expose operator RPC surfaces, and
+submit messages to the local node. It must not privately perform cross-role consensus work that should be
+done by separate miner and validator processes.
+
+`tvmd` commands must respect this boundary:
+
+```text
+tvmd miner run      starts exactly one miner node role
+tvmd validator run  starts exactly one validator node role, including useful-verification PoW eligibility
+tvmd service serve  starts exactly one node service surface for the configured role/profile
+tvmd service init   initializes one node data directory
+tvmd service peer   edits one node's peer book
+```
+
+No `tvmd` command may satisfy production-readiness by internally simulating multiple counted operators,
+injecting receipts or attestations for other roles, or assembling blocks from local-only deterministic replay.
+If a role needs data produced by another role, it must obtain it through libp2p or node RPC, even in local
+CPU mode.
 
 ### 31.1 Miner CLI
 
