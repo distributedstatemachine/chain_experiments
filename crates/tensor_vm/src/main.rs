@@ -16,8 +16,8 @@ use tensor_vm::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
-    decode_tensor_payload, encode_attestation_payload, encode_block_payload, encode_job_payload,
-    encode_receipt_payload,
+    decode_tensor_payload, encode_attestation_payload, encode_block_payload,
+    encode_block_vote_payload, encode_job_payload, encode_receipt_payload,
     hash::hex,
     jobs::LinearTrainingStepOutput,
     localnet::produce_synthetic_cpu_round_with_profile,
@@ -184,6 +184,10 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             seed_local_testnet(data_dir)
         }
+        CliCommand::LocalCpuVerify { data_dir, json } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            verify_local_cpu_store(data_dir, *json)
+        }
         _ => execute_reference_cli_command(command).map_err(|error| error.to_string()),
     }
 }
@@ -348,6 +352,50 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
         status.block_count,
         hex(&status.latest_block_hash)
     ))
+}
+
+fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<String, String> {
+    let store = NodeStore::open(data_dir);
+    let chain = store
+        .load_chain()
+        .map_err(|error| format!("failed to load node store {data_dir}: {error}"))?;
+    let status = store
+        .status()
+        .map_err(|error| format!("failed to inspect node store {data_dir}: {error}"))?;
+    let latest_block_height = chain
+        .blocks
+        .last()
+        .map(|block| block.height)
+        .unwrap_or_default();
+    let finalized_block_count = chain
+        .blocks
+        .iter()
+        .filter(|block| chain.is_block_finalized(&block.hash()))
+        .count();
+    let ready = status.block_count == chain.blocks.len()
+        && status.block_count > 0
+        && chain.state.height == latest_block_height.saturating_add(1)
+        && finalized_block_count <= status.block_count;
+    if json {
+        Ok(format!(
+            "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true,\"ready\":{},\"height\":{},\"latest_block_height\":{},\"block_count\":{},\"finalized_block_count\":{},\"node_store_ready\":true}}",
+            json_escape(data_dir),
+            ready,
+            chain.state.height,
+            latest_block_height,
+            status.block_count,
+            finalized_block_count
+        ))
+    } else {
+        Ok(format!(
+            "command=local_cpu_verify\ndata_dir={data_dir}\nstructured_verifier_ready=true\nready={ready}\nheight={}\nlatest_block_height={latest_block_height}\nblock_count={}\nfinalized_block_count={finalized_block_count}\nnode_store_ready=true",
+            chain.state.height, status.block_count
+        ))
+    }
+}
+
+fn json_escape(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn service_status(data_dir: &str) -> std::result::Result<String, String> {
@@ -1326,24 +1374,18 @@ impl RoleRuntimeLoop {
 
     fn run_until_max_requests(&mut self) -> std::result::Result<(), String> {
         self.write_status()?;
-        if self.block_interval.is_some() {
-            self.server.set_nonblocking(true).map_err(|error| {
-                format!("failed to configure nonblocking service listener: {error}")
-            })?;
-        }
+        self.server.set_nonblocking(true).map_err(|error| {
+            format!("failed to configure nonblocking service listener: {error}")
+        })?;
         loop {
             if self.max_requests_reached() {
                 break;
             }
             self.serve_rpc_once()?;
-            if self.block_interval.is_some() {
-                self.ingest_network_once()?;
-            }
+            self.ingest_network_once()?;
             self.tick_role_work_once()?;
-            if self.block_interval.is_some() {
-                self.produce_local_round_if_due()?;
-                thread::sleep(Duration::from_millis(25));
-            }
+            self.produce_local_round_if_due()?;
+            thread::sleep(Duration::from_millis(25));
         }
         Ok(())
     }
@@ -1354,17 +1396,10 @@ impl RoleRuntimeLoop {
     }
 
     fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
-        if self.block_interval.is_some() {
-            match self.server.serve_next() {
-                Ok(()) => self.record_served_request(),
-                Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(()),
-                Err(error) => Err(format!("service request failed: {error}")),
-            }
-        } else {
-            self.server
-                .serve_next()
-                .map_err(|error| format!("service request failed: {error}"))?;
-            self.record_served_request()
+        match self.server.serve_next() {
+            Ok(()) => self.record_served_request(),
+            Err(error) if error.kind() == ErrorKind::WouldBlock => Ok(()),
+            Err(error) => Err(format!("service request failed: {error}")),
         }
     }
 
@@ -1593,7 +1628,7 @@ impl RoleRuntimeLoop {
     fn write_status(&self) -> std::result::Result<(), String> {
         write_role_runtime_status(
             &self.config,
-            &RoleRuntimeStatusSnapshot::from_runtime_state(
+            &RuntimeStatusSnapshot::from_runtime_state(
                 &self.runtime_state,
                 &self.server,
                 &self.p2p_service,
@@ -1688,7 +1723,7 @@ impl RoleRuntimeLoop {
     }
 }
 
-struct RoleRuntimeStatusSnapshot {
+struct RuntimeStatusSnapshot {
     served_requests: usize,
     produced_blocks: usize,
     network_applied_blocks: usize,
@@ -1728,7 +1763,7 @@ struct RoleRuntimeStatusSnapshot {
     validator_attestations_submitted: usize,
 }
 
-impl RoleRuntimeStatusSnapshot {
+impl RuntimeStatusSnapshot {
     fn from_runtime_state(
         state: &NodeRuntimeState,
         server: &RpcHttpServer,
@@ -1793,7 +1828,7 @@ impl RoleRuntimeStatusSnapshot {
 
 fn write_role_runtime_status(
     config: &ServiceRuntimeConfig,
-    snapshot: &RoleRuntimeStatusSnapshot,
+    snapshot: &RuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
     let path = config.node.data_dir().join("role-runtime.status");
     let contents = format!(
@@ -1954,6 +1989,7 @@ struct ChainAnnouncementCheckpoint {
     jobs: BTreeSet<Hash>,
     receipts: BTreeSet<Hash>,
     attestations: BTreeSet<Hash>,
+    block_votes: BTreeSet<(Hash, Address)>,
 }
 
 fn chain_announcement_checkpoint(chain: &LocalChain) -> ChainAnnouncementCheckpoint {
@@ -1961,6 +1997,7 @@ fn chain_announcement_checkpoint(chain: &LocalChain) -> ChainAnnouncementCheckpo
         jobs: chain.state.jobs.keys().copied().collect(),
         receipts: chain.state.receipts.keys().copied().collect(),
         attestations: attestation_announcement_hashes(chain).collect(),
+        block_votes: block_vote_announcement_keys(chain).collect(),
     }
 }
 
@@ -2016,6 +2053,22 @@ fn publish_new_chain_announcements(
                 .map_err(|error| format!("failed to publish attestation gossip: {error}"))?;
         }
     }
+    for (block_hash, votes) in &chain.state.block_votes {
+        for vote in votes {
+            let key = (*block_hash, vote.validator);
+            if !before.block_votes.contains(&key) {
+                p2p_service
+                    .publish_gossip(P2pMessage::NewBlockVotePayload {
+                        block_hash: *block_hash,
+                        validator: vote.validator,
+                        payload: encode_block_vote_payload(vote),
+                    })
+                    .map_err(|error| {
+                        format!("failed to publish block vote payload gossip: {error}")
+                    })?;
+            }
+        }
+    }
     Ok(())
 }
 
@@ -2025,6 +2078,14 @@ fn attestation_announcement_hashes(chain: &LocalChain) -> impl Iterator<Item = H
         .attestations
         .values()
         .flat_map(|attestations| attestations.iter().map(attestation_announcement_hash))
+}
+
+fn block_vote_announcement_keys(chain: &LocalChain) -> impl Iterator<Item = (Hash, Address)> + '_ {
+    chain
+        .state
+        .block_votes
+        .iter()
+        .flat_map(|(block_hash, votes)| votes.iter().map(move |vote| (*block_hash, vote.validator)))
 }
 
 fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
@@ -2184,6 +2245,8 @@ mod tests {
             block_headers: 1,
             block_payloads: 1,
             block_payloads_applied: 1,
+            block_votes: 1,
+            block_votes_applied: 1,
             jobs: 1,
             job_payloads: 1,
             job_payloads_applied: 1,
@@ -2203,6 +2266,8 @@ mod tests {
             block_headers: 0,
             block_payloads: 2,
             block_payloads_applied: 2,
+            block_votes: 2,
+            block_votes_applied: 2,
             jobs: 0,
             job_payloads: 2,
             job_payloads_applied: 2,
@@ -2223,6 +2288,8 @@ mod tests {
         assert_eq!(cumulative.block_headers, 1);
         assert_eq!(cumulative.block_payloads, 3);
         assert_eq!(cumulative.block_payloads_applied, 3);
+        assert_eq!(cumulative.block_votes, 3);
+        assert_eq!(cumulative.block_votes_applied, 3);
         assert_eq!(cumulative.jobs, 1);
         assert_eq!(cumulative.job_payloads, 3);
         assert_eq!(cumulative.job_payloads_applied, 3);

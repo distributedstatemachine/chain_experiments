@@ -192,6 +192,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "live_tensor_fetch=true",
         "live_rewards=true",
         "tvmd service status",
+        "tvmd local-cpu verify",
+        "structured_verifier_ready",
         "all_operator_status_count=15",
         "--max-time 15",
         "CANDIDATE_NETWORK_HEAD_HEIGHT",

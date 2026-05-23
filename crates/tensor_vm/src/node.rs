@@ -1,10 +1,9 @@
 use crate::{
     api::P2pMessage,
-    chain::{ChainCommand, ChainEngine, LocalChain, ReceiptState},
-    error::TvmError,
+    chain::{BlockAdmission, ChainCommand, ChainEngine, LocalChain},
     p2p::{
-        decode_attestation_payload, decode_block_payload, decode_job_payload,
-        decode_receipt_payload,
+        decode_attestation_payload, decode_block_payload, decode_block_vote_payload,
+        decode_job_payload, decode_receipt_payload,
     },
     types::{Hash, hash_bytes},
     verify::ValidatorAttestation,
@@ -18,6 +17,8 @@ pub struct NetworkEventIngest {
     pub block_headers: usize,
     pub block_payloads: usize,
     pub block_payloads_applied: usize,
+    pub block_votes: usize,
+    pub block_votes_applied: usize,
     pub jobs: usize,
     pub job_payloads: usize,
     pub job_payloads_applied: usize,
@@ -39,6 +40,7 @@ impl NetworkEventIngest {
             || self.receipt_payloads_applied > 0
             || self.attestation_payloads_applied > 0
             || self.block_payloads_applied > 0
+            || self.block_votes_applied > 0
             || self.invalid_events > 0
             || self.applied_blocks > 0
     }
@@ -53,6 +55,10 @@ impl NetworkEventIngest {
         self.block_payloads_applied = self
             .block_payloads_applied
             .saturating_add(other.block_payloads_applied);
+        self.block_votes = self.block_votes.saturating_add(other.block_votes);
+        self.block_votes_applied = self
+            .block_votes_applied
+            .saturating_add(other.block_votes_applied);
         self.jobs = self.jobs.saturating_add(other.jobs);
         self.job_payloads = self.job_payloads.saturating_add(other.job_payloads);
         self.job_payloads_applied = self
@@ -291,12 +297,21 @@ pub enum NetworkBlockPayloadApply {
 }
 
 pub trait NetworkPayloadProcessor {
+    fn apply_job(&mut self, job_id: Hash, payload: &[u8]) -> NetworkPayloadApply;
+
     fn apply_block(
         &mut self,
         height: u64,
         block_hash: Hash,
         payload: &[u8],
     ) -> NetworkBlockPayloadApply;
+
+    fn apply_block_vote(
+        &mut self,
+        block_hash: Hash,
+        validator: Hash,
+        payload: &[u8],
+    ) -> NetworkPayloadApply;
 
     fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply;
 
@@ -317,7 +332,7 @@ pub trait NetworkEventContext {
 pub fn ingest_network_messages<C: NetworkEventContext + ?Sized>(
     context: &mut C,
     messages: Vec<P2pMessage>,
-    local_producer: bool,
+    _local_producer: bool,
     pending_payloads: &mut PendingNetworkPayloads,
 ) -> std::result::Result<NetworkEventIngest, String> {
     let mut ingested = NetworkEventIngest::default();
@@ -349,20 +364,46 @@ pub fn ingest_network_messages<C: NetworkEventContext + ?Sized>(
                     ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                     continue;
                 }
-                if !local_producer {
-                    match context.apply_block_payload(height, block_hash, &payload) {
-                        NetworkBlockPayloadApply::Applied { appended } => {
-                            ingested.block_payloads_applied =
-                                ingested.block_payloads_applied.saturating_add(1);
-                            ingested.applied_blocks =
-                                ingested.applied_blocks.saturating_add(appended);
-                        }
-                        NetworkBlockPayloadApply::Pending => {
-                            pending_payloads.queue_block(height, block_hash, payload);
-                        }
-                        NetworkBlockPayloadApply::Invalid => {
-                            ingested.invalid_events = ingested.invalid_events.saturating_add(1);
-                        }
+                match context.apply_block_payload(height, block_hash, &payload) {
+                    NetworkBlockPayloadApply::Applied { appended } => {
+                        ingested.block_payloads_applied =
+                            ingested.block_payloads_applied.saturating_add(1);
+                        ingested.applied_blocks = ingested.applied_blocks.saturating_add(appended);
+                    }
+                    NetworkBlockPayloadApply::Pending => {
+                        pending_payloads.queue_block(height, block_hash, payload);
+                    }
+                    NetworkBlockPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    }
+                }
+            }
+            P2pMessage::NewBlockVotePayload {
+                block_hash,
+                validator,
+                payload,
+            } => {
+                ingested.block_announcements = ingested.block_announcements.saturating_add(1);
+                ingested.block_votes = ingested.block_votes.saturating_add(1);
+                if block_hash == [0; 32] || validator == [0; 32] {
+                    ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                    continue;
+                }
+                match apply_network_block_vote_payload(
+                    context.chain(),
+                    block_hash,
+                    validator,
+                    &payload,
+                ) {
+                    NetworkPayloadApply::Applied => {
+                        ingested.block_votes_applied =
+                            ingested.block_votes_applied.saturating_add(1);
+                    }
+                    NetworkPayloadApply::Pending => {
+                        pending_payloads.queue_block_vote(block_hash, validator, payload);
+                    }
+                    NetworkPayloadApply::Invalid => {
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                     }
                 }
             }
@@ -545,57 +586,58 @@ pub fn apply_network_block_payload(
         .map(crate::chain::TensorBlock::hash)
         .unwrap_or([0; 32]);
     if block.parent_hash != expected_parent {
-        return NetworkBlockPayloadApply::Invalid;
+        return NetworkBlockPayloadApply::Pending;
     }
 
     let mut candidate = chain.clone();
-    prepare_network_block_parent_state(&mut candidate);
-    match candidate.apply_command(ChainCommand::SubmitBlock(block)) {
-        Ok(events) => {
-            let appended = events
-                .iter()
-                .filter(|event| matches!(event, crate::chain::ChainEvent::BlockAccepted { .. }))
-                .count();
+    if candidate.prepare_block_parent_state().is_err() {
+        return NetworkBlockPayloadApply::Invalid;
+    }
+    match candidate.admit_block(block) {
+        Ok(BlockAdmission::Applied { .. }) => {
             *chain = candidate;
-            NetworkBlockPayloadApply::Applied { appended }
+            NetworkBlockPayloadApply::Applied { appended: 1 }
         }
-        Err(error) => block_payload_apply_failure(&error),
+        Ok(BlockAdmission::Duplicate { .. }) => NetworkBlockPayloadApply::Applied { appended: 0 },
+        Ok(BlockAdmission::PendingParent { .. }) => NetworkBlockPayloadApply::Pending,
+        Ok(BlockAdmission::Invalid { .. }) | Err(_) => NetworkBlockPayloadApply::Invalid,
     }
 }
 
-fn block_payload_apply_failure(error: &TvmError) -> NetworkBlockPayloadApply {
-    match error {
-        TvmError::InvalidReceipt("block payload height is not next head")
-        | TvmError::InvalidReceipt("block parent mismatch") => NetworkBlockPayloadApply::Pending,
-        _ => NetworkBlockPayloadApply::Invalid,
+pub fn apply_network_block_vote_payload(
+    chain: &mut LocalChain,
+    block_hash: Hash,
+    validator: Hash,
+    payload: &[u8],
+) -> NetworkPayloadApply {
+    if block_hash == [0; 32] || validator == [0; 32] {
+        return NetworkPayloadApply::Invalid;
     }
-}
-
-fn prepare_network_block_parent_state(chain: &mut LocalChain) {
-    let settled_before = chain.state.settled_receipts.clone();
-    let _ = chain.apply_command(ChainCommand::SettleEpoch {
-        miner_reward_pool: 1_000,
-        validator_reward_pool: 500,
-    });
-    let newly_settled = chain
+    let Ok(vote) = decode_block_vote_payload(payload) else {
+        return NetworkPayloadApply::Invalid;
+    };
+    if vote.block_hash != block_hash || vote.validator != validator {
+        return NetworkPayloadApply::Invalid;
+    }
+    if chain
         .state
-        .settled_receipts
-        .difference(&settled_before)
-        .copied()
-        .collect::<Vec<_>>();
-    for receipt_id in newly_settled {
-        let Some(ReceiptState::LinearTrainingStep(receipt)) =
-            chain.state.receipts.get(&receipt_id).cloned()
-        else {
-            continue;
-        };
-        let _ = chain.apply_model_transition(
-            &receipt.model_id,
-            receipt.step,
-            &receipt.weight_root_before,
-            receipt.weight_root_after,
-        );
+        .block_votes
+        .get(&block_hash)
+        .is_some_and(|votes| votes.iter().any(|existing| existing.validator == validator))
+    {
+        return NetworkPayloadApply::Applied;
     }
+    if !chain
+        .blocks
+        .iter()
+        .any(|block| block.height == vote.block_height && block.hash() == block_hash)
+    {
+        return NetworkPayloadApply::Pending;
+    }
+    chain
+        .apply_command(ChainCommand::SubmitBlockVote(vote))
+        .map(|_| NetworkPayloadApply::Applied)
+        .unwrap_or(NetworkPayloadApply::Invalid)
 }
 
 pub fn apply_network_receipt_payload(
@@ -680,6 +722,12 @@ impl<'a> ChainNetworkPayloadProcessor<'a> {
 }
 
 impl NetworkPayloadProcessor for ChainNetworkPayloadProcessor<'_> {
+    fn apply_job(&mut self, job_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_job_payload(self.chain, job_id, payload)
+            .map(|_| NetworkPayloadApply::Applied)
+            .unwrap_or(NetworkPayloadApply::Invalid)
+    }
+
     fn apply_block(
         &mut self,
         height: u64,
@@ -687,6 +735,15 @@ impl NetworkPayloadProcessor for ChainNetworkPayloadProcessor<'_> {
         payload: &[u8],
     ) -> NetworkBlockPayloadApply {
         apply_network_block_payload(self.chain, height, block_hash, payload)
+    }
+
+    fn apply_block_vote(
+        &mut self,
+        block_hash: Hash,
+        validator: Hash,
+        payload: &[u8],
+    ) -> NetworkPayloadApply {
+        apply_network_block_vote_payload(self.chain, block_hash, validator, payload)
     }
 
     fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
@@ -705,6 +762,12 @@ struct ContextNetworkPayloadProcessor<'a, C: NetworkEventContext + ?Sized> {
 impl<C: NetworkEventContext + ?Sized> NetworkPayloadProcessor
     for ContextNetworkPayloadProcessor<'_, C>
 {
+    fn apply_job(&mut self, job_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+        apply_network_job_payload(self.context.chain(), job_id, payload)
+            .map(|_| NetworkPayloadApply::Applied)
+            .unwrap_or(NetworkPayloadApply::Invalid)
+    }
+
     fn apply_block(
         &mut self,
         height: u64,
@@ -713,6 +776,15 @@ impl<C: NetworkEventContext + ?Sized> NetworkPayloadProcessor
     ) -> NetworkBlockPayloadApply {
         self.context
             .apply_block_payload(height, block_hash, payload)
+    }
+
+    fn apply_block_vote(
+        &mut self,
+        block_hash: Hash,
+        validator: Hash,
+        payload: &[u8],
+    ) -> NetworkPayloadApply {
+        apply_network_block_vote_payload(self.context.chain(), block_hash, validator, payload)
     }
 
     fn apply_receipt(&mut self, receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
@@ -739,18 +811,35 @@ pub fn attestation_announcement_hash(attestation: &ValidatorAttestation) -> Hash
 
 #[derive(Debug, Default)]
 pub struct PendingNetworkPayloads {
-    blocks: BTreeMap<Hash, (u64, Vec<u8>)>,
+    jobs: BTreeMap<Hash, Vec<u8>>,
+    blocks: BTreeMap<(u64, Hash), Vec<u8>>,
+    block_votes: BTreeMap<(Hash, Hash), Vec<u8>>,
     receipts: BTreeMap<Hash, Vec<u8>>,
     attestations: BTreeMap<Hash, Vec<u8>>,
 }
 
 impl PendingNetworkPayloads {
     pub fn is_empty(&self) -> bool {
-        self.blocks.is_empty() && self.receipts.is_empty() && self.attestations.is_empty()
+        self.jobs.is_empty()
+            && self.blocks.is_empty()
+            && self.block_votes.is_empty()
+            && self.receipts.is_empty()
+            && self.attestations.is_empty()
+    }
+
+    pub fn pending_job_count(&self) -> usize {
+        self.jobs.len()
     }
 
     pub fn pending_block_count(&self) -> usize {
         self.blocks.len()
+    }
+    pub fn queue_job(&mut self, job_id: Hash, payload: Vec<u8>) {
+        self.jobs.entry(job_id).or_insert(payload);
+    }
+
+    pub fn pending_block_vote_count(&self) -> usize {
+        self.block_votes.len()
     }
 
     pub fn pending_receipt_count(&self) -> usize {
@@ -766,7 +855,13 @@ impl PendingNetworkPayloads {
     }
 
     pub fn queue_block(&mut self, height: u64, block_hash: Hash, payload: Vec<u8>) {
-        self.blocks.entry(block_hash).or_insert((height, payload));
+        self.blocks.entry((height, block_hash)).or_insert(payload);
+    }
+
+    pub fn queue_block_vote(&mut self, block_hash: Hash, validator: Hash, payload: Vec<u8>) {
+        self.block_votes
+            .entry((block_hash, validator))
+            .or_insert(payload);
     }
 
     pub fn queue_attestation(&mut self, attestation_id: Hash, payload: Vec<u8>) {
@@ -780,6 +875,27 @@ impl PendingNetworkPayloads {
         let mut ingested = NetworkEventIngest::default();
         loop {
             let mut progressed = false;
+            for job_id in self.jobs.keys().copied().collect::<Vec<_>>() {
+                let payload = self
+                    .jobs
+                    .get(&job_id)
+                    .expect("queued job payload must exist")
+                    .clone();
+                match processor.apply_job(job_id, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        self.jobs.remove(&job_id);
+                        ingested.job_payloads_applied =
+                            ingested.job_payloads_applied.saturating_add(1);
+                        progressed = true;
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        self.jobs.remove(&job_id);
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                        progressed = true;
+                    }
+                }
+            }
             for receipt_id in self.receipts.keys().copied().collect::<Vec<_>>() {
                 let payload = self
                     .receipts
@@ -822,15 +938,15 @@ impl PendingNetworkPayloads {
                     }
                 }
             }
-            for block_hash in self.blocks.keys().copied().collect::<Vec<_>>() {
-                let (height, payload) = self
+            for (height, block_hash) in self.blocks.keys().copied().collect::<Vec<_>>() {
+                let payload = self
                     .blocks
-                    .get(&block_hash)
+                    .get(&(height, block_hash))
                     .expect("queued block payload must exist")
                     .clone();
                 match processor.apply_block(height, block_hash, &payload) {
                     NetworkBlockPayloadApply::Applied { appended } => {
-                        self.blocks.remove(&block_hash);
+                        self.blocks.remove(&(height, block_hash));
                         ingested.block_payloads_applied =
                             ingested.block_payloads_applied.saturating_add(1);
                         ingested.applied_blocks = ingested.applied_blocks.saturating_add(appended);
@@ -838,7 +954,28 @@ impl PendingNetworkPayloads {
                     }
                     NetworkBlockPayloadApply::Pending => {}
                     NetworkBlockPayloadApply::Invalid => {
-                        self.blocks.remove(&block_hash);
+                        self.blocks.remove(&(height, block_hash));
+                        ingested.invalid_events = ingested.invalid_events.saturating_add(1);
+                        progressed = true;
+                    }
+                }
+            }
+            for (block_hash, validator) in self.block_votes.keys().copied().collect::<Vec<_>>() {
+                let payload = self
+                    .block_votes
+                    .get(&(block_hash, validator))
+                    .expect("queued block vote payload must exist")
+                    .clone();
+                match processor.apply_block_vote(block_hash, validator, &payload) {
+                    NetworkPayloadApply::Applied => {
+                        self.block_votes.remove(&(block_hash, validator));
+                        ingested.block_votes_applied =
+                            ingested.block_votes_applied.saturating_add(1);
+                        progressed = true;
+                    }
+                    NetworkPayloadApply::Pending => {}
+                    NetworkPayloadApply::Invalid => {
+                        self.block_votes.remove(&(block_hash, validator));
                         ingested.invalid_events = ingested.invalid_events.saturating_add(1);
                         progressed = true;
                     }
@@ -856,9 +993,12 @@ impl PendingNetworkPayloads {
 mod tests {
     use super::*;
     use crate::{
-        chain::{JobState, LocalChain, ReceiptState},
+        chain::{BlockVote, JobState, LocalChain, ReceiptState},
         p2p::encode_block_payload,
-        p2p::{encode_attestation_payload, encode_job_payload, encode_receipt_payload},
+        p2p::{
+            encode_attestation_payload, encode_block_vote_payload, encode_job_payload,
+            encode_receipt_payload,
+        },
         scheduler::JobScheduler,
         testnet::{LocalTestnet, TestnetConfig},
         types::sign,
@@ -874,6 +1014,10 @@ mod tests {
     }
 
     impl NetworkPayloadProcessor for RetryProcessor {
+        fn apply_job(&mut self, _job_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
+            NetworkPayloadApply::Applied
+        }
+
         fn apply_block(
             &mut self,
             _height: u64,
@@ -882,6 +1026,15 @@ mod tests {
         ) -> NetworkBlockPayloadApply {
             self.block_attempts = self.block_attempts.saturating_add(1);
             self.block_result
+        }
+
+        fn apply_block_vote(
+            &mut self,
+            _block_hash: Hash,
+            _validator: Hash,
+            _payload: &[u8],
+        ) -> NetworkPayloadApply {
+            NetworkPayloadApply::Pending
         }
 
         fn apply_receipt(&mut self, _receipt_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
@@ -1096,6 +1249,10 @@ mod tests {
         }
 
         impl NetworkPayloadProcessor for PayloadCapturingProcessor {
+            fn apply_job(&mut self, _job_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
+                NetworkPayloadApply::Applied
+            }
+
             fn apply_block(
                 &mut self,
                 _height: u64,
@@ -1104,6 +1261,15 @@ mod tests {
             ) -> NetworkBlockPayloadApply {
                 self.block_payloads.push(payload.to_vec());
                 NetworkBlockPayloadApply::Applied { appended: 1 }
+            }
+
+            fn apply_block_vote(
+                &mut self,
+                _block_hash: Hash,
+                _validator: Hash,
+                _payload: &[u8],
+            ) -> NetworkPayloadApply {
+                NetworkPayloadApply::Applied
             }
 
             fn apply_receipt(&mut self, _receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
@@ -1251,7 +1417,7 @@ mod tests {
     }
 
     #[test]
-    fn network_event_driver_dispatches_block_payloads_for_non_producers() {
+    fn network_event_driver_dispatches_block_payloads_for_all_roles() {
         let block_hash = hash_bytes(b"test", &[b"network-payload-head"]);
         let messages = vec![P2pMessage::NewBlockPayload {
             height: 4,
@@ -1268,8 +1434,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(producer_ingested.block_payloads, 1);
-        assert_eq!(producer_ingested.block_payloads_applied, 0);
-        assert!(producer_context.applied_payloads.is_empty());
+        assert_eq!(producer_ingested.block_payloads_applied, 1);
+        assert_eq!(producer_ingested.applied_blocks, 2);
+        assert_eq!(producer_context.applied_payloads, vec![(4, block_hash)]);
 
         let mut non_producer_context = TestNetworkEventContext::new(b"non-producer-payload");
         let non_producer_ingested = ingest_network_messages(
@@ -1388,6 +1555,27 @@ mod tests {
             NetworkBlockPayloadApply::Applied { appended: 1 }
         );
         assert_eq!(consumer.blocks, producer.blocks);
+        assert!(!consumer.state.finalized_blocks.contains(&block_hash));
+        assert!(!consumer.has_block_finality(&block_hash));
+        let vote = BlockVote::new(validator, 10_000, &block);
+        assert_eq!(
+            apply_network_block_vote_payload(
+                &mut parent_chain.clone(),
+                block_hash,
+                vote.validator,
+                &encode_block_vote_payload(&vote),
+            ),
+            NetworkPayloadApply::Pending
+        );
+        assert_eq!(
+            apply_network_block_vote_payload(
+                &mut consumer,
+                block_hash,
+                vote.validator,
+                &encode_block_vote_payload(&vote),
+            ),
+            NetworkPayloadApply::Applied
+        );
         assert!(consumer.state.finalized_blocks.contains(&block_hash));
         assert!(consumer.has_block_finality(&block_hash));
         assert_eq!(

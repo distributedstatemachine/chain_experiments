@@ -2,7 +2,8 @@ use super::roots::{
     attestation_root, block_checks_root, reward_root, selected_receipt_root, state_root,
 };
 use super::{
-    BlockVote, BlockspaceCaps, BlockspaceSelection, ChainState, LocalChain, TensorBlock, validation,
+    BlockAdmission, BlockInvalidReason, BlockspaceCaps, BlockspaceSelection, ChainCommand,
+    ChainEngine, ChainState, LocalChain, ReceiptState, TensorBlock,
 };
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash, hash_bytes, sign, verify_signature};
@@ -99,22 +100,59 @@ pub(super) fn produce_with_rewards(
     }
 }
 
-pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<bool> {
+pub(super) fn prepare_parent_state(chain: &mut LocalChain) -> Result<()> {
+    let settled_before = chain.state.settled_receipts.clone();
+    chain.apply_command(ChainCommand::SettleEpoch {
+        miner_reward_pool: 1_000,
+        validator_reward_pool: 500,
+    })?;
+    let newly_settled = chain
+        .state
+        .settled_receipts
+        .difference(&settled_before)
+        .copied()
+        .collect::<Vec<_>>();
+    for receipt_id in newly_settled {
+        let Some(ReceiptState::LinearTrainingStep(receipt)) =
+            chain.state.receipts.get(&receipt_id).cloned()
+        else {
+            continue;
+        };
+        chain.apply_model_transition(
+            &receipt.model_id,
+            receipt.step,
+            &receipt.weight_root_before,
+            receipt.weight_root_after,
+        )?;
+    }
+    Ok(())
+}
+
+pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<BlockAdmission> {
     let block_hash = block.hash();
+    let height = block.height;
     if let Some(existing) = chain
         .blocks
         .iter()
         .find(|candidate| candidate.height == block.height)
     {
         if existing.hash() == block_hash {
-            return Ok(false);
+            return Ok(BlockAdmission::Duplicate {
+                height,
+                hash: block_hash,
+            });
         }
-        return Err(TvmError::InvalidReceipt("conflicting block payload"));
+        return Ok(BlockAdmission::Invalid {
+            height,
+            hash: block_hash,
+            reason: BlockInvalidReason::ConflictingHeight,
+        });
     }
     if block.height != chain.state.height {
-        return Err(TvmError::InvalidReceipt(
-            "block payload height is not next head",
-        ));
+        return Ok(BlockAdmission::PendingParent {
+            height,
+            parent_hash: block.parent_hash,
+        });
     }
     let expected_parent = chain
         .blocks
@@ -122,14 +160,16 @@ pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<bool> 
         .map(TensorBlock::hash)
         .unwrap_or([0; 32]);
     if block.parent_hash != expected_parent {
-        return Err(TvmError::InvalidReceipt("block parent mismatch"));
+        return Ok(BlockAdmission::PendingParent {
+            height,
+            parent_hash: block.parent_hash,
+        });
     }
 
     validate(chain, &block, true)?;
     let beacon = block.beacon;
     let selection =
         canonical_blockspace(&chain.state, &block.parent_hash, &beacon, blockspace_caps());
-    let block_for_votes = block.clone();
     chain.blocks.push(block);
     chain
         .state
@@ -142,25 +182,10 @@ pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<bool> 
     chain.state.epoch = chain.state.height / chain.params.epoch_length.max(1);
     chain.state.finalized_randomness =
         next_finalized_randomness(&beacon, &block_hash, chain.state.height);
-    finalize_admitted_block(chain, &block_for_votes)?;
-    Ok(true)
-}
-
-fn finalize_admitted_block(chain: &mut LocalChain, block: &TensorBlock) -> Result<()> {
-    let block_hash = block.hash();
-    let validators = chain
-        .state
-        .validators
-        .iter()
-        .map(|(address, validator)| (*address, validator.stake))
-        .collect::<Vec<_>>();
-    for (validator, stake) in validators {
-        validation::submit_block_vote(chain, BlockVote::new(validator, stake, block))?;
-        if validation::has_block_finality(chain, &block_hash) {
-            break;
-        }
-    }
-    Ok(())
+    Ok(BlockAdmission::Applied {
+        height,
+        hash: block_hash,
+    })
 }
 
 pub(super) fn blockspace_caps() -> BlockspaceCaps {

@@ -24,7 +24,7 @@ mod state;
 mod transactions;
 mod validation;
 
-pub use engine::{ChainCommand, ChainEngine, ChainEvent};
+pub use engine::{BlockAdmission, BlockInvalidReason, ChainCommand, ChainEngine, ChainEvent};
 #[cfg(test)]
 use settlement::{has_conflicting_linear_receipt, receipts_agree};
 pub use state::{
@@ -218,7 +218,11 @@ impl LocalChain {
         blocks::produce_with_rewards(self, proposer, timestamp, fixed_block_reward, fee_share)
     }
 
-    pub fn admit_block(&mut self, block: TensorBlock) -> Result<bool> {
+    pub fn prepare_block_parent_state(&mut self) -> Result<()> {
+        blocks::prepare_parent_state(self)
+    }
+
+    pub fn admit_block(&mut self, block: TensorBlock) -> Result<BlockAdmission> {
         blocks::admit(self, block)
     }
 

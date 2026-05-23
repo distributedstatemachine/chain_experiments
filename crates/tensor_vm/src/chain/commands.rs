@@ -1,8 +1,8 @@
 use super::{
-    ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState, LocalChain, ReceiptState,
-    TensorBlock, settlement,
+    BlockAdmission, ChainCommand, ChainEngine, ChainEvent, ChainParams, ChainState, LocalChain,
+    ReceiptState, TensorBlock, settlement,
 };
-use crate::error::Result;
+use crate::error::{Result, TvmError};
 
 impl ChainEngine for LocalChain {
     fn apply_command(&mut self, command: ChainCommand) -> Result<Vec<ChainEvent>> {
@@ -39,19 +39,18 @@ impl ChainEngine for LocalChain {
                     validator,
                 }])
             }
-            ChainCommand::SubmitBlock(block) => {
-                let height = block.height;
-                let hash = block.hash();
-                if self.admit_block(block)? {
-                    let mut events = vec![ChainEvent::BlockAccepted { height, hash }];
-                    if self.has_block_finality(&hash) && self.is_block_finalized(&hash) {
-                        events.push(ChainEvent::BlockFinalized(hash));
-                    }
-                    Ok(events)
-                } else {
-                    Ok(Vec::new())
+            ChainCommand::SubmitBlock(block) => match self.admit_block(block)? {
+                BlockAdmission::Applied { height, hash } => {
+                    Ok(vec![ChainEvent::BlockAccepted { height, hash }])
                 }
-            }
+                BlockAdmission::Duplicate { .. } => Ok(Vec::new()),
+                BlockAdmission::PendingParent { .. } => {
+                    Err(TvmError::InvalidReceipt("block parent pending"))
+                }
+                BlockAdmission::Invalid { .. } => {
+                    Err(TvmError::InvalidReceipt("invalid block payload"))
+                }
+            },
             ChainCommand::SubmitBlockVote(vote) => {
                 let block_hash = vote.block_hash;
                 let validator = vote.validator;

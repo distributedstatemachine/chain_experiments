@@ -280,6 +280,61 @@ testnet, not as an economically secure proof-of-work chain.
 
 ---
 
+### 4.6 Canonical Runtime And Transition Boundary
+
+The MVP has one consensus state-transition boundary. Runtime loops, RPC routes, libp2p handlers,
+localnet harnesses, testnet harnesses, deployment scripts, and checkers may request or observe
+transitions, but they must not own consensus mutation.
+
+The chain transition layer owns:
+
+```text
+job admission
+receipt admission
+attestation admission
+pre-block settlement and model updates
+block validation and append
+block-vote admission
+finality
+proposer rules
+reward allocation
+challenge outcomes
+```
+
+Adapters must not perform hidden consensus work. In particular, `tvmd` runtime code, node event
+ingestion, p2p glue, RPC glue, shell checkers, and deployment scripts must not synthesize settlement,
+model transitions, block votes, finality, proposer selection, reward allocation, or block validity
+outside the canonical chain transition path.
+
+Every long-running role must continuously drain and apply inbound network events. P2P ingest must not
+depend on synthetic job production, local block production, blocking RPC mode, profile-local jobs, or
+whether the node can produce blocks. A producer-capable node may decide whether to create outbound
+blocks, but it must still accept valid inbound block payloads and signed votes through the same network
+path as every other node.
+
+Block admission and finality are separate protocol steps:
+
+```text
+valid block payload -> append block
+signed validator block votes -> finality once stake threshold is met
+```
+
+Appending a valid block must not fabricate local validator votes. Auto-finalization is allowed only in
+clearly named pure test helpers, never in runtime block admission, node ingest, p2p handling, RPC
+handling, or deployment checker code.
+
+Consensus payload decoding must be bounded before allocation. Network and storage payloads for blocks,
+jobs, receipts, attestations, block votes, and tensor artifacts should share canonical codecs. If a
+network/storage format split is intentionally preserved, the boundary must be documented and covered by
+parity, roundtrip, malformed-input, and size-bound tests.
+
+Local checker evidence must come from structured runtime and chain state. Shell scripts may orchestrate
+Docker and invoke verification commands, but they must not become the source of truth for protocol
+readiness through hand-written grep/sed parsing, duplicated service lists, hardcoded certificate
+booleans, or status-field archaeology.
+
+---
+
 ## 5. System Actors
 
 ### 5.1 Miner

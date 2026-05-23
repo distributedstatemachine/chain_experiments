@@ -100,6 +100,10 @@ pub enum CliCommand {
     LocalTestnetSeed {
         data_dir: String,
     },
+    LocalCpuVerify {
+        data_dir: String,
+        json: bool,
+    },
     PublicEvidenceValidate {
         manifest: String,
     },
@@ -570,6 +574,16 @@ pub fn parse_cli_parts(args: &[&str]) -> Result<CliCommand> {
         }),
         ["local-testnet", "seed", "--data-dir", data_dir] => Ok(CliCommand::LocalTestnetSeed {
             data_dir: (*data_dir).to_owned(),
+        }),
+        ["local-cpu", "verify", "--data-dir", data_dir, "--json"] => {
+            Ok(CliCommand::LocalCpuVerify {
+                data_dir: (*data_dir).to_owned(),
+                json: true,
+            })
+        }
+        ["local-cpu", "verify", "--data-dir", data_dir] => Ok(CliCommand::LocalCpuVerify {
+            data_dir: (*data_dir).to_owned(),
+            json: false,
         }),
         ["public-evidence", "validate", "--manifest", manifest] => {
             Ok(CliCommand::PublicEvidenceValidate {
@@ -1141,6 +1155,9 @@ pub fn describe_command(command: &CliCommand) -> String {
         CliCommand::LocalTestnetSeed { data_dir } => {
             format!("seed local CPU testnet data_dir={data_dir}")
         }
+        CliCommand::LocalCpuVerify { data_dir, json } => {
+            format!("verify local CPU node evidence data_dir={data_dir} json={json}")
+        }
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
         }
@@ -1556,6 +1573,19 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             Ok(format!(
                 "command=local_testnet_seed\ndata_dir={data_dir}\nlocal_cpu_seed_ready=true"
             ))
+        }
+        CliCommand::LocalCpuVerify { data_dir, json } => {
+            ensure_data_dir(data_dir)?;
+            if *json {
+                Ok(format!(
+                    "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true}}",
+                    json_escape(data_dir)
+                ))
+            } else {
+                Ok(format!(
+                    "command=local_cpu_verify\ndata_dir={data_dir}\nstructured_verifier_ready=true"
+                ))
+            }
         }
         CliCommand::PublicEvidenceServiceHealth {
             kind,
@@ -3407,6 +3437,10 @@ fn ensure_data_dir(data_dir: &str) -> Result<()> {
         return Err(TvmError::InvalidReceipt("data dir argument is empty"));
     }
     Ok(())
+}
+
+fn json_escape(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn ensure_auth_token(auth_token: &str) -> Result<()> {

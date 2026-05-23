@@ -3,6 +3,33 @@ use crate::error::Result;
 use crate::types::{Address, Hash};
 use crate::verify::ValidatorAttestation;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BlockInvalidReason {
+    ConflictingHeight,
+    InvalidPayload,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BlockAdmission {
+    Applied {
+        height: u64,
+        hash: Hash,
+    },
+    Duplicate {
+        height: u64,
+        hash: Hash,
+    },
+    PendingParent {
+        height: u64,
+        parent_hash: Hash,
+    },
+    Invalid {
+        height: u64,
+        hash: Hash,
+        reason: BlockInvalidReason,
+    },
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ChainCommand {
     RegisterMiner {

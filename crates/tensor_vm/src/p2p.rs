@@ -1,5 +1,5 @@
 use crate::api::P2pMessage;
-use crate::chain::{JobState, ReceiptState, TensorBlock};
+use crate::chain::{BlockVote, JobState, ReceiptState, TensorBlock};
 use crate::error::{Result as TvmResult, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
@@ -27,7 +27,9 @@ const MAX_JOB_SHAPE_DIMS: usize = 16;
 const MAX_RECEIPT_HASHES: usize = 16;
 const MAX_TENSOR_SHAPE_DIMS: usize = 16;
 const MAX_TENSOR_VALUES: usize = 1_000_000;
+const MAX_WIRE_BYTES: usize = 16 * 1024 * 1024;
 const BLOCK_PAYLOAD_LEN: usize = 8 * 4 + 32 * 11;
+const BLOCK_VOTE_PAYLOAD_LEN: usize = 32 * 3 + 8 * 2;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -1029,7 +1031,8 @@ pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
     match message {
         P2pMessage::NewBlock(_)
         | P2pMessage::NewBlockHeader { .. }
-        | P2pMessage::NewBlockPayload { .. } => Some(GossipTopic::Blocks),
+        | P2pMessage::NewBlockPayload { .. }
+        | P2pMessage::NewBlockVotePayload { .. } => Some(GossipTopic::Blocks),
         P2pMessage::NewJob(_) | P2pMessage::NewJobPayload { .. } => Some(GossipTopic::Jobs),
         P2pMessage::NewReceipt(_) | P2pMessage::NewReceiptPayload { .. } => {
             Some(GossipTopic::Receipts)
@@ -1069,6 +1072,7 @@ pub fn request_response_protocol_for_message(
         P2pMessage::NewBlock(_)
         | P2pMessage::NewBlockHeader { .. }
         | P2pMessage::NewBlockPayload { .. }
+        | P2pMessage::NewBlockVotePayload { .. }
         | P2pMessage::NewJob(_)
         | P2pMessage::NewJobPayload { .. }
         | P2pMessage::NewReceipt(_)
@@ -1129,6 +1133,16 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
             out.push(18);
             write_u64(&mut out, *height);
             write_hash(&mut out, block_hash);
+            write_bytes(&mut out, payload);
+        }
+        P2pMessage::NewBlockVotePayload {
+            block_hash,
+            validator,
+            payload,
+        } => {
+            out.push(19);
+            write_hash(&mut out, block_hash);
+            write_hash(&mut out, validator);
             write_bytes(&mut out, payload);
         }
         P2pMessage::NewJob(hash) => {
@@ -1260,6 +1274,22 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
                 payload,
             }
         }
+        19 => {
+            let block_hash = reader.read_hash()?;
+            let validator = reader.read_hash()?;
+            let payload = reader.read_bytes()?;
+            let vote = decode_block_vote_payload(&payload)?;
+            if vote.block_hash != block_hash || vote.validator != validator {
+                return Err(TvmError::InvalidReceipt(
+                    "block vote payload announcement mismatch",
+                ));
+            }
+            P2pMessage::NewBlockVotePayload {
+                block_hash,
+                validator,
+                payload,
+            }
+        }
         2 => P2pMessage::NewJob(reader.read_hash()?),
         13 => P2pMessage::NewJobPayload {
             job_id: reader.read_hash()?,
@@ -1371,6 +1401,38 @@ pub fn decode_block_payload(input: &[u8]) -> TvmResult<TensorBlock> {
         return Err(TvmError::InvalidReceipt("trailing block payload bytes"));
     }
     Ok(block)
+}
+
+pub fn encode_block_vote_payload(vote: &BlockVote) -> Vec<u8> {
+    let mut out = Vec::with_capacity(BLOCK_VOTE_PAYLOAD_LEN);
+    write_hash(&mut out, &vote.validator);
+    write_hash(&mut out, &vote.block_hash);
+    write_u64(&mut out, vote.block_height);
+    write_u64(&mut out, vote.stake);
+    write_hash(&mut out, &vote.signature);
+    out
+}
+
+pub fn decode_block_vote_payload(input: &[u8]) -> TvmResult<BlockVote> {
+    if input.len() != BLOCK_VOTE_PAYLOAD_LEN {
+        return Err(TvmError::InvalidReceipt(
+            "invalid block vote payload length",
+        ));
+    }
+    let mut reader = Reader::new(input);
+    let vote = BlockVote {
+        validator: reader.read_hash()?,
+        block_hash: reader.read_hash()?,
+        block_height: reader.read_u64()?,
+        stake: reader.read_u64()?,
+        signature: reader.read_hash()?,
+    };
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt(
+            "trailing block vote payload bytes",
+        ));
+    }
+    Ok(vote)
 }
 
 pub fn encode_tensor_payload(tensor: &Tensor) -> Vec<u8> {
@@ -1877,7 +1939,11 @@ impl<'a> Reader<'a> {
     }
 
     fn read_bytes(&mut self) -> TvmResult<Vec<u8>> {
-        let len = self.read_u64()? as usize;
+        let len = usize::try_from(self.read_u64()?)
+            .map_err(|_| TvmError::InvalidReceipt("p2p byte length overflow"))?;
+        if len > MAX_WIRE_BYTES {
+            return Err(TvmError::InvalidReceipt("p2p byte payload too large"));
+        }
         Ok(self.read_exact(len)?.to_vec())
     }
 
@@ -1995,7 +2061,7 @@ fn verification_result_from_tag(tag: u8) -> TvmResult<VerificationResult> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::{JobState, ReceiptState};
+    use crate::chain::{BlockVote, JobState, ReceiptState};
     use crate::jobs::{LinearTrainingStepSpec, MatmulJob};
     use crate::scheduler::SyntheticLocalJobSource;
     use crate::tensor::{DType, Tensor};
@@ -2027,6 +2093,7 @@ mod tests {
         };
         let block_hash = block.hash();
         let block_payload = encode_block_payload(&block);
+        let block_vote = BlockVote::new(address(b"block-vote-validator"), 10_000, &block);
         let tensor = Tensor::from_vec(vec![1, 3], DType::FieldElement, vec![9, 8, 7]).unwrap();
         let tensor_root = tensor.commitment_root();
         let tensor_payload = encode_tensor_payload(&tensor);
@@ -2071,6 +2138,11 @@ mod tests {
                 height: block.height,
                 block_hash,
                 payload: block_payload,
+            },
+            P2pMessage::NewBlockVotePayload {
+                block_hash,
+                validator: block_vote.validator,
+                payload: encode_block_vote_payload(&block_vote),
             },
             P2pMessage::NewJob(h),
             P2pMessage::NewJobPayload {
@@ -2420,6 +2492,14 @@ mod tests {
             Some(GossipTopic::Blocks)
         );
         assert_eq!(
+            gossip_topic_for_message(&P2pMessage::NewBlockVotePayload {
+                block_hash: h,
+                validator: address(b"mapping-vote-validator"),
+                payload: vec![1, 2, 3],
+            }),
+            Some(GossipTopic::Blocks)
+        );
+        assert_eq!(
             gossip_topic_for_message(&P2pMessage::NewJob(h)),
             Some(GossipTopic::Jobs)
         );
@@ -2502,6 +2582,14 @@ mod tests {
             None
         );
         assert_eq!(request_response_protocol_for_message(&block_payload), None);
+        assert_eq!(
+            request_response_protocol_for_message(&P2pMessage::NewBlockVotePayload {
+                block_hash: h,
+                validator: address(b"mapping-vote-validator"),
+                payload: vec![1, 2, 3],
+            }),
+            None
+        );
         assert_eq!(
             request_response_protocol_for_message(&P2pMessage::NewReceiptPayload {
                 receipt_id: h,
