@@ -416,19 +416,19 @@ ALL_OPERATOR_NETWORK_HEAD_HASH=""
 ALL_OPERATOR_NETWORK_STATE_ROOT=""
 attempt=0
 while [ "$attempt" -lt 30 ]; do
-  TARGET_STATUS_RAW=$(read_service_status miner-00) \
-    || fail "could not read miner-00 network-observed service status"
+  TARGET_STATUS_RAW=$(read_service_status miner-01) \
+    || fail "could not read miner-01 network-observed service status"
   TARGET_STATUS="$TARGET_STATUS_RAW"
-  CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value role_p2p_latest_observed_block_height "$TARGET_STATUS")
-  CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_hash "$TARGET_STATUS")
-  CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_hashes "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value role_p2p_latest_observed_block_payload_height "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_payload_hash "$TARGET_STATUS")
+  CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_payload_hashes "$TARGET_STATUS")
   if [ -n "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HEIGHT" -gt 2 ] \
     && [ -n "$CANDIDATE_NETWORK_HEAD_HASH" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "unknown" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] \
     && csv_contains_value "$CANDIDATE_NETWORK_HASHES" "$CANDIDATE_NETWORK_HEAD_HASH"; then
-    if NETWORK_BLOCK_RAW=$(read_service_block miner-00 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then
+    if NETWORK_BLOCK_RAW=$(read_service_block miner-01 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then
       NETWORK_BLOCK_STATUS="$NETWORK_BLOCK_RAW"
       NETWORK_BLOCK_HEIGHT=$(status_value height "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_HASH=$(status_value block_hash "$NETWORK_BLOCK_STATUS")
@@ -526,6 +526,8 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_NETWORK_EVENTS=$(status_value role_network_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_BLOCK_EVENTS=$(status_value role_network_block_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_BLOCK_HEADERS=$(status_value role_network_block_headers_ingested "$STATUS")
+    SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS=$(status_value role_network_block_payloads_ingested "$STATUS")
+    SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED=$(status_value role_network_block_payloads_applied "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_EVENTS=$(status_value role_network_job_events_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_PAYLOADS=$(status_value role_network_job_payloads_ingested "$STATUS")
     SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED=$(status_value role_network_job_payloads_applied "$STATUS")
@@ -540,12 +542,16 @@ while [ "$attempt" -lt 60 ]; do
     SERVICE_ROLE_LATEST_HEIGHT=$(status_value role_latest_height "$STATUS")
     SERVICE_ROLE_P2P_CONNECTED_PEERS=$(status_value role_p2p_connected_peers "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCKS=$(status_value role_p2p_observed_blocks "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS=$(status_value role_p2p_observed_block_payloads "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_JOBS=$(status_value role_p2p_observed_jobs "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_RECEIPTS=$(status_value role_p2p_observed_receipts "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS=$(status_value role_p2p_observed_attestations "$STATUS")
     SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT=$(status_value role_p2p_latest_observed_block_height "$STATUS")
     SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH=$(status_value role_p2p_latest_observed_block_hash "$STATUS")
     SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES=$(status_value role_p2p_observed_block_hashes "$STATUS")
+    SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HEIGHT=$(status_value role_p2p_latest_observed_block_payload_height "$STATUS")
+    SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HASH=$(status_value role_p2p_latest_observed_block_payload_hash "$STATUS")
+    SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES=$(status_value role_p2p_observed_block_payload_hashes "$STATUS")
     [ -n "$SERVICE_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_BLOCK_COUNT" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_LATEST_BLOCK_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
@@ -601,6 +607,10 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_NETWORK_BLOCK_EVENTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_JOB_EVENTS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
@@ -629,6 +639,8 @@ while [ "$attempt" -lt 60 ]; do
     [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_JOBS" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" ] || { STATUS_MISMATCH=true; continue; }
@@ -642,6 +654,13 @@ while [ "$attempt" -lt 60 ]; do
     [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
     [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" != "none" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HEIGHT" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HEIGHT" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HASH" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HASH" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ -n "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES" != "unknown" ] || { STATUS_MISMATCH=true; continue; }
+    [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES" != "none" ] || { STATUS_MISMATCH=true; continue; }
     case "$service" in
       miner-*) [ "$SERVICE_ROLE" = "miner" ] || { STATUS_MISMATCH=true; continue; } ;;
       validator-*) [ "$SERVICE_ROLE" = "validator" ] || { STATUS_MISMATCH=true; continue; } ;;
@@ -701,6 +720,8 @@ while [ "$attempt" -lt 60 ]; do
         [ "$SERVICE_ROLE_NETWORK_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_BLOCK_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_BLOCK_HEADERS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
+        [ "$SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_EVENTS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
         [ "$SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED" -gt 0 ] || { STATUS_MISMATCH=true; continue; }
@@ -728,16 +749,21 @@ while [ "$attempt" -lt 60 ]; do
       || [ "$SERVICE_ROLE_LATEST_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_CONNECTED_PEERS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCKS" -le 0 ] \
+      || [ "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_JOBS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_RECEIPTS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_OBSERVED_ATTESTATIONS" -le 0 ] \
       || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT" -le 2 ] \
       || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HASH" = "$ZERO_HASH" ] \
+      || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HEIGHT" -le 2 ] \
+      || [ "$SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HASH" = "$ZERO_HASH" ] \
       || [ "$SERVICE_FIRST_LIVE_BLOCK_HASH" = "$ZERO_HASH" ]; then
       STATUS_MISMATCH=true
       continue
     fi
     csv_contains_value "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_HASHES" "$ALL_OPERATOR_NETWORK_HEAD_HASH" \
+      || { STATUS_MISMATCH=true; continue; }
+    csv_contains_value "$SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES" "$ALL_OPERATOR_NETWORK_HEAD_HASH" \
       || { STATUS_MISMATCH=true; continue; }
     if [ -z "$ALL_OPERATOR_MIN_HEIGHT" ] || [ "$SERVICE_LATEST_BLOCK_HEIGHT" -lt "$ALL_OPERATOR_MIN_HEIGHT" ]; then
       ALL_OPERATOR_MIN_HEIGHT="$SERVICE_LATEST_BLOCK_HEIGHT"
@@ -881,6 +907,8 @@ tensorwork_proposer_selection_removed=true
 finality_requires_useful_pow=${FINALITY_REQUIRES_USEFUL_POW}
 live_validator_proposer_networking=false
 all_non_producer_network_applied_blocks=true
+all_non_producer_network_block_payload_ingestion=true
+all_non_producer_network_block_payload_application=true
 all_non_producer_network_event_ingestion=true
 all_non_producer_network_payload_announcements=true
 all_non_producer_network_job_payload_application=true
@@ -888,6 +916,8 @@ all_non_producer_network_receipt_payload_application=true
 all_non_producer_network_attestation_payload_application=true
 all_operator_p2p_connected_peers=true
 all_operator_p2p_block_gossip=true
+all_operator_p2p_block_payload_gossip=true
+all_operator_p2p_block_payload_head_observed=true
 all_operator_p2p_job_gossip=true
 all_operator_p2p_receipt_gossip=true
 all_operator_p2p_attestation_gossip=true

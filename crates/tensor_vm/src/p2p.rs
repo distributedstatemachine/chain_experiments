@@ -1,5 +1,5 @@
 use crate::api::P2pMessage;
-use crate::chain::{JobState, ReceiptState};
+use crate::chain::{JobState, ReceiptState, TensorBlock};
 use crate::error::{Result as TvmResult, TvmError};
 use crate::jobs::{
     LinearTrainingStepJob, LinearTrainingStepReceipt, MatmulJob, PrimitiveType, TensorOpReceipt,
@@ -27,6 +27,7 @@ const MAX_JOB_SHAPE_DIMS: usize = 16;
 const MAX_RECEIPT_HASHES: usize = 16;
 const MAX_TENSOR_SHAPE_DIMS: usize = 16;
 const MAX_TENSOR_VALUES: usize = 1_000_000;
+const BLOCK_PAYLOAD_LEN: usize = 8 * 4 + 32 * 11;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkStackRecommendation {
@@ -166,12 +167,16 @@ pub struct TensorVmLibp2pService {
     info: TensorVmLibp2pServiceInfo,
     connected_peer_count: Arc<AtomicUsize>,
     observed_block_gossip_count: Arc<AtomicUsize>,
+    observed_block_payload_gossip_count: Arc<AtomicUsize>,
     observed_job_gossip_count: Arc<AtomicUsize>,
     observed_receipt_gossip_count: Arc<AtomicUsize>,
     observed_attestation_gossip_count: Arc<AtomicUsize>,
     latest_observed_block_height: Arc<AtomicU64>,
     latest_observed_block_hash: Arc<Mutex<Hash>>,
     observed_block_hashes: Arc<Mutex<VecDeque<Hash>>>,
+    latest_observed_block_payload_height: Arc<AtomicU64>,
+    latest_observed_block_payload_hash: Arc<Mutex<Hash>>,
+    observed_block_payload_hashes: Arc<Mutex<VecDeque<Hash>>>,
     connected_peer_ids: Arc<Mutex<Vec<PeerId>>>,
     tensor_store: Arc<Mutex<BTreeMap<Hash, Tensor>>>,
     observed_message_rx: Mutex<mpsc::Receiver<P2pMessage>>,
@@ -213,6 +218,11 @@ impl TensorVmLibp2pService {
         self.observed_block_gossip_count.load(Ordering::Relaxed)
     }
 
+    pub fn observed_block_payload_gossip_count(&self) -> usize {
+        self.observed_block_payload_gossip_count
+            .load(Ordering::Relaxed)
+    }
+
     pub fn observed_job_gossip_count(&self) -> usize {
         self.observed_job_gossip_count.load(Ordering::Relaxed)
     }
@@ -239,6 +249,25 @@ impl TensorVmLibp2pService {
 
     pub fn observed_block_hashes(&self) -> Vec<Hash> {
         self.observed_block_hashes
+            .lock()
+            .map(|hashes| hashes.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn latest_observed_block_payload_height(&self) -> u64 {
+        self.latest_observed_block_payload_height
+            .load(Ordering::Relaxed)
+    }
+
+    pub fn latest_observed_block_payload_hash(&self) -> Hash {
+        self.latest_observed_block_payload_hash
+            .lock()
+            .map(|hash| *hash)
+            .unwrap_or([0; 32])
+    }
+
+    pub fn observed_block_payload_hashes(&self) -> Vec<Hash> {
+        self.observed_block_payload_hashes
             .lock()
             .map(|hashes| hashes.iter().copied().collect())
             .unwrap_or_default()
@@ -388,6 +417,9 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_connected_peer_count = Arc::clone(&connected_peer_count);
     let observed_block_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_block_gossip_count = Arc::clone(&observed_block_gossip_count);
+    let observed_block_payload_gossip_count = Arc::new(AtomicUsize::new(0));
+    let worker_observed_block_payload_gossip_count =
+        Arc::clone(&observed_block_payload_gossip_count);
     let observed_job_gossip_count = Arc::new(AtomicUsize::new(0));
     let worker_observed_job_gossip_count = Arc::clone(&observed_job_gossip_count);
     let observed_receipt_gossip_count = Arc::new(AtomicUsize::new(0));
@@ -400,6 +432,13 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
     let worker_latest_observed_block_hash = Arc::clone(&latest_observed_block_hash);
     let observed_block_hashes = Arc::new(Mutex::new(VecDeque::new()));
     let worker_observed_block_hashes = Arc::clone(&observed_block_hashes);
+    let latest_observed_block_payload_height = Arc::new(AtomicU64::new(0));
+    let worker_latest_observed_block_payload_height =
+        Arc::clone(&latest_observed_block_payload_height);
+    let latest_observed_block_payload_hash = Arc::new(Mutex::new([0; 32]));
+    let worker_latest_observed_block_payload_hash = Arc::clone(&latest_observed_block_payload_hash);
+    let observed_block_payload_hashes = Arc::new(Mutex::new(VecDeque::new()));
+    let worker_observed_block_payload_hashes = Arc::clone(&observed_block_payload_hashes);
     let connected_peer_ids = Arc::new(Mutex::new(Vec::new()));
     let worker_connected_peer_ids = Arc::clone(&connected_peer_ids);
     let tensor_store = Arc::new(Mutex::new(BTreeMap::new()));
@@ -438,6 +477,8 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             let event_metrics = ServiceEventMetrics {
                 connected_peer_count: worker_connected_peer_count.as_ref(),
                 observed_block_gossip_count: worker_observed_block_gossip_count.as_ref(),
+                observed_block_payload_gossip_count: worker_observed_block_payload_gossip_count
+                    .as_ref(),
                 observed_job_gossip_count: worker_observed_job_gossip_count.as_ref(),
                 observed_receipt_gossip_count: worker_observed_receipt_gossip_count.as_ref(),
                 observed_attestation_gossip_count: worker_observed_attestation_gossip_count
@@ -445,6 +486,11 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
                 latest_observed_block_height: worker_latest_observed_block_height.as_ref(),
                 latest_observed_block_hash: worker_latest_observed_block_hash.as_ref(),
                 observed_block_hashes: worker_observed_block_hashes.as_ref(),
+                latest_observed_block_payload_height: worker_latest_observed_block_payload_height
+                    .as_ref(),
+                latest_observed_block_payload_hash: worker_latest_observed_block_payload_hash
+                    .as_ref(),
+                observed_block_payload_hashes: worker_observed_block_payload_hashes.as_ref(),
                 connected_peer_ids: worker_connected_peer_ids.as_ref(),
                 tensor_store: worker_tensor_store.as_ref(),
                 observed_message_tx: &observed_message_tx,
@@ -517,12 +563,16 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
             info,
             connected_peer_count,
             observed_block_gossip_count,
+            observed_block_payload_gossip_count,
             observed_job_gossip_count,
             observed_receipt_gossip_count,
             observed_attestation_gossip_count,
             latest_observed_block_height,
             latest_observed_block_hash,
             observed_block_hashes,
+            latest_observed_block_payload_height,
+            latest_observed_block_payload_hash,
+            observed_block_payload_hashes,
             connected_peer_ids,
             tensor_store,
             observed_message_rx: Mutex::new(observed_message_rx),
@@ -541,12 +591,16 @@ pub fn spawn_libp2p_service(config: Libp2pControlPlaneConfig) -> TvmResult<Tenso
 struct ServiceEventMetrics<'a> {
     connected_peer_count: &'a AtomicUsize,
     observed_block_gossip_count: &'a AtomicUsize,
+    observed_block_payload_gossip_count: &'a AtomicUsize,
     observed_job_gossip_count: &'a AtomicUsize,
     observed_receipt_gossip_count: &'a AtomicUsize,
     observed_attestation_gossip_count: &'a AtomicUsize,
     latest_observed_block_height: &'a AtomicU64,
     latest_observed_block_hash: &'a Mutex<Hash>,
     observed_block_hashes: &'a Mutex<VecDeque<Hash>>,
+    latest_observed_block_payload_height: &'a AtomicU64,
+    latest_observed_block_payload_hash: &'a Mutex<Hash>,
+    observed_block_payload_hashes: &'a Mutex<VecDeque<Hash>>,
     connected_peer_ids: &'a Mutex<Vec<PeerId>>,
     tensor_store: &'a Mutex<BTreeMap<Hash, Tensor>>,
     observed_message_tx: &'a mpsc::Sender<P2pMessage>,
@@ -612,6 +666,30 @@ fn handle_swarm_event(
                     }
                     if let Ok(mut block_hashes) = metrics.observed_block_hashes.lock() {
                         remember_observed_block_hash(&mut block_hashes, block_hash);
+                    }
+                }
+                if let P2pMessage::NewBlockPayload {
+                    height, block_hash, ..
+                } = &message
+                {
+                    metrics
+                        .observed_block_payload_gossip_count
+                        .fetch_add(1, Ordering::Relaxed);
+                    let current_height = metrics
+                        .latest_observed_block_payload_height
+                        .load(Ordering::Relaxed);
+                    if *height >= current_height {
+                        metrics
+                            .latest_observed_block_payload_height
+                            .store(*height, Ordering::Relaxed);
+                        if let Ok(mut latest_block_hash) =
+                            metrics.latest_observed_block_payload_hash.lock()
+                        {
+                            *latest_block_hash = *block_hash;
+                        }
+                    }
+                    if let Ok(mut block_hashes) = metrics.observed_block_payload_hashes.lock() {
+                        remember_observed_block_hash(&mut block_hashes, *block_hash);
                     }
                 }
                 if matches!(
@@ -868,6 +946,9 @@ fn block_announcement(message: &P2pMessage) -> Option<(u64, Hash)> {
     match message {
         P2pMessage::NewBlock(block_hash) => Some((0, *block_hash)),
         P2pMessage::NewBlockHeader { height, block_hash } => Some((*height, *block_hash)),
+        P2pMessage::NewBlockPayload {
+            height, block_hash, ..
+        } => Some((*height, *block_hash)),
         _ => None,
     }
 }
@@ -946,7 +1027,9 @@ fn build_request_response_behaviour(
 
 pub fn gossip_topic_for_message(message: &P2pMessage) -> Option<GossipTopic> {
     match message {
-        P2pMessage::NewBlock(_) | P2pMessage::NewBlockHeader { .. } => Some(GossipTopic::Blocks),
+        P2pMessage::NewBlock(_)
+        | P2pMessage::NewBlockHeader { .. }
+        | P2pMessage::NewBlockPayload { .. } => Some(GossipTopic::Blocks),
         P2pMessage::NewJob(_) | P2pMessage::NewJobPayload { .. } => Some(GossipTopic::Jobs),
         P2pMessage::NewReceipt(_) | P2pMessage::NewReceiptPayload { .. } => {
             Some(GossipTopic::Receipts)
@@ -985,6 +1068,7 @@ pub fn request_response_protocol_for_message(
         }
         P2pMessage::NewBlock(_)
         | P2pMessage::NewBlockHeader { .. }
+        | P2pMessage::NewBlockPayload { .. }
         | P2pMessage::NewJob(_)
         | P2pMessage::NewJobPayload { .. }
         | P2pMessage::NewReceipt(_)
@@ -1036,6 +1120,16 @@ pub fn encode_message(message: &P2pMessage) -> Vec<u8> {
             out.push(12);
             write_u64(&mut out, *height);
             write_hash(&mut out, block_hash);
+        }
+        P2pMessage::NewBlockPayload {
+            height,
+            block_hash,
+            payload,
+        } => {
+            out.push(18);
+            write_u64(&mut out, *height);
+            write_hash(&mut out, block_hash);
+            write_bytes(&mut out, payload);
         }
         P2pMessage::NewJob(hash) => {
             out.push(2);
@@ -1150,6 +1244,22 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
             height: reader.read_u64()?,
             block_hash: reader.read_hash()?,
         },
+        18 => {
+            let height = reader.read_u64()?;
+            let block_hash = reader.read_hash()?;
+            let payload = reader.read_bytes()?;
+            let block = decode_block_payload(&payload)?;
+            if block.height != height || block.hash() != block_hash {
+                return Err(TvmError::InvalidReceipt(
+                    "block payload announcement mismatch",
+                ));
+            }
+            P2pMessage::NewBlockPayload {
+                height,
+                block_hash,
+                payload,
+            }
+        }
         2 => P2pMessage::NewJob(reader.read_hash()?),
         13 => P2pMessage::NewJobPayload {
             job_id: reader.read_hash()?,
@@ -1213,6 +1323,54 @@ pub fn decode_message(input: &[u8]) -> TvmResult<P2pMessage> {
         return Err(TvmError::InvalidReceipt("trailing p2p bytes"));
     }
     Ok(message)
+}
+
+pub fn encode_block_payload(block: &TensorBlock) -> Vec<u8> {
+    let mut out = Vec::with_capacity(BLOCK_PAYLOAD_LEN);
+    write_u64(&mut out, block.height);
+    write_hash(&mut out, &block.parent_hash);
+    write_u64(&mut out, block.epoch);
+    write_hash(&mut out, &block.proposer);
+    write_hash(&mut out, &block.settled_receipt_set_root);
+    write_hash(&mut out, &block.checks_root);
+    write_hash(&mut out, &block.attestation_root);
+    write_hash(&mut out, &block.state_root);
+    write_hash(&mut out, &block.reward_root);
+    write_hash(&mut out, &block.beacon);
+    write_hash(&mut out, &block.difficulty_target);
+    write_u64(&mut out, block.nonce);
+    write_u64(&mut out, block.timestamp);
+    write_hash(&mut out, &block.proposer_signature);
+    write_hash(&mut out, &block.validator_signature_aggregate);
+    out
+}
+
+pub fn decode_block_payload(input: &[u8]) -> TvmResult<TensorBlock> {
+    if input.len() != BLOCK_PAYLOAD_LEN {
+        return Err(TvmError::InvalidReceipt("invalid block payload length"));
+    }
+    let mut reader = Reader::new(input);
+    let block = TensorBlock {
+        height: reader.read_u64()?,
+        parent_hash: reader.read_hash()?,
+        epoch: reader.read_u64()?,
+        proposer: reader.read_hash()?,
+        settled_receipt_set_root: reader.read_hash()?,
+        checks_root: reader.read_hash()?,
+        attestation_root: reader.read_hash()?,
+        state_root: reader.read_hash()?,
+        reward_root: reader.read_hash()?,
+        beacon: reader.read_hash()?,
+        difficulty_target: reader.read_hash()?,
+        nonce: reader.read_u64()?,
+        timestamp: reader.read_u64()?,
+        proposer_signature: reader.read_hash()?,
+        validator_signature_aggregate: reader.read_hash()?,
+    };
+    if !reader.is_done() {
+        return Err(TvmError::InvalidReceipt("trailing block payload bytes"));
+    }
+    Ok(block)
 }
 
 pub fn encode_tensor_payload(tensor: &Tensor) -> Vec<u8> {
@@ -1850,6 +2008,25 @@ mod tests {
     fn p2p_messages_roundtrip() {
         let h = hash_bytes(b"test", &[b"h"]);
         let peer = address(b"peer");
+        let block = TensorBlock {
+            height: 3,
+            parent_hash: hash_bytes(b"test", &[b"parent"]),
+            epoch: 1,
+            proposer: address(b"block-proposer"),
+            settled_receipt_set_root: hash_bytes(b"test", &[b"settled"]),
+            checks_root: hash_bytes(b"test", &[b"checks"]),
+            attestation_root: hash_bytes(b"test", &[b"attestations"]),
+            state_root: hash_bytes(b"test", &[b"state"]),
+            reward_root: hash_bytes(b"test", &[b"rewards"]),
+            beacon: hash_bytes(b"test", &[b"beacon"]),
+            difficulty_target: [0xff; 32],
+            nonce: 7,
+            timestamp: 11,
+            proposer_signature: hash_bytes(b"test", &[b"proposer-signature"]),
+            validator_signature_aggregate: hash_bytes(b"test", &[b"validator-signature"]),
+        };
+        let block_hash = block.hash();
+        let block_payload = encode_block_payload(&block);
         let tensor = Tensor::from_vec(vec![1, 3], DType::FieldElement, vec![9, 8, 7]).unwrap();
         let tensor_root = tensor.commitment_root();
         let tensor_payload = encode_tensor_payload(&tensor);
@@ -1889,6 +2066,11 @@ mod tests {
             P2pMessage::NewBlockHeader {
                 height: 3,
                 block_hash: h,
+            },
+            P2pMessage::NewBlockPayload {
+                height: block.height,
+                block_hash,
+                payload: block_payload,
             },
             P2pMessage::NewJob(h),
             P2pMessage::NewJobPayload {
@@ -1966,6 +2148,28 @@ mod tests {
         oversized_values.push(DType::FieldElement.tag());
         write_u64(&mut oversized_values, (MAX_TENSOR_VALUES + 1) as u64);
         assert!(decode_tensor_payload(&oversized_values).is_err());
+    }
+
+    #[test]
+    fn block_payloads_roundtrip_and_reject_malformed_edges() {
+        let block = wire_test_block(b"block-payload-codec", 9);
+        let payload = encode_block_payload(&block);
+
+        assert_eq!(decode_block_payload(&payload).unwrap(), block);
+        assert!(decode_block_payload(&payload[..payload.len() - 1]).is_err());
+
+        let mut trailing = payload.clone();
+        trailing.push(0);
+        assert!(decode_block_payload(&trailing).is_err());
+
+        let mut wrong_hash = encode_message(&P2pMessage::NewBlockPayload {
+            height: block.height,
+            block_hash: hash_bytes(b"test", &[b"wrong-block-payload-hash"]),
+            payload,
+        });
+        assert!(decode_message(&wrong_hash).is_err());
+        wrong_hash.pop();
+        assert!(decode_message(&wrong_hash).is_err());
     }
 
     #[test]
@@ -2168,6 +2372,28 @@ mod tests {
     #[test]
     fn libp2p_mapping_separates_gossip_and_request_response() {
         let h = hash_bytes(b"test", &[b"h"]);
+        let block = TensorBlock {
+            height: 3,
+            parent_hash: hash_bytes(b"test", &[b"mapping-parent"]),
+            epoch: 1,
+            proposer: address(b"mapping-proposer"),
+            settled_receipt_set_root: hash_bytes(b"test", &[b"mapping-settled"]),
+            checks_root: hash_bytes(b"test", &[b"mapping-checks"]),
+            attestation_root: hash_bytes(b"test", &[b"mapping-attestations"]),
+            state_root: hash_bytes(b"test", &[b"mapping-state"]),
+            reward_root: hash_bytes(b"test", &[b"mapping-rewards"]),
+            beacon: hash_bytes(b"test", &[b"mapping-beacon"]),
+            difficulty_target: [0xff; 32],
+            nonce: 1,
+            timestamp: 2,
+            proposer_signature: hash_bytes(b"test", &[b"mapping-proposer-signature"]),
+            validator_signature_aggregate: hash_bytes(b"test", &[b"mapping-validator-signature"]),
+        };
+        let block_payload = P2pMessage::NewBlockPayload {
+            height: block.height,
+            block_hash: block.hash(),
+            payload: encode_block_payload(&block),
+        };
         let recommendation = recommended_network_stack();
         assert!(recommendation.libp2p_required);
         assert!(recommendation.consensus_transport.contains("libp2p"));
@@ -2187,6 +2413,10 @@ mod tests {
                 height: 3,
                 block_hash: h
             }),
+            Some(GossipTopic::Blocks)
+        );
+        assert_eq!(
+            gossip_topic_for_message(&block_payload),
             Some(GossipTopic::Blocks)
         );
         assert_eq!(
@@ -2271,6 +2501,7 @@ mod tests {
             }),
             None
         );
+        assert_eq!(request_response_protocol_for_message(&block_payload), None);
         assert_eq!(
             request_response_protocol_for_message(&P2pMessage::NewReceiptPayload {
                 receipt_id: h,
@@ -2537,6 +2768,8 @@ mod tests {
             7,
             block_header_hash,
         );
+        let block_payload = wire_test_block(b"libp2p-service-observed-block-payload", 8);
+        wait_for_observed_block_payload(&service_a, &service_b, &block_payload);
         wait_for_observed_consensus_gossip(&service_a, &service_b);
         let observed_messages = service_b.drain_observed_messages();
         assert!(
@@ -2548,6 +2781,11 @@ mod tests {
             observed_messages
                 .iter()
                 .any(|message| matches!(message, P2pMessage::NewBlockHeader { height: 7, .. }))
+        );
+        assert!(
+            observed_messages
+                .iter()
+                .any(|message| matches!(message, P2pMessage::NewBlockPayload { height: 8, .. }))
         );
         assert!(
             observed_messages
@@ -2652,6 +2890,14 @@ mod tests {
                     height: 3,
                     block_hash: hash_bytes(b"test", &[b"gate-0-libp2p-block-header"]),
                 },
+                {
+                    let block = wire_test_block(b"gate-0-libp2p-block-payload", 4);
+                    P2pMessage::NewBlockPayload {
+                        height: block.height,
+                        block_hash: block.hash(),
+                        payload: encode_block_payload(&block),
+                    }
+                },
                 P2pMessage::NewJob(hash_bytes(b"test", &[b"gate-0-libp2p-job"])),
                 P2pMessage::NewReceipt(hash_bytes(b"test", &[b"gate-0-libp2p-receipt"])),
                 P2pMessage::NewAttestation(hash_bytes(b"test", &[b"gate-0-libp2p-attestation"])),
@@ -2741,6 +2987,29 @@ mod tests {
             .port()
     }
 
+    fn wire_test_block(label: &[u8], height: u64) -> TensorBlock {
+        TensorBlock {
+            height,
+            parent_hash: hash_bytes(b"test-block", &[label, b"parent"]),
+            epoch: height / 4,
+            proposer: hash_bytes(b"test-block", &[label, b"proposer"]),
+            settled_receipt_set_root: hash_bytes(b"test-block", &[label, b"settled"]),
+            checks_root: hash_bytes(b"test-block", &[label, b"checks"]),
+            attestation_root: hash_bytes(b"test-block", &[label, b"attestations"]),
+            state_root: hash_bytes(b"test-block", &[label, b"state"]),
+            reward_root: hash_bytes(b"test-block", &[label, b"rewards"]),
+            beacon: hash_bytes(b"test-block", &[label, b"beacon"]),
+            difficulty_target: [0xff; 32],
+            nonce: height.saturating_add(1),
+            timestamp: height.saturating_mul(6),
+            proposer_signature: hash_bytes(b"test-block", &[label, b"proposer-signature"]),
+            validator_signature_aggregate: hash_bytes(
+                b"test-block",
+                &[label, b"validator-signature"],
+            ),
+        }
+    }
+
     fn wait_for_connected_services(
         service_a: &TensorVmLibp2pService,
         service_b: &TensorVmLibp2pService,
@@ -2803,6 +3072,40 @@ mod tests {
         assert_eq!(observer.latest_observed_block_height(), height);
         assert_eq!(observer.latest_observed_block_hash(), block_hash);
         assert!(observer.observed_block_hashes().contains(&block_hash));
+    }
+
+    fn wait_for_observed_block_payload(
+        publisher: &TensorVmLibp2pService,
+        observer: &TensorVmLibp2pService,
+        block: &TensorBlock,
+    ) {
+        let block_hash = block.hash();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline
+            && (observer.latest_observed_block_payload_height() != block.height
+                || observer.latest_observed_block_payload_hash() != block_hash)
+        {
+            publisher
+                .publish_gossip(P2pMessage::NewBlockPayload {
+                    height: block.height,
+                    block_hash,
+                    payload: encode_block_payload(block),
+                })
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert!(observer.observed_block_payload_gossip_count() > 0);
+        assert_eq!(
+            observer.latest_observed_block_payload_height(),
+            block.height
+        );
+        assert_eq!(observer.latest_observed_block_payload_hash(), block_hash);
+        assert!(
+            observer
+                .observed_block_payload_hashes()
+                .contains(&block_hash)
+        );
     }
 
     fn wait_for_stale_block_announcements_to_preserve_latest_header(

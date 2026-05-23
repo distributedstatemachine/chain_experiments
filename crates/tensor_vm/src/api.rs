@@ -8,6 +8,11 @@ pub enum P2pMessage {
         height: u64,
         block_hash: Hash,
     },
+    NewBlockPayload {
+        height: u64,
+        block_hash: Hash,
+        payload: Vec<u8>,
+    },
     NewJob(Hash),
     NewJobPayload {
         job_id: Hash,

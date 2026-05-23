@@ -218,6 +218,10 @@ impl LocalChain {
         blocks::produce_with_rewards(self, proposer, timestamp, fixed_block_reward, fee_share)
     }
 
+    pub fn admit_block(&mut self, block: TensorBlock) -> Result<bool> {
+        blocks::admit(self, block)
+    }
+
     pub fn blockspace_caps(&self) -> BlockspaceCaps {
         blocks::blockspace_caps()
     }

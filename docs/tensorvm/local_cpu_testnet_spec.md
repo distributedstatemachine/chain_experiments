@@ -184,14 +184,14 @@ protocol paths and persisted state. The readiness file and `tvmd service status`
 actual long-running role command so the checker can reject operators that fall back to a generic service
 entrypoint. The status output must also expose role-loop counters, local-producer mode, network-applied
 block counters for non-producers, the runtime-observed libp2p connected peer count, job, receipt,
-attestation, and block gossip counters, decoded network-event ingestion counters, decoded job, receipt, and
-attestation payload application counters, the latest observed block height/hash, and the bounded observed
-block-hash set so the first gate proves every operator is connected and receiving live consensus
+attestation, block, and block-payload gossip counters, decoded network-event ingestion counters, decoded
+block, job, receipt, and attestation payload application counters, the latest observed block and block-payload
+height/hash, and the bounded observed block-hash set so the first gate proves every operator is connected and receiving live consensus
 announcements for the convergence target, not merely configured.
 
 After bootstrap, the host-facing gateway node must keep generating deterministic synthetic CPU work, and
-non-producer operators must only apply live blocks after a p2p block-header announcement can be replayed
-and verified against the shared chain path. Each live block must come from the normal protocol path: a
+non-producer operators must only apply live blocks after decoding a p2p block payload and verifying it
+against the shared chain path. Each live block must come from the normal protocol path: a
 generated TensorWork job, miner receipts, validator attestations, epoch settlement, proposer selection, and
 block-finality votes. A local run that only serves the seeded two-block snapshot does not satisfy this
 spec.
@@ -278,10 +278,10 @@ all 15 operator node stores advanced past the seed, reported role status and liv
 reported the same first live finalized block hash plus the same finalized common-head block hash at the
 bounded convergence height
 only miner-00 reported local timed production, and every other counted operator reported
-network-applied block progress from p2p block-header replay
+network-applied block progress from decoded p2p block payloads
 every non-producer reported decoded network-event ingestion for block headers, jobs, receipts, and
 attestations, with zero invalid network events
-every non-producer reported decoded job, receipt, and attestation payload application through the chain engine
+every non-producer reported decoded block, job, receipt, and attestation payload application through the chain engine
 all 15 operator node stores returned the finalized local-head checkpoint hash and state root after that
 checkpoint was observed through p2p block gossip
 all 15 operators observed that checkpoint block hash through libp2p block gossip

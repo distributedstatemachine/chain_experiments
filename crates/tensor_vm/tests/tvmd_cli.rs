@@ -1192,15 +1192,21 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(stdout.contains("p2p_runtime=libp2p"));
         assert!(stdout.contains("p2p_connected_peers="));
         assert!(stdout.contains("p2p_observed_block_gossip_count="));
+        assert!(stdout.contains("p2p_observed_block_payload_gossip_count="));
         assert!(stdout.contains("p2p_observed_job_gossip_count="));
         assert!(stdout.contains("p2p_observed_receipt_gossip_count="));
         assert!(stdout.contains("p2p_observed_attestation_gossip_count="));
         assert!(stdout.contains("p2p_latest_observed_block_height="));
         assert!(stdout.contains("p2p_latest_observed_block_hash="));
         assert!(stdout.contains("p2p_observed_block_hashes="));
+        assert!(stdout.contains("p2p_latest_observed_block_payload_height="));
+        assert!(stdout.contains("p2p_latest_observed_block_payload_hash="));
+        assert!(stdout.contains("p2p_observed_block_payload_hashes="));
         assert!(stdout.contains("served_requests=1"));
         assert!(stdout.contains("network_applied_blocks=0"));
         assert!(stdout.contains("network_events_ingested=0"));
+        assert!(stdout.contains("network_block_payloads_ingested=0"));
+        assert!(stdout.contains("network_block_payloads_applied=0"));
         assert!(stdout.contains("network_invalid_events=0"));
 
         let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
@@ -1236,6 +1242,8 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_network_events_ingested=0"));
         assert!(status.contains("role_network_block_events_ingested=0"));
         assert!(status.contains("role_network_block_headers_ingested=0"));
+        assert!(status.contains("role_network_block_payloads_ingested=0"));
+        assert!(status.contains("role_network_block_payloads_applied=0"));
         assert!(status.contains("role_network_job_events_ingested=0"));
         assert!(status.contains("role_network_job_payloads_ingested=0"));
         assert!(status.contains("role_network_job_payloads_applied=0"));
@@ -1249,12 +1257,16 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert!(status.contains("role_network_invalid_events=0"));
         assert!(status.contains("role_p2p_connected_peers="));
         assert!(status.contains("role_p2p_observed_blocks="));
+        assert!(status.contains("role_p2p_observed_block_payloads="));
         assert!(status.contains("role_p2p_observed_jobs="));
         assert!(status.contains("role_p2p_observed_receipts="));
         assert!(status.contains("role_p2p_observed_attestations="));
         assert!(status.contains("role_p2p_latest_observed_block_height="));
         assert!(status.contains("role_p2p_latest_observed_block_hash="));
         assert!(status.contains("role_p2p_observed_block_hashes="));
+        assert!(status.contains("role_p2p_latest_observed_block_payload_height="));
+        assert!(status.contains("role_p2p_latest_observed_block_payload_hash="));
+        assert!(status.contains("role_p2p_observed_block_payload_hashes="));
 
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
     }

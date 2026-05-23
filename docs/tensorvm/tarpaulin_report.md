@@ -18,23 +18,24 @@ Host notes:
 Result:
 
 ```text
-250 tests passed under instrumentation:
+260 tests passed under instrumentation:
 - 14 experiments library tests
-- 235 tensor_vm library tests
+- 245 tensor_vm library tests
 - 1 tensor_vm_explorer library test
 
-99.21% workspace line coverage
-10865/10952 workspace lines covered
+98.14% workspace line coverage
+11495/11713 workspace lines covered
 
-99.95% tensor_vm crate line coverage
-10020/10025 tensor_vm lines covered
+98.74% tensor_vm crate line coverage
+10650/10786 tensor_vm lines covered
 100.00% tensor_vm_explorer crate line coverage
 277/277 tensor_vm_explorer lines covered
 ```
 
-The remaining uncovered `tensor_vm` lines are the rustfmt-split `P2pMessage::NewReceiptPayload` and
-`P2pMessage::NewAttestationPayload` struct-pattern lines in the reusable node network-event driver. The
-driver's direct applied, pending retry, and invalid payload branches are covered by node runtime tests.
+The remaining uncovered `tensor_vm` lines are concentrated in block-admission rejection branches, pending
+block-payload retry edges, and p2p request/response unhappy paths. Focused node and p2p tests cover the
+main block-payload happy path, malformed payload rejection, invalid signature/root rejection, and duplicate
+admission behavior.
 
 The optional CUDA kernel feature is verified separately because the standard Tarpaulin configuration keeps
 the portable default feature set:

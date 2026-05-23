@@ -99,12 +99,12 @@ The local bundle is useful and should remain the first operational target:
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
   common-head block hash through `tvmd service block` before and after restart checks. It also selects
-  miner-00's latest finalized p2p-observed head from the block-gossip set, then fails unless every operator
-  catches up to that same finalized block hash and state root, with a nonempty block-log root reported from
+  a non-producer's latest finalized p2p-observed head from the block-payload gossip set, then fails unless
+  every operator catches up to that same finalized block hash and state root, with a nonempty block-log root reported from
   every node store.
 - Compose now marks only `miner-00` as the local timed producer. Other counted operators keep the same
-  seeded chain base but only advance live blocks after a p2p block-header announcement can be replayed and
-  verified against the shared deterministic synthetic round path.
+  seeded chain base but only advance live blocks after a p2p block payload is decoded and verified against
+  the shared chain path.
 - `check-restart-continuity.sh` captures pre/post peer IDs, heights, block counts, state roots, block-log
   roots, and finalized common heads around actual Compose restarts, and fails unless restarted services
   keep identity, advance durable state, preserve the pre-restart finalized common head and state root, and
@@ -129,7 +129,7 @@ The local bundle is useful and should remain the first operational target:
   `tvmd service status`. Miner role loops can now submit receipts for assigned unreceipted jobs through
   `ChainCommand::SubmitReceipt`, insert served tensor artifacts into their local node, publish receipt
   announcements through the existing p2p announcement path, and report `role_miner_receipts_submitted` plus
-  `role_miner_tensors_inserted`. Deterministic block-header catch-up can still replay already-receipted
+  `role_miner_tensors_inserted`. Service-owned timed production can still create already-receipted
   jobs before miners see unreceipted live work, so the full local runtime still does not require every miner
   to report positive receipt submission yet.
 - Validator role loops now scan the loaded chain state for receipts assigned to their registered validator
@@ -140,8 +140,8 @@ The local bundle is useful and should remain the first operational target:
   `role_validator_attestations_submitted`. Validator role loops can now issue bounded libp2p
   request-response fetches for missing receipt tensor roots, verify the fetched tensor payloads against the
   requested commitment roots before inserting them locally, and report remote fetch attempts, successes,
-  failures, bytes, and inserted tensor counters through role status. Deterministic block-header catch-up can
-  still replay already-attested receipts before validators see unhandled live work, so live Compose
+  failures, bytes, and inserted tensor counters through role status. Network block payload admission can
+  still apply already-attested receipts before validators see unhandled live work, so live Compose
   validators are not required to report positive validator-owned submissions yet.
 - Long-running node runtime now consumes `TENSORVM_CHAIN_PROFILE`, defaults local Compose to `local_cpu`,
   builds a typed `NodeConfig` at the CLI boundary, and exposes `chain_profile`/`role_chain_profile` in
@@ -152,17 +152,17 @@ The local bundle is useful and should remain the first operational target:
 - Each long-running role command now writes live role-loop counters to the node data directory, and
   `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_chain_profile`, `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
-  decoded `role_network_*_ingested` event counters, job, receipt, and attestation payload apply counters,
+  decoded `role_network_*_ingested` event counters, block/job/receipt/attestation payload apply counters,
   `role_network_invalid_events`,
   `role_latest_height`, `role_p2p_connected_peers`,
   `role_p2p_observed_jobs`, `role_p2p_observed_receipts`, `role_p2p_observed_attestations`,
   `role_p2p_observed_blocks`, `role_p2p_latest_observed_block_height`,
   `role_p2p_latest_observed_block_hash`, and
-  `role_p2p_observed_block_hashes`; the checker fails unless every counted operator reports a live role
+  `role_p2p_observed_block_hashes`, and block-payload gossip counters/hashes; the checker fails unless every counted operator reports a live role
   loop, only `miner-00` reports block-production capability and timed produced-block progress, every other counted operator reports
-  network-applied block progress from decoded block-header events, every non-producer has ingested decoded
-  block-header/job/receipt/attestation events with zero invalid network events, every non-producer has
-  accepted decoded job, receipt, and attestation payloads through the chain engine, at least one real libp2p
+  network-applied block progress from decoded block payloads, every non-producer has ingested decoded
+  block-payload/header/job/receipt/attestation events with zero invalid network events, every non-producer has
+  accepted decoded block, job, receipt, and attestation payloads through the chain engine, at least one real libp2p
   connection, job/receipt/attestation/block announcements observed through Gossipsub, and an observed network
   announcement for the selected finalized p2p-observed head hash.
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
@@ -195,8 +195,9 @@ The first chain-core cleanup slices are already in the tree:
   runtime helpers, so future role loops can apply accepted payloads through `ChainCommand` without depending
   on private `tvmd` helpers.
 - Network event ordering, invalid event accounting, decoded payload ingestion, pending-payload retry, and
-  block-header application dispatch now live in the reusable node runtime driver. `tvmd` adapts that driver
-  to the existing service-owned block catch-up callback while deterministic replay remains service-specific.
+  block-payload admission now live in the reusable node runtime driver. `NewBlockHeader` remains an
+  announcement/locator; non-producers apply block progress from decoded `TensorBlock` payloads through the
+  shared chain engine.
 - Role runtimes now bind their configured wallet to a deterministic chain address and report whether that
   address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
   wallet labels for counted miner and validator operators, and the checker requires those registrations
@@ -258,6 +259,7 @@ Required fix:
   - `NewReceipt`
   - `NewAttestation`
   - `NewBlock`
+  - `NewBlockPayload`
   - `NewBlockHeader`
   - `PeerInfo`
 - Validate message payloads before applying them.
@@ -270,8 +272,8 @@ The checker validates that all operators are running and libp2p-ready, and now c
 role status, live chain counters, the same first live finalized block hash, the same finalized common-head
 block hash, non-producer network-applied block counters, decoded job/receipt/attestation payload
 application counters, and a finalized local-head checkpoint/state root that has also been observed through
-p2p block gossip via `tvmd service block`. It still does not prove every block is assembled from
-network-derived role-owned miner and validator work instead of deterministic local replay, or that every
+p2p block-payload gossip via `tvmd service block`. It still does not prove every block is assembled from
+network-derived role-owned miner and validator work instead of service-owned timed production, or that every
 operator is executing a distinct fully independent production loop.
 
 Required fix:
@@ -290,21 +292,18 @@ role wallet address and registration status, miner-assigned work readiness count
 submission/tensor-insertion counters, latest-height, real libp2p connected-peer counters, and
 runtime-observed job, receipt, attestation, and block gossip counters from the long-running command. Local
 block production now publishes typed
-`NewJobPayload`, `NewReceiptPayload`, and `NewAttestationPayload` messages, legacy `NewJob`,
-`NewReceipt`, and `NewAttestation` hash announcements, and height-bearing `NewBlockHeader`
-announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the runtime loop;
+`NewJobPayload`, `NewReceiptPayload`, `NewAttestationPayload`, and `NewBlockPayload` messages, legacy
+`NewJob`, `NewReceipt`, `NewAttestation`, and `NewBlock` hash announcements, and height-bearing
+`NewBlockHeader` announcements over Gossipsub. The libp2p worker queues decoded inbound messages for the runtime loop;
 non-producers validate and apply job payloads through `ChainCommand::SubmitJob`, receipt payloads through
-`ChainCommand::SubmitReceipt`, and attestation payloads through `ChainCommand::SubmitAttestation`. Pending
-receipt and attestation payloads are retained and retried once prerequisite jobs or receipts arrive, then
-live block catch-up is applied from drained `NewBlockHeader` events instead of reading only aggregate
-latest-head metrics. Only `miner-00` is allowed to drive timed local block production, while the chain block
+`ChainCommand::SubmitReceipt`, attestation payloads through `ChainCommand::SubmitAttestation`, and block
+payloads through `ChainCommand::SubmitBlock`. Pending block, receipt, and attestation payloads are retained
+and retried once prerequisite parents, jobs, receipts, or attestations arrive. Only `miner-00` is allowed to drive timed local block production, while the chain block
 itself must be proposed by a registered validator and pass useful-verification PoW checks. The role loop processes block
-announcements ahead of payload-only messages through the reusable node runtime event driver, which also owns
+payload dependencies before block payloads through the reusable node runtime event driver, which also owns
 decoded payload application, pending retry, invalid event accounting, and producer versus non-producer
-block-header dispatch. Local synthetic replay still prunes future pre-applied synthetic jobs, receipts,
-attestations, and validator attestation counters before matching an observed head, so decoded payloads
-cannot poison deterministic local catch-up. The remaining gap is replacing deterministic replay with
-role-owned miner, validator, and validator proposer loops that assemble blocks from network-visible state.
+block-payload dispatch. The remaining gap is replacing service-owned timed production with role-owned
+miner, validator, and validator proposer loops that assemble blocks from network-visible state.
 
 ### 5. Restart Gate Now Has A Rolling Matrix
 
@@ -647,13 +646,13 @@ role-specific command surfaces. Compose uses `tvmd proposer run` for `miner-00`'
 duties, `tvmd miner run` for the other counted miners, and `tvmd validator run` for validators; the local
 checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
-connected-peer counts, job/receipt/attestation/block gossip observations, and target-head block-gossip
+connected-peer counts, job/receipt/attestation/block/block-payload gossip observations, and target-head block-payload gossip
 observations for every counted operator. The service runtime now keeps served-request counts,
 produced-block counts, network-applied block counts, aggregate network-event counters, pending
-out-of-order network payloads, and decoded job/receipt/attestation payload application in reusable
+out-of-order network payloads, and decoded block/job/receipt/attestation payload application in reusable
 node runtime helpers instead of private binary state. Message ordering, invalid network-event accounting,
-pending retry integration, and block-header application dispatch now also go through the shared node runtime
-event driver, with `tvmd` retaining only the service-specific deterministic catch-up callback. The role
+pending retry integration, and block-payload application dispatch now also go through the shared node runtime
+event driver. The role
 commands now enter explicit role-run loop wrappers and a named runtime loop boundary instead of constructing
 the generic service loop inline. CPU miner execution and validator verification now live behind role-owned
 library components, miner receipt submission and validator attestation submission have role-loop paths for
@@ -738,8 +737,8 @@ Keep this incremental:
 
 1. Wire proposer/block production through network-visible state.
 2. Expose per-block evidence for both live primitive types after startup from the role-owned event path.
-3. Replace the remaining deterministic replay allowance with hard checker assertions for positive
-   role-owned miner and validator work once proposer assembly is network-derived.
+3. Replace the remaining service-owned timed proposer loop with hard checker assertions for positive
+   role-owned miner, validator, and validator-proposer work.
 
 This sequence keeps the local chain usable at every step while moving it toward the same base runtime that
 testnet and mainnet profiles should use.

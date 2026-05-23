@@ -16,6 +16,7 @@ pub enum ChainCommand {
     SubmitJob(JobState),
     SubmitReceipt(ReceiptState),
     SubmitAttestation(ValidatorAttestation),
+    SubmitBlock(TensorBlock),
     SubmitBlockVote(BlockVote),
     SettleEpoch {
         miner_reward_pool: u64,
@@ -47,6 +48,10 @@ pub enum ChainEvent {
         amount: u64,
     },
     BlockProduced {
+        height: u64,
+        hash: Hash,
+    },
+    BlockAccepted {
         height: u64,
         hash: Hash,
     },

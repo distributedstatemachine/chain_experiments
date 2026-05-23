@@ -1,7 +1,9 @@
 use super::roots::{
     attestation_root, block_checks_root, reward_root, selected_receipt_root, state_root,
 };
-use super::{BlockspaceCaps, BlockspaceSelection, ChainState, LocalChain, TensorBlock};
+use super::{
+    BlockVote, BlockspaceCaps, BlockspaceSelection, ChainState, LocalChain, TensorBlock, validation,
+};
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash, hash_bytes, sign, verify_signature};
 use std::collections::BTreeSet;
@@ -95,6 +97,70 @@ pub(super) fn produce_with_rewards(
             Err(error)
         }
     }
+}
+
+pub(super) fn admit(chain: &mut LocalChain, block: TensorBlock) -> Result<bool> {
+    let block_hash = block.hash();
+    if let Some(existing) = chain
+        .blocks
+        .iter()
+        .find(|candidate| candidate.height == block.height)
+    {
+        if existing.hash() == block_hash {
+            return Ok(false);
+        }
+        return Err(TvmError::InvalidReceipt("conflicting block payload"));
+    }
+    if block.height != chain.state.height {
+        return Err(TvmError::InvalidReceipt(
+            "block payload height is not next head",
+        ));
+    }
+    let expected_parent = chain
+        .blocks
+        .last()
+        .map(TensorBlock::hash)
+        .unwrap_or([0; 32]);
+    if block.parent_hash != expected_parent {
+        return Err(TvmError::InvalidReceipt("block parent mismatch"));
+    }
+
+    validate(chain, &block, true)?;
+    let beacon = block.beacon;
+    let selection =
+        canonical_blockspace(&chain.state, &block.parent_hash, &beacon, blockspace_caps());
+    let block_for_votes = block.clone();
+    chain.blocks.push(block);
+    chain
+        .state
+        .block_selected_receipts
+        .insert(block_hash, selection.receipt_ids.clone());
+    for receipt_id in &selection.receipt_ids {
+        chain.state.included_receipts.insert(*receipt_id);
+    }
+    chain.state.height += 1;
+    chain.state.epoch = chain.state.height / chain.params.epoch_length.max(1);
+    chain.state.finalized_randomness =
+        next_finalized_randomness(&beacon, &block_hash, chain.state.height);
+    finalize_admitted_block(chain, &block_for_votes)?;
+    Ok(true)
+}
+
+fn finalize_admitted_block(chain: &mut LocalChain, block: &TensorBlock) -> Result<()> {
+    let block_hash = block.hash();
+    let validators = chain
+        .state
+        .validators
+        .iter()
+        .map(|(address, validator)| (*address, validator.stake))
+        .collect::<Vec<_>>();
+    for (validator, stake) in validators {
+        validation::submit_block_vote(chain, BlockVote::new(validator, stake, block))?;
+        if validation::has_block_finality(chain, &block_hash) {
+            break;
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn blockspace_caps() -> BlockspaceCaps {

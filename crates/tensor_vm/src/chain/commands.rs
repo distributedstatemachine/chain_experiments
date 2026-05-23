@@ -39,6 +39,19 @@ impl ChainEngine for LocalChain {
                     validator,
                 }])
             }
+            ChainCommand::SubmitBlock(block) => {
+                let height = block.height;
+                let hash = block.hash();
+                if self.admit_block(block)? {
+                    let mut events = vec![ChainEvent::BlockAccepted { height, hash }];
+                    if self.has_block_finality(&hash) && self.is_block_finalized(&hash) {
+                        events.push(ChainEvent::BlockFinalized(hash));
+                    }
+                    Ok(events)
+                } else {
+                    Ok(Vec::new())
+                }
+            }
             ChainCommand::SubmitBlockVote(vote) => {
                 let block_hash = vote.block_hash;
                 let validator = vote.validator;

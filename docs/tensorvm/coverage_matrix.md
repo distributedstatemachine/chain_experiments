@@ -49,8 +49,8 @@ The checked run starts 10 miner containers and 5 validator containers, verifies 
 requires 10 CPU-ready miners and zero CUDA-required miners, requires `miner-00` to run
 `tvmd proposer run`, the other miners to run `tvmd miner run`, and validators to run
 `tvmd validator run` as reported by `runtime_command`, requires live role-loop counters, one local timed
-producer, the `local_cpu` chain profile, decoded network-event ingestion, decoded job, receipt, and attestation payload application, and
-network-applied block counters for every non-producer, plus observed job/receipt/attestation/block gossip
+producer, the `local_cpu` chain profile, decoded network-event ingestion, decoded block, job, receipt, and attestation payload application, and
+network-applied block counters for every non-producer, plus observed job/receipt/attestation/block payload gossip
 counters for every counted operator, verifies the seeded local CPU
 chain has 10 settled receipts, settled matmul work, settled LinearTrainingStep work, positive rewarded
 miners, full finality and data availability,
@@ -65,8 +65,8 @@ live `tvmd service block` views to expose block-height receipt IDs and primitive
 and LinearTrainingStep work, fetches a live tensor
 descriptor, row, chunk, and opening through the TensorVM node, reruns Gate 0 from the checker,
 verifies the local-only evidence boundary, requires all 15 operator stores to report the same finalized
-common-head block hash through `tvmd service block`, selects miner-00's latest finalized p2p-observed head
-from the block-gossip set and requires every operator to return the matching finalized block hash and state
+common-head block hash through `tvmd service block`, selects a non-producer's latest finalized p2p-observed
+block-payload head from the block-payload gossip set and requires every operator to return the matching finalized block hash and state
 root while reporting a nonempty block-log root, and uses
 `check-rolling-restart-continuity.sh` to run the restart-continuity gate one service at a time across every
 counted operator, proving each restarted service keeps its libp2p peer ID, preserves the pre-restart
