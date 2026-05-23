@@ -295,6 +295,29 @@ impl Chain {
     }
 
     #[cfg(test)]
+    pub(crate) fn insert_attestation_for_testing(&mut self, attestation: ValidatorAttestation) {
+        self.state
+            .attestations
+            .entry(attestation.receipt_id)
+            .or_default()
+            .push(attestation);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_model_optimizer_state_root_for_testing(
+        &mut self,
+        model_id: Hash,
+        optimizer_state_root: Option<Hash>,
+    ) -> Result<()> {
+        self.state
+            .model_states
+            .get_mut(&model_id)
+            .ok_or(TvmError::InvalidReceipt("unknown model"))?
+            .optimizer_state_root = optimizer_state_root;
+        Ok(())
+    }
+
+    #[cfg(test)]
     pub(crate) fn remove_job_for_testing(&mut self, job_id: &Hash) {
         self.state.jobs.remove(job_id);
     }

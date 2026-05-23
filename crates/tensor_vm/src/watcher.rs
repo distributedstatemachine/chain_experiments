@@ -350,12 +350,7 @@ mod tests {
                 data_availability_passed: true,
             },
         );
-        chain
-            .state
-            .attestations
-            .entry(receipt.receipt_id)
-            .or_default()
-            .push(bad_attestation);
+        chain.insert_attestation_for_testing(bad_attestation);
 
         let report = ChainWatcher::default().scan(&chain);
         assert_eq!(report.validator_misconduct_events, 1);
@@ -464,18 +459,9 @@ mod tests {
                 data_availability_passed: true,
             },
         );
-        chain
-            .state
-            .attestations
-            .entry(receipt.receipt_id)
-            .or_default()
-            .extend([stake_mismatch, bad_signature]);
-        chain
-            .state
-            .attestations
-            .entry(unknown_receipt_id)
-            .or_default()
-            .push(unknown_receipt);
+        chain.insert_attestation_for_testing(stake_mismatch);
+        chain.insert_attestation_for_testing(bad_signature);
+        chain.insert_attestation_for_testing(unknown_receipt);
 
         let report = ChainWatcher::default().scan(&chain);
         assert!(report.validator_misconduct_events >= 4);

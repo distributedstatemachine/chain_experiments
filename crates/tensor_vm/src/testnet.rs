@@ -4983,11 +4983,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
             .stake;
         testnet
             .chain
-            .state
-            .attestations
-            .entry(invalid_receipt_id)
-            .or_default()
-            .push(crate::verify::ValidatorAttestation::new(
+            .insert_attestation_for_testing(crate::verify::ValidatorAttestation::new(
                 invalid_validator,
                 invalid_stake,
                 invalid_statement,

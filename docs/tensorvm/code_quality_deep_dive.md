@@ -103,6 +103,8 @@ spaghetti around.
   `ChainState` accessors while leaving invalid-attestation fixture insertion explicit.
 - Iteration 35 moved telemetry settled-work fixtures behind a crate-test-only `Chain` helper instead
   of mutating miner state maps directly.
+- Iteration 36 moved malformed attestation and optimizer-state fixtures behind crate-test-only
+  `Chain` helpers, removing the remaining external test-state map mutations.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

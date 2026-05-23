@@ -1449,11 +1449,11 @@ mod tests {
             )
             .unwrap();
         chain
-            .state
-            .model_states
-            .get_mut(&model_id)
-            .unwrap()
-            .optimizer_state_root = Some(hash_bytes(b"test", &[b"optimizer"]));
+            .set_model_optimizer_state_root_for_testing(
+                model_id,
+                Some(hash_bytes(b"test", &[b"optimizer"])),
+            )
+            .unwrap();
         let linear = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id,
             step: 0,
