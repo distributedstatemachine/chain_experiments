@@ -70,6 +70,8 @@ spaghetti around.
   helper, keeping those setup mutations out of scheduler/localnet/profile tests.
 - Iteration 18 moved non-chain settled-receipt fixture inserts behind a crate-test-only helper, leaving
   settlement ownership inside `chain/*` instead of scattered storage/RPC/watcher tests.
+- Iteration 19 moved malformed/orphan receipt fixture inserts in telemetry and watcher tests behind a
+  crate-test-only `Chain` helper, making those consensus bypasses explicit test setup.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

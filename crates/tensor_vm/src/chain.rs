@@ -269,6 +269,11 @@ impl Chain {
     pub(crate) fn mark_receipt_settled_for_testing(&mut self, receipt_id: Hash) {
         self.state.settled_receipts.insert(receipt_id);
     }
+
+    #[cfg(test)]
+    pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
+        self.state.receipts.insert(receipt.receipt_id(), receipt);
+    }
 }
 
 #[cfg(test)]

@@ -570,18 +570,9 @@ mod tests {
 
         chain.submit_job(JobState::LinearTrainingStep(linear_job));
         chain.submit_job(JobState::TensorOp(tensor_job));
-        chain.state.receipts.insert(
-            quorum_linear.receipt_id,
-            ReceiptState::LinearTrainingStep(quorum_linear.clone()),
-        );
-        chain.state.receipts.insert(
-            tensor_receipt.receipt_id,
-            ReceiptState::TensorOp(tensor_receipt.clone()),
-        );
-        chain.state.receipts.insert(
-            no_quorum_linear.receipt_id,
-            ReceiptState::LinearTrainingStep(no_quorum_linear),
-        );
+        chain.insert_receipt_for_testing(ReceiptState::LinearTrainingStep(quorum_linear.clone()));
+        chain.insert_receipt_for_testing(ReceiptState::TensorOp(tensor_receipt.clone()));
+        chain.insert_receipt_for_testing(ReceiptState::LinearTrainingStep(no_quorum_linear));
         chain.mark_receipt_settled_for_testing(tensor_receipt.receipt_id);
 
         for (receipt_id, job_id, primitive_type) in [

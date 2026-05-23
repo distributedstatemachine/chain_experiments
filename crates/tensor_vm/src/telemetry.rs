@@ -490,10 +490,7 @@ mod tests {
         let orphan_tensor_job = crate::jobs::MatmulJob::synthetic(0, 9, 2, 2, 2, &beacon, 10);
         let (orphan_tensor_receipt, _a, _b, _c) =
             TensorOpReceipt::from_job(&orphan_tensor_job, miner, 1, 5).unwrap();
-        chain.state.receipts.insert(
-            orphan_tensor_receipt.receipt_id,
-            ReceiptState::TensorOp(orphan_tensor_receipt),
-        );
+        chain.insert_receipt_for_testing(ReceiptState::TensorOp(orphan_tensor_receipt));
 
         let orphan_linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {
             model_id: hash_bytes(b"test", &[b"orphan-linear-model"]),
@@ -508,10 +505,7 @@ mod tests {
         });
         let (orphan_linear_receipt, _output) =
             LinearTrainingStepReceipt::from_job(&orphan_linear_job, miner, &weights, 1, 5).unwrap();
-        chain.state.receipts.insert(
-            orphan_linear_receipt.receipt_id,
-            ReceiptState::LinearTrainingStep(orphan_linear_receipt),
-        );
+        chain.insert_receipt_for_testing(ReceiptState::LinearTrainingStep(orphan_linear_receipt));
 
         chain.produce_block(validator, 10).unwrap();
         chain.produce_block(validator, 16).unwrap();
