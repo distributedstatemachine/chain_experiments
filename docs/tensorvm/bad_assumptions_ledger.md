@@ -33,6 +33,8 @@ implementation work.
 | BA-013 | "Synthetic tensor jobs prove useful work." | Medium | Local synthetic job source emits deterministic matmul and LinearTrainingStep jobs. | Synthetic jobs prove verifiable compute rails, not externally demanded usefulness. | Synthetic jobs prove verifiable deterministic workload handling. | Separate synthetic-work metrics from user-valued workload metrics. |
 | BA-014 | "High line coverage proves protocol soundness." | Medium | Tarpaulin reports strong line coverage for reference code. | Coverage proves lines executed, not that threat-model properties or consensus theorems hold. | Coverage is regression evidence for implemented behavior. | Tie every soundness claim to a theorem, assumption, adversarial test, or external evidence item. |
 | BA-015 | "A clean local testnet gate means the MVP is complete." | Medium | Gate 0 exercises CPU local multi-participant paths. | Gate 0 is necessary local evidence, but not public-run, useful-PoW, DA, slashing, or independent-operator evidence. | Gate 0 is the first local acceptance gate. | Complete v2 consensus proof surface and public evidence gates before claiming full MVP completion. |
+| BA-016 | "Produced blocks imply proposer eligibility." | Critical | `produce_block` accepts a supplied address and `submit_block_vote` checks voters, not the block proposer. | A block can be appended and finalized without the chain transition proving the proposer is a registered validator or useful-PoW winner. | Current block production is a reference append path with caller-supplied proposer. | Make block production/admission fallible and require v2 proposer eligibility before votes or finality count. |
+| BA-017 | "A Valid attestation means the verifier actually ran." | High | `submit_attestation` accepts an assigned validator's signed `Valid` statement and `checks_root`; it does not recompute tensor verification. | Quorum is syntactic unless verifier evidence is independently bound, recomputed, or challengeable. | Current quorum proves assigned validators signed matching Valid/DataAvailable statements. | Bind attestations to recomputable check leaves, block-level `checks_root`, and challenge openings or direct verification evidence. |
 
 ## Non-Negotiable Wording Rules
 
@@ -46,6 +48,8 @@ Use these rules in specs, README text, release notes, and investor-facing summar
 5. Say **field-algebra training step**, not real-valued training, unless fixed-point bridge theorems exist.
 6. Say **reference signature helper**, not production authentication, until production crypto is wired.
 7. Say **local multi-participant shape**, not independent operators, for Compose.
+8. Say **signed Valid/DataAvailable statements**, not verified work, when referring only to current
+   attestation quorum.
 
 ## Claims We Can Make Today
 
@@ -58,6 +62,8 @@ These are defensible with current docs/code evidence:
 - Chain attestation admission now enforces registered stake, signature validity, receipt metadata,
   deterministic assignment, and duplicate prevention.
 - Current documentation clearly records that v2 useful-verification PoW consensus is not complete.
+- Current attestation quorum proves syntactic assigned-validator agreement, not independent recomputation of
+  verifier transcripts.
 
 ## Claims We Must Not Make Today
 
@@ -70,6 +76,8 @@ These would overstate the current MVP:
 - "Local Compose evidence proves public independent operators."
 - "Local tensor fetches prove durable data availability."
 - "LinearTrainingStep proves real SGD correctness."
+- "A finalized current block proves its proposer was eligible under v2 rules."
+- "A quorum of Valid attestations proves validators actually executed the verifier."
 
 ## Proof Hygiene Checklist
 

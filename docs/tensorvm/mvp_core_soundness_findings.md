@@ -15,13 +15,15 @@ The strongest current claims are:
 - TensorOp verification can be specified as Freivalds over canonical finite-field tensors.
 - LinearTrainingStep verification can be reduced to Freivalds plus random-linear equality checks.
 - Chain attestation admission now checks registered validator stake, signature, deterministic assignment,
-  receipt metadata, and duplicate attestations.
+  receipt metadata, and duplicate attestations. This is a syntactic admission claim, not proof that the
+  validator actually executed the verifier.
 
 The weakest current claims are:
 
 - Blocks are not useful-verification PoW blocks.
 - Blocks do not commit to a canonical settled-receipt set or recomputable block-level `checks_root`.
 - Finality votes do not validate useful-verification PoW or canonical blockspace.
+- Block production does not prove proposer eligibility.
 - Proposer selection still uses the superseded settled TensorWork model.
 - Several security properties depend on hash, signature, randomness, network availability, and operator
   independence assumptions that are not proven by tests.
@@ -110,6 +112,7 @@ Current block voting checks:
 
 It does not check:
 
+- block proposer eligibility
 - useful-verification PoW target
 - canonical settled-receipt set
 - recomputed `checks_root`
@@ -254,6 +257,9 @@ If SubmitAttestation succeeds, then the validator is registered, has the stated 
 is assigned to the receipt, references the stored receipt, and has not already attested to it.
 ```
 
+This is not a semantic verifier-execution theorem. The chain does not recompute the attestation's
+`checks_root` from tensor artifacts during admission.
+
 Evidence:
 
 - [`../../crates/tensor_vm/src/chain/validation.rs`](../../crates/tensor_vm/src/chain/validation.rs)
@@ -372,6 +378,26 @@ Bad assumption to reject:
 
 They are separate local participants, not independent economic/security principals.
 
+### N7: Semantic Attestation Truth
+
+Not proven by the chain admission path.
+
+Evidence:
+
+- [`../../crates/tensor_vm/src/chain/validation.rs`](../../crates/tensor_vm/src/chain/validation.rs)
+  accepts assigned signed attestations with matching receipt metadata.
+- [`../../crates/tensor_vm/src/verify.rs`](../../crates/tensor_vm/src/verify.rs) computes verifier reports
+  and `checks_root`, but `submit_attestation` does not recompute those reports.
+
+Bad assumption to reject:
+
+```text
+"A quorum of Valid attestations proves validators actually ran the verifier."
+```
+
+The current sound claim is narrower: a quorum proves enough assigned validators signed matching
+Valid/DataAvailable statements.
+
 ## Highest-Risk Bad Assumptions
 
 1. **"The MVP core is sound because Gate 0 passes."**
@@ -388,18 +414,25 @@ They are separate local participants, not independent economic/security principa
 4. **"Block finality implies block validity."**
    Current finality proves signatures over an existing block hash. It does not prove useful-PoW validity.
 
-5. **"Hash-derived randomness equals unbiasable randomness."**
+5. **"Produced block means eligible proposer."**
+   Current block production accepts a caller-supplied proposer address, and finality checks voters rather
+   than proposer eligibility.
+
+6. **"Valid attestation means verification actually ran."**
+   Current quorum is syntactic unless verifier evidence is bound, recomputed, or challengeable.
+
+7. **"Hash-derived randomness equals unbiasable randomness."**
    It only helps if the seed is fixed after commitment and cannot be ground by whoever controls the block
    hash or receipt timing.
 
-6. **"Field training is real training."**
+8. **"Field training is real training."**
    The current LinearTrainingStep can prove an algebraic transition. It does not prove useful ML convergence
    or faithful real-valued SGD.
 
-7. **"Local data serving is data availability."**
+9. **"Local data serving is data availability."**
    Local serving proves a path, not public retention or adversarial availability.
 
-8. **"Reference signatures are security signatures."**
+10. **"Reference signatures are security signatures."**
    They are test-domain authentication placeholders.
 
 ## Formal Proof Roadmap

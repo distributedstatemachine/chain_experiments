@@ -27,8 +27,8 @@ checked against.
 | LinearTrainingStep verifier | `local-proof-ready` plus `assumption-bound` soundness | Algebraic field transition is proof-ready; real-valued ML meaning is not proven. |
 | Row sampling | `local-proof-ready` as audit math | Useful as audit probability, unsafe as sole block validity. |
 | Receipt binding | `assumption-bound` | Canonical encodings can be specified; cryptographic hash binding is assumed. |
-| Attestation admission | `local-proof-ready` with one lifecycle caveat | Assigned-validator admission is now in the chain engine; receipt-lifecycle seed stability remains weak. |
-| Settlement | `local-proof-ready` for v1 local settlement | Settlement/quorum behavior is testable, but v2 blockspace pool semantics are missing. |
+| Attestation admission | `local-proof-ready` for syntactic admission, `assumption-bound` for semantic verification | Assigned-validator admission is now in the chain engine; it does not prove the verifier actually ran, and receipt-lifecycle seed stability remains weak. |
+| Settlement | `local-proof-ready` for v1 syntactic-quorum settlement | Settlement/quorum behavior is testable, but semantic verifier execution and v2 blockspace pool semantics are missing. |
 | Useful-verification PoW | `implementation-blocked` | Current block type cannot support the reviewed v2 consensus theorem. |
 | Finality | `reference-only` | Stake-threshold finality exists for current blocks, not for v2 useful-PoW validity. |
 | Public availability/operator independence | `assumption-bound` | Local tests do not prove public DA or independent operators. |
@@ -369,16 +369,16 @@ Assignment is currently recomputed from current `finalized_randomness`. Delayed 
 receipt-lifecycle validation seed stored at receipt admission or otherwise fixed through the validation
 window.
 
-### TVM-QUO-001: Attestation Quorum Counts Only Valid Assigned Evidence
+### TVM-QUO-001: Attestation Quorum Counts Only Assigned Signed Statements
 
 Statement:
 
 ```text
 has_attestation_quorum(receipt_id) = true ->
-  enough unique assigned validators signed Valid/DataAvailable attestations for that stored receipt
+  enough unique assigned validators signed Valid/DataAvailable statements for that stored receipt
 ```
 
-Status: `local-proof-ready` with seed-lifecycle caveat
+Status: `local-proof-ready` for syntactic quorum, `assumption-bound` for semantic verifier execution
 
 Rust evidence:
 
@@ -403,13 +403,21 @@ Correct claim:
 The quorum depends on unique validators, registered stake, assigned validator set, valid result, data
 availability flag, matching receipt metadata, and signature validity.
 
+Semantic boundary:
+
+The current chain admission path does not recompute `verify_tensor_op` or `verify_linear_training_step` and
+does not derive `checks_root` from tensor artifacts. A quorum therefore proves signed assigned-validator
+statements, not that those validators actually executed the verifier correctly. That stronger claim needs
+recomputable check leaves, block-level `checks_root`, challenge openings, or another evidence-binding
+surface.
+
 ### TVM-SET-001: Local Settlement Requires Quorum And Agreement
 
 Statement:
 
 ```text
-If a receipt is newly settled, then it had attestation quorum, redundant agreement if configured, and no
-blocking conflicting linear transition.
+If a receipt is newly settled, then it had syntactic attestation quorum, redundant agreement if configured,
+and no blocking conflicting linear transition.
 ```
 
 Status: `local-proof-ready` for the current reference settlement model
@@ -429,8 +437,8 @@ theorem settle_epoch_only_settles_quorum_agreed_receipts
 
 Boundary:
 
-This is not the v2 settled-receipt blockspace theorem. It proves local settlement behavior, not canonical
-per-block inclusion.
+This is not the v2 settled-receipt blockspace theorem. It proves local settlement behavior over signed
+attestation statements, not canonical per-block inclusion or semantic verifier execution.
 
 ### TVM-DA-001: Verification-Time Data Availability
 
@@ -604,6 +612,8 @@ Current fallback is the v1 proposer-selection fallback, not a v2 PoW-skip block 
 | Reference signatures imply production authentication | `sign` is a hash helper. | Use real signature assumptions and production crypto. |
 | Local containers are independent operators | They are separate local participants, not independent principals. | Public evidence must prove independent operators. |
 | Local tensor serving is durable DA | It proves a path, not public retention. | DA needs active/retention-window external measurement. |
+| Produced block implies eligible proposer | `produce_block` accepts a supplied address and finality checks voters, not proposer eligibility. | v2 block admission must validate a registered validator useful-PoW winner. |
+| Valid attestation means verifier ran | The chain counts signed Valid/DataAvailable statements without recomputing verifier transcripts. | Phrase quorum syntactically until checks are recomputable or challengeable. |
 
 ## Mechanization Package Shape
 
@@ -652,7 +662,9 @@ Do not call the MVP core sound until all of these are true:
 2. Every consensus block validity rule maps to a theorem or explicit assumption in this manifest.
 3. Current code has v2 block fields and a canonical settled-receipt selector.
 4. Finality votes reject invalid v2 blocks.
-5. The proof docs no longer classify useful-verification PoW as `implementation-blocked`.
-6. Public claims say "probabilistic verification" unless a receipt is fully recomputed or succinctly proven.
+5. Block production/admission rejects ineligible proposers.
+6. Attestation/quorum claims distinguish signed statements from semantic verifier execution.
+7. The proof docs no longer classify useful-verification PoW as `implementation-blocked`.
+8. Public claims say "probabilistic verification" unless a receipt is fully recomputed or succinctly proven.
 
 Current result: not sound yet.

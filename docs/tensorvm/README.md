@@ -5,6 +5,7 @@ TensorVM (TVM) specification, implementation, verification, and operations notes
 - [MVP spec](mvp_spec.md)
 - [Bad assumptions ledger](bad_assumptions_ledger.md)
 - [Formal proof manifest v0](formal_proof_manifest_v0.md)
+- [MVP core negative proofs and counterexamples](mvp_core_negative_proofs.md)
 - [MVP core formal proof boundary](mvp_core_formal_proofs.md)
 - [MVP core soundness findings](mvp_core_soundness_findings.md)
 - [Local CPU testnet spec](local_cpu_testnet_spec.md)
