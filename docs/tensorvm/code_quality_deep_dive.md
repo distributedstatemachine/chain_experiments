@@ -86,6 +86,8 @@ spaghetti around.
   and local job generation no longer depend on public state fields.
 - Iteration 26 moved local synthetic round production, finality helpers, and localnet tests onto the
   `ChainState` accessors, extending the read boundary through local CPU harness code.
+- Iteration 27 moved watcher production scans onto the `ChainState` accessors while leaving malformed
+  attestation fixture mutations isolated to watcher tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

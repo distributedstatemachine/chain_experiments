@@ -103,10 +103,10 @@ impl ChainWatcher {
         let mut invalid_receipts = BTreeSet::new();
         let mut unavailable_receipts = BTreeSet::new();
 
-        for (receipt_id, attestations) in &chain.state.attestations {
-            let receipt = chain.state.receipts.get(receipt_id);
+        for (receipt_id, attestations) in chain.state().attestations() {
+            let receipt = chain.state().receipts().get(receipt_id);
             for attestation in attestations {
-                let validator = chain.state.validators.get(&attestation.validator);
+                let validator = chain.state().validators().get(&attestation.validator);
                 if validator.is_none() {
                     report.record(WatchEvent {
                         kind: WatchEventKind::ValidatorMisconduct,
@@ -186,8 +186,8 @@ impl ChainWatcher {
     }
 
     fn scan_receipt_settlement_blockers(&self, chain: &Chain, report: &mut WatchReport) {
-        for (receipt_id, receipt) in &chain.state.receipts {
-            if chain.state.settled_receipts.contains(receipt_id) {
+        for (receipt_id, receipt) in chain.state().receipts() {
+            if chain.state().settled_receipts().contains(receipt_id) {
                 continue;
             }
             if self.config.flag_missing_quorum && !chain.has_attestation_quorum(receipt_id) {
@@ -217,14 +217,14 @@ impl ChainWatcher {
 
     fn scan_linear_transition_conflicts(&self, chain: &Chain, report: &mut WatchReport) {
         let mut reported = BTreeSet::new();
-        for (left_id, left) in &chain.state.receipts {
+        for (left_id, left) in chain.state().receipts() {
             let ReceiptState::LinearTrainingStep(left) = left else {
                 continue;
             };
             if !chain.has_attestation_quorum(left_id) {
                 continue;
             }
-            for (right_id, right) in &chain.state.receipts {
+            for (right_id, right) in chain.state().receipts() {
                 if left_id >= right_id {
                     continue;
                 }
