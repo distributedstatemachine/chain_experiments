@@ -1426,26 +1426,8 @@ pub fn encode_job_payload(job: &JobState) -> Vec<u8> {
 }
 
 pub fn decode_job_payload(input: &[u8]) -> TvmResult<JobState> {
-    codec::decode_job_payload(input, Some(MAX_JOB_SHAPE_DIMS)).map_err(job_codec_error)
-}
-
-fn job_codec_error(error: CodecError) -> TvmError {
-    match error {
-        CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
-        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing job payload bytes"),
-        CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
-        CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
-        CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
-        CodecError::UnknownPrimitiveType => TvmError::InvalidReceipt("unknown primitive type tag"),
-        CodecError::UnknownVerificationResult => {
-            TvmError::InvalidReceipt("unknown verification result tag")
-        }
-        CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
-        CodecError::InvalidBool => TvmError::InvalidReceipt("invalid bool tag"),
-        CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
-        CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
-        CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
-    }
+    codec::decode_job_payload(input, Some(MAX_JOB_SHAPE_DIMS))
+        .map_err(|error| p2p_codec_error(error, "trailing job payload bytes"))
 }
 
 pub fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
@@ -1453,26 +1435,8 @@ pub fn encode_receipt_payload(receipt: &ReceiptState) -> Vec<u8> {
 }
 
 pub fn decode_receipt_payload(input: &[u8]) -> TvmResult<ReceiptState> {
-    codec::decode_receipt_payload(input, Some(MAX_RECEIPT_HASHES)).map_err(receipt_codec_error)
-}
-
-fn receipt_codec_error(error: CodecError) -> TvmError {
-    match error {
-        CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
-        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing receipt payload bytes"),
-        CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
-        CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
-        CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),
-        CodecError::UnknownPrimitiveType => TvmError::InvalidReceipt("unknown primitive type tag"),
-        CodecError::UnknownVerificationResult => {
-            TvmError::InvalidReceipt("unknown verification result tag")
-        }
-        CodecError::InvalidOptionalU64 => TvmError::InvalidReceipt("invalid optional u64 tag"),
-        CodecError::InvalidBool => TvmError::InvalidReceipt("invalid bool tag"),
-        CodecError::UsizeOverflow => TvmError::InvalidReceipt("usize overflow"),
-        CodecError::ShapeVectorTooLarge => TvmError::InvalidReceipt("shape vector too large"),
-        CodecError::HashVectorTooLarge => TvmError::InvalidReceipt("hash vector too large"),
-    }
+    codec::decode_receipt_payload(input, Some(MAX_RECEIPT_HASHES))
+        .map_err(|error| p2p_codec_error(error, "trailing receipt payload bytes"))
 }
 
 pub fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8> {
@@ -1480,13 +1444,14 @@ pub fn encode_attestation_payload(attestation: &ValidatorAttestation) -> Vec<u8>
 }
 
 pub fn decode_attestation_payload(input: &[u8]) -> TvmResult<ValidatorAttestation> {
-    codec::decode_attestation_payload(input).map_err(attestation_codec_error)
+    codec::decode_attestation_payload(input)
+        .map_err(|error| p2p_codec_error(error, "trailing attestation payload bytes"))
 }
 
-fn attestation_codec_error(error: CodecError) -> TvmError {
+fn p2p_codec_error(error: CodecError, trailing_error: &'static str) -> TvmError {
     match error {
         CodecError::Truncated => TvmError::InvalidReceipt("short p2p message"),
-        CodecError::TrailingBytes => TvmError::InvalidReceipt("trailing attestation payload bytes"),
+        CodecError::TrailingBytes => TvmError::InvalidReceipt(trailing_error),
         CodecError::UnknownJobTag => TvmError::InvalidReceipt("unknown job payload tag"),
         CodecError::UnknownReceiptTag => TvmError::InvalidReceipt("unknown receipt payload tag"),
         CodecError::UnknownDType => TvmError::InvalidReceipt("unknown dtype tag"),

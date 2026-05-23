@@ -121,6 +121,8 @@ spaghetti around.
   codec boundary while keeping p2p hash-vector caps out of persisted storage decoding.
 - Iteration 44 moved validator-attestation payload encoding and streaming decode into shared
   codec helpers, leaving p2p and storage responsible only for envelopes and error domains.
+- Iteration 45 collapsed repeated codec-error boundary mapping in p2p and storage while keeping
+  the existing p2p trailing-payload messages and storage error strings intact.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

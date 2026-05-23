@@ -730,13 +730,13 @@ fn decode_jobs(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, JobState>>
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
         let job = codec::decode_job_payload_from(reader.input, &mut reader.offset, None)
-            .map_err(storage_job_codec_error)?;
+            .map_err(storage_codec_error)?;
         jobs.insert(key, job);
     }
     Ok(jobs)
 }
 
-fn storage_job_codec_error(error: codec::CodecError) -> TvmError {
+fn storage_codec_error(error: codec::CodecError) -> TvmError {
     match error {
         codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
         codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
@@ -768,29 +768,10 @@ fn decode_receipts(reader: &mut StateReader<'_>) -> Result<BTreeMap<Hash, Receip
     for _ in 0..reader.read_len()? {
         let key = reader.read_hash()?;
         let receipt = codec::decode_receipt_payload_from(reader.input, &mut reader.offset, None)
-            .map_err(storage_receipt_codec_error)?;
+            .map_err(storage_codec_error)?;
         receipts.insert(key, receipt);
     }
     Ok(receipts)
-}
-
-fn storage_receipt_codec_error(error: codec::CodecError) -> TvmError {
-    match error {
-        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
-        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
-        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
-        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
-        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
-        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
-        codec::CodecError::UnknownVerificationResult => {
-            TvmError::Storage("unknown verification result")
-        }
-        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
-        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
-        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
-        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
-        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
-    }
 }
 
 fn encode_attestations(
@@ -818,31 +799,12 @@ fn decode_attestations(
         for _ in 0..item_count {
             let attestation =
                 codec::decode_attestation_payload_from(reader.input, &mut reader.offset)
-                    .map_err(storage_attestation_codec_error)?;
+                    .map_err(storage_codec_error)?;
             items.push(attestation);
         }
         attestations.insert(receipt_id, items);
     }
     Ok(attestations)
-}
-
-fn storage_attestation_codec_error(error: codec::CodecError) -> TvmError {
-    match error {
-        codec::CodecError::Truncated => TvmError::Storage("truncated chain state"),
-        codec::CodecError::TrailingBytes => TvmError::Storage("trailing chain state bytes"),
-        codec::CodecError::UnknownJobTag => TvmError::Storage("unknown job tag"),
-        codec::CodecError::UnknownReceiptTag => TvmError::Storage("unknown receipt tag"),
-        codec::CodecError::UnknownDType => TvmError::Storage("unknown dtype"),
-        codec::CodecError::UnknownPrimitiveType => TvmError::Storage("unknown primitive type"),
-        codec::CodecError::UnknownVerificationResult => {
-            TvmError::Storage("unknown verification result")
-        }
-        codec::CodecError::InvalidOptionalU64 => TvmError::Storage("invalid optional u64"),
-        codec::CodecError::InvalidBool => TvmError::Storage("invalid boolean"),
-        codec::CodecError::UsizeOverflow => TvmError::Storage("chain state length overflow"),
-        codec::CodecError::ShapeVectorTooLarge => TvmError::Storage("shape vector too large"),
-        codec::CodecError::HashVectorTooLarge => TvmError::Storage("hash vector too large"),
-    }
 }
 
 fn encode_block_votes(out: &mut Vec<u8>, votes: &BTreeMap<Hash, Vec<BlockVote>>) {
