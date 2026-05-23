@@ -31,6 +31,9 @@ mod runtime_commands;
 #[path = "main/runtime_config.rs"]
 mod runtime_config;
 
+#[path = "main/runtime_status.rs"]
+mod runtime_status;
+
 #[path = "main/shared.rs"]
 mod shared;
 

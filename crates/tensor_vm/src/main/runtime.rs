@@ -17,11 +17,11 @@ use super::{
     runtime_config::{
         RuntimeRole, ServiceRuntimeConfig, runtime_node_config, runtime_role_wallet_registration,
     },
-    shared::p2p_identity_report,
-    status::{
+    runtime_status::{
         RuntimeP2pReport, RuntimeStatusSnapshot, format_role_runtime_report,
         write_role_runtime_status,
     },
+    shared::p2p_identity_report,
     validator_fetch::fetch_validator_role_missing_tensors,
 };
 use tensor_vm::{

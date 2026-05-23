@@ -193,6 +193,8 @@ spaghetti around.
   separating miner role glue from validator role tensor-fetch and attestation logic.
 - Iteration 80 moved validator remote tensor fetch and p2p tensor-response parsing into
   `main/validator_fetch.rs`, leaving `main/roles.rs` focused on validator observation and submissions.
+- Iteration 81 moved runtime status snapshots, role-runtime status writing, and runtime report
+  formatting into `main/runtime_status.rs`, leaving `main/status.rs` focused on service status reads.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
