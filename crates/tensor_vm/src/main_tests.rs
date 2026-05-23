@@ -10,8 +10,8 @@ use std::{collections::BTreeSet, thread, time::Instant};
 use tensor_vm::{
     ChainCommand, ChainEngine, ChainNetworkPayloadProcessor, ChainParams, Faucet, FreivaldsParams,
     JobScheduler, Libp2pControlPlaneConfig, NetworkEventIngest, NetworkPayloadApply,
-    NodeRuntimeState, PendingNetworkPayloads, ReceiptState, RpcGateway, RpcHttpServer, RpcNode,
-    RpcPolicy, Tensor, TensorVmLibp2pService, ValidatorAttestation, VerificationResult,
+    NodeRuntimeState, NodeStore, PendingNetworkPayloads, ReceiptState, RpcGateway, RpcHttpServer,
+    RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService, ValidatorAttestation, VerificationResult,
     api::P2pMessage,
     encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
     node::{
@@ -20,6 +20,7 @@ use tensor_vm::{
     },
     roles::{CpuReferenceMinerRole, RoleReceiptBundle},
     spawn_libp2p_service,
+    testnet::{LocalTestnet, TestnetConfig},
 };
 use tensor_vm::{ChainSnapshot, types::address};
 

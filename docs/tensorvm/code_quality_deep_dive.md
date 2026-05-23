@@ -173,6 +173,8 @@ spaghetti around.
   `main/roles.rs`, leaving `main.rs` focused on CLI dispatch and runtime-loop orchestration.
 - Iteration 70 moved `RoleRuntimeLoop` orchestration into `main/runtime.rs`, keeping the
   entrypoint responsible for command dispatch and runtime configuration construction.
+- Iteration 71 moved local-testnet seeding into `main/commands.rs`, keeping command-specific
+  testnet and storage dependencies out of the binary entrypoint.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
