@@ -1,6 +1,7 @@
 use crate::chain::{
-    AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainState, HardwareClass, JobState,
-    MinerState, ModelState, ReceiptState, RewardState, TensorBlock, ValidatorState,
+    AccountState, BlockVote, Chain, ChainEngine, ChainParams, ChainState, ChainStateParts,
+    HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardState, TensorBlock,
+    ValidatorState,
 };
 use crate::error::{Result, TvmError};
 use crate::jobs::{
@@ -581,28 +582,28 @@ fn decode_freivalds_params(reader: &mut StateReader<'_>) -> Result<FreivaldsPara
 }
 
 fn encode_chain_state(out: &mut Vec<u8>, state: &ChainState) {
-    write_u64(out, state.height);
-    write_u64(out, state.epoch);
-    write_hash(out, &state.finalized_randomness);
-    write_hash(out, &state.genesis_randomness);
-    encode_accounts(out, &state.accounts);
-    encode_miners(out, &state.miners);
-    encode_validators(out, &state.validators);
-    encode_jobs(out, &state.jobs);
-    encode_receipts(out, &state.receipts);
-    encode_attestations(out, &state.attestations);
-    encode_block_votes(out, &state.block_votes);
-    encode_hash_set(out, &state.finalized_blocks);
-    encode_hash_set(out, &state.data_unavailable_receipts);
-    encode_hash_set(out, &state.settled_receipts);
-    encode_hash_set(out, &state.included_receipts);
-    encode_hash_vec_map(out, &state.block_selected_receipts);
-    encode_model_states(out, &state.model_states);
-    encode_rewards(out, &state.rewards);
+    write_u64(out, state.height());
+    write_u64(out, state.epoch());
+    write_hash(out, &state.finalized_randomness());
+    write_hash(out, &state.genesis_randomness());
+    encode_accounts(out, state.accounts());
+    encode_miners(out, state.miners());
+    encode_validators(out, state.validators());
+    encode_jobs(out, state.jobs());
+    encode_receipts(out, state.receipts());
+    encode_attestations(out, state.attestations());
+    encode_block_votes(out, state.block_votes());
+    encode_hash_set(out, state.finalized_blocks());
+    encode_hash_set(out, state.data_unavailable_receipts());
+    encode_hash_set(out, state.settled_receipts());
+    encode_hash_set(out, state.included_receipts());
+    encode_hash_vec_map(out, state.block_selected_receipts());
+    encode_model_states(out, state.model_states());
+    encode_rewards(out, state.rewards());
 }
 
 fn decode_chain_state(reader: &mut StateReader<'_>) -> Result<ChainState> {
-    Ok(ChainState {
+    Ok(ChainState::from_parts(ChainStateParts {
         height: reader.read_u64()?,
         epoch: reader.read_u64()?,
         finalized_randomness: reader.read_hash()?,
@@ -621,7 +622,7 @@ fn decode_chain_state(reader: &mut StateReader<'_>) -> Result<ChainState> {
         block_selected_receipts: decode_hash_vec_map(reader)?,
         model_states: decode_model_states(reader)?,
         rewards: decode_rewards(reader)?,
-    })
+    }))
 }
 
 fn encode_accounts(out: &mut Vec<u8>, accounts: &BTreeMap<Hash, AccountState>) {

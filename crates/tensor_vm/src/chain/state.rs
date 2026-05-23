@@ -448,6 +448,28 @@ impl BlockVote {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChainState {
+    pub(in crate::chain) height: u64,
+    pub(in crate::chain) epoch: u64,
+    pub(in crate::chain) finalized_randomness: Hash,
+    pub(in crate::chain) genesis_randomness: Hash,
+    pub(in crate::chain) accounts: BTreeMap<Address, AccountState>,
+    pub(in crate::chain) miners: BTreeMap<Address, MinerState>,
+    pub(in crate::chain) validators: BTreeMap<Address, ValidatorState>,
+    pub(in crate::chain) jobs: BTreeMap<Hash, JobState>,
+    pub(in crate::chain) receipts: BTreeMap<Hash, ReceiptState>,
+    pub(in crate::chain) attestations: BTreeMap<Hash, Vec<ValidatorAttestation>>,
+    pub(in crate::chain) block_votes: BTreeMap<Hash, Vec<BlockVote>>,
+    pub(in crate::chain) finalized_blocks: BTreeSet<Hash>,
+    pub(in crate::chain) data_unavailable_receipts: BTreeSet<Hash>,
+    pub(in crate::chain) settled_receipts: BTreeSet<Hash>,
+    pub(in crate::chain) included_receipts: BTreeSet<Hash>,
+    pub(in crate::chain) block_selected_receipts: BTreeMap<Hash, Vec<Hash>>,
+    pub(in crate::chain) model_states: BTreeMap<Hash, ModelState>,
+    pub(in crate::chain) rewards: RewardState,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ChainStateParts {
     pub height: u64,
     pub epoch: u64,
     pub finalized_randomness: Hash,
@@ -469,6 +491,29 @@ pub struct ChainState {
 }
 
 impl ChainState {
+    pub(crate) fn from_parts(parts: ChainStateParts) -> Self {
+        Self {
+            height: parts.height,
+            epoch: parts.epoch,
+            finalized_randomness: parts.finalized_randomness,
+            genesis_randomness: parts.genesis_randomness,
+            accounts: parts.accounts,
+            miners: parts.miners,
+            validators: parts.validators,
+            jobs: parts.jobs,
+            receipts: parts.receipts,
+            attestations: parts.attestations,
+            block_votes: parts.block_votes,
+            finalized_blocks: parts.finalized_blocks,
+            data_unavailable_receipts: parts.data_unavailable_receipts,
+            settled_receipts: parts.settled_receipts,
+            included_receipts: parts.included_receipts,
+            block_selected_receipts: parts.block_selected_receipts,
+            model_states: parts.model_states,
+            rewards: parts.rewards,
+        }
+    }
+
     pub fn height(&self) -> u64 {
         self.height
     }

@@ -256,7 +256,7 @@ mod tests {
         for profile in profiles {
             let chain = profile.build_chain(beacon);
             assert_eq!(chain.params(), &profile.chain_params);
-            assert_eq!(chain.view().finalized_randomness, beacon);
+            assert_eq!(chain.view().finalized_randomness(), beacon);
         }
     }
 

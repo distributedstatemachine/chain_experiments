@@ -27,6 +27,7 @@ mod validation;
 pub use engine::{BlockAdmission, BlockInvalidReason, ChainCommand, ChainEngine, ChainEvent};
 #[cfg(test)]
 use settlement::{has_conflicting_linear_receipt, receipts_agree};
+pub(crate) use state::ChainStateParts;
 pub use state::{
     AccountState, BlockVote, BlockspaceCaps, BlockspaceSelection, Chain, ChainParams, ChainState,
     HardwareClass, JobState, MinerState, ModelState, ReceiptState, RewardAllocation, RewardState,

@@ -332,7 +332,7 @@ fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let attestation_count: usize = testnet
         .chain
         .state()
-        .attestations
+        .attestations()
         .values()
         .map(Vec::len)
         .sum();
@@ -436,7 +436,7 @@ fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let attestation_count: usize = chain.state().attestations().values().map(Vec::len).sum();
     let reward_account_count = chain
         .state()
-        .rewards
+        .rewards()
         .balances()
         .values()
         .filter(|balance| **balance > 0)
@@ -556,13 +556,13 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let pow_header_hash = block.pow_header_hash();
     let block_votes = chain
         .state()
-        .block_votes
+        .block_votes()
         .get(&block_hash)
         .cloned()
         .unwrap_or_default();
     let total_validator_stake = chain
         .state()
-        .validators
+        .validators()
         .values()
         .map(|validator| validator.stake)
         .sum::<u64>();
@@ -588,7 +588,7 @@ fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<Stri
     let mut settled_receipt_ids = Vec::new();
     for receipt in chain
         .state()
-        .receipts
+        .receipts()
         .values()
         .filter(|receipt| receipt.submitted_at_block() == height)
     {
@@ -947,7 +947,7 @@ fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkOb
 fn miner_has_receipt_for_job(chain: &Chain, miner: Address, job_id: Hash) -> bool {
     chain
         .state()
-        .receipts
+        .receipts()
         .values()
         .any(|receipt| receipt.job_id() == job_id && receipt.miner() == miner)
 }
@@ -1044,7 +1044,7 @@ fn validator_role_work_observation(
 fn validator_has_attested_for_receipt(chain: &Chain, validator: Address, receipt_id: Hash) -> bool {
     chain
         .state()
-        .attestations
+        .attestations()
         .get(&receipt_id)
         .is_some_and(|attestations| {
             attestations
@@ -1297,7 +1297,7 @@ fn submit_validator_role_block_vote(
 fn validator_has_block_vote(chain: &Chain, validator: Address, block_hash: Hash) -> bool {
     chain
         .state()
-        .block_votes
+        .block_votes()
         .get(&block_hash)
         .is_some_and(|votes| votes.iter().any(|vote| vote.validator == validator))
 }
@@ -2162,7 +2162,7 @@ fn publish_new_chain_announcements(
     }
     for attestation in chain
         .state()
-        .attestations
+        .attestations()
         .values()
         .flat_map(|attestations| attestations.iter())
     {
@@ -2203,7 +2203,7 @@ fn publish_new_chain_announcements(
 fn attestation_announcement_hashes(chain: &Chain) -> impl Iterator<Item = Hash> + '_ {
     chain
         .state()
-        .attestations
+        .attestations()
         .values()
         .flat_map(|attestations| attestations.iter().map(attestation_announcement_hash))
 }
@@ -2211,7 +2211,7 @@ fn attestation_announcement_hashes(chain: &Chain) -> impl Iterator<Item = Hash> 
 fn block_vote_announcement_keys(chain: &Chain) -> impl Iterator<Item = (Hash, Address)> + '_ {
     chain
         .state()
-        .block_votes
+        .block_votes()
         .iter()
         .flat_map(|(block_hash, votes)| votes.iter().map(move |vote| (*block_hash, vote.validator)))
 }
@@ -2471,7 +2471,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
@@ -2833,7 +2833,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
@@ -2873,7 +2873,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         chain
@@ -2900,7 +2900,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
@@ -2919,7 +2919,7 @@ mod tests {
         let receipt = node
             .chain
             .state()
-            .receipts
+            .receipts()
             .values()
             .next()
             .expect("receipt should be stored");
@@ -2954,7 +2954,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_id = job.job_id;
@@ -3019,7 +3019,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
@@ -3095,7 +3095,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
@@ -3146,7 +3146,7 @@ mod tests {
         let attestations = node
             .chain
             .state()
-            .attestations
+            .attestations()
             .get(&receipt_id)
             .expect("attestation should be stored");
         assert_eq!(attestations.len(), 1);
@@ -3303,7 +3303,7 @@ mod tests {
             &chain.state().finalized_randomness(),
             chain
                 .state()
-                .height
+                .height()
                 .saturating_add(chain.params().receipt_submission_window),
         );
         let job_state = tensor_vm::JobState::TensorOp(job);
@@ -3523,7 +3523,7 @@ mod tests {
         let job = testnet
             .chain
             .state()
-            .jobs
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
@@ -3531,7 +3531,7 @@ mod tests {
         let receipt = testnet
             .chain
             .state()
-            .receipts
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -3540,7 +3540,7 @@ mod tests {
         let attestation = testnet
             .chain
             .state()
-            .attestations
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
@@ -3601,7 +3601,7 @@ mod tests {
         let job = testnet
             .chain
             .state()
-            .jobs
+            .jobs()
             .values()
             .next()
             .expect("local round must produce a job")
@@ -3610,7 +3610,7 @@ mod tests {
         let receipt = testnet
             .chain
             .state()
-            .receipts
+            .receipts()
             .values()
             .next()
             .expect("local round must produce a receipt")
@@ -3619,7 +3619,7 @@ mod tests {
         let attestation = testnet
             .chain
             .state()
-            .attestations
+            .attestations()
             .values()
             .flat_map(|items| items.iter())
             .next()
@@ -3670,7 +3670,7 @@ mod tests {
                 .node
                 .chain
                 .state()
-                .receipts
+                .receipts()
                 .get(&receipt_id),
             Some(&receipt)
         );
@@ -3680,7 +3680,7 @@ mod tests {
                 .node
                 .chain
                 .state()
-                .attestations
+                .attestations()
                 .get(&receipt_id)
                 .and_then(|items| items.first()),
             Some(&attestation)
