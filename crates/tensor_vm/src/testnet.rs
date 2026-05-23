@@ -3581,7 +3581,7 @@ impl LocalTestnet {
 
     pub fn run_blocks(&mut self, count: u64) {
         for i in 0..count {
-            let beacon = self.chain.state.finalized_randomness;
+            let beacon = self.chain.state().finalized_randomness();
             let proposer = self
                 .chain
                 .proposer_for_next_epoch(&beacon)
@@ -3594,12 +3594,12 @@ impl LocalTestnet {
     }
 
     pub fn run_matmul_round(&mut self, scheduler: &JobScheduler) {
-        let beacon = self.chain.state.finalized_randomness;
+        let beacon = self.chain.state().finalized_randomness();
         let job = scheduler.generate_small_matmul(
-            self.chain.state.epoch,
-            self.chain.state.height,
+            self.chain.state().epoch(),
+            self.chain.state().height(),
             &beacon,
-            self.chain.state.height + self.chain.params.receipt_submission_window,
+            self.chain.state().height() + self.chain.params.receipt_submission_window,
         );
         let mut txpool = TxPool::default();
         self.chain
@@ -3610,7 +3610,7 @@ impl LocalTestnet {
         for (index, miner_address) in miner_assignment.miners.iter().copied().enumerate() {
             let mut miner = MinerNode::new(miner_address, CpuReferenceBackend);
             let (receipt, _a, _b, _c) = miner
-                .solve_matmul_job(&job, self.chain.state.height, 1 + index as u64)
+                .solve_matmul_job(&job, self.chain.state().height(), 1 + index as u64)
                 .expect("reference miner should solve generated job");
             assert!(txpool.submit(Transaction::SubmitTensorOpReceipt(receipt.receipt_id)));
             self.chain
@@ -3635,13 +3635,13 @@ impl LocalTestnet {
             .unwrap_or_else(|| self.validators[0]);
         let block = self.produce_block_with_command(
             proposer,
-            self.chain.state.height * self.chain.params.block_time_seconds,
+            self.chain.state().height() * self.chain.params.block_time_seconds,
         );
         self.finalize_block(&block);
     }
 
     pub fn run_linear_training_round(&mut self, scheduler: &JobScheduler) {
-        let beacon = self.chain.state.finalized_randomness;
+        let beacon = self.chain.state().finalized_randomness();
         let model_id = hash_bytes(b"tensor-vm-testnet-model-v1", &[&beacon]);
         let architecture = hash_bytes(b"tensor-vm-testnet-architecture-v1", &[]);
         let config = hash_bytes(b"tensor-vm-testnet-config-v1", &[]);
@@ -3664,7 +3664,8 @@ impl LocalTestnet {
             weight_shape: vec![3, 2],
             target_shape: vec![4, 2],
             lr: 2,
-            deadline_block: self.chain.state.height + self.chain.params.receipt_submission_window,
+            deadline_block: self.chain.state().height()
+                + self.chain.params.receipt_submission_window,
         });
         let mut txpool = TxPool::default();
         self.chain
@@ -3680,7 +3681,7 @@ impl LocalTestnet {
                 .solve_linear_training_step(
                     &job,
                     &weights,
-                    self.chain.state.height,
+                    self.chain.state().height(),
                     1 + index as u64,
                 )
                 .expect("reference miner should solve generated training step");
@@ -3701,8 +3702,8 @@ impl LocalTestnet {
             for validator_address in assignment.validators {
                 let stake = self
                     .chain
-                    .state
-                    .validators
+                    .state()
+                    .validators()
                     .get(&validator_address)
                     .map(|validator| validator.stake)
                     .unwrap_or_default();
@@ -3741,8 +3742,8 @@ impl LocalTestnet {
             .expect("verified linear receipts should settle");
         assert!(
             self.chain
-                .state
-                .settled_receipts
+                .state()
+                .settled_receipts()
                 .contains(&canonical_receipt.receipt_id)
         );
         self.chain
@@ -3759,7 +3760,7 @@ impl LocalTestnet {
             .unwrap_or_else(|| self.validators[0]);
         let block = self.produce_block_with_command(
             proposer,
-            self.chain.state.height * self.chain.params.block_time_seconds,
+            self.chain.state().height() * self.chain.params.block_time_seconds,
         );
         self.finalize_block(&block);
     }
@@ -3773,20 +3774,21 @@ impl LocalTestnet {
     }
 
     pub fn explorer_summary(&self) -> ExplorerSummary {
+        let state = self.chain.state();
         ExplorerSummary {
-            height: self.chain.state.height,
-            epoch: self.chain.state.epoch,
+            height: state.height(),
+            epoch: state.epoch(),
             block_count: self.chain.blocks.len(),
-            miner_count: self.chain.state.miners.len(),
-            validator_count: self.chain.state.validators.len(),
-            job_count: self.chain.state.jobs.len(),
-            model_count: self.chain.state.model_states.len(),
-            attestation_count: self.chain.state.attestations.values().map(Vec::len).sum(),
-            receipt_count: self.chain.state.receipts.len(),
-            settled_receipt_count: self.chain.state.settled_receipts.len(),
-            finalized_block_count: self.chain.state.finalized_blocks.len(),
-            treasury_balance: self.chain.state.rewards.treasury(),
-            total_reward_balance: self.chain.state.rewards.total_balance(),
+            miner_count: state.miners().len(),
+            validator_count: state.validators().len(),
+            job_count: state.jobs().len(),
+            model_count: state.model_states().len(),
+            attestation_count: state.attestations().values().map(Vec::len).sum(),
+            receipt_count: state.receipts().len(),
+            settled_receipt_count: state.settled_receipts().len(),
+            finalized_block_count: state.finalized_blocks().len(),
+            treasury_balance: state.rewards().treasury(),
+            total_reward_balance: state.rewards().total_balance(),
         }
     }
 
@@ -3896,8 +3898,8 @@ impl LocalTestnet {
             for validator_address in assignment.validators {
                 let stake = self
                     .chain
-                    .state
-                    .validators
+                    .state()
+                    .validators()
                     .get(&validator_address)
                     .map(|validator| validator.stake)
                     .unwrap_or_default();
@@ -3937,8 +3939,8 @@ impl LocalTestnet {
         for validator in self.validators.clone() {
             let stake = self
                 .chain
-                .state
-                .validators
+                .state()
+                .validators()
                 .get(&validator)
                 .map(|validator| validator.stake)
                 .unwrap_or_default();
@@ -4848,11 +4850,11 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         assert_eq!(testnet.miners.len(), 3);
         assert_eq!(testnet.validators.len(), 2);
         assert_eq!(
-            testnet.chain.state.miners[&testnet.miners[0]].stake,
+            testnet.chain.state().miners()[&testnet.miners[0]].stake,
             profile.miner_stake
         );
         assert_eq!(
-            testnet.chain.state.validators[&testnet.validators[0]].stake,
+            testnet.chain.state().validators()[&testnet.validators[0]].stake,
             profile.validator_stake
         );
         assert!(testnet.has_mandatory_libp2p_participant_paths());
@@ -4929,11 +4931,11 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         testnet.run_matmul_round(&scheduler);
 
         assert_eq!(
-            testnet.chain.state.receipts.len(),
+            testnet.chain.state().receipts().len(),
             testnet.chain.params.replication_factor
         );
         assert_eq!(
-            testnet.chain.state.settled_receipts.len(),
+            testnet.chain.state().settled_receipts().len(),
             testnet.chain.params.replication_factor
         );
         assert_eq!(testnet.chain.blocks.len(), 1);
@@ -4941,7 +4943,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let rewarded_miners = testnet
             .miners
             .iter()
-            .filter(|miner| testnet.chain.state.rewards.balance(miner) > 0)
+            .filter(|miner| testnet.chain.state().rewards().balance(miner) > 0)
             .count();
         assert!(rewarded_miners >= testnet.chain.params.agreement_quorum);
 
@@ -4974,8 +4976,8 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let invalid_validator = testnet.validators[0];
         let invalid_stake = testnet
             .chain
-            .state
-            .validators
+            .state()
+            .validators()
             .get(&invalid_validator)
             .unwrap()
             .stake;
@@ -5025,20 +5027,20 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         testnet.run_linear_training_round(&scheduler);
 
         assert_eq!(
-            testnet.chain.state.receipts.len(),
+            testnet.chain.state().receipts().len(),
             testnet.chain.params.replication_factor
         );
         assert_eq!(
-            testnet.chain.state.settled_receipts.len(),
+            testnet.chain.state().settled_receipts().len(),
             testnet.chain.params.replication_factor
         );
         assert_eq!(testnet.chain.blocks.len(), 1);
-        assert_eq!(testnet.chain.state.model_states.len(), 1);
+        assert_eq!(testnet.chain.state().model_states().len(), 1);
         assert_eq!(
             testnet
                 .chain
-                .state
-                .model_states
+                .state()
+                .model_states()
                 .values()
                 .next()
                 .unwrap()
@@ -5048,7 +5050,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
         let rewarded_miners = testnet
             .miners
             .iter()
-            .filter(|miner| testnet.chain.state.rewards.balance(miner) > 0)
+            .filter(|miner| testnet.chain.state().rewards().balance(miner) > 0)
             .count();
         assert!(rewarded_miners >= testnet.chain.params.agreement_quorum);
     }

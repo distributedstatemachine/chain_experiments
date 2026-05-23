@@ -99,6 +99,8 @@ spaghetti around.
 - Iteration 32 moved role-level validator stake lookup onto the `ChainState` validator accessor.
 - Iteration 33 moved RPC explorer account, operator, receipt, job, and malformed-transaction
   assertion reads onto `ChainState` accessors.
+- Iteration 34 moved local testnet simulation, explorer summary, and colocated assertion reads onto
+  `ChainState` accessors while leaving invalid-attestation fixture insertion explicit.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
