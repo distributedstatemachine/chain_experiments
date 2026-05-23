@@ -940,11 +940,11 @@ fn explorer_summary(chain: &Chain) -> ExplorerSummary {
 }
 
 fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAccount {
-    let miner = chain.state().miners().get(address);
-    let validator = chain.state().validators().get(address);
-    let balance = chain
-        .state
-        .accounts
+    let state = chain.state();
+    let miner = state.miners().get(address);
+    let validator = state.validators().get(address);
+    let balance = state
+        .accounts()
         .get(address)
         .map(|account| account.balance)
         .unwrap_or_default();
@@ -953,7 +953,7 @@ fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAccount {
         is_miner: miner.is_some(),
         is_validator: validator.is_some(),
         balance,
-        reward_balance: chain.state().rewards().balance(address),
+        reward_balance: state.rewards().balance(address),
         stake: miner
             .map(|miner| miner.stake)
             .or_else(|| validator.map(|validator| validator.stake))
@@ -989,9 +989,9 @@ fn explorer_blocks(chain: &Chain, limit: usize) -> Vec<ExplorerBlock> {
 }
 
 fn explorer_miners(chain: &Chain) -> Vec<ExplorerMiner> {
-    chain
-        .state
-        .miners
+    let state = chain.state();
+    state
+        .miners()
         .values()
         .map(|miner| ExplorerMiner {
             address: hex(&miner.address),
@@ -1002,15 +1002,15 @@ fn explorer_miners(chain: &Chain) -> Vec<ExplorerMiner> {
             pending_tensor_work: miner.pending_tensor_work,
             hardware_class: hardware_class_label(miner.hardware_class).to_owned(),
             gpu_utilization_bps: miner.gpu_utilization_bps,
-            reward_balance: chain.state().rewards().balance(&miner.address),
+            reward_balance: state.rewards().balance(&miner.address),
         })
         .collect()
 }
 
 fn explorer_validators(chain: &Chain) -> Vec<ExplorerValidator> {
-    chain
-        .state
-        .validators
+    let state = chain.state();
+    state
+        .validators()
         .values()
         .map(|validator| ExplorerValidator {
             address: hex(&validator.address),
@@ -1018,22 +1018,22 @@ fn explorer_validators(chain: &Chain) -> Vec<ExplorerValidator> {
             reputation: validator.reputation,
             valid_attestations: validator.valid_attestations,
             missed_assignments: validator.missed_assignments,
-            reward_balance: chain.state().rewards().balance(&validator.address),
+            reward_balance: state.rewards().balance(&validator.address),
         })
         .collect()
 }
 
 fn explorer_receipts(chain: &Chain, limit: usize) -> Vec<ExplorerReceipt> {
-    chain
-        .state
-        .receipts
+    let state = chain.state();
+    state
+        .receipts()
         .iter()
         .rev()
         .take(limit)
         .map(|(receipt_id, receipt)| {
             let validator_attestations: Vec<_> = chain
-                .state
-                .attestations
+                .state()
+                .attestations()
                 .get(receipt_id)
                 .into_iter()
                 .flat_map(|attestations| attestations.iter())
@@ -1047,7 +1047,7 @@ fn explorer_receipts(chain: &Chain, limit: usize) -> Vec<ExplorerReceipt> {
                 tensor_work_units: receipt.tensor_work_units(),
                 attestation_count: validator_attestations.len(),
                 validator_attestations,
-                settled: chain.state().settled_receipts().contains(receipt_id),
+                settled: state.settled_receipts().contains(receipt_id),
             }
         })
         .collect()
@@ -1055,8 +1055,8 @@ fn explorer_receipts(chain: &Chain, limit: usize) -> Vec<ExplorerReceipt> {
 
 fn explorer_jobs(chain: &Chain, limit: usize) -> Vec<ExplorerJob> {
     chain
-        .state
-        .jobs
+        .state()
+        .jobs()
         .values()
         .rev()
         .take(limit)
@@ -1910,8 +1910,8 @@ mod tests {
         assert!(rpc.txpool.is_empty());
         assert_eq!(
             rpc.chain
-                .state
-                .accounts
+                .state()
+                .accounts()
                 .get(&receiver)
                 .map(|account| account.balance),
             None

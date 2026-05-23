@@ -97,6 +97,8 @@ spaghetti around.
 - Iteration 31 finished the read-only telemetry metric paths that still reached through `chain.state`,
   leaving settled-work fixture mutation helpers as a separate follow-up.
 - Iteration 32 moved role-level validator stake lookup onto the `ChainState` validator accessor.
+- Iteration 33 moved RPC explorer account, operator, receipt, job, and malformed-transaction
+  assertion reads onto `ChainState` accessors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
