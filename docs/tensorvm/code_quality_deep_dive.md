@@ -183,6 +183,8 @@ spaghetti around.
   `main/shared.rs`, leaving `main.rs` as CLI dispatch and module wiring.
 - Iteration 75 moved runtime role/config construction, profile/env parsing, and wallet registration
   helpers into `main/runtime_config.rs`, leaving `main/runtime.rs` focused on loop orchestration.
+- Iteration 76 moved role runtime service-report formatting into `main/status.rs`, reusing the
+  runtime status snapshot so `main/runtime.rs` no longer owns the long report string contract.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

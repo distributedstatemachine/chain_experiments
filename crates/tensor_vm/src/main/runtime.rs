@@ -16,15 +16,17 @@ use super::{
     },
     runtime_config::{
         RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, role_wallet_address,
-        runtime_node_config, runtime_role_wallet_address_text, runtime_role_wallet_registered,
-        runtime_role_wallet_registration,
+        runtime_node_config, runtime_role_wallet_registration,
     },
     shared::p2p_identity_report,
-    status::{RuntimeStatusSnapshot, hex_hash_list, write_role_runtime_status},
+    status::{
+        RuntimeP2pReport, RuntimeStatusSnapshot, format_role_runtime_report,
+        write_role_runtime_status,
+    },
 };
 use tensor_vm::{
     ChainSnapshot, Faucet, Libp2pControlPlaneConfig, NodeRuntimeState, NodeStore, RpcGateway,
-    RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService, hash::hex, spawn_libp2p_service,
+    RpcHttpServer, RpcNode, RpcPolicy, TensorVmLibp2pService, spawn_libp2p_service,
 };
 
 pub(super) fn run_miner_service(
@@ -548,103 +550,36 @@ impl RoleRuntimeLoop {
     }
 
     fn write_status(&self) -> std::result::Result<(), String> {
-        write_role_runtime_status(
-            &self.config,
-            &RuntimeStatusSnapshot::from_runtime_state(
-                &self.runtime_state,
-                &self.server,
-                &self.p2p_service,
-                self.local_producer,
-                self.config.role,
-                self.config.role_wallet_address,
-            ),
+        write_role_runtime_status(&self.config, &self.status_snapshot())
+    }
+
+    fn status_snapshot(&self) -> RuntimeStatusSnapshot {
+        RuntimeStatusSnapshot::from_runtime_state(
+            &self.runtime_state,
+            &self.server,
+            &self.p2p_service,
+            self.local_producer,
+            self.config.role,
+            self.config.role_wallet_address,
         )
     }
 
     fn report(&self) -> String {
-        let network = &self.config.node.network;
-        let network_events = self.runtime_state.network_events();
-        format!(
-            "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_remote_tensor_fetch_attempts={}\nvalidator_remote_tensor_fetch_successes={}\nvalidator_remote_tensor_fetch_failures={}\nvalidator_remote_tensor_fetch_bytes={}\nvalidator_remote_tensors_inserted={}\nvalidator_attestations_submitted={}\nvalidator_block_votes_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_block_payload_gossip_count={}\np2p_observed_block_vote_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_latest_observed_block_payload_height={}\np2p_latest_observed_block_payload_hash={}\np2p_observed_block_payload_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_block_payloads_ingested={}\nnetwork_block_payloads_applied={}\nnetwork_block_votes_ingested={}\nnetwork_block_votes_applied={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
-            self.config.runtime_command,
-            self.config.role.label(),
-            self.config.node.profile.label(),
-            self.config.node.can_produce_local_blocks(),
-            runtime_role_wallet_address_text(self.config.role_wallet_address),
-            runtime_role_wallet_registration(
-                self.config.role,
-                self.config.role_wallet_address,
-                &self.server.gateway().node.chain
-            ),
-            runtime_role_wallet_registered(
-                self.config.role,
-                self.config.role_wallet_address,
-                &self.server.gateway().node.chain
-            ),
-            self.runtime_state.miner_work_ready(),
-            self.runtime_state.miner_assigned_jobs_seen(),
-            self.runtime_state.miner_unreceipted_jobs(),
-            self.runtime_state.miner_receipts_submitted(),
-            self.runtime_state.miner_tensors_inserted(),
-            self.runtime_state.validator_work_ready(),
-            self.runtime_state.validator_assigned_receipts_seen(),
-            self.runtime_state.validator_unattested_receipts(),
-            self.runtime_state.validator_artifact_ready_receipts(),
-            self.runtime_state.validator_artifact_missing_receipts(),
-            self.runtime_state.validator_remote_tensor_fetch_attempts(),
-            self.runtime_state.validator_remote_tensor_fetch_successes(),
-            self.runtime_state.validator_remote_tensor_fetch_failures(),
-            self.runtime_state.validator_remote_tensor_fetch_bytes(),
-            self.runtime_state.validator_remote_tensors_inserted(),
-            self.runtime_state.validator_attestations_submitted(),
-            self.runtime_state.validator_block_votes_submitted(),
-            network.rpc_listen,
-            network.p2p_listen,
-            self.p2p_service.connected_peer_count(),
-            self.p2p_service.observed_block_gossip_count(),
-            self.p2p_service.observed_block_payload_gossip_count(),
-            self.p2p_service.observed_block_vote_gossip_count(),
-            self.p2p_service.observed_job_gossip_count(),
-            self.p2p_service.observed_receipt_gossip_count(),
-            self.p2p_service.observed_attestation_gossip_count(),
-            self.p2p_service.latest_observed_block_height(),
-            hex(&self.p2p_service.latest_observed_block_hash()),
-            hex_hash_list(&self.p2p_service.observed_block_hashes()),
-            self.p2p_service.latest_observed_block_payload_height(),
-            hex(&self.p2p_service.latest_observed_block_payload_hash()),
-            hex_hash_list(&self.p2p_service.observed_block_payload_hashes()),
-            self.config.node.data_dir().display(),
-            network_events.events,
-            network_events.block_announcements,
-            network_events.block_headers,
-            network_events.block_payloads,
-            network_events.block_payloads_applied,
-            network_events.block_votes,
-            network_events.block_votes_applied,
-            network_events.jobs,
-            network_events.job_payloads,
-            network_events.job_payloads_applied,
-            network_events.receipts,
-            network_events.receipt_payloads,
-            network_events.receipt_payloads_applied,
-            network_events.attestations,
-            network_events.attestation_payloads,
-            network_events.attestation_payloads_applied,
-            network_events.peers,
-            network_events.invalid_events,
-            local_producer = self.local_producer,
-            p2p_peer_id = self.p2p_peer_id,
-            p2p_topics = self.p2p_topics,
-            p2p_request_response_protocols = self.p2p_request_response_protocols,
-            bootstrap_peer_count = self.bootstrap_peer_count,
-            identity = self.identity,
-            max_transmit_bytes = self.max_transmit_bytes,
-            request_timeout_seconds = self.request_timeout_seconds,
-            max_concurrent_streams = self.max_concurrent_streams,
-            idle_timeout_seconds = self.idle_timeout_seconds,
-            served_requests = self.runtime_state.served_requests(),
-            produced_blocks = self.runtime_state.produced_blocks(),
-            network_applied_blocks = self.runtime_state.network_applied_blocks()
+        let snapshot = self.status_snapshot();
+        format_role_runtime_report(
+            &self.config,
+            &snapshot,
+            &RuntimeP2pReport {
+                peer_id: &self.p2p_peer_id,
+                topics: self.p2p_topics,
+                request_response_protocols: self.p2p_request_response_protocols,
+                bootstrap_peer_count: self.bootstrap_peer_count,
+                identity: &self.identity,
+                max_transmit_bytes: self.max_transmit_bytes,
+                request_timeout_seconds: self.request_timeout_seconds,
+                max_concurrent_streams: self.max_concurrent_streams,
+                idle_timeout_seconds: self.idle_timeout_seconds,
+            },
         )
     }
 }
