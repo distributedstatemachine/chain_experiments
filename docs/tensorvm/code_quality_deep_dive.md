@@ -153,6 +153,8 @@ spaghetti around.
   `storage/snapshot.rs`, starting the documented storage module split behind unchanged public exports.
 - Iteration 60 extracted block-log persistence, record codecs, and block-log tests into
   `storage/block_log.rs`, leaving `storage.rs` to orchestrate node-store recovery and chain-state codecs.
+- Iteration 61 extracted chain-state persistence, full-chain codecs, and chain-state decoder tests into
+  `storage/chain_state.rs`, leaving `storage.rs` focused on `NodeStore` orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
