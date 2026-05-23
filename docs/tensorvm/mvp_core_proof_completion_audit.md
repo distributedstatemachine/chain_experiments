@@ -157,6 +157,8 @@ The adversary model for the current proof boundary is stated in
 [`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
 The theorem import/dependency cut line is documented in
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
+Verifier-local probability budgets are recorded in
+[`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 The proof-to-implementation claim boundary is summarized in
 [`mvp_core_proof_traceability_matrix.md`](mvp_core_proof_traceability_matrix.md).
 

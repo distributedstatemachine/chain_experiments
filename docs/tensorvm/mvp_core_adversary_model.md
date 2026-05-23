@@ -19,6 +19,8 @@ those require explicit assumptions.
 Any public or release-facing claim must say which world it belongs to. Moving a claim from one world to a
 stronger world requires the discharge gates in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md).
+Verifier-local probability budgets are tracked in
+[`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 
 ## Adversary Capabilities
 

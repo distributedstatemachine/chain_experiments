@@ -22,6 +22,8 @@ Related boundary documents:
   worlds that current claims are measured against.
 - [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md) shows which theorem nodes
   depend on which assumptions and where blocked v2 consensus imports must stop.
+- [`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md) records the
+  verifier-local false-accept budgets and the composition rules for receipt volume.
 - [`mvp_core_mechanization_checklist.md`](mvp_core_mechanization_checklist.md) maps the sound-kernel
   theorem set to future Lean/TorchLean modules, assumptions, and proof dependencies.
 - [`mvp_core_v2_consensus_proof_obligations.md`](mvp_core_v2_consensus_proof_obligations.md) defines the

@@ -11,6 +11,8 @@ statements, assumptions, and exclusions for later mechanization.
 
 The theorem import boundary for this kernel is made explicit in
 [`mvp_core_theorem_dependency_graph.md`](mvp_core_theorem_dependency_graph.md).
+Verifier-local false-accept budgets are recorded in
+[`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 
 ## Kernel Claim
 

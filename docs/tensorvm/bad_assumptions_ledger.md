@@ -36,6 +36,7 @@ implementation work.
 | BA-016 | "Produced blocks imply proposer eligibility." | Critical | `produce_block` accepts a supplied address and `submit_block_vote` checks voters, not the block proposer. | A block can be appended and finalized without the chain transition proving the proposer is a registered validator or useful-PoW winner. | Current block production is a reference append path with caller-supplied proposer. | Make block production/admission fallible and require v2 proposer eligibility before votes or finality count. |
 | BA-017 | "A Valid attestation means the verifier actually ran." | High | `submit_attestation` accepts an assigned validator's signed `Valid` statement and `checks_root`; it does not recompute tensor verification. | Quorum is syntactic unless verifier evidence is independently bound, recomputed, or challengeable. | Current quorum proves assigned validators signed matching Valid/DataAvailable statements. | Bind attestations to recomputable check leaves, block-level `checks_root`, and challenge openings or direct verification evidence. |
 | BA-018 | "Remote tensor fetch proves public data availability." | High | Current worktree adds root-addressed request-response fetches and validator remote-fetch counters. | A successful fetch proves one runtime retrieved a matching tensor at one time; it does not prove durable retention, public reachability, or independent hosting. | Remote fetch is verification-time artifact availability evidence. | Add signed public DA measurements across active/challenge windows and prove enough independent operators serve required artifacts. |
+| BA-019 | "One Freivalds round over the current 31-bit field is cryptographic-scale soundness." | High | The current field is `2^31 - 1`, default `full_rounds` is `1`, and LinearTrainingStep has two single random-linear equality checks. | The default per-relation false-accept budget is about `1 / 2^31`, and receipt-volume union bounds can make that too weak for broad consensus claims. Validator quorum cannot be multiplied in while quorum is syntactic. | Current verifier checks have explicit finite-field probabilistic bounds under assumptions. | Set a target soundness budget, receipt-volume limit, round count, and random-linear repetition story; see `mvp_core_probabilistic_soundness_budget.md`. |
 
 ## Non-Negotiable Wording Rules
 
@@ -68,6 +69,8 @@ These are defensible with current docs/code evidence:
 - Current attestation quorum proves syntactic assigned-validator agreement, not independent recomputation of
   verifier transcripts.
 - Current root-addressed remote tensor fetch can prove payload/root matching for verifier use, not public DA.
+- Current default probabilistic verifier bounds are finite-field proof budgets, not cryptographic-scale
+  consensus soundness across unbounded receipt volume.
 
 ## Claims We Must Not Make Today
 
@@ -83,6 +86,7 @@ These would overstate the current MVP:
 - "A finalized current block proves its proposer was eligible under v2 rules."
 - "A quorum of Valid attestations proves validators actually executed the verifier."
 - "Remote tensor fetch counters prove public data availability."
+- "One default Freivalds round over the 31-bit field is enough for all production consensus volume."
 
 ## Proof Hygiene Checklist
 

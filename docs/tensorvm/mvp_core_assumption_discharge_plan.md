@@ -9,6 +9,8 @@ can be upgraded.
 
 The adversary model for these assumptions is defined in
 [`mvp_core_adversary_model.md`](mvp_core_adversary_model.md).
+Verifier-local probability budgets are recorded in
+[`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 
 ## Discharge Categories
 

@@ -74,6 +74,8 @@ No current theorem may import a blocked v2 node and still be called part of the 
 
 Assumption discharge rules live in
 [`mvp_core_assumption_discharge_plan.md`](mvp_core_assumption_discharge_plan.md).
+Verifier-local false-accept budgets live in
+[`mvp_core_probabilistic_soundness_budget.md`](mvp_core_probabilistic_soundness_budget.md).
 
 ## Blocked V2 Dependency Graph
 
