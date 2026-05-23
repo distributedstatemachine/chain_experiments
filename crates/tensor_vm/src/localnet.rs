@@ -95,7 +95,10 @@ fn produce_synthetic_matmul_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    chain.produce_block(proposer, timestamp)?;
+    chain.apply_command(ChainCommand::ProduceBlock {
+        proposer,
+        timestamp,
+    })?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
         tensors: canonical_receipt.served_tensors(),
@@ -156,7 +159,10 @@ fn produce_synthetic_linear_training_round(
                 .saturating_add(chain.params.block_time_seconds)
         })
         .unwrap_or(0);
-    chain.produce_block(proposer, timestamp)?;
+    chain.apply_command(ChainCommand::ProduceBlock {
+        proposer,
+        timestamp,
+    })?;
     Ok(Some(SyntheticCpuRoundResult {
         height: chain.state.height,
         tensors: canonical_receipt.served_tensors(),
@@ -215,7 +221,11 @@ pub fn finalize_local_cpu_block(chain: &mut Chain, block: &TensorBlock) -> Resul
             .get(&validator_address)
             .map(|validator| validator.stake)
             .unwrap_or_default();
-        chain.submit_block_vote(BlockVote::new(validator_address, stake, block))?;
+        chain.apply_command(ChainCommand::SubmitBlockVote(BlockVote::new(
+            validator_address,
+            stake,
+            block,
+        )))?;
         if chain.is_block_finalized(&block.hash()) {
             break;
         }

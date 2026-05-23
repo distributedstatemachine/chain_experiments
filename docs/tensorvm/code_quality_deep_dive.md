@@ -32,6 +32,9 @@ spaghetti around.
 - Iteration 2 started the encapsulation work by making `Chain`'s top-level `params`, `state`, and `blocks`
   fields crate-private and adding inherent read-only accessors. Internal modules can still mutate
   `ChainState` directly, so the larger command-boundary finding remains open.
+- Iteration 3 moved local synthetic block production and the localnet test finality helper onto
+  `ChainCommand::ProduceBlock` and `ChainCommand::SubmitBlockVote`. The local CPU round now uses the
+  command boundary for jobs, receipts, attestations, settlement, block production, and block votes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -177,9 +180,9 @@ Remaining fix:
 The command/event facade exists in `crates/tensor_vm/src/chain/engine.rs`, but the codebase still mutates
 through imperative methods on `Chain`.
 
-Examples:
+Remaining examples:
 
-- `localnet.rs` uses commands for some actions but calls `produce_block` directly.
+- runtime, public-testnet, and RPC test setup paths still call direct mutation helpers in several places.
 - `node.rs` and runtime paths call chain helpers directly.
 - `apply_transaction` has variants that are no-ops.
 
