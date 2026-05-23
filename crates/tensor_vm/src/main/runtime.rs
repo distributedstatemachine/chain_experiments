@@ -9,12 +9,12 @@ use super::{
         chain_announcement_checkpoint, ingest_network_events, produce_and_publish_synthetic_round,
         publish_new_chain_announcements,
     },
-    p2p_identity_report,
     roles::{
         fetch_validator_role_missing_tensors, miner_role_work_observation,
         submit_miner_role_receipt, submit_validator_role_attestation,
         submit_validator_role_block_vote, validator_role_work_observation,
     },
+    shared::p2p_identity_report,
     status::{RuntimeStatusSnapshot, hex_hash_list, write_role_runtime_status},
 };
 use tensor_vm::{

@@ -9,6 +9,7 @@ use super::runtime::{
     chain_profile_from_label, runtime_node_config, runtime_role_wallet_registered,
     runtime_role_wallet_registration,
 };
+use super::shared::local_cpu_seed_beacon;
 use super::*;
 use std::{
     collections::BTreeSet,
@@ -23,7 +24,9 @@ use tensor_vm::{
     ReceiptState, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
     ValidatorAttestation, VerificationResult,
     api::P2pMessage,
-    encode_attestation_payload, encode_job_payload, encode_receipt_payload, network_ingest_order,
+    encode_attestation_payload, encode_job_payload, encode_receipt_payload,
+    hash::hex,
+    network_ingest_order,
     node::{
         apply_network_attestation_payload, apply_network_job_payload,
         apply_network_receipt_payload, attestation_announcement_hash,
@@ -31,6 +34,7 @@ use tensor_vm::{
     roles::{CpuReferenceMinerRole, RoleReceiptBundle},
     spawn_libp2p_service,
     testnet::{LocalTestnet, TestnetConfig},
+    types::hash_bytes,
 };
 use tensor_vm::{ChainSnapshot, types::address};
 

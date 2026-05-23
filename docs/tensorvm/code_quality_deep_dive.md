@@ -179,6 +179,8 @@ spaghetti around.
   removing the remaining status helper ownership from `main.rs`.
 - Iteration 73 moved runtime role/config construction and role command wrappers into
   `main/runtime.rs`, leaving `main.rs` close to CLI dispatch plus shared seed/identity helpers.
+- Iteration 74 moved the remaining shared binary seed and p2p identity report helpers into
+  `main/shared.rs`, leaving `main.rs` as CLI dispatch and module wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

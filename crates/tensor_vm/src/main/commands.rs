@@ -1,4 +1,4 @@
-use super::{local_cpu_seed_beacon, p2p_identity_report};
+use super::shared::{local_cpu_seed_beacon, p2p_identity_report};
 use std::path::Path;
 use tensor_vm::{
     Chain, JobScheduler, Libp2pControlPlaneConfig, NodeStore, PeerRecord,
