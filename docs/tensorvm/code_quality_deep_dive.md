@@ -185,6 +185,8 @@ spaghetti around.
   helpers into `main/runtime_config.rs`, leaving `main/runtime.rs` focused on loop orchestration.
 - Iteration 76 moved role runtime service-report formatting into `main/status.rs`, reusing the
   runtime status snapshot so `main/runtime.rs` no longer owns the long report string contract.
+- Iteration 77 moved service block status reporting into `main/block_status.rs`, keeping block-level
+  node-store inspection separate from service and runtime status reporting.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

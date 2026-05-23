@@ -7,6 +7,9 @@ use tensor_vm::{
     parse_cli_args,
 };
 
+#[path = "main/block_status.rs"]
+mod block_status;
+
 #[path = "main/commands.rs"]
 mod commands;
 
@@ -28,13 +31,14 @@ mod shared;
 #[path = "main/status.rs"]
 mod status;
 
+use block_status::service_block_status;
 use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
 };
 use runtime::{run_miner_service, run_proposer_service, run_validator_service, serve_service};
 use runtime_config::RoleServiceConfig;
-use status::{service_block_status, service_status};
+use status::service_status;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
