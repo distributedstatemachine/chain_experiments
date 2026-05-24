@@ -331,6 +331,9 @@ spaghetti around.
   evidence command family.
 - Iteration 135 moved public-evidence run-window clap argument structs and command conversion into
   `cli/public_evidence_run_window_parser.rs`, keeping run-duration parser shape beside run-window evidence.
+- Iteration 136 moved public-evidence node heartbeat and operator-attestation clap argument structs and
+  command conversion into `cli/public_evidence_node_parser.rs`, leaving `cli/public_evidence_parser.rs`
+  as a thin public-evidence command router.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
