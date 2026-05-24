@@ -513,6 +513,8 @@ spaghetti around.
   renderers into `rpc/render.rs`, keeping presentation string assembly out of RPC route logic.
 - Iteration 195 moved `RpcPolicy` and `RpcGateway` auth/body-limit/rate-limit handling into
   `rpc/gateway.rs`, preserving the public RPC facade while separating gateway policy from route logic.
+- Iteration 196 moved tensor descriptor, row, chunk, opening, latest, and tensor lookup route helpers
+  into `rpc/tensor_routes.rs`, separating tensor data serving from the main RPC route dispatcher.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
