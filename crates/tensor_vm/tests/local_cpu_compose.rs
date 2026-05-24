@@ -2,6 +2,9 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+#[path = "support/report_fields.rs"]
+mod report_fields;
+
 fn repo_path(relative: &str) -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -133,11 +136,11 @@ fn compose_env_value<'a>(service_section: &'a str, key: &str) -> &'a str {
 }
 
 fn env_file_value<'a>(env_file: &'a str, key: &str) -> &'a str {
-    env_file
-        .lines()
-        .filter_map(|line| line.split_once('='))
-        .find_map(|(field, value)| (field == key).then_some(value))
-        .unwrap_or_else(|| panic!("env file missing field {key}"))
+    report_fields::report_value(env_file, key)
+}
+
+fn env_file_u64(env_file: &str, key: &str) -> u64 {
+    report_fields::report_u64(env_file, key)
 }
 
 #[test]
@@ -346,8 +349,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "true"
     );
     assert_eq!(
-        env_file_value(&env_file, "TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS"),
-        "1000"
+        env_file_u64(&env_file, "TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS"),
+        1000
     );
     assert_eq!(
         env_file_value(&env_file, "TENSORVM_LOCAL_CPU_ROLE_PRODUCER"),

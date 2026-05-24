@@ -802,6 +802,8 @@ spaghetti around.
   parsing `tvmd localnet verify --json` as JSON.
 - Iteration 318 removed `cargo test` execution and the Rust toolchain requirement from the local CPU
   deployment checker, keeping unit-test execution owned by CI instead of the shell readiness script.
+- Iteration 319 reused the shared integration report parser for the local CPU env-file fixture checks,
+  removing another one-off `KEY=value` scanner from the Compose artifact test.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
