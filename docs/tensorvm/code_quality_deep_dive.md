@@ -403,6 +403,9 @@ spaghetti around.
 - Iteration 158 moved local CLI validation and CUDA-readiness tests into
   `cli/tests/local_validation.rs`, separating local command validation from the public-evidence
   invalid-argument coverage that remains in the parent CLI test module.
+- Iteration 159 moved CLI public-evidence and public-testnet manifest report tests into
+  `cli/tests/manifest_reports.rs`, keeping manifest report assertions separate from parser and command
+  execution coverage while shrinking the parent CLI test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
