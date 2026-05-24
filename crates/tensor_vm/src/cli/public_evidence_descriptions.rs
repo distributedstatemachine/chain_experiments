@@ -1,5 +1,6 @@
 use super::CliCommand;
-use super::arguments::{public_evidence_record_kind_tag, public_node_role_tag};
+use super::arguments::public_node_role_tag;
+use super::public_evidence_record_descriptions::describe_public_evidence_record_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
 use crate::hash::hex;
 
@@ -7,66 +8,13 @@ pub(super) fn describe_public_evidence_command(command: &CliCommand) -> String {
     if let Some(description) = describe_public_evidence_service_command(command) {
         return description;
     }
+    if let Some(description) = describe_public_evidence_record_command(command) {
+        return description;
+    }
 
     match command {
         CliCommand::PublicEvidenceValidate { manifest } => {
             format!("validate public evidence manifest {manifest}")
-        }
-        CliCommand::PublicEvidenceRecordSummary {
-            kind, record_count, ..
-        } => {
-            format!(
-                "generate {} public evidence record summary records={record_count}",
-                public_evidence_record_kind_tag(*kind)
-            )
-        }
-        CliCommand::PublicEvidenceRecordArtifact {
-            kind, artifact_uri, ..
-        } => {
-            format!(
-                "generate {} public evidence artifact locator artifact_uri={artifact_uri}",
-                public_evidence_record_kind_tag(*kind)
-            )
-        }
-        CliCommand::PublicEvidenceRecordArtifactFromRoots {
-            kind,
-            artifact_uri,
-            record_roots,
-            ..
-        } => {
-            format!(
-                "generate {} public evidence artifact locator from {} roots artifact_uri={artifact_uri}",
-                public_evidence_record_kind_tag(*kind),
-                record_roots.len()
-            )
-        }
-        CliCommand::PublicEvidenceRecordArtifactFromFile {
-            kind,
-            artifact_uri,
-            record_file,
-            ..
-        } => {
-            format!(
-                "generate {} public evidence artifact locator from record file record_file={record_file} artifact_uri={artifact_uri}",
-                public_evidence_record_kind_tag(*kind),
-            )
-        }
-        CliCommand::PublicEvidenceRecordSummaryFromRoots {
-            kind, record_roots, ..
-        } => {
-            format!(
-                "generate {} public evidence record summary from {} roots",
-                public_evidence_record_kind_tag(*kind),
-                record_roots.len()
-            )
-        }
-        CliCommand::PublicEvidenceRecordSummaryFromFile {
-            kind, record_file, ..
-        } => {
-            format!(
-                "generate {} public evidence record summary from record file record_file={record_file}",
-                public_evidence_record_kind_tag(*kind),
-            )
         }
         CliCommand::PublicEvidenceNetworkObservation {
             peer_id,

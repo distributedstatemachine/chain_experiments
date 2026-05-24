@@ -355,6 +355,9 @@ spaghetti around.
 - Iteration 143 moved public-evidence service health/content descriptions into
   `cli/public_evidence_service_descriptions.rs`, starting the public-evidence description split along
   the same command-family boundaries as the clap parser and execution modules.
+- Iteration 144 moved public-evidence record summary/artifact descriptions into
+  `cli/public_evidence_record_descriptions.rs`, continuing the public-evidence description split along
+  command-family boundaries already used by parser and execution modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
