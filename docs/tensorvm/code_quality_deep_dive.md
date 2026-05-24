@@ -731,6 +731,8 @@ spaghetti around.
   explorer, wallet, volume, network, and env-file assertions off broad substring scans.
 - Iteration 288 reused the local CPU deployment test structure helpers for Dockerfile, dockerignore, and
   CPU-only compose guards, replacing broad build-artifact substring scans with exact line assertions.
+- Iteration 289 added shell logical-line parsing to the local CPU deployment test and replaced
+  entrypoint substring checks with exact command/readiness-line assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

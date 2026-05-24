@@ -32,6 +32,45 @@ fn prefixed_trimmed_values<'a>(text: &'a str, prefix: &str) -> Vec<&'a str> {
         .collect()
 }
 
+fn shell_logical_lines(script: &str) -> Vec<String> {
+    let mut logical_lines = Vec::new();
+    let mut current = String::new();
+
+    for line in script
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+        let (segment, continues) = match line.strip_suffix('\\') {
+            Some(segment) => (segment.trim_end(), true),
+            None => (line, false),
+        };
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(segment);
+        if !continues {
+            logical_lines.push(std::mem::take(&mut current));
+        }
+    }
+
+    if !current.is_empty() {
+        logical_lines.push(current);
+    }
+
+    logical_lines
+}
+
+fn assert_shell_logical_lines(script: &str, expected_lines: &[&str]) {
+    let actual_lines = shell_logical_lines(script);
+    for expected in expected_lines {
+        assert!(
+            actual_lines.iter().any(|line| line == expected),
+            "script should contain logical line {expected}"
+        );
+    }
+}
+
 fn compose_service_section<'a>(compose: &'a str, service: &str) -> &'a str {
     let marker = format!("  {service}:\n");
     let start = compose
@@ -333,30 +372,28 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(!compose_lines.contains("runtime: nvidia"));
     assert!(!compose_lines.contains("devices:"));
 
-    for required in [
-        "tvmd service init",
-        "tvmd service peer add",
-        "tvmd miner start",
-        "--device cpu",
-        "tvmd validator start",
-        "tvmd service readiness",
-        "--identity-seed",
-        "tvmd testnet seed",
-        "local-testnet-seed.out",
-        "RUNTIME_COMMAND=",
-        "runtime_command=$RUNTIME_COMMAND",
-        "local_cpu_role_producer=",
-        "tvmd miner run",
-        "tvmd validator run",
-        "tvmd proposer run",
-        "public_evidence_full_spec=false",
-        "independently_checkable=false",
-    ] {
-        assert!(
-            entrypoint.contains(required),
-            "entrypoint should contain {required}"
-        );
-    }
+    assert_shell_logical_lines(
+        &entrypoint,
+        &[
+            r#"RUNTIME_COMMAND="${TENSORVM_ROLE_RUNTIME_COMMAND:-${ROLE}_run}""#,
+            r#"LOCAL_CPU_ROLE_PRODUCER="${TENSORVM_LOCAL_CPU_ROLE_PRODUCER:-false}""#,
+            r#"tvmd service init --data-dir "$DATA_DIR" > "$INIT_OUT""#,
+            r#"tvmd service peer add --data-dir "$DATA_DIR" --peer-id "$BOOTSTRAP_PEER_ID" --address "$BOOTSTRAP_ADDRESS" > "$DATA_DIR/service-peer-add.out""#,
+            r#"tvmd miner register --stake "$MINER_STAKE" > "$DATA_DIR/role-register.out""#,
+            r#"tvmd miner start --wallet "$WALLET" --device cpu --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out""#,
+            r#"tvmd validator register --stake "$VALIDATOR_STAKE" > "$DATA_DIR/role-register.out""#,
+            r#"tvmd validator start --wallet "$WALLET" --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out""#,
+            r#"tvmd testnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out""#,
+            r#"tvmd service readiness --p2p-listen "$P2P_LISTEN" --data-dir "$DATA_DIR" --identity-seed "$IDENTITY_SEED" > "$DATA_DIR/service-readiness.out""#,
+            r#"echo "runtime_command=$RUNTIME_COMMAND""#,
+            r#"echo "local_cpu_role_producer=$LOCAL_CPU_ROLE_PRODUCER""#,
+            r#"echo "public_evidence_full_spec=false""#,
+            r#"echo "independently_checkable=false""#,
+            r#"exec tvmd proposer run --wallet "$WALLET" --node "$NODE_MULTIADDR" --listen "$RPC_LISTEN" --p2p-listen "$P2P_LISTEN" --data-dir "$DATA_DIR" --identity-seed "$IDENTITY_SEED" --auth-token "$AUTH_TOKEN" --max-requests 0"#,
+            r#"exec tvmd miner run --wallet "$WALLET" --device cpu --node "$NODE_MULTIADDR" --listen "$RPC_LISTEN" --p2p-listen "$P2P_LISTEN" --data-dir "$DATA_DIR" --identity-seed "$IDENTITY_SEED" --auth-token "$AUTH_TOKEN" --max-requests 0"#,
+            r#"exec tvmd validator run --wallet "$WALLET" --node "$NODE_MULTIADDR" --listen "$RPC_LISTEN" --p2p-listen "$P2P_LISTEN" --data-dir "$DATA_DIR" --identity-seed "$IDENTITY_SEED" --auth-token "$AUTH_TOKEN" --max-requests 0"#,
+        ],
+    );
 
     for required in [
         "docker compose",
