@@ -252,7 +252,7 @@ fn content_addressed_path_segment_is_well_formed(segment: &str) -> bool {
         })
 }
 
-pub(super) fn public_network_runtime_multiaddr_is_external(address: &Multiaddr) -> bool {
+pub(crate) fn public_network_runtime_multiaddr_is_external(address: &Multiaddr) -> bool {
     let mut saw_public_address = false;
     let mut saw_tcp_listen_port = false;
     for protocol in address.iter() {

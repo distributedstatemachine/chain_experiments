@@ -785,6 +785,9 @@ spaghetti around.
 - Iteration 311 introduced an owned role-service dispatch config so `tvmd` miner, validator, and proposer
   run dispatch share the same wallet/node/listen/data-dir/auth extraction path before validation and
   service launch.
+- Iteration 312 removed the duplicate CLI public-network address filter and routed network evidence through
+  the testnet-owned external multiaddr validator, moving the local/private-address edge coverage with that
+  canonical owner.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -19,7 +19,6 @@ mod local_role_execution;
 #[cfg(test)]
 mod local_service_execution;
 mod network_evidence;
-mod network_observation;
 mod node_evidence;
 mod public_evidence_commands;
 mod public_evidence_execution;
@@ -61,10 +60,6 @@ use network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,
     network_observation_root, service_log_field,
 };
-#[cfg(test)]
-use network_observation::network_observation_multiaddr_is_public;
-#[cfg(test)]
-use network_observation::{public_dns_host, public_dns_host_is_well_formed};
 #[cfg(test)]
 use node_evidence::node_heartbeat_observation_summary_from_file;
 pub(crate) use public_evidence_execution::execute_public_evidence_command;

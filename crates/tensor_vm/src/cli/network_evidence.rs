@@ -1,7 +1,7 @@
 use super::arguments::{exact_comma_fields, parse_hash_argument, parse_u64};
-use super::network_observation::network_observation_multiaddr_is_public;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
+use crate::testnet::public_network_runtime_multiaddr_is_external;
 use crate::types::{Hash, hash_bytes};
 use libp2p::{Multiaddr, PeerId};
 
@@ -18,7 +18,7 @@ pub(super) fn network_observation_root_from_record_line(record: &str) -> Result<
     let listen_address = fields[2]
         .parse::<Multiaddr>()
         .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
-    if !network_observation_multiaddr_is_public(&listen_address) {
+    if !public_network_runtime_multiaddr_is_external(&listen_address) {
         return Err(TvmError::InvalidReceipt(
             "network observation address is not public",
         ));
@@ -126,7 +126,7 @@ pub(super) fn network_observation_evidence_line(
         .listen_address
         .parse::<Multiaddr>()
         .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
-    if !network_observation_multiaddr_is_public(&listen_address) {
+    if !public_network_runtime_multiaddr_is_external(&listen_address) {
         return Err(TvmError::InvalidReceipt(
             "network observation address is not public",
         ));

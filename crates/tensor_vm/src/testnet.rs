@@ -61,10 +61,11 @@ use public_services::public_service_kinds;
 pub use public_services::{
     PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
 };
+pub(crate) use public_urls::public_network_runtime_multiaddr_is_external;
 #[cfg(test)]
 use public_urls::{
     public_evidence_uri_is_external, public_host_is_external, public_https_authorities_match,
-    public_https_host, public_https_path, public_network_runtime_multiaddr_is_external,
+    public_https_host, public_https_path,
 };
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
