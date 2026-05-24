@@ -14,7 +14,7 @@ artifacts for launching a service that can later produce independently checkable
 - `manifests/public-testnet.preflight.example` - manifest shape accepted by the parser, but not launch-ready
   until the special-use example hosts, IDs, and public content URLs are replaced
 - `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
-  `tvmd public-evidence validate --manifest <path>`, but intentionally not independently checkable or
+  `tvmd evidence validate <path>`, but intentionally not independently checkable or
   full-spec evidence because it uses special-use example hosts and contains only a 60-second, 10-block,
   2-miner, 1-validator sample
 
@@ -41,9 +41,9 @@ as each corresponding health URL, exact health/content paths without query strin
 one signed `network_runtime_observation=...` record per counted public operator proving libp2p discovery,
 gossip, request/response, and configured DoS controls during the external run. Those observation roots
 can be generated directly from captured `tvmd service serve` logs with
-`network-observation-from-service-log`, but the supplied listen multiaddr still has to be public. They
-can be aggregated from the saved raw-record file with `record-summary-from-file` and
-`record-artifact-from-file`. Each signed block, finality, libp2p,
+`evidence network from-service-log`, but the supplied listen multiaddr still has to be public. They
+can be aggregated from the saved raw-record file with `evidence record summary-file` and
+`evidence record artifact-file`. Each signed block, finality, libp2p,
 data-availability, invalid-work, and reward summary root also needs a signed external artifact locator for
 the raw records behind that root; publish exactly one artifact locator for each of those six supporting
 record kinds.
@@ -57,14 +57,14 @@ root. Use `block_history_record=<block>,<block-root-hex>`,
 `invalid_work_rejection=<receipt-root-hex>,rejected,<block>`, and
 `reward_settlement=<receipt-root-hex>,<miner-id>,<validator-id>,<block>`.
 Run-window records can be derived from saved per-block observation files with
-`run_window_observation=<block>,<unix-seconds>` lines using `run-window-from-file`.
+`run_window_observation=<block>,<unix-seconds>` lines using `evidence run window-file`.
 Service-health records can likewise be derived from saved per-block observation files with
 `service_health_observation=<block>,reachable` or
-`service_health_observation=<block>,unreachable` lines using `service-health-from-file`; manually
+`service_health_observation=<block>,unreachable` lines using `evidence service health-file`; manually
 generated service-health records must not report more reachable observations than signed health checks.
 Node-heartbeat records can be derived from saved per-block
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` files with
-`node-heartbeat-from-file`.
+`evidence node heartbeat-file`.
 
 ## Minimal Operator Flow
 
@@ -96,13 +96,13 @@ Before advertising the run, replace all example hostnames, tokens, peer IDs, and
 with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:
 
 ```bash
-tvmd public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
+tvmd testnet preflight deploy/tensorvm/manifests/public-testnet.preflight.example
 ```
 
 After a run, operators can use the post-run evidence shape with real roots and signatures:
 
 ```bash
-tvmd public-evidence validate --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
+tvmd evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
 The checked example reports `independently_checkable=false` and `public_evidence_full_spec=false` because

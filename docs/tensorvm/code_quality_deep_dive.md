@@ -594,6 +594,10 @@ spaghetti around.
 - Iteration 231 moved public-evidence run-window invalid-argument and observation-file parser coverage into
   `cli/tests/public_evidence_run_window_rejections.rs`, leaving node/operator, network, parser, and
   supporting-record rejection coverage in the mixed module for subsequent splits.
+- Iteration 232 replaced the Clap wrapper around the old CLI surface with an ergonomic command tree:
+  `tvmd evidence ...` now owns public evidence generation, `tvmd testnet ...` owns preflight/local checks,
+  manifest paths are positional arguments, and deployment docs/scripts/tests no longer invoke the retired
+  `public-evidence`, `public-testnet`, `local-testnet`, or `local-cpu` top-level commands.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -841,7 +845,7 @@ types that produce the state.
 
 Fix:
 
-- Move verification policy into Rust, for example `tvmd local-cpu verify --json`.
+- Move verification policy into Rust, for example `tvmd testnet verify-local-cpu --json`.
 - Let shell orchestrate Docker only.
 - Make the checker consume typed JSON, not scattered `key=value` strings.
 - Remove cargo test execution from deployment scripts; CI should own unit tests.

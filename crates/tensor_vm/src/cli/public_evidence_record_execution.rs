@@ -1,4 +1,4 @@
-use super::commands::PublicEvidenceCommand;
+use super::commands::EvidenceRecordCommand;
 use super::record_evidence::{
     aggregate_public_evidence_record_roots, public_evidence_record_roots_from_file,
     record_artifact_evidence_line, record_summary_evidence_lines,
@@ -9,51 +9,50 @@ use crate::testnet::PublicEvidenceRecordKind;
 use crate::types::{Address, Hash};
 
 pub(super) fn execute_public_evidence_record_command(
-    command: &PublicEvidenceCommand,
-) -> Option<Result<String>> {
+    command: &EvidenceRecordCommand,
+) -> Result<String> {
     match command {
-        PublicEvidenceCommand::RecordSummary(args) => Some(record_summary_evidence_lines(
+        EvidenceRecordCommand::Summary(args) => record_summary_evidence_lines(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             args.record_root,
             args.record_count,
-        )),
-        PublicEvidenceCommand::RecordArtifact(args) => Some(record_artifact_evidence_line(
+        ),
+        EvidenceRecordCommand::Artifact(args) => record_artifact_evidence_line(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &args.artifact_uri,
             args.record_root,
             args.record_count,
-        )),
-        PublicEvidenceCommand::RecordArtifactFromRoots(args) => Some(record_artifact_from_roots(
+        ),
+        EvidenceRecordCommand::ArtifactRoots(args) => record_artifact_from_roots(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &args.artifact_uri,
             &args.record_roots,
-        )),
-        PublicEvidenceCommand::RecordArtifactFromFile(args) => Some(record_artifact_from_file(
+        ),
+        EvidenceRecordCommand::ArtifactFile(args) => record_artifact_from_file(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &args.artifact_uri,
             &path_argument(&args.record_file),
-        )),
-        PublicEvidenceCommand::RecordSummaryFromRoots(args) => Some(record_summary_from_roots(
+        ),
+        EvidenceRecordCommand::SummaryRoots(args) => record_summary_from_roots(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &args.record_roots,
-        )),
-        PublicEvidenceCommand::RecordSummaryFromFile(args) => Some(record_summary_from_file(
+        ),
+        EvidenceRecordCommand::SummaryFile(args) => record_summary_from_file(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &path_argument(&args.record_file),
-        )),
-        _ => None,
+        ),
     }
 }
 

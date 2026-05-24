@@ -1,6 +1,5 @@
 use super::TvmdCommand;
-use super::commands::PublicEvidenceCommand;
-use super::commands::PublicTestnetCommand;
+use super::commands::EvidenceCommand;
 use super::descriptions::describe_cli_command;
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_node_execution::execute_public_evidence_node_command;
@@ -11,39 +10,19 @@ use super::public_evidence_service_execution::execute_public_evidence_service_co
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_cli_command(command: &TvmdCommand) -> Result<String> {
-    let TvmdCommand::PublicEvidence {
-        command: public_command,
-    } = command
-    else {
-        return match command {
-            TvmdCommand::PublicTestnet {
-                command: PublicTestnetCommand::Preflight(_),
-            } => Ok(describe_cli_command(command)),
-            _ => unreachable!("local commands are handled by cli::local_execution"),
-        };
+    let TvmdCommand::Evidence(public_command) = command else {
+        unreachable!("local commands are handled by cli::local_execution")
     };
 
-    if let Some(output) = execute_public_evidence_service_command(public_command) {
-        return output;
-    }
-    if let Some(output) = execute_public_evidence_record_command(public_command) {
-        return output;
-    }
-    if let Some(output) = execute_public_evidence_network_command(public_command) {
-        return output;
-    }
-    if let Some(output) = execute_public_evidence_publication_command(public_command) {
-        return output;
-    }
-    if let Some(output) = execute_public_evidence_run_window_command(public_command) {
-        return output;
-    }
-    if let Some(output) = execute_public_evidence_node_command(public_command) {
-        return output;
-    }
-
     match public_command {
-        PublicEvidenceCommand::Validate(_) => Ok(describe_cli_command(command)),
-        _ => unreachable!("public evidence subcommands are handled by family executors"),
+        EvidenceCommand::Validate(_) => Ok(describe_cli_command(command)),
+        EvidenceCommand::Publish(_) | EvidenceCommand::Audit(_) => {
+            execute_public_evidence_publication_command(public_command)
+        }
+        EvidenceCommand::Run(command) => execute_public_evidence_run_window_command(command),
+        EvidenceCommand::Node(command) => execute_public_evidence_node_command(command),
+        EvidenceCommand::Service(command) => execute_public_evidence_service_command(command),
+        EvidenceCommand::Network(command) => execute_public_evidence_network_command(command),
+        EvidenceCommand::Record(command) => execute_public_evidence_record_command(command),
     }
 }

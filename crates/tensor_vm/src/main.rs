@@ -2,9 +2,8 @@ use clap::Parser;
 use tensor_vm::{
     TvmdCli, TvmdCommand,
     cli::{
-        LocalCpuCommand, LocalTestnetCommand, MinerCommand, ProposerCommand, PublicEvidenceCommand,
-        PublicTestnetCommand, ServiceCommand, ServicePeerCommand, ValidatorCommand,
-        execute_cli_command, validate_public_evidence_manifest,
+        EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
+        TestnetCommand, ValidatorCommand, execute_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
 };
@@ -93,9 +92,7 @@ fn main() {
 
 fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {
-        TvmdCommand::PublicEvidence {
-            command: PublicEvidenceCommand::Validate(args),
-        } => {
+        TvmdCommand::Evidence(EvidenceCommand::Validate(args)) => {
             let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
                 format!(
                     "failed to read evidence manifest {}: {error}",
@@ -104,9 +101,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
             })?;
             validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::PublicTestnet {
-            command: PublicTestnetCommand::Preflight(args),
-        } => {
+        TvmdCommand::Testnet(TestnetCommand::Preflight(args)) => {
             let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
                 format!(
                     "failed to read preflight manifest {}: {error}",
@@ -115,9 +110,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::Miner {
-            command: MinerCommand::Run(args),
-        } => {
+        TvmdCommand::Miner(MinerCommand::Run(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             let runtime = &args.runtime;
             let service = &runtime.service;
@@ -138,9 +131,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 max_requests: service.max_requests,
             })
         }
-        TvmdCommand::Validator {
-            command: ValidatorCommand::Run(args),
-        } => {
+        TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             let runtime = &args.runtime;
             let service = &runtime.service;
@@ -161,9 +152,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 max_requests: service.max_requests,
             })
         }
-        TvmdCommand::Proposer {
-            command: ProposerCommand::Run(args),
-        } => {
+        TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             let runtime = &args.runtime;
             let service = &runtime.service;
@@ -184,18 +173,11 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 max_requests: service.max_requests,
             })
         }
-        TvmdCommand::Service {
-            command: ServiceCommand::Init(args),
-        } => {
+        TvmdCommand::Service(ServiceCommand::Init(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             init_service_store(&path_arg(&args.data_dir))
         }
-        TvmdCommand::Service {
-            command:
-                ServiceCommand::Peer {
-                    command: ServicePeerCommand::Add(args),
-                },
-        } => {
+        TvmdCommand::Service(ServiceCommand::Peer(ServicePeerCommand::Add(args))) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             add_service_peer(
                 &path_arg(&args.data_dir),
@@ -203,9 +185,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 &args.address.to_string(),
             )
         }
-        TvmdCommand::Service {
-            command: ServiceCommand::Readiness(args),
-        } => {
+        TvmdCommand::Service(ServiceCommand::Readiness(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             check_service_readiness(
                 &args.p2p_listen.to_string(),
@@ -213,9 +193,7 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 args.identity_seed,
             )
         }
-        TvmdCommand::Service {
-            command: ServiceCommand::Serve(args),
-        } => {
+        TvmdCommand::Service(ServiceCommand::Serve(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             let runtime = &args.runtime;
             let listen = runtime.listen.to_string();
@@ -230,27 +208,19 @@ fn execute_command(command: &TvmdCommand) -> std::result::Result<String, String>
                 runtime.max_requests,
             )
         }
-        TvmdCommand::Service {
-            command: ServiceCommand::Status(args),
-        } => {
+        TvmdCommand::Service(ServiceCommand::Status(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             service_status(&path_arg(&args.data_dir))
         }
-        TvmdCommand::Service {
-            command: ServiceCommand::Block(args),
-        } => {
+        TvmdCommand::Service(ServiceCommand::Block(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             service_block_status(&path_arg(&args.data_dir), args.height)
         }
-        TvmdCommand::LocalTestnet {
-            command: LocalTestnetCommand::Seed(args),
-        } => {
+        TvmdCommand::Testnet(TestnetCommand::Seed(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             seed_local_testnet(&path_arg(&args.data_dir))
         }
-        TvmdCommand::LocalCpu {
-            command: LocalCpuCommand::Verify(args),
-        } => {
+        TvmdCommand::Testnet(TestnetCommand::VerifyLocalCpu(args)) => {
             execute_cli_command(command).map_err(|error| error.to_string())?;
             verify_local_cpu_store(&path_arg(&args.data_dir), args.json)
         }

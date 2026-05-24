@@ -196,7 +196,7 @@ for service in $EXPECTED_SERVICES; do
     || fail "$service seeded local testnet did not start at height 2"
   compose exec -T "$service" grep -q "blocks=2" /var/lib/tensorvm/local-testnet-seed.out \
     || fail "$service seeded local testnet did not start with 2 blocks"
-  LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd local-cpu verify --data-dir /var/lib/tensorvm --json | tr -d '\r')
+  LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd testnet verify-local-cpu --data-dir /var/lib/tensorvm --json | tr -d '\r')
   printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"structured_verifier_ready":true' \
     || fail "$service local CPU structured verifier is not ready"
   printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' \

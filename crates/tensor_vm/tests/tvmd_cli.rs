@@ -190,8 +190,9 @@ fn assert_service_health_evidence_from_response(
     assert!(response.contains("\"status\":\"ok\""));
     assert!(response.contains(&format!("\"service\":\"{kind}\"")));
     let health = run_tvmd(&[
-        "public-evidence",
-        "service-health",
+        "evidence",
+        "service",
+        "health",
         "--kind",
         kind,
         "--endpoint-id",
@@ -230,8 +231,9 @@ fn assert_service_content_evidence_from_response(
     );
     let body_hex = hex(body.as_bytes());
     let content_from_bytes = run_tvmd(&[
-        "public-evidence",
-        "service-content-from-bytes",
+        "evidence",
+        "service",
+        "content-bytes",
         "--kind",
         kind,
         "--endpoint-id",
@@ -254,8 +256,9 @@ fn assert_service_content_evidence_from_response(
     std::fs::write(&content_file, body.as_bytes()).expect("service body fixture must be written");
     let content_file_text = content_file.to_string_lossy().into_owned();
     let content_from_file = run_tvmd(&[
-        "public-evidence",
-        "service-content-from-file",
+        "evidence",
+        "service",
+        "content-file",
         "--kind",
         kind,
         "--endpoint-id",
@@ -282,7 +285,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     let data_dir = unique_test_dir("local-testnet-seed");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
-    let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+    let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
     assert!(seed.contains("command=local_testnet_seed"));
     assert!(seed.contains("miners=10"));
     assert!(seed.contains("validators=5"));
@@ -497,7 +500,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     let data_dir = unique_test_dir("validator-local-producer");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
-    let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+    let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
     assert!(seed.contains("command=local_testnet_seed"));
 
     let rpc_port = free_local_port();
@@ -612,7 +615,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
     for role in ["miner", "validator", "proposer"] {
         let data_dir = unique_test_dir(&format!("{role}-run"));
         let data_dir_text = data_dir.to_string_lossy().into_owned();
-        let seed = run_tvmd(&["local-testnet", "seed", "--data-dir", &data_dir_text]);
+        let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
         assert!(seed.contains("command=local_testnet_seed"));
 
         let rpc_port = free_local_port();

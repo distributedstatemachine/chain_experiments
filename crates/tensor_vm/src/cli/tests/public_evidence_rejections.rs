@@ -163,8 +163,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     }
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "network-observation",
+            "evidence",
+            "network",
+            "observation",
             "--operator-id",
             &manifest_hash(b"network-operator"),
             "--peer-id",
@@ -192,8 +193,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "network-observation",
+            "evidence",
+            "network",
+            "observation",
             "--operator-id",
             &manifest_hash(b"network-operator"),
             "--peer-id",
@@ -410,8 +412,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary",
+            "evidence",
+            "record",
+            "summary",
             "--kind",
             "operator-identity",
             "--bundle-id",
@@ -427,8 +430,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-artifact",
+            "evidence",
+            "record",
+            "artifact",
             "--kind",
             "operator-identity",
             "--bundle-id",
@@ -446,8 +450,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary-from-roots",
+            "evidence",
+            "record",
+            "summary-roots",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -464,8 +469,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     let padded_roots = format!("{root_a}, {root_b}");
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary-from-roots",
+            "evidence",
+            "record",
+            "summary-roots",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -480,8 +486,9 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     let empty_root_entry = format!("{root_a},,{root_b}");
     assert!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-artifact-from-roots",
+            "evidence",
+            "record",
+            "artifact-roots",
             "--kind",
             "network-runtime",
             "--bundle-id",

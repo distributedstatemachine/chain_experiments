@@ -241,41 +241,41 @@ service_content=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/telem
 The CLI reads a manifest file and reports the default full-spec evidence status:
 
 ```bash
-tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence
-tvmd public-evidence validate --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
+tvmd evidence validate docs/tensorvm/public-testnet.evidence
+tvmd evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
 Operators can generate the signed publication, run-window, node-heartbeat, and operator-attestation
 manifest fields:
 
 ```bash
-tvmd public-evidence publication \
+tvmd evidence publish \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --manifest-signer <manifest-signer-address-hex> \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
-tvmd public-evidence auditor-record \
+tvmd evidence audit \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --auditor-id <auditor-address-hex> \
   --audit-uri https://auditor.tensorvm.net/tensorvm/audit.json \
   --observed-at <unix-seconds>
 
-tvmd public-evidence run-window \
+tvmd evidence run window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --started-at <unix-seconds> \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
-tvmd public-evidence run-window-from-file \
+tvmd evidence run window-file \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --block-observation-file artifacts/block-observations.records
 
-tvmd public-evidence node-heartbeat \
+tvmd evidence node heartbeat \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -283,13 +283,13 @@ tvmd public-evidence node-heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
-tvmd public-evidence node-heartbeat-from-file \
+tvmd evidence node heartbeat-file \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --heartbeat-file artifacts/miner-a-heartbeats.records
 
-tvmd public-evidence operator-attestation \
+tvmd evidence node operator-attestation \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -311,11 +311,11 @@ addresses, zero operator IDs, inverted block ranges, and unsigned heartbeat summ
 only counts a node toward the public run when its signed heartbeat count covers the manifest's observed
 block count, and miner/validator operator IDs and addresses must be disjoint under the criteria-aware
 one-to-one matching for the role minima to count independently.
-The `run-window-from-file` form derives the same run-window manifest fields from raw
+The `evidence run window-file` form derives the same run-window manifest fields from raw
 `run_window_observation=<block>,<unix-seconds>` records. It ignores blank lines and `#` comments, rejects
 duplicate or non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported lines,
 and whitespace-padded records, then derives the signed start time, end time, and observed block count.
-The `node-heartbeat-from-file` form derives the same signed `node=...` line from raw
+The `evidence node heartbeat-file` form derives the same signed `node=...` line from raw
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. It ignores blank
 lines and `#` comments, rejects duplicate or non-contiguous block observations, identity mismatches,
 unsupported lines, and whitespace-padded records, then derives the signed first block, last block, and
@@ -331,7 +331,7 @@ Operators can generate signed service-health and service-content manifest lines 
 or telemetry evidence:
 
 ```bash
-tvmd public-evidence service-health \
+tvmd evidence service health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
@@ -341,14 +341,14 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
-tvmd public-evidence service-health-from-file \
+tvmd evidence service health-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
   --health-path /health \
   --observation-file artifacts/rpc-health.records
 
-tvmd public-evidence service-content \
+tvmd evidence service content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -357,7 +357,7 @@ tvmd public-evidence service-content \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
 
-tvmd public-evidence service-content-from-bytes \
+tvmd evidence service content-bytes \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -365,7 +365,7 @@ tvmd public-evidence service-content-from-bytes \
   --observed-at <unix-seconds> \
   --content-hex <captured-response-body-hex>
 
-tvmd public-evidence service-content-from-file \
+tvmd evidence service content-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -377,7 +377,7 @@ tvmd public-evidence service-content-from-file \
 The command rejects non-public service URLs, health URLs whose path does not exactly match the signed
 health path, health URLs with query strings or fragments, malformed endpoint IDs, invalid block ranges,
 and unsigned or unreachable service-health summaries.
-The `service-health-from-file` form derives the same signed `service=...` line from raw
+The `evidence service health-file` form derives the same signed `service=...` line from raw
 `service_health_observation=<block>,reachable` and
 `service_health_observation=<block>,unreachable` records. It ignores blank lines and `#` comments, rejects
 duplicate or non-contiguous block observations, and rejects unsupported or whitespace-padded records before
@@ -389,7 +389,7 @@ The service-content command rejects non-public content URLs, malformed
 endpoint IDs, content URLs whose path does not exactly match the required service surface, content URLs
 with query strings or fragments, zero content roots, empty observation times, and content proofs smaller
 than 64 observed bytes.
-`service-content-from-bytes` and `service-content-from-file` are the reproducible paths from a captured
+`evidence service content-bytes` and `evidence service content-file` are the reproducible paths from a captured
 response body to the same manifest line: they hash the exact bytes with the TensorVM service-content-root
 domain, set `min_content_bytes` to the captured byte length, and reject malformed hex, unreadable files, or
 captured bodies shorter than 64 bytes.
@@ -403,7 +403,7 @@ Operators can also generate signed production libp2p runtime observation records
 the required network-runtime summary root:
 
 ```bash
-tvmd public-evidence network-observation \
+tvmd evidence network observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
@@ -416,7 +416,7 @@ tvmd public-evidence network-observation \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
 
-tvmd public-evidence network-observation-from-service-log \
+tvmd evidence network from-service-log \
   --operator-id <operator-id-hex> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
@@ -430,8 +430,8 @@ shared-address, benchmarking, multicast, or reserved IP hosts. It also rejects m
 observations, missing gossip or request-response protocol counts, and missing DoS-control limits. Its
 output is a signed `network_runtime_observation=...` line. Full-spec evidence must include one such line
 per counted public miner or validator operator and must derive the `network-runtime` summary with
-`record-summary-from-roots` over those observation roots.
-The `network-observation-from-service-log` form derives the peer ID, protocol counts, bootstrap-peer count,
+`evidence record summary-roots` over those observation roots.
+The `evidence network from-service-log` form derives the peer ID, protocol counts, bootstrap-peer count,
 and DoS-control limits from an exact captured `tvmd service serve` log, while still requiring the supplied
 listen multiaddr to be public. It rejects logs that do not show `command=service_serve` and
 `p2p_runtime=libp2p`, duplicate log fields, and missing runtime fields.
@@ -440,14 +440,14 @@ Operators can also generate signed supporting-record summary lines, including th
 network-observation summary required by full-spec evidence:
 
 ```bash
-tvmd public-evidence record-summary \
+tvmd evidence record summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd public-evidence record-artifact \
+tvmd evidence record artifact \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -455,27 +455,27 @@ tvmd public-evidence record-artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd public-evidence record-artifact-from-roots \
+tvmd evidence record artifact-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
-tvmd public-evidence record-artifact-from-file \
+tvmd evidence record artifact-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-file artifacts/network-runtime.records
 
-tvmd public-evidence record-summary-from-roots \
+tvmd evidence record summary-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
 
-tvmd public-evidence record-summary-from-file \
+tvmd evidence record summary-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -486,16 +486,16 @@ Supported record kinds are `block-history`, `finality-history`, `network-runtime
 `invalid-work`, and `reward-settlement`. The command emits the corresponding `<record>_records`,
 `<record>_root`, and `<record>_signature` manifest fields using the same signature domain the validator
 checks.
-The `record-artifact` command emits a signed `record_artifact=...` manifest line that binds an external
+The `evidence record artifact` command emits a signed `record_artifact=...` manifest line that binds an external
 raw-record artifact URI to the same record kind, root, and count. The full independently checkable gate
 requires one valid artifact locator for every required supporting-record summary root and exactly six
 supporting artifact locators total: block history, finality history, network runtime, data availability,
 invalid work, and reward settlement.
-The `record-summary-from-roots` and `record-artifact-from-roots` variants derive a deterministic aggregate
+The `evidence record summary-roots` and `evidence record artifact-roots` variants derive a deterministic aggregate
 root and record count from unique provided supporting-record roots before signing the summary fields or
 artifact locator; duplicate roots are rejected so a summary count cannot be padded by repeating the same raw
 record root. Empty or whitespace-padded comma-separated root entries are also rejected.
-The `record-summary-from-file` and `record-artifact-from-file` variants derive those same fields from a
+The `evidence record summary-file` and `evidence record artifact-file` variants derive those same fields from a
 saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic raw-record files use
 `record_root=<hex>` lines, and network-runtime files can contain the exact signed
 `network_runtime_observation=...` lines emitted by the network-observation commands. File-derived

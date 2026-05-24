@@ -58,7 +58,7 @@ case "$ROLE" in
 esac
 
 if [ "$SEED_LOCAL_TESTNET" = "true" ] && [ ! -f "$DATA_DIR/local-testnet-seed.out" ]; then
-  tvmd local-testnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out"
+  tvmd testnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out"
 fi
 
 tvmd service readiness \

@@ -51,18 +51,19 @@ use arguments::{
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
 pub use commands::{
-    AuditorRecordArgs, DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand,
+    AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
+    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, LocalCpuVerifyArgs,
     MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    OperatorAttestationArgs, ProposerCommand, PublicEvidenceCommand, PublicEvidenceManifestArgs,
-    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetCommand,
+    OperatorAttestationArgs, ProposerCommand, PublicEvidenceManifestArgs,
+    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
     PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
     RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs, RunWindowFromFileArgs,
     ServiceBlockArgs, ServiceCommand, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, ServicePeerAddArgs,
     ServicePeerCommand, ServiceReadinessArgs, ServiceRuntimeArgs, ServiceServeArgs, StakeArgs,
-    TvmdCli, TvmdCommand, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+    TestnetCommand, TvmdCli, TvmdCommand, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
 };
 pub use descriptions::describe_cli_command;
 pub use execution::execute_cli_command;

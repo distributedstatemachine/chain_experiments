@@ -198,16 +198,15 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CommandFixture::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
+            "evidence",
             "validate",
-            "--manifest",
             "docs/tensorvm/public-testnet.evidence"
         ])
         .unwrap(),
@@ -217,9 +216,8 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-testnet",
+            "testnet",
             "preflight",
-            "--manifest",
             "docs/tensorvm/public-testnet.preflight"
         ])
         .unwrap(),
@@ -231,8 +229,8 @@ fn parses_documented_validator_commands() {
     let manifest_signer = manifest_address(b"public-evidence-publisher");
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "publication",
+            "evidence",
+            "publish",
             "--bundle-id",
             &bundle_id,
             "--public-uri",
@@ -255,8 +253,8 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "auditor-record",
+            "evidence",
+            "audit",
             "--bundle-id",
             &bundle_id,
             "--public-uri",
@@ -279,8 +277,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "run-window",
+            "evidence",
+            "run",
+            "window",
             "--bundle-id",
             &bundle_id,
             "--manifest-signer",
@@ -303,8 +302,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "run-window-from-file",
+            "evidence",
+            "run",
+            "window-file",
             "--bundle-id",
             &bundle_id,
             "--manifest-signer",
@@ -321,8 +321,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "node-heartbeat",
+            "evidence",
+            "node",
+            "heartbeat",
             "--role",
             "miner",
             "--address",
@@ -348,8 +349,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "node-heartbeat-from-file",
+            "evidence",
+            "node",
+            "heartbeat-file",
             "--role",
             "miner",
             "--address",
@@ -369,7 +371,8 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
+            "evidence",
+            "node",
             "operator-attestation",
             "--role",
             "miner",
@@ -394,8 +397,9 @@ fn parses_documented_validator_commands() {
     let endpoint_id = manifest_hash(b"rpc-service");
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "service-health",
+            "evidence",
+            "service",
+            "health",
             "--kind",
             "rpc",
             "--endpoint-id",
@@ -427,8 +431,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "service-health-from-file",
+            "evidence",
+            "service",
+            "health-file",
             "--kind",
             "rpc",
             "--endpoint-id",
@@ -452,8 +457,9 @@ fn parses_documented_validator_commands() {
     let content_root = manifest_hash(b"rpc-service-content");
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "service-content",
+            "evidence",
+            "service",
+            "content",
             "--kind",
             "rpc",
             "--endpoint-id",
@@ -483,8 +489,9 @@ fn parses_documented_validator_commands() {
     let content_hex = hex(&[42_u8; 64]);
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "service-content-from-bytes",
+            "evidence",
+            "service",
+            "content-bytes",
             "--kind",
             "rpc",
             "--endpoint-id",
@@ -510,8 +517,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "service-content-from-file",
+            "evidence",
+            "service",
+            "content-file",
             "--kind",
             "rpc",
             "--endpoint-id",
@@ -538,8 +546,9 @@ fn parses_documented_validator_commands() {
     let peer_id = PeerId::random().to_string();
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "network-observation",
+            "evidence",
+            "network",
+            "observation",
             "--operator-id",
             &manifest_hash(b"network-operator"),
             "--peer-id",
@@ -580,8 +589,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "network-observation-from-service-log",
+            "evidence",
+            "network",
+            "from-service-log",
             "--operator-id",
             &manifest_hash(b"network-operator"),
             "--listen-address",
@@ -602,8 +612,9 @@ fn parses_documented_validator_commands() {
     let record_root = manifest_hash(b"network-runtime-root");
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary",
+            "evidence",
+            "record",
+            "summary",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -626,8 +637,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-artifact",
+            "evidence",
+            "record",
+            "artifact",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -658,8 +670,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary-from-roots",
+            "evidence",
+            "record",
+            "summary-roots",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -682,8 +695,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-artifact-from-roots",
+            "evidence",
+            "record",
+            "artifact-roots",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -709,8 +723,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-summary-from-file",
+            "evidence",
+            "record",
+            "summary-file",
             "--kind",
             "network-runtime",
             "--bundle-id",
@@ -730,8 +745,9 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "public-evidence",
-            "record-artifact-from-file",
+            "evidence",
+            "record",
+            "artifact-file",
             "--kind",
             "network-runtime",
             "--bundle-id",

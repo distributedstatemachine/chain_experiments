@@ -135,31 +135,30 @@ pub const SERVICE_CLI_COMMANDS: &[&str] = &[
 ];
 
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
-    "tvmd public-evidence validate --manifest <path>",
-    "tvmd public-evidence publication --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
-    "tvmd public-evidence auditor-record --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
-    "tvmd public-evidence run-window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
-    "tvmd public-evidence run-window-from-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
-    "tvmd public-evidence node-heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
-    "tvmd public-evidence node-heartbeat-from-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
-    "tvmd public-evidence operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
-    "tvmd public-evidence service-health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
-    "tvmd public-evidence service-health-from-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
-    "tvmd public-evidence service-content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
-    "tvmd public-evidence service-content-from-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
-    "tvmd public-evidence service-content-from-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
-    "tvmd public-evidence network-observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
-    "tvmd public-evidence network-observation-from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
-    "tvmd public-evidence record-summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
-    "tvmd public-evidence record-artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
-    "tvmd public-evidence record-artifact-from-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
-    "tvmd public-evidence record-artifact-from-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
-    "tvmd public-evidence record-summary-from-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
-    "tvmd public-evidence record-summary-from-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
+    "tvmd evidence validate <path>",
+    "tvmd evidence publish --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
+    "tvmd evidence audit --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
+    "tvmd evidence run window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
+    "tvmd evidence run window-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
+    "tvmd evidence node heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
+    "tvmd evidence node heartbeat-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
+    "tvmd evidence node operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
+    "tvmd evidence service health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
+    "tvmd evidence service health-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
+    "tvmd evidence service content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
+    "tvmd evidence service content-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
+    "tvmd evidence service content-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
+    "tvmd evidence network observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
+    "tvmd evidence network from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
+    "tvmd evidence record summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
+    "tvmd evidence record artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
+    "tvmd evidence record artifact-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
+    "tvmd evidence record artifact-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
+    "tvmd evidence record summary-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
+    "tvmd evidence record summary-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
 ];
 
-pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] =
-    &["tvmd public-testnet preflight --manifest <path>"];
+pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] = &["tvmd testnet preflight <path>"];
 
 #[cfg(test)]
 mod tests {
@@ -219,42 +218,42 @@ mod tests {
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("public-evidence validate"))
+                .any(|command| command.contains("evidence validate"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("service-health"))
+                .any(|command| command.contains("service health"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("service-health-from-file"))
+                .any(|command| command.contains("service health-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("publication"))
+                .any(|command| command.contains("evidence publish"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("run-window"))
+                .any(|command| command.contains("run window"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("run-window-from-file"))
+                .any(|command| command.contains("run window-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("node-heartbeat"))
+                .any(|command| command.contains("node heartbeat"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("node-heartbeat-from-file"))
+                .any(|command| command.contains("node heartbeat-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
@@ -264,62 +263,62 @@ mod tests {
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("network-observation"))
+                .any(|command| command.contains("network observation"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("network-observation-from-service-log"))
+                .any(|command| command.contains("network from-service-log"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("service-content"))
+                .any(|command| command.contains("service content"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("service-content-from-file"))
+                .any(|command| command.contains("service content-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-summary"))
+                .any(|command| command.contains("record summary"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-artifact"))
+                .any(|command| command.contains("record artifact"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-artifact-from-roots"))
+                .any(|command| command.contains("record artifact-roots"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-artifact-from-file"))
+                .any(|command| command.contains("record artifact-file"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("auditor-record"))
+                .any(|command| command.contains("evidence audit"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-summary-from-roots"))
+                .any(|command| command.contains("record summary-roots"))
         );
         assert!(
             PUBLIC_EVIDENCE_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("record-summary-from-file"))
+                .any(|command| command.contains("record summary-file"))
         );
         assert!(
             PUBLIC_TESTNET_CLI_COMMANDS
                 .iter()
-                .any(|command| command.contains("public-testnet preflight"))
+                .any(|command| command.contains("testnet preflight"))
         );
     }
 }

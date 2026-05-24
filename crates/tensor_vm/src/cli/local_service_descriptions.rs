@@ -11,9 +11,7 @@ pub(super) fn describe_service_command(command: &ServiceCommand) -> String {
                 path_argument(&args.data_dir)
             )
         }
-        ServiceCommand::Peer {
-            command: ServicePeerCommand::Add(args),
-        } => format!(
+        ServiceCommand::Peer(ServicePeerCommand::Add(args)) => format!(
             "add libp2p bootstrap peer data_dir={} peer_id={} address={}",
             path_argument(&args.data_dir),
             args.peer_id,

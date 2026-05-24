@@ -87,7 +87,7 @@ plan gate.
 The CLI reads a manifest file and reports launch readiness:
 
 ```bash
-tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight
+tvmd testnet preflight docs/tensorvm/public-testnet.preflight
 ```
 
 [`public-testnet.preflight`](public-testnet.preflight) is checked into docs at the spec-referenced
@@ -106,7 +106,7 @@ A checked deployment scaffold is available under [`../../deploy/tensorvm`](../..
 The example manifest can be checked from the repository root with:
 
 ```bash
-cargo run -p tensor_vm --bin tvmd -- public-testnet preflight --manifest deploy/tensorvm/manifests/public-testnet.preflight.example
+cargo run -p tensor_vm --bin tvmd -- testnet preflight deploy/tensorvm/manifests/public-testnet.preflight.example
 ```
 
 The checked deployment example intentionally uses reserved placeholder hostnames, so it parses but reports

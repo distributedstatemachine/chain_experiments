@@ -1,4 +1,5 @@
 use super::command_values::parse_hash_value;
+use super::public_evidence_commands::PublicTestnetManifestArgs;
 use crate::types::Hash;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
@@ -61,10 +62,8 @@ pub enum ServiceCommand {
     #[command(about = "Initialize the service node store.")]
     Init(DataDirArgs),
     #[command(about = "Manage libp2p peers.")]
-    Peer {
-        #[command(subcommand)]
-        command: ServicePeerCommand,
-    },
+    #[command(subcommand)]
+    Peer(ServicePeerCommand),
     #[command(about = "Check libp2p and node-store readiness.")]
     Readiness(ServiceReadinessArgs),
     #[command(about = "Serve RPC, explorer, faucet, telemetry, and libp2p.")]
@@ -84,16 +83,13 @@ pub enum ServicePeerCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum LocalTestnetCommand {
+pub enum TestnetCommand {
     #[command(about = "Seed local CPU testnet data.")]
     Seed(DataDirArgs),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
-pub enum LocalCpuCommand {
+    #[command(about = "Validate a public-testnet preflight manifest.")]
+    Preflight(PublicTestnetManifestArgs),
     #[command(about = "Verify local CPU testnet state.")]
-    Verify(LocalCpuVerifyArgs),
+    VerifyLocalCpu(LocalCpuVerifyArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

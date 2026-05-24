@@ -209,7 +209,7 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   report flag also requires the default 7-day, 10-miner, 5-validator public-testnet criteria or stricter
   criteria, so relaxed local harness criteria cannot mark an evidence bundle full-spec
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
-  `tvmd public-testnet preflight --manifest <path>`, with public service endpoint checks rejecting local,
+  `tvmd testnet preflight <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
   requiring exact untrimmed service URL/path manifest fields and exact comma-separated `service=...`
@@ -221,11 +221,11 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   public content paths used by post-run evidence, with missing, duplicate, or extra preflight service plans
   rejected by the public service plan gate
 - `tvmd` binary tests for the documented spec-path pending manifest commands, proving
-  `tvmd public-testnet preflight --manifest docs/tensorvm/public-testnet.preflight` reads the checked
+  `tvmd testnet preflight docs/tensorvm/public-testnet.preflight` reads the checked
   manifest and reports `public_testnet_preflight_ready=false`, while
   a process-level generated external-addressed preflight manifest reports
   `public_testnet_preflight_ready=true`, and
-  `tvmd public-evidence validate --manifest docs/tensorvm/public-testnet.evidence` reads the checked
+  `tvmd evidence validate docs/tensorvm/public-testnet.evidence` reads the checked
   manifest and reports `public_evidence_full_spec=false`
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
@@ -242,52 +242,52 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   a checked post-run evidence manifest example that validates structurally while still reporting
   `public_evidence_full_spec=false`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
-  `tvmd public-evidence validate --manifest <path>`, plus
-  `tvmd public-evidence publication ...`, `tvmd public-evidence auditor-record ...`,
-  `tvmd public-evidence run-window ...`, and
-  `tvmd public-evidence node-heartbeat ...` generation for signed publication, independent-auditor,
+  `tvmd evidence validate <path>`, plus
+  `tvmd evidence publish ...`, `tvmd evidence audit ...`,
+  `tvmd evidence run window ...`, and
+  `tvmd evidence node heartbeat ...` generation for signed publication, independent-auditor,
   wall-clock run-window, and external-operator heartbeat fields, plus
-  `tvmd public-evidence run-window-from-file ...` generation that derives the signed run-window manifest
+  `tvmd evidence run window-file ...` generation that derives the signed run-window manifest
   fields from saved contiguous per-block `run_window_observation=...` files with
   duplicate-block, gap, zero-timestamp, decreasing-timestamp, unsupported-line, and
   whitespace-padded-record rejection,
-  `tvmd public-evidence node-heartbeat-from-file ...` generation that derives signed `node=...` lines
+  `tvmd evidence node heartbeat-file ...` generation that derives signed `node=...` lines
   from saved contiguous per-block `node_heartbeat_observation=...` files with duplicate-block, gap,
   identity-mismatch, unsupported-line, and whitespace-padded-record rejection,
-  `tvmd public-evidence operator-attestation ...` generation for signed operator identity records bound to
+  `tvmd evidence node operator-attestation ...` generation for signed operator identity records bound to
   external identity URIs,
-  `tvmd public-evidence service-health ...` generation for exact signed RPC/explorer/faucet/telemetry
+  `tvmd evidence service health ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service=...` manifest records bound to external HTTPS health URLs and observation counts, with
   root-only, query-string, fragment, and non-exact health URL rejection, plus
-  `tvmd public-evidence service-health-from-file ...` generation that derives the same signed
+  `tvmd evidence service health-file ...` generation that derives the same signed
   `service=...` line from saved contiguous per-block `service_health_observation=...` files with
   duplicate-block, gap, unsupported-line, and whitespace-padded-record rejection,
-  `tvmd public-evidence service-content ...` generation for exact signed RPC/explorer/faucet/telemetry
+  `tvmd evidence service content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
   root-only, query-string, fragment, and non-exact content URL rejection, distinct content roots, and at
   least 64 observed bytes, plus
-  `tvmd public-evidence service-content-from-bytes ...` generation that derives those content roots from
-  exact captured response-body bytes and `tvmd public-evidence service-content-from-file ...` generation
+  `tvmd evidence service content-bytes ...` generation that derives those content roots from
+  exact captured response-body bytes and `tvmd evidence service content-file ...` generation
   that derives them directly from captured response-body files,
-  `tvmd public-evidence network-observation ...` generation for signed public libp2p runtime observation
+  `tvmd evidence network observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
-  single-label DNS rejection, plus `tvmd public-evidence network-observation-from-service-log ...`
+  single-label DNS rejection, plus `tvmd evidence network from-service-log ...`
   generation that derives the peer ID, protocol counts, bootstrap-peer count, and DoS-control settings
   from captured `tvmd service serve` logs while still requiring a public listen multiaddr, plus manifest
   validation that binds one such signed raw record to every counted public operator and to the aggregate
   network-runtime root; the process-level `tvmd` service smoke test now derives a public-address
   observation root from the live libp2p peer/protocol/control stdout and feeds that root through
-  `record-summary-from-roots`, `record-artifact-from-roots`, and the matching file-derived commands,
-  `tvmd public-evidence record-summary ...` generation for signed
+  `evidence record summary-roots`, `evidence record artifact-roots`, and the matching file-derived commands,
+  `tvmd evidence record summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
-  `tvmd public-evidence record-artifact ...` generation for signed external raw-record artifact locators,
-  `tvmd public-evidence record-artifact-from-roots ...` generation that signs artifact locators from the
-  same derived aggregate root and count as summary generation, `tvmd public-evidence
-  record-summary-from-roots ...` deterministic root aggregation for post-run supporting records with
-  duplicate-root and whitespace-padded root-list rejection, plus `tvmd public-evidence record-summary-from-file ...` and
-  `tvmd public-evidence record-artifact-from-file ...` generation from saved raw-record files containing
+  `tvmd evidence record artifact ...` generation for signed external raw-record artifact locators,
+  `tvmd evidence record artifact-roots ...` generation that signs artifact locators from the
+  same derived aggregate root and count as summary generation, `tvmd evidence record
+  summary-roots ...` deterministic root aggregation for post-run supporting records with
+  duplicate-root and whitespace-padded root-list rejection, plus `tvmd evidence record summary-file ...` and
+  `tvmd evidence record artifact-file ...` generation from saved raw-record files containing
   `record_root=...` lines, fully verified signed `network_runtime_observation=...` lines, or typed
   `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
   `invalid_work_rejection=...`, and `reward_settlement=...` supporting-record lines with kind-specific
@@ -458,11 +458,11 @@ lifecycle smoke test that starts the mandatory libp2p service path and serves au
 `/attestation` submissions with reference payloads, read-back of registered miner/validator state, and
 unauthenticated request rejection. The same process-level smoke test now captures the served
 `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard` response bodies and verifies that
-`tvmd public-evidence service-content-from-bytes` and
-`tvmd public-evidence service-content-from-file` emit identical signed service-content evidence for the
-captured bodies, while generating signed `tvmd public-evidence service-health` lines from reached
+`tvmd evidence service content-bytes` and
+`tvmd evidence service content-file` emit identical signed service-content evidence for the
+captured bodies, while generating signed `tvmd evidence service health` lines from reached
 RPC/explorer/faucet/telemetry health responses. It also derives the local libp2p peer ID and protocol
-counts from service stdout and verifies that `tvmd public-evidence network-observation` rejects the
+counts from service stdout and verifies that `tvmd evidence network observation` rejects the
 loopback listen address instead of counting local service startup as public network evidence.
 
 The current instrumented Tarpaulin line coverage is documented in

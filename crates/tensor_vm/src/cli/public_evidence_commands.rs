@@ -7,67 +7,100 @@ use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum PublicTestnetCommand {
-    #[command(about = "Validate a public-testnet preflight manifest.")]
-    Preflight(PublicTestnetManifestArgs),
+pub enum EvidenceCommand {
+    #[command(about = "Validate a public-testnet evidence manifest.")]
+    Validate(PublicEvidenceManifestArgs),
+    #[command(about = "Generate publication evidence for an evidence bundle.")]
+    Publish(PublicationArgs),
+    #[command(about = "Generate independent auditor evidence.")]
+    Audit(AuditorRecordArgs),
+    #[command(about = "Generate run-window evidence.")]
+    #[command(subcommand)]
+    Run(EvidenceRunCommand),
+    #[command(about = "Generate node and operator evidence.")]
+    #[command(subcommand)]
+    Node(EvidenceNodeCommand),
+    #[command(about = "Generate public service evidence.")]
+    #[command(subcommand)]
+    Service(EvidenceServiceCommand),
+    #[command(about = "Generate public libp2p network evidence.")]
+    #[command(subcommand)]
+    Network(EvidenceNetworkCommand),
+    #[command(about = "Generate supporting-record evidence.")]
+    #[command(subcommand)]
+    Record(EvidenceRecordCommand),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum PublicEvidenceCommand {
-    #[command(about = "Validate a public-testnet evidence manifest.")]
-    Validate(PublicEvidenceManifestArgs),
+pub enum EvidenceServiceCommand {
     #[command(about = "Generate service health evidence.")]
-    ServiceHealth(ServiceHealthArgs),
+    Health(ServiceHealthArgs),
     #[command(about = "Generate service health evidence from captured observations.")]
-    ServiceHealthFromFile(ServiceHealthFromFileArgs),
+    HealthFile(ServiceHealthFromFileArgs),
     #[command(about = "Generate service content evidence from a known content root.")]
-    ServiceContent(ServiceContentArgs),
+    Content(ServiceContentArgs),
     #[command(about = "Generate service content evidence from observed bytes.")]
-    ServiceContentFromBytes(ServiceContentFromBytesArgs),
+    ContentBytes(ServiceContentFromBytesArgs),
     #[command(about = "Generate service content evidence from a captured file.")]
-    ServiceContentFromFile(ServiceContentFromFileArgs),
+    ContentFile(ServiceContentFromFileArgs),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
+pub enum EvidenceRecordCommand {
     #[command(about = "Generate a supporting-record summary.")]
-    RecordSummary(RecordSummaryArgs),
+    Summary(RecordSummaryArgs),
     #[command(about = "Generate a supporting-record artifact locator.")]
-    RecordArtifact(RecordArtifactArgs),
+    Artifact(RecordArtifactArgs),
     #[command(about = "Generate a supporting-record artifact locator from roots.")]
-    RecordArtifactFromRoots(RecordArtifactFromRootsArgs),
+    ArtifactRoots(RecordArtifactFromRootsArgs),
     #[command(about = "Generate a supporting-record artifact locator from a file.")]
-    RecordArtifactFromFile(RecordArtifactFromFileArgs),
+    ArtifactFile(RecordArtifactFromFileArgs),
     #[command(about = "Generate a supporting-record summary from roots.")]
-    RecordSummaryFromRoots(RecordSummaryFromRootsArgs),
+    SummaryRoots(RecordSummaryFromRootsArgs),
     #[command(about = "Generate a supporting-record summary from a file.")]
-    RecordSummaryFromFile(RecordSummaryFromFileArgs),
+    SummaryFile(RecordSummaryFromFileArgs),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
+pub enum EvidenceNetworkCommand {
     #[command(about = "Generate public libp2p network runtime evidence.")]
-    NetworkObservation(NetworkObservationArgs),
+    Observation(NetworkObservationArgs),
     #[command(about = "Generate public libp2p network runtime evidence from a service log.")]
-    NetworkObservationFromServiceLog(NetworkObservationFromServiceLogArgs),
-    #[command(about = "Generate publication evidence for an evidence bundle.")]
-    Publication(PublicationArgs),
-    #[command(about = "Generate independent auditor evidence.")]
-    AuditorRecord(AuditorRecordArgs),
+    FromServiceLog(NetworkObservationFromServiceLogArgs),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
+pub enum EvidenceRunCommand {
     #[command(about = "Generate signed run-window evidence.")]
-    RunWindow(RunWindowArgs),
+    Window(RunWindowArgs),
     #[command(about = "Generate signed run-window evidence from block observations.")]
-    RunWindowFromFile(RunWindowFromFileArgs),
+    WindowFile(RunWindowFromFileArgs),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
+pub enum EvidenceNodeCommand {
     #[command(about = "Generate public node heartbeat evidence.")]
-    NodeHeartbeat(NodeHeartbeatArgs),
+    Heartbeat(NodeHeartbeatArgs),
     #[command(about = "Generate public node heartbeat evidence from a file.")]
-    NodeHeartbeatFromFile(NodeHeartbeatFromFileArgs),
+    HeartbeatFile(NodeHeartbeatFromFileArgs),
     #[command(about = "Generate public operator identity attestation evidence.")]
     OperatorAttestation(OperatorAttestationArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicTestnetManifestArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceManifestArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub manifest: PathBuf,
 }
 

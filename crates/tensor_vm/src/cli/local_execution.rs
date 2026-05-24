@@ -1,5 +1,5 @@
 use super::TvmdCommand;
-use super::commands::{LocalCpuCommand, LocalTestnetCommand};
+use super::commands::TestnetCommand;
 use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
 };
@@ -11,19 +11,18 @@ use crate::error::Result;
 pub(super) fn execute_local_cli_command(command: &TvmdCommand) -> Result<String> {
     let params = ChainParams::default();
     match command {
-        TvmdCommand::Miner { command } => execute_miner_command(command, &params),
-        TvmdCommand::Validator { command } => execute_validator_command(command, &params),
-        TvmdCommand::Proposer { command } => execute_proposer_command(command),
-        TvmdCommand::Service { command } => execute_service_command(command),
-        TvmdCommand::LocalTestnet { command } => execute_local_testnet_command(command),
-        TvmdCommand::LocalCpu { command } => execute_local_cpu_command(command),
+        TvmdCommand::Miner(command) => execute_miner_command(command, &params),
+        TvmdCommand::Validator(command) => execute_validator_command(command, &params),
+        TvmdCommand::Proposer(command) => execute_proposer_command(command),
+        TvmdCommand::Service(command) => execute_service_command(command),
+        TvmdCommand::Testnet(command) => execute_testnet_command(command),
         _ => unreachable!("public evidence commands are handled by cli::execution"),
     }
 }
 
-fn execute_local_testnet_command(command: &LocalTestnetCommand) -> Result<String> {
+fn execute_testnet_command(command: &TestnetCommand) -> Result<String> {
     match command {
-        LocalTestnetCommand::Seed(args) => {
+        TestnetCommand::Seed(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(
@@ -31,12 +30,7 @@ fn execute_local_testnet_command(command: &LocalTestnetCommand) -> Result<String
                 data_dir
             ))
         }
-    }
-}
-
-fn execute_local_cpu_command(command: &LocalCpuCommand) -> Result<String> {
-    match command {
-        LocalCpuCommand::Verify(args) => {
+        TestnetCommand::VerifyLocalCpu(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             if args.json {
@@ -51,5 +45,9 @@ fn execute_local_cpu_command(command: &LocalCpuCommand) -> Result<String> {
                 ))
             }
         }
+        TestnetCommand::Preflight(args) => Ok(format!(
+            "run public testnet preflight manifest {}",
+            path_argument(&args.manifest)
+        )),
     }
 }

@@ -11,11 +11,11 @@ fn workspace_manifest_path(relative_path: &str) -> String {
 
 #[test]
 fn docs_public_testnet_preflight_command_reports_pending_status() {
-    let report = execute_command(&TvmdCommand::PublicTestnet {
-        command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs {
+    let report = execute_command(&TvmdCommand::Testnet(TestnetCommand::Preflight(
+        PublicTestnetManifestArgs {
             manifest: workspace_manifest_path("docs/tensorvm/public-testnet.preflight").into(),
-        }),
-    })
+        },
+    )))
     .unwrap();
 
     assert!(report.contains("public_testnet_preflight_ready=false"));
@@ -29,11 +29,11 @@ fn docs_public_testnet_preflight_command_reports_pending_status() {
 
 #[test]
 fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
-    let report = execute_command(&TvmdCommand::PublicEvidence {
-        command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs {
+    let report = execute_command(&TvmdCommand::Evidence(EvidenceCommand::Validate(
+        PublicEvidenceManifestArgs {
             manifest: workspace_manifest_path("docs/tensorvm/public-testnet.evidence").into(),
-        }),
-    })
+        },
+    )))
     .unwrap();
 
     assert!(report.contains("public_evidence_full_spec=false"));

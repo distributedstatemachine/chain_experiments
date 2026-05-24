@@ -251,8 +251,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     std::fs::write(&service_log, stdout.as_bytes()).expect("service log fixture must be written");
     let service_log_text = service_log.to_string_lossy().into_owned();
     let public_observation = run_tvmd(&[
-        "public-evidence",
-        "network-observation",
+        "evidence",
+        "network",
+        "observation",
         "--operator-id",
         &"99".repeat(32),
         "--peer-id",
@@ -280,8 +281,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(public_observation.contains(p2p_peer_id));
     assert!(public_observation.contains("/dns/node-a.tensorvm.net/tcp/4001"));
     let public_observation_from_service_log = run_tvmd(&[
-        "public-evidence",
-        "network-observation-from-service-log",
+        "evidence",
+        "network",
+        "from-service-log",
         "--operator-id",
         &"99".repeat(32),
         "--listen-address",
@@ -296,8 +298,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let bundle_id = "aa".repeat(32);
     let manifest_signer = "bb".repeat(32);
     let summary_from_root = run_tvmd(&[
-        "public-evidence",
-        "record-summary-from-roots",
+        "evidence",
+        "record",
+        "summary-roots",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -311,8 +314,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(summary_from_root.contains("network_runtime_observation_root="));
     assert!(summary_from_root.contains("network_runtime_observation_signature="));
     let artifact_from_root = run_tvmd(&[
-        "public-evidence",
-        "record-artifact-from-roots",
+        "evidence",
+        "record",
+        "artifact-roots",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -329,8 +333,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     ));
     assert!(artifact_from_root.contains(",1,"));
     let (status, public_observation_stdout, public_observation_stderr) = run_tvmd_failure(&[
-        "public-evidence",
-        "network-observation",
+        "evidence",
+        "network",
+        "observation",
         "--operator-id",
         &"99".repeat(32),
         "--peer-id",
@@ -358,8 +363,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert!(public_observation_stdout.is_empty());
     assert!(public_observation_stderr.contains("network observation address is not public"));
     let (status, log_observation_stdout, log_observation_stderr) = run_tvmd_failure(&[
-        "public-evidence",
-        "network-observation-from-service-log",
+        "evidence",
+        "network",
+        "from-service-log",
         "--operator-id",
         &"99".repeat(32),
         "--listen-address",

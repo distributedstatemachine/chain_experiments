@@ -1,43 +1,40 @@
 use super::arguments::public_evidence_record_kind_tag;
-use super::commands::PublicEvidenceCommand;
+use super::commands::EvidenceRecordCommand;
 use super::validation::path_argument;
 
-pub(super) fn describe_public_evidence_record_command(
-    command: &PublicEvidenceCommand,
-) -> Option<String> {
+pub(super) fn describe_public_evidence_record_command(command: &EvidenceRecordCommand) -> String {
     match command {
-        PublicEvidenceCommand::RecordSummary(args) => Some(format!(
+        EvidenceRecordCommand::Summary(args) => format!(
             "generate {} public evidence record summary records={}",
             public_evidence_record_kind_tag(args.kind.into()),
             args.record_count
-        )),
-        PublicEvidenceCommand::RecordArtifact(args) => Some(format!(
+        ),
+        EvidenceRecordCommand::Artifact(args) => format!(
             "generate {} public evidence artifact locator artifact_uri={}",
             public_evidence_record_kind_tag(args.kind.into()),
             args.artifact_uri
-        )),
-        PublicEvidenceCommand::RecordArtifactFromRoots(args) => Some(format!(
+        ),
+        EvidenceRecordCommand::ArtifactRoots(args) => format!(
             "generate {} public evidence artifact locator from {} roots artifact_uri={}",
             public_evidence_record_kind_tag(args.kind.into()),
             args.record_roots.len(),
             args.artifact_uri
-        )),
-        PublicEvidenceCommand::RecordArtifactFromFile(args) => Some(format!(
+        ),
+        EvidenceRecordCommand::ArtifactFile(args) => format!(
             "generate {} public evidence artifact locator from record file record_file={} artifact_uri={}",
             public_evidence_record_kind_tag(args.kind.into()),
             path_argument(&args.record_file),
             args.artifact_uri
-        )),
-        PublicEvidenceCommand::RecordSummaryFromRoots(args) => Some(format!(
+        ),
+        EvidenceRecordCommand::SummaryRoots(args) => format!(
             "generate {} public evidence record summary from {} roots",
             public_evidence_record_kind_tag(args.kind.into()),
             args.record_roots.len()
-        )),
-        PublicEvidenceCommand::RecordSummaryFromFile(args) => Some(format!(
+        ),
+        EvidenceRecordCommand::SummaryFile(args) => format!(
             "generate {} public evidence record summary from record file record_file={}",
             public_evidence_record_kind_tag(args.kind.into()),
             path_argument(&args.record_file)
-        )),
-        _ => None,
+        ),
     }
 }

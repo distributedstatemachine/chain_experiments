@@ -1,4 +1,4 @@
-use super::commands::PublicEvidenceCommand;
+use super::commands::EvidenceNetworkCommand;
 use super::network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line,
     network_observation_evidence_line_from_service_log,
@@ -8,11 +8,11 @@ use crate::error::{Result, TvmError};
 use crate::types::Hash;
 
 pub(super) fn execute_public_evidence_network_command(
-    command: &PublicEvidenceCommand,
-) -> Option<Result<String>> {
+    command: &EvidenceNetworkCommand,
+) -> Result<String> {
     match command {
-        PublicEvidenceCommand::NetworkObservation(args) => Some(network_observation_evidence_line(
-            NetworkObservationEvidenceLine {
+        EvidenceNetworkCommand::Observation(args) => {
+            network_observation_evidence_line(NetworkObservationEvidenceLine {
                 operator_id: args.operator_id,
                 peer_id: &args.peer_id.to_string(),
                 listen_address: &args.listen_address.to_string(),
@@ -24,17 +24,14 @@ pub(super) fn execute_public_evidence_network_command(
                 request_timeout_seconds: args.request_timeout_seconds,
                 max_concurrent_streams: args.max_concurrent_streams,
                 idle_connection_timeout_seconds: args.idle_timeout_seconds,
-            },
-        )),
-        PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
-            Some(network_observation_from_service_log(
-                args.operator_id,
-                &args.listen_address.to_string(),
-                args.observed_at,
-                &path_argument(&args.service_log),
-            ))
+            })
         }
-        _ => None,
+        EvidenceNetworkCommand::FromServiceLog(args) => network_observation_from_service_log(
+            args.operator_id,
+            &args.listen_address.to_string(),
+            args.observed_at,
+            &path_argument(&args.service_log),
+        ),
     }
 }
 

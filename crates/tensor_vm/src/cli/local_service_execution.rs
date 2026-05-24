@@ -14,9 +14,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 data_dir
             ))
         }
-        ServiceCommand::Peer {
-            command: ServicePeerCommand::Add(args),
-        } => {
+        ServiceCommand::Peer(ServicePeerCommand::Add(args)) => {
             ensure_data_dir(&args.data_dir)?;
             let peer_id = args.peer_id.to_string();
             let address = args.address.to_string();

@@ -3,9 +3,8 @@ use super::*;
 #[test]
 fn documented_public_testnet_preflight_command_reports_pending_status() {
     let stdout = run_tvmd(&[
-        "public-testnet",
+        "testnet",
         "preflight",
-        "--manifest",
         "docs/tensorvm/public-testnet.preflight",
     ]);
 
@@ -44,12 +43,7 @@ service=telemetry,44444444444444444444444444444444444444444444444444444444444444
 ";
     std::fs::write(&manifest_path, manifest).expect("generated preflight manifest must be written");
 
-    let stdout = run_tvmd(&[
-        "public-testnet",
-        "preflight",
-        "--manifest",
-        &manifest_path_text,
-    ]);
+    let stdout = run_tvmd(&["testnet", "preflight", &manifest_path_text]);
     assert!(stdout.contains("public_testnet_preflight_ready=true"));
     assert!(stdout.contains("local_shape_ready=true"));
     assert!(stdout.contains("deployment_plan_ready=true"));
@@ -70,9 +64,8 @@ service=telemetry,44444444444444444444444444444444444444444444444444444444444444
 #[test]
 fn documented_public_testnet_evidence_command_reports_non_full_spec_status() {
     let stdout = run_tvmd(&[
-        "public-evidence",
+        "evidence",
         "validate",
-        "--manifest",
         "docs/tensorvm/public-testnet.evidence",
     ]);
 
@@ -96,8 +89,8 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
     let manifest_signer = "22".repeat(32);
     let public_uri = "https://tensorvm.net/tensorvm/public-evidence.json";
     let publication = trimmed_tvmd(&[
-        "public-evidence",
-        "publication",
+        "evidence",
+        "publish",
         "--bundle-id",
         &bundle_id,
         "--public-uri",
@@ -110,8 +103,8 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         "1",
     ]);
     let auditor = trimmed_tvmd(&[
-        "public-evidence",
-        "auditor-record",
+        "evidence",
+        "audit",
         "--bundle-id",
         &bundle_id,
         "--public-uri",
@@ -134,8 +127,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         ("reward-settlement", "99".repeat(32), "1"),
     ] {
         summary_lines.push(trimmed_tvmd(&[
-            "public-evidence",
-            "record-summary",
+            "evidence",
+            "record",
+            "summary",
             "--kind",
             kind,
             "--bundle-id",
@@ -148,8 +142,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             count,
         ]));
         artifact_lines.push(trimmed_tvmd(&[
-            "public-evidence",
-            "record-artifact",
+            "evidence",
+            "record",
+            "artifact",
             "--kind",
             kind,
             "--bundle-id",
@@ -201,7 +196,8 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
     for (role, address, operator_id, host, port) in participants {
         let identity_uri = format!("https://operators.tensorvm.net/{operator_id}.json");
         operator_lines.push(trimmed_tvmd(&[
-            "public-evidence",
+            "evidence",
+            "node",
             "operator-attestation",
             "--role",
             role,
@@ -215,8 +211,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             "1700000000",
         ]));
         let node_heartbeat = trimmed_tvmd(&[
-            "public-evidence",
-            "node-heartbeat",
+            "evidence",
+            "node",
+            "heartbeat",
             "--role",
             role,
             "--address",
@@ -241,8 +238,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             .expect("node heartbeat file must be written");
         let heartbeat_file_text = heartbeat_file.to_string_lossy().into_owned();
         let node_heartbeat_from_file = trimmed_tvmd(&[
-            "public-evidence",
-            "node-heartbeat-from-file",
+            "evidence",
+            "node",
+            "heartbeat-file",
             "--role",
             role,
             "--address",
@@ -257,8 +255,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         let peer_id = PeerId::random().to_string();
         let listen_address = format!("/dns/{host}/tcp/{port}");
         let observation = trimmed_tvmd(&[
-            "public-evidence",
-            "network-observation",
+            "evidence",
+            "network",
+            "observation",
             "--operator-id",
             operator_id,
             "--peer-id",
@@ -287,8 +286,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
     }
     let network_root_csv = network_roots.join(",");
     let network_summary = trimmed_tvmd(&[
-        "public-evidence",
-        "record-summary-from-roots",
+        "evidence",
+        "record",
+        "summary-roots",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -299,8 +299,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         &network_root_csv,
     ]);
     artifact_lines.push(trimmed_tvmd(&[
-        "public-evidence",
-        "record-artifact-from-roots",
+        "evidence",
+        "record",
+        "artifact-roots",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -317,8 +318,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         .expect("network runtime record file must be written");
     let network_record_file_text = network_record_file.to_string_lossy().into_owned();
     let network_summary_from_file = trimmed_tvmd(&[
-        "public-evidence",
-        "record-summary-from-file",
+        "evidence",
+        "record",
+        "summary-file",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -330,8 +332,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
     ]);
     assert_eq!(network_summary_from_file, network_summary);
     let network_artifact_from_file = trimmed_tvmd(&[
-        "public-evidence",
-        "record-artifact-from-file",
+        "evidence",
+        "record",
+        "artifact-file",
         "--kind",
         "network-runtime",
         "--bundle-id",
@@ -352,8 +355,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
     );
 
     let run_window = trimmed_tvmd(&[
-        "public-evidence",
-        "run-window",
+        "evidence",
+        "run",
+        "window",
         "--bundle-id",
         &bundle_id,
         "--manifest-signer",
@@ -381,8 +385,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         .expect("run window record file must be written");
     let run_window_record_file_text = run_window_record_file.to_string_lossy().into_owned();
     let run_window_from_file = trimmed_tvmd(&[
-        "public-evidence",
-        "run-window-from-file",
+        "evidence",
+        "run",
+        "window-file",
         "--bundle-id",
         &bundle_id,
         "--manifest-signer",
@@ -429,8 +434,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         ),
     ] {
         let service_health = trimmed_tvmd(&[
-            "public-evidence",
-            "service-health",
+            "evidence",
+            "service",
+            "health",
             "--kind",
             kind,
             "--endpoint-id",
@@ -457,8 +463,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
             .expect("service health record file must be written");
         let health_record_file_text = health_record_file.to_string_lossy().into_owned();
         let service_health_from_file = trimmed_tvmd(&[
-            "public-evidence",
-            "service-health-from-file",
+            "evidence",
+            "service",
+            "health-file",
             "--kind",
             kind,
             "--endpoint-id",
@@ -473,8 +480,9 @@ fn generated_public_evidence_manifest_round_trips_through_tvmd_validator() {
         assert_eq!(service_health_from_file, service_health);
         service_lines.push(service_health);
         service_content_lines.push(trimmed_tvmd(&[
-            "public-evidence",
-            "service-content",
+            "evidence",
+            "service",
+            "content",
             "--kind",
             kind,
             "--endpoint-id",
@@ -528,12 +536,7 @@ invalid_receipts_rejected=1
     );
     std::fs::write(&manifest_path, manifest).expect("generated evidence manifest must be written");
 
-    let report = run_tvmd(&[
-        "public-evidence",
-        "validate",
-        "--manifest",
-        &manifest_path_text,
-    ]);
+    let report = run_tvmd(&["evidence", "validate", &manifest_path_text]);
     assert!(report.contains("public_evidence_full_spec=false"));
     assert!(report.contains("public_criterion=false"));
     assert!(report.contains("independently_checkable=true"));

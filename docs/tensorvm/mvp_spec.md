@@ -2059,46 +2059,46 @@ run; they must not be counted as full public-testnet evidence while they contain
 run data.
 
 ```bash
-tvmd public-testnet preflight \
-  --manifest docs/tensorvm/public-testnet.preflight
+tvmd testnet preflight \
+  docs/tensorvm/public-testnet.preflight
 
-tvmd public-evidence validate \
-  --manifest docs/tensorvm/public-testnet.evidence
+tvmd evidence validate \
+  docs/tensorvm/public-testnet.evidence
 
-tvmd public-evidence validate \
-  --manifest deploy/tensorvm/manifests/public-testnet.evidence.example
+tvmd evidence validate \
+  deploy/tensorvm/manifests/public-testnet.evidence.example
 
 tvmd service readiness \
   --p2p-listen /ip4/0.0.0.0/tcp/4001 \
   --data-dir /var/lib/tensorvm
 
-tvmd public-evidence publication \
+tvmd evidence publish \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --manifest-signer <manifest-signer-address-hex> \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
-tvmd public-evidence auditor-record \
+tvmd evidence audit \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --auditor-id <auditor-address-hex> \
   --audit-uri https://auditor.tensorvm.net/tensorvm/audit.json \
   --observed-at <unix-seconds>
 
-tvmd public-evidence run-window \
+tvmd evidence run window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --started-at <unix-seconds> \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
-tvmd public-evidence run-window-from-file \
+tvmd evidence run window-file \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --block-observation-file artifacts/block-observations.records
 
-tvmd public-evidence node-heartbeat \
+tvmd evidence node heartbeat \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -2106,20 +2106,20 @@ tvmd public-evidence node-heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
-tvmd public-evidence node-heartbeat-from-file \
+tvmd evidence node heartbeat-file \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --heartbeat-file artifacts/miner-a-heartbeats.records
 
-tvmd public-evidence operator-attestation \
+tvmd evidence node operator-attestation \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --identity-uri https://operator-a.tensorvm.net/tensorvm.json \
   --observed-at <unix-seconds>
 
-tvmd public-evidence service-health \
+tvmd evidence service health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
@@ -2129,14 +2129,14 @@ tvmd public-evidence service-health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
-tvmd public-evidence service-health-from-file \
+tvmd evidence service health-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
   --health-path /health \
   --observation-file artifacts/rpc-health.records
 
-tvmd public-evidence service-content \
+tvmd evidence service content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2145,7 +2145,7 @@ tvmd public-evidence service-content \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
 
-tvmd public-evidence service-content-from-bytes \
+tvmd evidence service content-bytes \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2153,7 +2153,7 @@ tvmd public-evidence service-content-from-bytes \
   --observed-at <unix-seconds> \
   --content-hex <captured-response-body-hex>
 
-tvmd public-evidence service-content-from-file \
+tvmd evidence service content-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2161,7 +2161,7 @@ tvmd public-evidence service-content-from-file \
   --observed-at <unix-seconds> \
   --content-file artifacts/rpc-chain-head.body
 
-tvmd public-evidence network-observation \
+tvmd evidence network observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
@@ -2174,20 +2174,20 @@ tvmd public-evidence network-observation \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
 
-tvmd public-evidence network-observation-from-service-log \
+tvmd evidence network from-service-log \
   --operator-id <operator-id-hex> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
   --service-log artifacts/node-a-tvmd-service.log
 
-tvmd public-evidence record-summary \
+tvmd evidence record summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd public-evidence record-artifact \
+tvmd evidence record artifact \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -2195,27 +2195,27 @@ tvmd public-evidence record-artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd public-evidence record-artifact-from-roots \
+tvmd evidence record artifact-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
-tvmd public-evidence record-artifact-from-file \
+tvmd evidence record artifact-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-file artifacts/network-runtime.records
 
-tvmd public-evidence record-summary-from-roots \
+tvmd evidence record summary-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
 
-tvmd public-evidence record-summary-from-file \
+tvmd evidence record summary-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -2250,7 +2250,7 @@ with a well-formed identifier segment using only ASCII alphanumerics, `-`, or `_
 or control characters. Optional path segments after the identifier must use only ASCII alphanumerics,
 `.`, `-`, or `_`, must not be empty, must not be `.` or `..`, and must not include query strings,
 fragments, backslashes, raw whitespace, or control characters.
-The `run-window-from-file` command derives the signed run-window record from saved
+The `evidence run window-file` command derives the signed run-window record from saved
 `run_window_observation=<block>,<unix-seconds>` lines. Blank lines and `#` comments are ignored;
 duplicate blocks, non-contiguous block observations, zero timestamps, decreasing timestamps, unsupported
 lines, and whitespace-padded records are rejected so the signed start time, end time, and observed block
@@ -2263,29 +2263,29 @@ attestations must be observed inside the signed run window, and the
 operator/address pairs selected by the public operator matching. A valid attestation for a live but
 uncounted node does not satisfy a missing counted operator attestation. Missing, invalid, duplicate,
 uncounted, or extra operator-attestation records do not satisfy external-operator evidence.
-The `node-heartbeat-from-file` command derives the same signed `node=...` line from a saved
+The `evidence node heartbeat-file` command derives the same signed `node=...` line from a saved
 line-oriented heartbeat observation file using
 `node_heartbeat_observation=<role>,<node-address-hex>,<operator-id-hex>,<block>` records. Blank lines and
 `#` comments are ignored; duplicate blocks, non-contiguous block observations, identity mismatches,
 unsupported lines, and whitespace-padded records are rejected so first block, last block, and heartbeat
 count are derived rather than copied by hand.
-The `service-health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
+The `evidence service health` command emits the exact `service=...` manifest line for RPC, explorer, faucet, or
 telemetry evidence. The signature is bound to the service kind, endpoint ID, external HTTPS URL, health
 path, observed block range, reachable observation count, and signed health-check count; the public URL path
 must match the signed health path. Counted service-health records must cover the manifest's full observed
 block count with both reachable observations and signed health checks, and the reachable count must not
 exceed the signed health-check count.
-The `service-health-from-file` command derives the same signed line from a saved line-oriented observation
+The `evidence service health-file` command derives the same signed line from a saved line-oriented observation
 file using `service_health_observation=<block>,reachable` or
 `service_health_observation=<block>,unreachable` records. Blank lines and `#` comments are ignored;
 duplicate blocks, non-contiguous block observations, unsupported lines, and whitespace-padded records are
 rejected so the derived first block, last block, reachable count, and signed health-check count are not
 manually copied.
-The `service-content` command emits the exact `service_content=...` manifest line for RPC, explorer,
+The `evidence service content` command emits the exact `service_content=...` manifest line for RPC, explorer,
 faucet, or telemetry content evidence. The signature is bound to the service kind, endpoint ID, external
 HTTPS URL, content path, content root, observation time, and minimum observed content bytes. Counted
 service-content records must be observed inside the signed run window and prove at least 64 observed bytes.
-The `service-content-from-bytes` and `service-content-from-file` commands derive the content root from the
+The `evidence service content-bytes` and `evidence service content-file` commands derive the content root from the
 exact captured response body bytes using the TensorVM service-content-root domain and emit the same signed
 `service_content=...` manifest line with `min_content_bytes` set to the captured byte length. Operators
 should prefer the file form when turning raw public service observations into evidence, and keep the exact
@@ -2302,7 +2302,7 @@ DNS host labels, single-label DNS hosts, invalid ports, malformed bracketed IPv6
 private, link-local, documentation, shared-address, benchmarking, multicast, reserved IP literals, or
 special-use DNS names such as `.localhost`, `.local`, `.test`, `.example`, `.invalid`, `example.com`,
 `example.net`, and `example.org`.
-The `network-observation` command emits a signed `network_runtime_observation=...` record line for a
+The `evidence network observation` command emits a signed `network_runtime_observation=...` record line for a
 public libp2p multiaddr, observed peer ID, discovery peer count, Gossipsub/request-response protocol
 counts, and DoS-control limits. The public libp2p multiaddr must include a nonzero TCP listen port and
 must not use localhost, `.local`, loopback, unspecified, private, link-local, special-use DNS names,
@@ -2314,34 +2314,34 @@ window, nonzero discovery/gossip/request-response/DoS-control counters, a matchi
 matching observation signature. The `network-runtime` summary root must aggregate those raw observation
 roots; a signed summary root without the corresponding per-operator `network_runtime_observation` manifest
 lines does not satisfy the public evidence gate.
-The `network-observation-from-service-log` command derives the peer ID, protocol counts, bootstrap-peer
+The `evidence network from-service-log` command derives the peer ID, protocol counts, bootstrap-peer
 count, and DoS-control settings from an exact captured `tvmd service serve` log. It must reject logs that
 do not show `command=service_serve` and `p2p_runtime=libp2p`, and it still requires the observer-supplied
 public listen multiaddr above; a loopback or private service log cannot be promoted into public evidence.
-The `record-summary` command emits the exact `<record>_records`, `<record>_root`, and
+The `evidence record summary` command emits the exact `<record>_records`, `<record>_root`, and
 `<record>_signature` manifest lines for block history, finality history, production libp2p network
 observations, data-availability measurements, invalid-work rejections, or reward settlements. Supported
 record kinds are `block-history`, `finality-history`, `network-runtime`, `data-availability`,
 `invalid-work`, and `reward-settlement`.
 The `network-runtime` record count must equal the counted independent public miner plus validator operator
 total; signed undercounts or overcounts cannot satisfy independently checkable evidence.
-The `record-artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
+The `evidence record artifact` command emits a signed `record_artifact=...` line that binds an external raw-record
 artifact URI to the record kind, root, and count; independently checkable public evidence requires one
 valid artifact locator for every required supporting-record summary root and exactly six supporting
 artifact locators total: block history, finality history, network runtime, data availability, invalid work,
 and reward settlement.
-The `record-artifact-from-roots` command derives the same aggregate root and count as
-`record-summary-from-roots` before signing the artifact locator, so the summary line and artifact locator
+The `evidence record artifact-roots` command derives the same aggregate root and count as
+`evidence record summary-roots` before signing the artifact locator, so the summary line and artifact locator
 can be generated from the same raw record-root list.
-The `record-summary-from-roots` command deterministically aggregates unique comma-separated
+The `evidence record summary-roots` command deterministically aggregates unique comma-separated
 supporting-record roots, rejects duplicate roots that would pad the derived count, rejects empty or
 whitespace-padded root entries, and emits the same signed manifest summary fields so operators do not need
 an out-of-band root-signing tool for post-run bundles.
-The `record-summary-from-file` and `record-artifact-from-file` commands derive the same aggregate root and
+The `evidence record summary-file` and `evidence record artifact-file` commands derive the same aggregate root and
 count from a saved line-oriented raw-record file. Blank lines and `#` comments are ignored; generic
 supporting-record root files use `record_root=<hex>` lines, and network-runtime files may contain the
-exact signed `network_runtime_observation=...` lines emitted by `network-observation` or
-`network-observation-from-service-log`. Non-network supporting-record files may contain exact
+exact signed `network_runtime_observation=...` lines emitted by `evidence network observation` or
+`evidence network from-service-log`. Non-network supporting-record files may contain exact
 `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
 `invalid_work_rejection=...`, or `reward_settlement=...` raw record lines. Those typed raw lines are
 validated against the selected record kind before hashing with the record kind and exact line bytes, so

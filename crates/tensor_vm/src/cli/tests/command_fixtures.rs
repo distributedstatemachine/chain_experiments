@@ -286,20 +286,18 @@ pub(super) fn peer_id_arg(value: String) -> PeerId {
 impl CommandFixture {
     fn into_cli_command(self) -> super::TvmdCommand {
         match self {
-            Self::MinerRegister { stake } => super::TvmdCommand::Miner {
-                command: MinerCommand::Register(StakeArgs { stake }),
-            },
+            Self::MinerRegister { stake } => {
+                super::TvmdCommand::Miner(MinerCommand::Register(StakeArgs { stake }))
+            }
             Self::MinerStart {
                 wallet,
                 device,
                 node,
-            } => super::TvmdCommand::Miner {
-                command: MinerCommand::Start(MinerStartArgs {
-                    wallet: path_arg(wallet),
-                    device,
-                    node: multiaddr_arg(node),
-                }),
-            },
+            } => super::TvmdCommand::Miner(MinerCommand::Start(MinerStartArgs {
+                wallet: path_arg(wallet),
+                device,
+                node: multiaddr_arg(node),
+            })),
             Self::MinerRun {
                 wallet,
                 device,
@@ -310,35 +308,31 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Miner {
-                command: MinerCommand::Run(MinerRunArgs {
-                    wallet: path_arg(wallet),
-                    device,
-                    runtime: RoleRuntimeArgs {
-                        node: multiaddr_arg(node),
-                        service: ServiceRuntimeArgs {
-                            listen: socket_addr_arg(listen),
-                            p2p_listen: multiaddr_arg(p2p_listen),
-                            data_dir: path_arg(data_dir),
-                            identity_seed,
-                            auth_token,
-                            max_requests,
-                        },
+            } => super::TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+                wallet: path_arg(wallet),
+                device,
+                runtime: RoleRuntimeArgs {
+                    node: multiaddr_arg(node),
+                    service: ServiceRuntimeArgs {
+                        listen: socket_addr_arg(listen),
+                        p2p_listen: multiaddr_arg(p2p_listen),
+                        data_dir: path_arg(data_dir),
+                        identity_seed,
+                        auth_token,
+                        max_requests,
                     },
-                }),
-            },
-            Self::MinerStatus => super::TvmdCommand::Miner {
-                command: MinerCommand::Status,
-            },
-            Self::ValidatorRegister { stake } => super::TvmdCommand::Validator {
-                command: ValidatorCommand::Register(StakeArgs { stake }),
-            },
-            Self::ValidatorStart { wallet, node } => super::TvmdCommand::Validator {
-                command: ValidatorCommand::Start(ValidatorStartArgs {
+                },
+            })),
+            Self::MinerStatus => super::TvmdCommand::Miner(MinerCommand::Status),
+            Self::ValidatorRegister { stake } => {
+                super::TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake }))
+            }
+            Self::ValidatorStart { wallet, node } => {
+                super::TvmdCommand::Validator(ValidatorCommand::Start(ValidatorStartArgs {
                     wallet: path_arg(wallet),
                     node: multiaddr_arg(node),
-                }),
-            },
+                }))
+            }
             Self::ValidatorRun {
                 wallet,
                 node,
@@ -348,25 +342,21 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Validator {
-                command: ValidatorCommand::Run(ValidatorRunArgs {
-                    wallet: path_arg(wallet),
-                    runtime: RoleRuntimeArgs {
-                        node: multiaddr_arg(node),
-                        service: ServiceRuntimeArgs {
-                            listen: socket_addr_arg(listen),
-                            p2p_listen: multiaddr_arg(p2p_listen),
-                            data_dir: path_arg(data_dir),
-                            identity_seed,
-                            auth_token,
-                            max_requests,
-                        },
+            } => super::TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+                wallet: path_arg(wallet),
+                runtime: RoleRuntimeArgs {
+                    node: multiaddr_arg(node),
+                    service: ServiceRuntimeArgs {
+                        listen: socket_addr_arg(listen),
+                        p2p_listen: multiaddr_arg(p2p_listen),
+                        data_dir: path_arg(data_dir),
+                        identity_seed,
+                        auth_token,
+                        max_requests,
                     },
-                }),
-            },
-            Self::ValidatorStatus => super::TvmdCommand::Validator {
-                command: ValidatorCommand::Status,
-            },
+                },
+            })),
+            Self::ValidatorStatus => super::TvmdCommand::Validator(ValidatorCommand::Status),
             Self::ProposerRun {
                 wallet,
                 node,
@@ -376,61 +366,11 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Proposer {
-                command: ProposerCommand::Run(ValidatorRunArgs {
-                    wallet: path_arg(wallet),
-                    runtime: RoleRuntimeArgs {
-                        node: multiaddr_arg(node),
-                        service: ServiceRuntimeArgs {
-                            listen: socket_addr_arg(listen),
-                            p2p_listen: multiaddr_arg(p2p_listen),
-                            data_dir: path_arg(data_dir),
-                            identity_seed,
-                            auth_token,
-                            max_requests,
-                        },
-                    },
-                }),
-            },
-            Self::ServiceInit { data_dir } => super::TvmdCommand::Service {
-                command: ServiceCommand::Init(DataDirArgs {
-                    data_dir: path_arg(data_dir),
-                }),
-            },
-            Self::ServicePeerAdd {
-                data_dir,
-                peer_id,
-                address,
-            } => super::TvmdCommand::Service {
-                command: ServiceCommand::Peer {
-                    command: ServicePeerCommand::Add(ServicePeerAddArgs {
-                        data_dir: path_arg(data_dir),
-                        peer_id: peer_id_arg(peer_id),
-                        address: multiaddr_arg(address),
-                    }),
-                },
-            },
-            Self::ServiceReadiness {
-                p2p_listen,
-                data_dir,
-                identity_seed,
-            } => super::TvmdCommand::Service {
-                command: ServiceCommand::Readiness(ServiceReadinessArgs {
-                    p2p_listen: multiaddr_arg(p2p_listen),
-                    data_dir: path_arg(data_dir),
-                    identity_seed,
-                }),
-            },
-            Self::ServiceServe {
-                listen,
-                p2p_listen,
-                data_dir,
-                identity_seed,
-                auth_token,
-                max_requests,
-            } => super::TvmdCommand::Service {
-                command: ServiceCommand::Serve(ServiceServeArgs {
-                    runtime: ServiceRuntimeArgs {
+            } => super::TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
+                wallet: path_arg(wallet),
+                runtime: RoleRuntimeArgs {
+                    node: multiaddr_arg(node),
+                    service: ServiceRuntimeArgs {
                         listen: socket_addr_arg(listen),
                         p2p_listen: multiaddr_arg(p2p_listen),
                         data_dir: path_arg(data_dir),
@@ -438,35 +378,77 @@ impl CommandFixture {
                         auth_token,
                         max_requests,
                     },
-                }),
-            },
-            Self::ServiceStatus { data_dir } => super::TvmdCommand::Service {
-                command: ServiceCommand::Status(DataDirArgs {
+                },
+            })),
+            Self::ServiceInit { data_dir } => {
+                super::TvmdCommand::Service(ServiceCommand::Init(DataDirArgs {
                     data_dir: path_arg(data_dir),
-                }),
-            },
-            Self::ServiceBlock { data_dir, height } => super::TvmdCommand::Service {
-                command: ServiceCommand::Block(ServiceBlockArgs {
+                }))
+            }
+            Self::ServicePeerAdd {
+                data_dir,
+                peer_id,
+                address,
+            } => super::TvmdCommand::Service(ServiceCommand::Peer(ServicePeerCommand::Add(
+                ServicePeerAddArgs {
+                    data_dir: path_arg(data_dir),
+                    peer_id: peer_id_arg(peer_id),
+                    address: multiaddr_arg(address),
+                },
+            ))),
+            Self::ServiceReadiness {
+                p2p_listen,
+                data_dir,
+                identity_seed,
+            } => super::TvmdCommand::Service(ServiceCommand::Readiness(ServiceReadinessArgs {
+                p2p_listen: multiaddr_arg(p2p_listen),
+                data_dir: path_arg(data_dir),
+                identity_seed,
+            })),
+            Self::ServiceServe {
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed,
+                auth_token,
+                max_requests,
+            } => super::TvmdCommand::Service(ServiceCommand::Serve(ServiceServeArgs {
+                runtime: ServiceRuntimeArgs {
+                    listen: socket_addr_arg(listen),
+                    p2p_listen: multiaddr_arg(p2p_listen),
+                    data_dir: path_arg(data_dir),
+                    identity_seed,
+                    auth_token,
+                    max_requests,
+                },
+            })),
+            Self::ServiceStatus { data_dir } => {
+                super::TvmdCommand::Service(ServiceCommand::Status(DataDirArgs {
+                    data_dir: path_arg(data_dir),
+                }))
+            }
+            Self::ServiceBlock { data_dir, height } => {
+                super::TvmdCommand::Service(ServiceCommand::Block(ServiceBlockArgs {
                     data_dir: path_arg(data_dir),
                     height,
-                }),
-            },
-            Self::LocalTestnetSeed { data_dir } => super::TvmdCommand::LocalTestnet {
-                command: LocalTestnetCommand::Seed(DataDirArgs {
+                }))
+            }
+            Self::LocalTestnetSeed { data_dir } => {
+                super::TvmdCommand::Testnet(TestnetCommand::Seed(DataDirArgs {
                     data_dir: path_arg(data_dir),
-                }),
-            },
-            Self::LocalCpuVerify { data_dir, json } => super::TvmdCommand::LocalCpu {
-                command: LocalCpuCommand::Verify(LocalCpuVerifyArgs {
+                }))
+            }
+            Self::LocalCpuVerify { data_dir, json } => {
+                super::TvmdCommand::Testnet(TestnetCommand::VerifyLocalCpu(LocalCpuVerifyArgs {
                     data_dir: path_arg(data_dir),
                     json,
-                }),
-            },
-            Self::PublicEvidenceValidate { manifest } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs {
+                }))
+            }
+            Self::PublicEvidenceValidate { manifest } => super::TvmdCommand::Evidence(
+                EvidenceCommand::Validate(PublicEvidenceManifestArgs {
                     manifest: path_arg(manifest),
                 }),
-            },
+            ),
             Self::PublicEvidenceServiceHealth {
                 kind,
                 endpoint_id,
@@ -476,8 +458,8 @@ impl CommandFixture {
                 last_seen_block,
                 reachable_observation_count,
                 signed_health_check_count,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::ServiceHealth(ServiceHealthArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
+                EvidenceServiceCommand::Health(ServiceHealthArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
                     public_url,
@@ -487,22 +469,22 @@ impl CommandFixture {
                     reachable_count: reachable_observation_count,
                     signed_health_check_count,
                 }),
-            },
+            )),
             Self::PublicEvidenceServiceHealthFromFile {
                 kind,
                 endpoint_id,
                 public_url,
                 health_path,
                 observation_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::ServiceHealthFromFile(ServiceHealthFromFileArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
+                EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
                     public_url,
                     health_path,
                     observation_file: path_arg(observation_file),
                 }),
-            },
+            )),
             Self::PublicEvidenceServiceContent {
                 kind,
                 endpoint_id,
@@ -511,8 +493,8 @@ impl CommandFixture {
                 content_root,
                 observed_at_unix_seconds,
                 min_content_bytes,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::ServiceContent(ServiceContentArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
+                EvidenceServiceCommand::Content(ServiceContentArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
                     public_url,
@@ -521,7 +503,7 @@ impl CommandFixture {
                     observed_at: observed_at_unix_seconds,
                     min_content_bytes,
                 }),
-            },
+            )),
             Self::PublicEvidenceServiceContentFromBytes {
                 kind,
                 endpoint_id,
@@ -529,18 +511,16 @@ impl CommandFixture {
                 content_path,
                 observed_at_unix_seconds,
                 content_hex,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::ServiceContentFromBytes(
-                    ServiceContentFromBytesArgs {
-                        kind: service_kind_arg(kind),
-                        endpoint_id,
-                        public_url,
-                        content_path,
-                        observed_at: observed_at_unix_seconds,
-                        content_hex,
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
+                EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
+                    kind: service_kind_arg(kind),
+                    endpoint_id,
+                    public_url,
+                    content_path,
+                    observed_at: observed_at_unix_seconds,
+                    content_hex,
+                }),
+            )),
             Self::PublicEvidenceServiceContentFromFile {
                 kind,
                 endpoint_id,
@@ -548,33 +528,31 @@ impl CommandFixture {
                 content_path,
                 observed_at_unix_seconds,
                 content_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::ServiceContentFromFile(
-                    ServiceContentFromFileArgs {
-                        kind: service_kind_arg(kind),
-                        endpoint_id,
-                        public_url,
-                        content_path,
-                        observed_at: observed_at_unix_seconds,
-                        content_file: path_arg(content_file),
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
+                EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
+                    kind: service_kind_arg(kind),
+                    endpoint_id,
+                    public_url,
+                    content_path,
+                    observed_at: observed_at_unix_seconds,
+                    content_file: path_arg(content_file),
+                }),
+            )),
             Self::PublicEvidenceRecordSummary {
                 kind,
                 bundle_id,
                 manifest_signer,
                 record_root,
                 record_count,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordSummary(RecordSummaryArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::Summary(RecordSummaryArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
                     manifest_signer,
                     record_root,
                     record_count,
                 }),
-            },
+            )),
             Self::PublicEvidenceRecordArtifact {
                 kind,
                 bundle_id,
@@ -582,8 +560,8 @@ impl CommandFixture {
                 artifact_uri,
                 record_root,
                 record_count,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordArtifact(RecordArtifactArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::Artifact(RecordArtifactArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
                     manifest_signer,
@@ -591,69 +569,63 @@ impl CommandFixture {
                     record_root,
                     record_count,
                 }),
-            },
+            )),
             Self::PublicEvidenceRecordArtifactFromRoots {
                 kind,
                 bundle_id,
                 manifest_signer,
                 artifact_uri,
                 record_roots,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordArtifactFromRoots(
-                    RecordArtifactFromRootsArgs {
-                        kind: record_kind_arg(kind),
-                        bundle_id,
-                        manifest_signer,
-                        artifact_uri,
-                        record_roots,
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    artifact_uri,
+                    record_roots,
+                }),
+            )),
             Self::PublicEvidenceRecordArtifactFromFile {
                 kind,
                 bundle_id,
                 manifest_signer,
                 artifact_uri,
                 record_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordArtifactFromFile(
-                    RecordArtifactFromFileArgs {
-                        kind: record_kind_arg(kind),
-                        bundle_id,
-                        manifest_signer,
-                        artifact_uri,
-                        record_file: path_arg(record_file),
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    artifact_uri,
+                    record_file: path_arg(record_file),
+                }),
+            )),
             Self::PublicEvidenceRecordSummaryFromRoots {
                 kind,
                 bundle_id,
                 manifest_signer,
                 record_roots,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordSummaryFromRoots(
-                    RecordSummaryFromRootsArgs {
-                        kind: record_kind_arg(kind),
-                        bundle_id,
-                        manifest_signer,
-                        record_roots,
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    record_roots,
+                }),
+            )),
             Self::PublicEvidenceRecordSummaryFromFile {
                 kind,
                 bundle_id,
                 manifest_signer,
                 record_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RecordSummaryFromFile(RecordSummaryFromFileArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Record(
+                EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
                     manifest_signer,
                     record_file: path_arg(record_file),
                 }),
-            },
+            )),
             Self::PublicEvidenceNetworkObservation {
                 operator_id,
                 peer_id,
@@ -666,8 +638,8 @@ impl CommandFixture {
                 request_timeout_seconds,
                 max_concurrent_streams,
                 idle_connection_timeout_seconds,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::NetworkObservation(NetworkObservationArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Network(
+                EvidenceNetworkCommand::Observation(NetworkObservationArgs {
                     operator_id,
                     peer_id: peer_id_arg(peer_id),
                     listen_address: multiaddr_arg(listen_address),
@@ -680,78 +652,72 @@ impl CommandFixture {
                     max_concurrent_streams,
                     idle_timeout_seconds: idle_connection_timeout_seconds,
                 }),
-            },
+            )),
             Self::PublicEvidenceNetworkObservationFromServiceLog {
                 operator_id,
                 listen_address,
                 observed_at_unix_seconds,
                 service_log,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::NetworkObservationFromServiceLog(
-                    NetworkObservationFromServiceLogArgs {
-                        operator_id,
-                        listen_address: multiaddr_arg(listen_address),
-                        observed_at: observed_at_unix_seconds,
-                        service_log: path_arg(service_log),
-                    },
-                ),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Network(
+                EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+                    operator_id,
+                    listen_address: multiaddr_arg(listen_address),
+                    observed_at: observed_at_unix_seconds,
+                    service_log: path_arg(service_log),
+                }),
+            )),
             Self::PublicEvidencePublication {
                 bundle_id,
                 public_uri,
                 manifest_signer,
                 manifest_signature_count,
                 independent_auditor_count,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::Publication(PublicationArgs {
-                    bundle_id,
-                    public_uri,
-                    manifest_signer,
-                    manifest_signature_count,
-                    independent_auditor_count,
-                }),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Publish(PublicationArgs {
+                bundle_id,
+                public_uri,
+                manifest_signer,
+                manifest_signature_count,
+                independent_auditor_count,
+            })),
             Self::PublicEvidenceAuditorRecord {
                 bundle_id,
                 public_uri,
                 auditor_id,
                 audit_uri,
                 observed_at_unix_seconds,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::AuditorRecord(AuditorRecordArgs {
-                    bundle_id,
-                    public_uri,
-                    auditor_id,
-                    audit_uri,
-                    observed_at: observed_at_unix_seconds,
-                }),
-            },
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Audit(AuditorRecordArgs {
+                bundle_id,
+                public_uri,
+                auditor_id,
+                audit_uri,
+                observed_at: observed_at_unix_seconds,
+            })),
             Self::PublicEvidenceRunWindow {
                 bundle_id,
                 manifest_signer,
                 run_started_at_unix_seconds,
                 run_ended_at_unix_seconds,
                 observed_blocks,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RunWindow(RunWindowArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Run(EvidenceRunCommand::Window(
+                RunWindowArgs {
                     bundle_id,
                     manifest_signer,
                     started_at: run_started_at_unix_seconds,
                     ended_at: run_ended_at_unix_seconds,
                     observed_blocks,
-                }),
-            },
+                },
+            ))),
             Self::PublicEvidenceRunWindowFromFile {
                 bundle_id,
                 manifest_signer,
                 block_observation_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::RunWindowFromFile(RunWindowFromFileArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Run(
+                EvidenceRunCommand::WindowFile(RunWindowFromFileArgs {
                     bundle_id,
                     manifest_signer,
                     block_observation_file: path_arg(block_observation_file),
                 }),
-            },
+            )),
             Self::PublicEvidenceNodeHeartbeat {
                 role,
                 address,
@@ -759,8 +725,8 @@ impl CommandFixture {
                 first_seen_block,
                 last_seen_block,
                 signed_heartbeat_count,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::NodeHeartbeat(NodeHeartbeatArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Node(
+                EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
                     role: node_role_arg(role),
                     address,
                     operator_id,
@@ -768,40 +734,40 @@ impl CommandFixture {
                     last_block: last_seen_block,
                     heartbeat_count: signed_heartbeat_count,
                 }),
-            },
+            )),
             Self::PublicEvidenceNodeHeartbeatFromFile {
                 role,
                 address,
                 operator_id,
                 heartbeat_file,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::NodeHeartbeatFromFile(NodeHeartbeatFromFileArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Node(
+                EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
                     role: node_role_arg(role),
                     address,
                     operator_id,
                     heartbeat_file: path_arg(heartbeat_file),
                 }),
-            },
+            )),
             Self::PublicEvidenceOperatorAttestation {
                 role,
                 address,
                 operator_id,
                 identity_uri,
                 observed_at_unix_seconds,
-            } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::OperatorAttestation(OperatorAttestationArgs {
+            } => super::TvmdCommand::Evidence(EvidenceCommand::Node(
+                EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
                     role: node_role_arg(role),
                     address,
                     operator_id,
                     identity_uri,
                     observed_at: observed_at_unix_seconds,
                 }),
-            },
-            Self::PublicTestnetPreflight { manifest } => super::TvmdCommand::PublicTestnet {
-                command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs {
+            )),
+            Self::PublicTestnetPreflight { manifest } => {
+                super::TvmdCommand::Testnet(TestnetCommand::Preflight(PublicTestnetManifestArgs {
                     manifest: path_arg(manifest),
-                }),
-            },
+                }))
+            }
         }
     }
 }
@@ -809,7 +775,7 @@ impl CommandFixture {
 impl From<super::TvmdCommand> for CommandFixture {
     fn from(command: super::TvmdCommand) -> Self {
         match command {
-            super::TvmdCommand::Miner { command } => match command {
+            super::TvmdCommand::Miner(command) => match command {
                 MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
                 MinerCommand::Start(args) => Self::MinerStart {
                     wallet: path_to_string(args.wallet),
@@ -829,7 +795,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                 },
                 MinerCommand::Status => Self::MinerStatus,
             },
-            super::TvmdCommand::Validator { command } => match command {
+            super::TvmdCommand::Validator(command) => match command {
                 ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
                 ValidatorCommand::Start(args) => Self::ValidatorStart {
                     wallet: path_to_string(args.wallet),
@@ -847,7 +813,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                 },
                 ValidatorCommand::Status => Self::ValidatorStatus,
             },
-            super::TvmdCommand::Proposer { command } => match command {
+            super::TvmdCommand::Proposer(command) => match command {
                 ProposerCommand::Run(args) => Self::ProposerRun {
                     wallet: path_to_string(args.wallet),
                     node: args.runtime.node.to_string(),
@@ -859,13 +825,11 @@ impl From<super::TvmdCommand> for CommandFixture {
                     max_requests: args.runtime.service.max_requests,
                 },
             },
-            super::TvmdCommand::Service { command } => match command {
+            super::TvmdCommand::Service(command) => match command {
                 ServiceCommand::Init(args) => Self::ServiceInit {
                     data_dir: path_to_string(args.data_dir),
                 },
-                ServiceCommand::Peer {
-                    command: ServicePeerCommand::Add(args),
-                } => Self::ServicePeerAdd {
+                ServiceCommand::Peer(ServicePeerCommand::Add(args)) => Self::ServicePeerAdd {
                     data_dir: path_to_string(args.data_dir),
                     peer_id: args.peer_id.to_string(),
                     address: args.address.to_string(),
@@ -891,198 +855,202 @@ impl From<super::TvmdCommand> for CommandFixture {
                     height: args.height,
                 },
             },
-            super::TvmdCommand::LocalTestnet { command } => match command {
-                LocalTestnetCommand::Seed(args) => Self::LocalTestnetSeed {
+            super::TvmdCommand::Testnet(command) => match command {
+                TestnetCommand::Seed(args) => Self::LocalTestnetSeed {
                     data_dir: path_to_string(args.data_dir),
                 },
-            },
-            super::TvmdCommand::LocalCpu { command } => match command {
-                LocalCpuCommand::Verify(args) => Self::LocalCpuVerify {
+                TestnetCommand::VerifyLocalCpu(args) => Self::LocalCpuVerify {
                     data_dir: path_to_string(args.data_dir),
                     json: args.json,
                 },
-            },
-            super::TvmdCommand::PublicEvidence { command } => match command {
-                PublicEvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
+                TestnetCommand::Preflight(args) => Self::PublicTestnetPreflight {
                     manifest: path_to_string(args.manifest),
                 },
-                PublicEvidenceCommand::ServiceHealth(args) => Self::PublicEvidenceServiceHealth {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    health_path: args.health_path,
-                    first_seen_block: args.first_block,
-                    last_seen_block: args.last_block,
-                    reachable_observation_count: args.reachable_count,
-                    signed_health_check_count: args.signed_health_check_count,
+            },
+            super::TvmdCommand::Evidence(command) => match command {
+                EvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
+                    manifest: path_to_string(args.manifest),
                 },
-                PublicEvidenceCommand::ServiceHealthFromFile(args) => {
-                    Self::PublicEvidenceServiceHealthFromFile {
-                        kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id,
-                        public_url: args.public_url,
-                        health_path: args.health_path,
-                        observation_file: path_to_string(args.observation_file),
-                    }
-                }
-                PublicEvidenceCommand::ServiceContent(args) => Self::PublicEvidenceServiceContent {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    content_path: args.content_path,
-                    content_root: args.content_root,
-                    observed_at_unix_seconds: args.observed_at,
-                    min_content_bytes: args.min_content_bytes,
-                },
-                PublicEvidenceCommand::ServiceContentFromBytes(args) => {
-                    Self::PublicEvidenceServiceContentFromBytes {
-                        kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id,
-                        public_url: args.public_url,
-                        content_path: args.content_path,
-                        observed_at_unix_seconds: args.observed_at,
-                        content_hex: args.content_hex,
-                    }
-                }
-                PublicEvidenceCommand::ServiceContentFromFile(args) => {
-                    Self::PublicEvidenceServiceContentFromFile {
-                        kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id,
-                        public_url: args.public_url,
-                        content_path: args.content_path,
-                        observed_at_unix_seconds: args.observed_at,
-                        content_file: path_to_string(args.content_file),
-                    }
-                }
-                PublicEvidenceCommand::RecordSummary(args) => Self::PublicEvidenceRecordSummary {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    record_root: args.record_root,
-                    record_count: args.record_count,
-                },
-                PublicEvidenceCommand::RecordArtifact(args) => Self::PublicEvidenceRecordArtifact {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    artifact_uri: args.artifact_uri,
-                    record_root: args.record_root,
-                    record_count: args.record_count,
-                },
-                PublicEvidenceCommand::RecordArtifactFromRoots(args) => {
-                    Self::PublicEvidenceRecordArtifactFromRoots {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
-                        artifact_uri: args.artifact_uri,
-                        record_roots: args.record_roots,
-                    }
-                }
-                PublicEvidenceCommand::RecordArtifactFromFile(args) => {
-                    Self::PublicEvidenceRecordArtifactFromFile {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
-                        artifact_uri: args.artifact_uri,
-                        record_file: path_to_string(args.record_file),
-                    }
-                }
-                PublicEvidenceCommand::RecordSummaryFromRoots(args) => {
-                    Self::PublicEvidenceRecordSummaryFromRoots {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
-                        record_roots: args.record_roots,
-                    }
-                }
-                PublicEvidenceCommand::RecordSummaryFromFile(args) => {
-                    Self::PublicEvidenceRecordSummaryFromFile {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
-                        record_file: path_to_string(args.record_file),
-                    }
-                }
-                PublicEvidenceCommand::NetworkObservation(args) => {
-                    Self::PublicEvidenceNetworkObservation {
-                        operator_id: args.operator_id,
-                        peer_id: args.peer_id.to_string(),
-                        listen_address: args.listen_address.to_string(),
-                        observed_at_unix_seconds: args.observed_at,
-                        gossip_topic_count: args.gossip_topics,
-                        request_response_protocol_count: args.request_response_protocols,
-                        bootstrap_peer_count: args.bootstrap_peers,
-                        max_transmit_bytes: args.max_transmit_bytes,
-                        request_timeout_seconds: args.request_timeout_seconds,
-                        max_concurrent_streams: args.max_concurrent_streams,
-                        idle_connection_timeout_seconds: args.idle_timeout_seconds,
-                    }
-                }
-                PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
-                    Self::PublicEvidenceNetworkObservationFromServiceLog {
-                        operator_id: args.operator_id,
-                        listen_address: args.listen_address.to_string(),
-                        observed_at_unix_seconds: args.observed_at,
-                        service_log: path_to_string(args.service_log),
-                    }
-                }
-                PublicEvidenceCommand::Publication(args) => Self::PublicEvidencePublication {
+                EvidenceCommand::Publish(args) => Self::PublicEvidencePublication {
                     bundle_id: args.bundle_id,
                     public_uri: args.public_uri,
                     manifest_signer: args.manifest_signer,
                     manifest_signature_count: args.manifest_signature_count,
                     independent_auditor_count: args.independent_auditor_count,
                 },
-                PublicEvidenceCommand::AuditorRecord(args) => Self::PublicEvidenceAuditorRecord {
+                EvidenceCommand::Audit(args) => Self::PublicEvidenceAuditorRecord {
                     bundle_id: args.bundle_id,
                     public_uri: args.public_uri,
                     auditor_id: args.auditor_id,
                     audit_uri: args.audit_uri,
                     observed_at_unix_seconds: args.observed_at,
                 },
-                PublicEvidenceCommand::RunWindow(args) => Self::PublicEvidenceRunWindow {
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    run_started_at_unix_seconds: args.started_at,
-                    run_ended_at_unix_seconds: args.ended_at,
-                    observed_blocks: args.observed_blocks,
+                EvidenceCommand::Service(command) => match command {
+                    EvidenceServiceCommand::Health(args) => Self::PublicEvidenceServiceHealth {
+                        kind: args.kind.into(),
+                        endpoint_id: args.endpoint_id,
+                        public_url: args.public_url,
+                        health_path: args.health_path,
+                        first_seen_block: args.first_block,
+                        last_seen_block: args.last_block,
+                        reachable_observation_count: args.reachable_count,
+                        signed_health_check_count: args.signed_health_check_count,
+                    },
+                    EvidenceServiceCommand::HealthFile(args) => {
+                        Self::PublicEvidenceServiceHealthFromFile {
+                            kind: args.kind.into(),
+                            endpoint_id: args.endpoint_id,
+                            public_url: args.public_url,
+                            health_path: args.health_path,
+                            observation_file: path_to_string(args.observation_file),
+                        }
+                    }
+                    EvidenceServiceCommand::Content(args) => Self::PublicEvidenceServiceContent {
+                        kind: args.kind.into(),
+                        endpoint_id: args.endpoint_id,
+                        public_url: args.public_url,
+                        content_path: args.content_path,
+                        content_root: args.content_root,
+                        observed_at_unix_seconds: args.observed_at,
+                        min_content_bytes: args.min_content_bytes,
+                    },
+                    EvidenceServiceCommand::ContentBytes(args) => {
+                        Self::PublicEvidenceServiceContentFromBytes {
+                            kind: args.kind.into(),
+                            endpoint_id: args.endpoint_id,
+                            public_url: args.public_url,
+                            content_path: args.content_path,
+                            observed_at_unix_seconds: args.observed_at,
+                            content_hex: args.content_hex,
+                        }
+                    }
+                    EvidenceServiceCommand::ContentFile(args) => {
+                        Self::PublicEvidenceServiceContentFromFile {
+                            kind: args.kind.into(),
+                            endpoint_id: args.endpoint_id,
+                            public_url: args.public_url,
+                            content_path: args.content_path,
+                            observed_at_unix_seconds: args.observed_at,
+                            content_file: path_to_string(args.content_file),
+                        }
+                    }
                 },
-                PublicEvidenceCommand::RunWindowFromFile(args) => {
-                    Self::PublicEvidenceRunWindowFromFile {
+                EvidenceCommand::Record(command) => match command {
+                    EvidenceRecordCommand::Summary(args) => Self::PublicEvidenceRecordSummary {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        record_root: args.record_root,
+                        record_count: args.record_count,
+                    },
+                    EvidenceRecordCommand::Artifact(args) => Self::PublicEvidenceRecordArtifact {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        artifact_uri: args.artifact_uri,
+                        record_root: args.record_root,
+                        record_count: args.record_count,
+                    },
+                    EvidenceRecordCommand::ArtifactRoots(args) => {
+                        Self::PublicEvidenceRecordArtifactFromRoots {
+                            kind: args.kind.into(),
+                            bundle_id: args.bundle_id,
+                            manifest_signer: args.manifest_signer,
+                            artifact_uri: args.artifact_uri,
+                            record_roots: args.record_roots,
+                        }
+                    }
+                    EvidenceRecordCommand::ArtifactFile(args) => {
+                        Self::PublicEvidenceRecordArtifactFromFile {
+                            kind: args.kind.into(),
+                            bundle_id: args.bundle_id,
+                            manifest_signer: args.manifest_signer,
+                            artifact_uri: args.artifact_uri,
+                            record_file: path_to_string(args.record_file),
+                        }
+                    }
+                    EvidenceRecordCommand::SummaryRoots(args) => {
+                        Self::PublicEvidenceRecordSummaryFromRoots {
+                            kind: args.kind.into(),
+                            bundle_id: args.bundle_id,
+                            manifest_signer: args.manifest_signer,
+                            record_roots: args.record_roots,
+                        }
+                    }
+                    EvidenceRecordCommand::SummaryFile(args) => {
+                        Self::PublicEvidenceRecordSummaryFromFile {
+                            kind: args.kind.into(),
+                            bundle_id: args.bundle_id,
+                            manifest_signer: args.manifest_signer,
+                            record_file: path_to_string(args.record_file),
+                        }
+                    }
+                },
+                EvidenceCommand::Network(command) => match command {
+                    EvidenceNetworkCommand::Observation(args) => {
+                        Self::PublicEvidenceNetworkObservation {
+                            operator_id: args.operator_id,
+                            peer_id: args.peer_id.to_string(),
+                            listen_address: args.listen_address.to_string(),
+                            observed_at_unix_seconds: args.observed_at,
+                            gossip_topic_count: args.gossip_topics,
+                            request_response_protocol_count: args.request_response_protocols,
+                            bootstrap_peer_count: args.bootstrap_peers,
+                            max_transmit_bytes: args.max_transmit_bytes,
+                            request_timeout_seconds: args.request_timeout_seconds,
+                            max_concurrent_streams: args.max_concurrent_streams,
+                            idle_connection_timeout_seconds: args.idle_timeout_seconds,
+                        }
+                    }
+                    EvidenceNetworkCommand::FromServiceLog(args) => {
+                        Self::PublicEvidenceNetworkObservationFromServiceLog {
+                            operator_id: args.operator_id,
+                            listen_address: args.listen_address.to_string(),
+                            observed_at_unix_seconds: args.observed_at,
+                            service_log: path_to_string(args.service_log),
+                        }
+                    }
+                },
+                EvidenceCommand::Run(command) => match command {
+                    EvidenceRunCommand::Window(args) => Self::PublicEvidenceRunWindow {
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        run_started_at_unix_seconds: args.started_at,
+                        run_ended_at_unix_seconds: args.ended_at,
+                        observed_blocks: args.observed_blocks,
+                    },
+                    EvidenceRunCommand::WindowFile(args) => Self::PublicEvidenceRunWindowFromFile {
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
                         block_observation_file: path_to_string(args.block_observation_file),
-                    }
-                }
-                PublicEvidenceCommand::NodeHeartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
-                    role: args.role.into(),
-                    address: args.address,
-                    operator_id: args.operator_id,
-                    first_seen_block: args.first_block,
-                    last_seen_block: args.last_block,
-                    signed_heartbeat_count: args.heartbeat_count,
+                    },
                 },
-                PublicEvidenceCommand::NodeHeartbeatFromFile(args) => {
-                    Self::PublicEvidenceNodeHeartbeatFromFile {
+                EvidenceCommand::Node(command) => match command {
+                    EvidenceNodeCommand::Heartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
                         role: args.role.into(),
                         address: args.address,
                         operator_id: args.operator_id,
-                        heartbeat_file: path_to_string(args.heartbeat_file),
+                        first_seen_block: args.first_block,
+                        last_seen_block: args.last_block,
+                        signed_heartbeat_count: args.heartbeat_count,
+                    },
+                    EvidenceNodeCommand::HeartbeatFile(args) => {
+                        Self::PublicEvidenceNodeHeartbeatFromFile {
+                            role: args.role.into(),
+                            address: args.address,
+                            operator_id: args.operator_id,
+                            heartbeat_file: path_to_string(args.heartbeat_file),
+                        }
                     }
-                }
-                PublicEvidenceCommand::OperatorAttestation(args) => {
-                    Self::PublicEvidenceOperatorAttestation {
-                        role: args.role.into(),
-                        address: args.address,
-                        operator_id: args.operator_id,
-                        identity_uri: args.identity_uri,
-                        observed_at_unix_seconds: args.observed_at,
+                    EvidenceNodeCommand::OperatorAttestation(args) => {
+                        Self::PublicEvidenceOperatorAttestation {
+                            role: args.role.into(),
+                            address: args.address,
+                            operator_id: args.operator_id,
+                            identity_uri: args.identity_uri,
+                            observed_at_unix_seconds: args.observed_at,
+                        }
                     }
-                }
-            },
-            super::TvmdCommand::PublicTestnet { command } => match command {
-                PublicTestnetCommand::Preflight(args) => Self::PublicTestnetPreflight {
-                    manifest: path_to_string(args.manifest),
                 },
             },
         }
