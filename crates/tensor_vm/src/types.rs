@@ -10,26 +10,55 @@ pub(crate) enum HashHexParseError {
     InvalidHex,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HexBytesParseError {
+    Empty,
+    OddLength,
+    InvalidHex,
+}
+
 pub(crate) fn parse_hash_hex(value: &str) -> std::result::Result<Hash, HashHexParseError> {
-    let value = value.strip_prefix("0x").unwrap_or(value);
+    let value = stripped_hex_text(value);
     if value.len() != 64 {
         return Err(HashHexParseError::InvalidLength);
     }
     let mut out = [0_u8; 32];
-    for (index, byte) in out.iter_mut().enumerate() {
-        let high = parse_hex_nibble(value.as_bytes()[index * 2])?;
-        let low = parse_hex_nibble(value.as_bytes()[index * 2 + 1])?;
-        *byte = (high << 4) | low;
-    }
+    parse_hex_into(value, &mut out).map_err(|_| HashHexParseError::InvalidHex)?;
     Ok(out)
 }
 
-fn parse_hex_nibble(value: u8) -> std::result::Result<u8, HashHexParseError> {
+pub(crate) fn parse_hex_bytes(value: &str) -> std::result::Result<Vec<u8>, HexBytesParseError> {
+    let value = stripped_hex_text(value);
+    if value.is_empty() {
+        return Err(HexBytesParseError::Empty);
+    }
+    if !value.len().is_multiple_of(2) {
+        return Err(HexBytesParseError::OddLength);
+    }
+    let mut out = vec![0_u8; value.len() / 2];
+    parse_hex_into(value, &mut out)?;
+    Ok(out)
+}
+
+fn stripped_hex_text(value: &str) -> &str {
+    value.strip_prefix("0x").unwrap_or(value)
+}
+
+fn parse_hex_into(value: &str, out: &mut [u8]) -> std::result::Result<(), HexBytesParseError> {
+    for (byte, chunk) in out.iter_mut().zip(value.as_bytes().chunks_exact(2)) {
+        let high = parse_hex_nibble(chunk[0])?;
+        let low = parse_hex_nibble(chunk[1])?;
+        *byte = (high << 4) | low;
+    }
+    Ok(())
+}
+
+fn parse_hex_nibble(value: u8) -> std::result::Result<u8, HexBytesParseError> {
     match value {
         b'0'..=b'9' => Ok(value - b'0'),
         b'a'..=b'f' => Ok(value - b'a' + 10),
         b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(HashHexParseError::InvalidHex),
+        _ => Err(HexBytesParseError::InvalidHex),
     }
 }
 
@@ -113,5 +142,15 @@ mod tests {
             parse_hash_hex(&format!("z{}", "0".repeat(63))),
             Err(HashHexParseError::InvalidHex)
         );
+    }
+
+    #[test]
+    fn hex_bytes_parser_accepts_bytes_text_and_reports_edges() {
+        assert_eq!(parse_hex_bytes("0aFE").unwrap(), vec![0x0a, 0xfe]);
+        assert_eq!(parse_hex_bytes("0x0afe").unwrap(), vec![0x0a, 0xfe]);
+        assert_eq!(parse_hex_bytes(""), Err(HexBytesParseError::Empty));
+        assert_eq!(parse_hex_bytes("0x"), Err(HexBytesParseError::Empty));
+        assert_eq!(parse_hex_bytes("abc"), Err(HexBytesParseError::OddLength));
+        assert_eq!(parse_hex_bytes("00xz"), Err(HexBytesParseError::InvalidHex));
     }
 }

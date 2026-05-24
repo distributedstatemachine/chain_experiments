@@ -1,6 +1,6 @@
 use crate::error::{Result, TvmError};
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
-use crate::types::{Hash, parse_hash_hex};
+use crate::types::{Hash, parse_hash_hex, parse_hex_bytes};
 
 pub(super) fn exact_comma_fields<'a>(
     value: &'a str,
@@ -101,24 +101,5 @@ pub(super) fn parse_hash_argument(value: &str) -> Result<Hash> {
 }
 
 pub(super) fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
-    let value = value.strip_prefix("0x").unwrap_or(value);
-    if value.is_empty() || !value.len().is_multiple_of(2) {
-        return Err(TvmError::InvalidReceipt("invalid hex bytes argument"));
-    }
-    let mut out = Vec::with_capacity(value.len() / 2);
-    for chunk in value.as_bytes().chunks_exact(2) {
-        let high = parse_hex_nibble(chunk[0])?;
-        let low = parse_hex_nibble(chunk[1])?;
-        out.push((high << 4) | low);
-    }
-    Ok(out)
-}
-
-fn parse_hex_nibble(value: u8) -> Result<u8> {
-    match value {
-        b'0'..=b'9' => Ok(value - b'0'),
-        b'a'..=b'f' => Ok(value - b'a' + 10),
-        b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(TvmError::InvalidReceipt("invalid hex bytes argument")),
-    }
+    parse_hex_bytes(value).map_err(|_| TvmError::InvalidReceipt("invalid hex bytes argument"))
 }

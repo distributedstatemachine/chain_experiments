@@ -811,6 +811,8 @@ spaghetti around.
   report tests.
 - Iteration 322 extracted fixed-size hash hex parsing into `types.rs`, leaving CLI arguments and public
   manifest parsing as domain-specific error wrappers instead of maintaining parallel 32-byte nibble loops.
+- Iteration 323 moved CLI `--content-hex` byte decoding onto the same typed hex parser utilities, so
+  fixed hashes and arbitrary byte arguments no longer maintain separate nibble decoders.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
