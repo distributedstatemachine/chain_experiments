@@ -108,11 +108,6 @@ pub(super) fn ensure_data_dir(data_dir: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
-pub(super) fn json_escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-#[cfg(test)]
 pub(super) fn ensure_auth_token(auth_token: &str) -> Result<()> {
     if auth_token.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("auth token argument is empty"));

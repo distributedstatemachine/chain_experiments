@@ -366,6 +366,19 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     assert_eq!(stdout_value(&seed, "public_evidence_full_spec"), "false");
     assert_eq!(stdout_value(&seed, "independently_checkable"), "false");
 
+    let verify = run_tvmd(&["localnet", "verify", "--data-dir", &data_dir_text, "--json"]);
+    let verify: serde_json::Value =
+        serde_json::from_str(verify.trim()).expect("local CPU verify output must be JSON");
+    assert_eq!(verify["command"], "local_cpu_verify");
+    assert_eq!(verify["data_dir"], data_dir_text);
+    assert_eq!(verify["structured_verifier_ready"], true);
+    assert_eq!(verify["ready"], true);
+    assert_eq!(verify["height"], 2);
+    assert_eq!(verify["latest_block_height"], 1);
+    assert_eq!(verify["block_count"], 2);
+    assert_eq!(verify["finalized_block_count"], 2);
+    assert_eq!(verify["node_store_ready"], true);
+
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))

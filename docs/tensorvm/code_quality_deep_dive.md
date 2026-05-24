@@ -797,6 +797,9 @@ spaghetti around.
   bespoke `key=value` parser from local execution, manifest, and public-evidence report coverage.
 - Iteration 316 added a shared integration-test report-field parser for `tvmd_cli` and `tvmd_runtime`,
   preserving repeated-field assertions while removing two more ad hoc stdout/status `key=value` scanners.
+- Iteration 317 replaced local CPU verify JSON string formatting and manual escaping with typed
+  `serde_json` serialization in both the app command and CLI fixture path, with process-level coverage
+  parsing `tvmd localnet verify --json` as JSON.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

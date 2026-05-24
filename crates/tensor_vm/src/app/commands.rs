@@ -193,25 +193,51 @@ pub fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result
         && status.block_count > 0
         && chain.state().height() == latest_block_height.saturating_add(1)
         && finalized_block_count <= status.block_count;
+    let report = LocalCpuVerifyReport {
+        command: "local_cpu_verify",
+        data_dir,
+        structured_verifier_ready: true,
+        ready,
+        height: chain.state().height(),
+        latest_block_height,
+        block_count: status.block_count,
+        finalized_block_count,
+        node_store_ready: true,
+    };
     if json {
-        Ok(format!(
-            "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true,\"ready\":{},\"height\":{},\"latest_block_height\":{},\"block_count\":{},\"finalized_block_count\":{},\"node_store_ready\":true}}",
-            json_escape(data_dir),
-            ready,
-            chain.state().height(),
-            latest_block_height,
-            status.block_count,
-            finalized_block_count
-        ))
+        serde_json::to_string(&report)
+            .map_err(|error| format!("failed to serialize local CPU verify report: {error}"))
     } else {
-        Ok(format!(
-            "command=local_cpu_verify\ndata_dir={data_dir}\nstructured_verifier_ready=true\nready={ready}\nheight={}\nlatest_block_height={latest_block_height}\nblock_count={}\nfinalized_block_count={finalized_block_count}\nnode_store_ready=true",
-            chain.state().height(),
-            status.block_count
-        ))
+        Ok(report.to_key_value_report())
     }
 }
 
-fn json_escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
+#[derive(serde::Serialize)]
+struct LocalCpuVerifyReport<'a> {
+    command: &'static str,
+    data_dir: &'a str,
+    structured_verifier_ready: bool,
+    ready: bool,
+    height: u64,
+    latest_block_height: u64,
+    block_count: usize,
+    finalized_block_count: usize,
+    node_store_ready: bool,
+}
+
+impl LocalCpuVerifyReport<'_> {
+    fn to_key_value_report(&self) -> String {
+        format!(
+            "command={}\ndata_dir={}\nstructured_verifier_ready={}\nready={}\nheight={}\nlatest_block_height={}\nblock_count={}\nfinalized_block_count={}\nnode_store_ready={}",
+            self.command,
+            self.data_dir,
+            self.structured_verifier_ready,
+            self.ready,
+            self.height,
+            self.latest_block_height,
+            self.block_count,
+            self.finalized_block_count,
+            self.node_store_ready
+        )
+    }
 }

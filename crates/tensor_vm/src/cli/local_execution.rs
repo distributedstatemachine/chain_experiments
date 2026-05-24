@@ -4,7 +4,7 @@ use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
 };
 use super::local_service_execution::execute_node_command;
-use super::validation::{ensure_data_dir, json_escape, path_argument};
+use super::validation::{ensure_data_dir, path_argument};
 use crate::chain::ChainParams;
 use crate::error::Result;
 
@@ -35,17 +35,33 @@ fn execute_localnet_command(command: &LocalnetCommand) -> Result<String> {
         LocalnetCommand::Verify(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
+            let report = LocalCpuVerifyFixtureReport {
+                command: "local_cpu_verify",
+                data_dir: &data_dir,
+                structured_verifier_ready: true,
+            };
             if args.json {
-                Ok(format!(
-                    "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true}}",
-                    json_escape(&data_dir)
-                ))
+                Ok(serde_json::to_string(&report)
+                    .expect("local CPU verify fixture report must serialize"))
             } else {
-                Ok(format!(
-                    "command=local_cpu_verify\ndata_dir={}\nstructured_verifier_ready=true",
-                    data_dir
-                ))
+                Ok(report.to_key_value_report())
             }
         }
+    }
+}
+
+#[derive(serde::Serialize)]
+struct LocalCpuVerifyFixtureReport<'a> {
+    command: &'static str,
+    data_dir: &'a str,
+    structured_verifier_ready: bool,
+}
+
+impl LocalCpuVerifyFixtureReport<'_> {
+    fn to_key_value_report(&self) -> String {
+        format!(
+            "command={}\ndata_dir={}\nstructured_verifier_ready={}",
+            self.command, self.data_dir, self.structured_verifier_ready
+        )
     }
 }
