@@ -549,6 +549,8 @@ spaghetti around.
   `chain/tests/settlement.rs`, keeping receipt-settlement behavior out of the chain facade test module.
 - Iteration 213 moved block production, proposer/finality, block-root, and reward-block tests into
   `chain/tests/blocks.rs`, so the block-specific proof-of-work helpers now live with block tests.
+- Iteration 214 moved account, transaction, operator-root, parameter, and boundary rejection tests into
+  `chain/tests/boundaries.rs`, leaving the chain facade test module focused on model/challenge edges.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
