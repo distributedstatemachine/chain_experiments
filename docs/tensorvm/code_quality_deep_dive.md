@@ -547,6 +547,8 @@ spaghetti around.
   `chain/tests/commands.rs`, starting the chain facade's inline test split around command ownership.
 - Iteration 212 moved settlement, quorum, attestation, and conflicting-linear-root tests into
   `chain/tests/settlement.rs`, keeping receipt-settlement behavior out of the chain facade test module.
+- Iteration 213 moved block production, proposer/finality, block-root, and reward-block tests into
+  `chain/tests/blocks.rs`, so the block-specific proof-of-work helpers now live with block tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
