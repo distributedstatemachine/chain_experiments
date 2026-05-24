@@ -17,39 +17,27 @@ mod local_description_values;
 mod local_descriptions;
 mod local_execution;
 mod local_execution_values;
-mod local_parser;
 mod local_role_descriptions;
 mod local_role_execution;
-mod local_role_parser;
 mod local_service_descriptions;
 mod local_service_execution;
-mod local_service_parser;
 mod network_evidence;
 mod network_observation;
 mod node_evidence;
-mod parser;
-mod parser_values;
 mod public_evidence_descriptions;
 mod public_evidence_execution;
 mod public_evidence_network_descriptions;
 mod public_evidence_network_execution;
-mod public_evidence_network_parser;
 mod public_evidence_node_descriptions;
 mod public_evidence_node_execution;
-mod public_evidence_node_parser;
-mod public_evidence_parser;
 mod public_evidence_publication_descriptions;
 mod public_evidence_publication_execution;
-mod public_evidence_publication_parser;
 mod public_evidence_record_descriptions;
 mod public_evidence_record_execution;
-mod public_evidence_record_parser;
 mod public_evidence_run_window_descriptions;
 mod public_evidence_run_window_execution;
-mod public_evidence_run_window_parser;
 mod public_evidence_service_descriptions;
 mod public_evidence_service_execution;
-mod public_evidence_service_parser;
 mod publication_evidence;
 mod record_evidence;
 mod reports;
@@ -62,18 +50,22 @@ use arguments::{
     parse_hash_argument, parse_public_evidence_record_kind, parse_public_node_role,
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
-pub use commands::{ManifestArgs as PublicTestnetManifestArgs, PublicTestnetCommand, TvmdCommand};
+pub use commands::{
+    AuditorRecordArgs, DataDirArgs, HashList, LocalCpuCommand, LocalCpuVerifyArgs,
+    LocalTestnetCommand, MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
+    NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
+    OperatorAttestationArgs, ProposerCommand, PublicEvidenceCommand, PublicEvidenceManifestArgs,
+    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetCommand,
+    PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs, RunWindowFromFileArgs,
+    ServiceBlockArgs, ServiceCommand, ServiceContentArgs, ServiceContentFromBytesArgs,
+    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, ServicePeerAddArgs,
+    ServicePeerCommand, ServiceReadinessArgs, ServiceRuntimeArgs, ServiceServeArgs, StakeArgs,
+    TvmdCli, TvmdCommand, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+};
 pub use descriptions::describe_cli_command;
 pub use execution::execute_cli_command;
-pub use local_parser::{DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand};
-pub use local_role_parser::{
-    MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand, RoleRuntimeArgs,
-    ServiceRuntimeArgs, StakeArgs, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
-};
-pub use local_service_parser::{
-    ServiceBlockArgs, ServiceCommand, ServicePeerAddArgs, ServicePeerCommand, ServiceReadinessArgs,
-    ServiceServeArgs,
-};
 #[cfg(test)]
 use network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,
@@ -85,29 +77,6 @@ use network_observation::network_observation_multiaddr_is_public;
 use network_observation::{public_dns_host, public_dns_host_is_well_formed};
 #[cfg(test)]
 use node_evidence::node_heartbeat_observation_summary_from_file;
-pub use parser::TvmdCli;
-pub use parser_values::{
-    HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
-};
-pub use public_evidence_network_parser::{
-    NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
-};
-pub use public_evidence_node_parser::{
-    NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
-};
-pub use public_evidence_parser::{
-    ManifestArgs as PublicEvidenceManifestArgs, PublicEvidenceCommand,
-};
-pub use public_evidence_publication_parser::{AuditorRecordArgs, PublicationArgs};
-pub use public_evidence_record_parser::{
-    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
-};
-pub use public_evidence_run_window_parser::{RunWindowArgs, RunWindowFromFileArgs};
-pub use public_evidence_service_parser::{
-    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs,
-};
 #[cfg(test)]
 use record_evidence::{
     public_evidence_record_root_from_line, public_evidence_record_roots_from_file,

@@ -1,4 +1,4 @@
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 use super::publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
 use crate::error::Result;
 

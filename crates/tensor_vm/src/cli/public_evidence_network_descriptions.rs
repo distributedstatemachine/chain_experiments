@@ -1,4 +1,4 @@
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 
 pub(super) fn describe_public_evidence_network_command(
     command: &PublicEvidenceCommand,

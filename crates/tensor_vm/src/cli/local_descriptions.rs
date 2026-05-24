@@ -1,5 +1,5 @@
 use super::TvmdCommand;
-use super::local_parser::{LocalCpuCommand, LocalTestnetCommand};
+use super::commands::{LocalCpuCommand, LocalTestnetCommand};
 use super::local_role_descriptions::{
     describe_miner_command, describe_proposer_command, describe_validator_command,
 };

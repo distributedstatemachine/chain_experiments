@@ -1,4 +1,4 @@
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
 use crate::error::Result;
 

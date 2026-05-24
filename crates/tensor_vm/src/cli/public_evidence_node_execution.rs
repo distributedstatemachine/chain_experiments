@@ -1,8 +1,8 @@
+use super::commands::PublicEvidenceCommand;
 use super::node_evidence::{
     node_heartbeat_evidence_line, node_heartbeat_evidence_line_from_file,
     operator_identity_attestation_evidence_line,
 };
-use super::public_evidence_parser::PublicEvidenceCommand;
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_node_command(

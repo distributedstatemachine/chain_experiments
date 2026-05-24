@@ -1,5 +1,5 @@
 use super::arguments::public_evidence_record_kind_tag;
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 
 pub(super) fn describe_public_evidence_record_command(
     command: &PublicEvidenceCommand,

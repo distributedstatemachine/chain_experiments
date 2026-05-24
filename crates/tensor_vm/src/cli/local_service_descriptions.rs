@@ -1,5 +1,5 @@
+use super::commands::{ServiceCommand, ServicePeerCommand};
 use super::local_description_values::identity_description;
-use super::local_service_parser::{ServiceCommand, ServicePeerCommand};
 use crate::p2p::Libp2pControlPlaneConfig;
 
 pub(super) fn describe_service_command(command: &ServiceCommand) -> String {

@@ -1,5 +1,5 @@
+use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
 use super::local_execution_values::identity_report;
-use super::local_role_parser::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
 use super::validation::{
     ensure_auth_token, ensure_data_dir, ensure_libp2p_multiaddr, ensure_listen_addr,
     ensure_minimum_stake, ensure_node_endpoint, miner_device_readiness, wallet_address_hex,

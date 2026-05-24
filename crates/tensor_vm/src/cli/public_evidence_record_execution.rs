@@ -1,4 +1,4 @@
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 use super::record_evidence::{
     aggregate_public_evidence_record_roots, public_evidence_record_roots_from_file,
     record_artifact_evidence_line, record_summary_evidence_lines,

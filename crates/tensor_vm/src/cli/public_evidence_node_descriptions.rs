@@ -1,5 +1,5 @@
 use super::arguments::public_node_role_tag;
-use super::public_evidence_parser::PublicEvidenceCommand;
+use super::commands::PublicEvidenceCommand;
 use crate::hash::hex;
 
 pub(super) fn describe_public_evidence_node_command(

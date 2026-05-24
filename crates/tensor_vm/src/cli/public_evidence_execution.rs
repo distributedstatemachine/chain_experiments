@@ -1,9 +1,9 @@
 use super::TvmdCommand;
+use super::commands::PublicEvidenceCommand;
 use super::commands::PublicTestnetCommand;
 use super::descriptions::describe_cli_command;
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_node_execution::execute_public_evidence_node_command;
-use super::public_evidence_parser::PublicEvidenceCommand;
 use super::public_evidence_publication_execution::execute_public_evidence_publication_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_run_window_execution::execute_public_evidence_run_window_command;
