@@ -557,6 +557,8 @@ spaghetti around.
   `chain/tests/models.rs` and `chain/tests/challenges.rs` modules, leaving the test root as prelude wiring.
 - Iteration 217 moved attestation rejection, duplicate, availability, and assignment tests into
   `chain/tests/attestations.rs`, narrowing `chain/tests/settlement.rs` to settlement/quorum flows.
+- Iteration 218 moved reward allocation and reward-block failure tests into `chain/tests/rewards.rs`,
+  keeping `chain/tests/blocks.rs` focused on block proposal, admission, finality, and canonical roots.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
