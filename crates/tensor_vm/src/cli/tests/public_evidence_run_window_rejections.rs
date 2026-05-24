@@ -1,9 +1,9 @@
 use super::*;
 
 #[test]
-fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
+fn execute_evidence_fixture_rejects_invalid_run_window_evidence_args() {
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceRunWindow {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindow {
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -13,7 +13,7 @@ fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceRunWindow {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
             run_started_at_unix_seconds: 1_700_000_000,
@@ -23,7 +23,7 @@ fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceRunWindow {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_060,
@@ -33,7 +33,7 @@ fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceRunWindow {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -66,7 +66,7 @@ fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
         assert!(run_window_observation_summary_from_file(invalid_run_window_observations).is_err());
     }
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceRunWindowFromFile {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: std::env::temp_dir()

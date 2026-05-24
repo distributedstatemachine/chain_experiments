@@ -72,7 +72,7 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
 }
 
 #[test]
-fn execute_command_fixture_rejects_invalid_local_args() {
+fn execute_cli_rejects_invalid_local_args() {
     assert!(execute_cli(&["miner", "register", "--stake", "99"]).is_err());
     assert!(execute_cli(&["validator", "register", "--stake", "9999"]).is_err());
     assert!(

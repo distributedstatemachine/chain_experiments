@@ -931,6 +931,8 @@ spaghetti around.
 - Iteration 379 moved local CLI parser expectations onto direct `TvmdCommand` construction, removed
   the local command family from `CommandFixture`, and renamed the remaining public-evidence fixture
   variants without the redundant `Public` prefix.
+- Iteration 380 renamed the remaining public-evidence-only CLI fixture type and executor so they no
+  longer read like a parallel model for every CLI command.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -6,7 +6,7 @@ fn execute_cli(args: &[&str]) -> String {
 }
 
 #[test]
-fn execute_command_fixture_reports_local_runtime_readiness() {
+fn execute_cli_reports_local_runtime_readiness() {
     let miner_register = execute_cli(&["miner", "register", "--stake", "100"]);
     assert_report_fields(
         &miner_register,

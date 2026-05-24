@@ -1,9 +1,9 @@
 use super::*;
 
 #[test]
-fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
+fn execute_evidence_fixture_rejects_invalid_publication_evidence_args() {
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://evidence.tensorvm.example/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -13,7 +13,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "http://127.0.0.1/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -23,7 +23,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: " https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -33,7 +33,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json ".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -43,7 +43,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json?download=1".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -53,7 +53,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -63,7 +63,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: [0; 32],
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -73,7 +73,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: [0; 32],
@@ -83,7 +83,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -93,7 +93,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -103,7 +103,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidencePublication {
+        execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -113,7 +113,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: [0; 32],
@@ -123,7 +123,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://localhost/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -133,7 +133,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -143,7 +143,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -153,7 +153,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -163,7 +163,7 @@ fn execute_command_fixture_rejects_invalid_publication_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::EvidenceAuditorRecord {
+        execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),

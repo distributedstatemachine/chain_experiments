@@ -15,7 +15,7 @@ pub(super) fn parse_test_cli(
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum CommandFixture {
+pub(super) enum EvidenceFixture {
     EvidenceValidate {
         manifest: String,
     },
@@ -173,13 +173,13 @@ pub(super) enum CommandFixture {
     },
 }
 
-impl PartialEq<CommandFixture> for super::TvmdCommand {
-    fn eq(&self, other: &CommandFixture) -> bool {
+impl PartialEq<EvidenceFixture> for super::TvmdCommand {
+    fn eq(&self, other: &EvidenceFixture) -> bool {
         self == &other.clone().into_cli_command()
     }
 }
 
-pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
+pub(super) fn execute_evidence_fixture(command: &EvidenceFixture) -> crate::error::Result<String> {
     let cli_command = command.clone().into_cli_command();
     execute_test_cli_command(&cli_command)
 }
@@ -235,7 +235,7 @@ fn public_evidence_command(command: EvidenceCommand) -> super::TvmdCommand {
     super::TvmdCommand::Public(PublicCommand::Evidence(command))
 }
 
-impl CommandFixture {
+impl EvidenceFixture {
     fn into_cli_command(self) -> super::TvmdCommand {
         match self {
             Self::EvidenceValidate { manifest } => super::TvmdCommand::Public(
