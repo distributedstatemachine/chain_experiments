@@ -346,6 +346,9 @@ spaghetti around.
 - Iteration 140 moved public-evidence publication and auditor-record command execution into
   `cli/public_evidence_publication_execution.rs`, keeping publication proof dispatch out of the
   parent public-evidence command router.
+- Iteration 141 moved public-evidence run-window command execution into
+  `cli/public_evidence_run_window_execution.rs`, isolating block-observation file dispatch from the
+  parent public-evidence command router.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

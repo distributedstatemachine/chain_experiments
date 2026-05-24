@@ -7,8 +7,8 @@ use super::node_evidence::{
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_publication_execution::execute_public_evidence_publication_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
+use super::public_evidence_run_window_execution::execute_public_evidence_run_window_command;
 use super::public_evidence_service_execution::execute_public_evidence_service_command;
-use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Result<String> {
@@ -24,28 +24,11 @@ pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Resul
     if let Some(output) = execute_public_evidence_publication_command(command) {
         return output;
     }
+    if let Some(output) = execute_public_evidence_run_window_command(command) {
+        return output;
+    }
 
     match command {
-        CliCommand::PublicEvidenceRunWindow {
-            bundle_id,
-            manifest_signer,
-            run_started_at_unix_seconds,
-            run_ended_at_unix_seconds,
-            observed_blocks,
-        } => run_window_evidence_line(
-            *bundle_id,
-            *manifest_signer,
-            *run_started_at_unix_seconds,
-            *run_ended_at_unix_seconds,
-            *observed_blocks,
-        ),
-        CliCommand::PublicEvidenceRunWindowFromFile {
-            bundle_id,
-            manifest_signer,
-            block_observation_file,
-        } => {
-            run_window_evidence_line_from_file(*bundle_id, *manifest_signer, block_observation_file)
-        }
         CliCommand::PublicEvidenceNodeHeartbeat {
             role,
             address,
