@@ -6,11 +6,13 @@ use libp2p::PeerId;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-pub(super) fn parse_test_cli(args: &[&str]) -> std::result::Result<CommandFixture, clap::Error> {
+pub(super) fn parse_test_cli(
+    args: &[&str],
+) -> std::result::Result<super::TvmdCommand, clap::Error> {
     let mut argv = Vec::with_capacity(args.len() + 1);
     argv.push("tvmd");
     argv.extend_from_slice(args);
-    TvmdCli::try_parse_from(argv).map(|cli| CommandFixture::from(cli.command))
+    TvmdCli::try_parse_from(argv).map(|cli| cli.command)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -255,6 +257,12 @@ pub(super) enum CommandFixture {
     },
 }
 
+impl PartialEq<CommandFixture> for super::TvmdCommand {
+    fn eq(&self, other: &CommandFixture) -> bool {
+        self == &other.clone().into_cli_command()
+    }
+}
+
 pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
     let cli_command = command.clone().into_cli_command();
     match &cli_command {
@@ -281,10 +289,6 @@ pub(super) fn path_arg(value: String) -> PathBuf {
     value.into()
 }
 
-pub(super) fn path_to_string(value: PathBuf) -> String {
-    value.to_string_lossy().into_owned()
-}
-
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
     value.parse().expect("fixture multiaddr must parse")
 }
@@ -307,10 +311,6 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
 
 pub(super) fn hash_args(values: Vec<Hash>) -> Vec<HashArg> {
     values.into_iter().map(HashArg::new).collect()
-}
-
-pub(super) fn hash_values(values: Vec<HashArg>) -> Vec<Hash> {
-    values.into_iter().map(HashArg::into_hash).collect()
 }
 
 fn public_evidence_command(command: EvidenceCommand) -> super::TvmdCommand {
@@ -802,305 +802,6 @@ impl CommandFixture {
                     manifest: path_arg(manifest),
                 }))
             }
-        }
-    }
-}
-
-impl From<super::TvmdCommand> for CommandFixture {
-    fn from(command: super::TvmdCommand) -> Self {
-        match command {
-            super::TvmdCommand::Miner(command) => match command {
-                MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
-                MinerCommand::Check(args) => Self::MinerStart {
-                    wallet: path_to_string(args.wallet),
-                    device: args.device,
-                    node: args.node.to_string(),
-                },
-                MinerCommand::Run(args) => Self::MinerRun {
-                    wallet: path_to_string(args.wallet),
-                    device: args.device,
-                    node: args.runtime.node.to_string(),
-                    listen: args.runtime.node_runtime.listen.to_string(),
-                    p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
-                    data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args
-                        .runtime
-                        .node_runtime
-                        .identity_seed
-                        .map(HashArg::into_hash),
-                    auth_token: args.runtime.node_runtime.auth_token,
-                    max_requests: args.runtime.node_runtime.max_requests,
-                },
-                MinerCommand::Status => Self::MinerStatus,
-            },
-            super::TvmdCommand::Validator(command) => match command {
-                ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
-                ValidatorCommand::Check(args) => Self::ValidatorStart {
-                    wallet: path_to_string(args.wallet),
-                    node: args.node.to_string(),
-                },
-                ValidatorCommand::Run(args) => Self::ValidatorRun {
-                    wallet: path_to_string(args.wallet),
-                    node: args.runtime.node.to_string(),
-                    listen: args.runtime.node_runtime.listen.to_string(),
-                    p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
-                    data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args
-                        .runtime
-                        .node_runtime
-                        .identity_seed
-                        .map(HashArg::into_hash),
-                    auth_token: args.runtime.node_runtime.auth_token,
-                    max_requests: args.runtime.node_runtime.max_requests,
-                },
-                ValidatorCommand::Status => Self::ValidatorStatus,
-            },
-            super::TvmdCommand::Proposer(command) => match command {
-                ProposerCommand::Run(args) => Self::ProposerRun {
-                    wallet: path_to_string(args.wallet),
-                    node: args.runtime.node.to_string(),
-                    listen: args.runtime.node_runtime.listen.to_string(),
-                    p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
-                    data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args
-                        .runtime
-                        .node_runtime
-                        .identity_seed
-                        .map(HashArg::into_hash),
-                    auth_token: args.runtime.node_runtime.auth_token,
-                    max_requests: args.runtime.node_runtime.max_requests,
-                },
-            },
-            super::TvmdCommand::Node(command) => match command {
-                NodeCommand::Init(args) => Self::ServiceInit {
-                    data_dir: path_to_string(args.data_dir),
-                },
-                NodeCommand::Peer(NodePeerCommand::Add(args)) => Self::ServicePeerAdd {
-                    data_dir: path_to_string(args.data_dir),
-                    peer_id: args.peer_id.to_string(),
-                    address: args.address.to_string(),
-                },
-                NodeCommand::Check(args) => Self::ServiceReadiness {
-                    p2p_listen: args.p2p_listen.to_string(),
-                    data_dir: path_to_string(args.data_dir),
-                    identity_seed: args.identity_seed.map(HashArg::into_hash),
-                },
-                NodeCommand::Serve(args) => Self::ServiceServe {
-                    listen: args.runtime.listen.to_string(),
-                    p2p_listen: args.runtime.p2p_listen.to_string(),
-                    data_dir: path_to_string(args.runtime.data_dir),
-                    identity_seed: args.runtime.identity_seed.map(HashArg::into_hash),
-                    auth_token: args.runtime.auth_token,
-                    max_requests: args.runtime.max_requests,
-                },
-                NodeCommand::Status(args) => Self::ServiceStatus {
-                    data_dir: path_to_string(args.data_dir),
-                },
-                NodeCommand::Block(args) => Self::ServiceBlock {
-                    data_dir: path_to_string(args.data_dir),
-                    height: args.height,
-                },
-            },
-            super::TvmdCommand::Localnet(command) => match command {
-                LocalnetCommand::Seed(args) => Self::LocalTestnetSeed {
-                    data_dir: path_to_string(args.data_dir),
-                },
-                LocalnetCommand::Verify(args) => Self::LocalCpuVerify {
-                    data_dir: path_to_string(args.data_dir),
-                    json: args.json,
-                },
-            },
-            super::TvmdCommand::Public(PublicCommand::Preflight(args)) => {
-                Self::PublicTestnetPreflight {
-                    manifest: path_to_string(args.manifest),
-                }
-            }
-            super::TvmdCommand::Public(PublicCommand::Evidence(command)) => match command {
-                EvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
-                    manifest: path_to_string(args.manifest),
-                },
-                EvidenceCommand::Publish(args) => Self::PublicEvidencePublication {
-                    bundle_id: args.bundle_id.into_hash(),
-                    public_uri: args.public_uri,
-                    manifest_signer: args.manifest_signer.into_address(),
-                    manifest_signature_count: args.manifest_signature_count,
-                    independent_auditor_count: args.independent_auditor_count,
-                },
-                EvidenceCommand::Audit(args) => Self::PublicEvidenceAuditorRecord {
-                    bundle_id: args.bundle_id.into_hash(),
-                    public_uri: args.public_uri,
-                    auditor_id: args.auditor_id.into_address(),
-                    audit_uri: args.audit_uri,
-                    observed_at_unix_seconds: args.observed_at,
-                },
-                EvidenceCommand::Service(command) => match command {
-                    EvidenceServiceCommand::Health(args) => Self::PublicEvidenceServiceHealth {
-                        kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id.into_hash(),
-                        public_url: args.public_url,
-                        health_path: args.health_path,
-                        first_seen_block: args.first_block,
-                        last_seen_block: args.last_block,
-                        reachable_observation_count: args.reachable_count,
-                        signed_health_check_count: args.signed_health_check_count,
-                    },
-                    EvidenceServiceCommand::HealthFile(args) => {
-                        Self::PublicEvidenceServiceHealthFromFile {
-                            kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id.into_hash(),
-                            public_url: args.public_url,
-                            health_path: args.health_path,
-                            observation_file: path_to_string(args.observation_file),
-                        }
-                    }
-                    EvidenceServiceCommand::Content(args) => Self::PublicEvidenceServiceContent {
-                        kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id.into_hash(),
-                        public_url: args.public_url,
-                        content_path: args.content_path,
-                        content_root: args.content_root.into_hash(),
-                        observed_at_unix_seconds: args.observed_at,
-                        min_content_bytes: args.min_content_bytes,
-                    },
-                    EvidenceServiceCommand::ContentBytes(args) => {
-                        Self::PublicEvidenceServiceContentFromBytes {
-                            kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id.into_hash(),
-                            public_url: args.public_url,
-                            content_path: args.content_path,
-                            observed_at_unix_seconds: args.observed_at,
-                            content_bytes: args.content.into_vec(),
-                        }
-                    }
-                    EvidenceServiceCommand::ContentFile(args) => {
-                        Self::PublicEvidenceServiceContentFromFile {
-                            kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id.into_hash(),
-                            public_url: args.public_url,
-                            content_path: args.content_path,
-                            observed_at_unix_seconds: args.observed_at,
-                            content_file: path_to_string(args.content_file),
-                        }
-                    }
-                },
-                EvidenceCommand::Record(command) => match command {
-                    EvidenceRecordCommand::Summary(args) => Self::PublicEvidenceRecordSummary {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id.into_hash(),
-                        manifest_signer: args.manifest_signer.into_address(),
-                        record_root: args.record_root.into_hash(),
-                        record_count: args.record_count,
-                    },
-                    EvidenceRecordCommand::Artifact(args) => Self::PublicEvidenceRecordArtifact {
-                        kind: args.kind.into(),
-                        bundle_id: args.bundle_id.into_hash(),
-                        manifest_signer: args.manifest_signer.into_address(),
-                        artifact_uri: args.artifact_uri,
-                        record_root: args.record_root.into_hash(),
-                        record_count: args.record_count,
-                    },
-                    EvidenceRecordCommand::ArtifactRoots(args) => {
-                        Self::PublicEvidenceRecordArtifactFromRoots {
-                            kind: args.kind.into(),
-                            bundle_id: args.bundle_id.into_hash(),
-                            manifest_signer: args.manifest_signer.into_address(),
-                            artifact_uri: args.artifact_uri,
-                            record_roots: hash_values(args.record_roots),
-                        }
-                    }
-                    EvidenceRecordCommand::ArtifactFile(args) => {
-                        Self::PublicEvidenceRecordArtifactFromFile {
-                            kind: args.kind.into(),
-                            bundle_id: args.bundle_id.into_hash(),
-                            manifest_signer: args.manifest_signer.into_address(),
-                            artifact_uri: args.artifact_uri,
-                            record_file: path_to_string(args.record_file),
-                        }
-                    }
-                    EvidenceRecordCommand::SummaryRoots(args) => {
-                        Self::PublicEvidenceRecordSummaryFromRoots {
-                            kind: args.kind.into(),
-                            bundle_id: args.bundle_id.into_hash(),
-                            manifest_signer: args.manifest_signer.into_address(),
-                            record_roots: hash_values(args.record_roots),
-                        }
-                    }
-                    EvidenceRecordCommand::SummaryFile(args) => {
-                        Self::PublicEvidenceRecordSummaryFromFile {
-                            kind: args.kind.into(),
-                            bundle_id: args.bundle_id.into_hash(),
-                            manifest_signer: args.manifest_signer.into_address(),
-                            record_file: path_to_string(args.record_file),
-                        }
-                    }
-                },
-                EvidenceCommand::Network(command) => match command {
-                    EvidenceNetworkCommand::Observation(args) => {
-                        Self::PublicEvidenceNetworkObservation {
-                            operator_id: args.operator_id.into_hash(),
-                            peer_id: args.peer_id.to_string(),
-                            listen_address: args.listen_address.to_string(),
-                            observed_at_unix_seconds: args.observed_at,
-                            gossip_topic_count: args.gossip_topics,
-                            request_response_protocol_count: args.request_response_protocols,
-                            bootstrap_peer_count: args.bootstrap_peers,
-                            max_transmit_bytes: args.max_transmit_bytes,
-                            request_timeout_seconds: args.request_timeout_seconds,
-                            max_concurrent_streams: args.max_concurrent_streams,
-                            idle_connection_timeout_seconds: args.idle_timeout_seconds,
-                        }
-                    }
-                    EvidenceNetworkCommand::FromServiceLog(args) => {
-                        Self::PublicEvidenceNetworkObservationFromServiceLog {
-                            operator_id: args.operator_id.into_hash(),
-                            listen_address: args.listen_address.to_string(),
-                            observed_at_unix_seconds: args.observed_at,
-                            service_log: path_to_string(args.service_log),
-                        }
-                    }
-                },
-                EvidenceCommand::Run(command) => match command {
-                    EvidenceRunCommand::Window(args) => Self::PublicEvidenceRunWindow {
-                        bundle_id: args.bundle_id.into_hash(),
-                        manifest_signer: args.manifest_signer.into_address(),
-                        run_started_at_unix_seconds: args.started_at,
-                        run_ended_at_unix_seconds: args.ended_at,
-                        observed_blocks: args.observed_blocks,
-                    },
-                    EvidenceRunCommand::WindowFile(args) => Self::PublicEvidenceRunWindowFromFile {
-                        bundle_id: args.bundle_id.into_hash(),
-                        manifest_signer: args.manifest_signer.into_address(),
-                        block_observation_file: path_to_string(args.block_observation_file),
-                    },
-                },
-                EvidenceCommand::Node(command) => match command {
-                    EvidenceNodeCommand::Heartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
-                        role: args.role.into(),
-                        address: args.address.into_address(),
-                        operator_id: args.operator_id.into_hash(),
-                        first_seen_block: args.first_block,
-                        last_seen_block: args.last_block,
-                        signed_heartbeat_count: args.heartbeat_count,
-                    },
-                    EvidenceNodeCommand::HeartbeatFile(args) => {
-                        Self::PublicEvidenceNodeHeartbeatFromFile {
-                            role: args.role.into(),
-                            address: args.address.into_address(),
-                            operator_id: args.operator_id.into_hash(),
-                            heartbeat_file: path_to_string(args.heartbeat_file),
-                        }
-                    }
-                    EvidenceNodeCommand::OperatorAttestation(args) => {
-                        Self::PublicEvidenceOperatorAttestation {
-                            role: args.role.into(),
-                            address: args.address.into_address(),
-                            operator_id: args.operator_id.into_hash(),
-                            identity_uri: args.identity_uri,
-                            observed_at_unix_seconds: args.observed_at,
-                        }
-                    }
-                },
-            },
         }
     }
 }
