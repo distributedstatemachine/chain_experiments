@@ -529,6 +529,8 @@ spaghetti around.
   formatting centralized without leaving helper plumbing in the facade.
 - Iteration 203 moved RPC dispatch and dynamic route matching into `rpc/dispatch.rs`, leaving the
   facade centered on node state construction and public re-exports.
+- Iteration 204 moved `RpcNode` state, constructors, tensor registry access, and synthetic-round
+  helpers into `rpc/node.rs`, reducing the facade to module wiring plus tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
