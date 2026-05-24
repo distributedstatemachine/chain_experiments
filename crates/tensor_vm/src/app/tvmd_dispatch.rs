@@ -53,18 +53,18 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
         TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
         TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
             &path_arg(&args.wallet),
-            &args.device,
+            args.device.as_str(),
             &args.node.to_string(),
         ),
         TvmdCommand::Miner(MinerCommand::Run(args)) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
             validate_miner_runtime(
                 &config.wallet,
-                &args.device,
+                args.device.as_str(),
                 &config.data_dir,
                 &config.auth_token,
             )?;
-            run_miner_service(config.as_role_service_config(Some(&args.device)))
+            run_miner_service(config.as_role_service_config(Some(args.device.as_str())))
         }
         TvmdCommand::Miner(MinerCommand::Status) => Ok(miner_status()),
         TvmdCommand::Validator(ValidatorCommand::Register(args)) => {

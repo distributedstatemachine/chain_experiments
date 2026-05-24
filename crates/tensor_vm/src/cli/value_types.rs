@@ -1,6 +1,7 @@
 use crate::types::{
     Address, Hash, HashHexParseError, HexBytesParseError, parse_hash_hex, parse_hex_bytes,
 };
+use std::fmt;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -78,6 +79,48 @@ impl FromStr for HexBytesArg {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MinerDeviceArg(String);
+
+impl MinerDeviceArg {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Default for MinerDeviceArg {
+    fn default() -> Self {
+        Self("cpu".to_owned())
+    }
+}
+
+impl fmt::Display for MinerDeviceArg {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.0)
+    }
+}
+
+impl FromStr for MinerDeviceArg {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        if value != value.trim() || value.is_empty() {
+            return Err(miner_device_parse_error());
+        }
+        if value == "cpu" {
+            return Ok(Self(value.to_owned()));
+        }
+
+        let Some(cuda_index) = value.strip_prefix("cuda:") else {
+            return Err(miner_device_parse_error());
+        };
+        if cuda_index.is_empty() || cuda_index.parse::<u32>().is_err() {
+            return Err(miner_device_parse_error());
+        }
+        Ok(Self(value.to_owned()))
+    }
+}
+
 fn hash_parse_error(kind: &str, error: HashHexParseError) -> String {
     match error {
         HashHexParseError::InvalidLength => {
@@ -95,4 +138,8 @@ fn hex_bytes_parse_error(error: HexBytesParseError) -> String {
         }
         HexBytesParseError::InvalidHex => "hex bytes contain non-hex characters".to_owned(),
     }
+}
+
+fn miner_device_parse_error() -> String {
+    "miner device must be cpu or cuda:N".to_owned()
 }

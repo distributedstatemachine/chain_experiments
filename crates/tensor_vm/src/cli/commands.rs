@@ -16,7 +16,7 @@ pub use super::public_evidence_commands::{
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs,
 };
-pub use super::value_types::{AddressArg, HashArg, HexBytesArg};
+pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Parser)]

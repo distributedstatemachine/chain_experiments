@@ -171,7 +171,7 @@ fn miner_device_readiness(device: &str) -> std::result::Result<MinerDeviceReadin
     if device.is_empty() {
         return Err("device argument is empty".to_owned());
     }
-    if matches!(device, "cpu" | "cpu-reference") {
+    if device == "cpu" {
         return Ok(MinerDeviceReadiness::CpuReference);
     }
 
@@ -263,6 +263,14 @@ mod tests {
         assert_eq!(
             validator_status.value("reference_verifier_ready"),
             Some("true")
+        );
+    }
+
+    #[test]
+    fn operator_checks_reject_retired_miner_device_spelling() {
+        assert_eq!(
+            check_miner_start("miner.key", "cpu-reference", "/ip4/127.0.0.1/tcp/4001").unwrap_err(),
+            "unsupported miner device"
         );
     }
 }

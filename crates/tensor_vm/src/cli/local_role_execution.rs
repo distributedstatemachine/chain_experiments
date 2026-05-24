@@ -17,14 +17,14 @@ pub(super) fn execute_miner_command(command: &MinerCommand) -> Result<String> {
         MinerCommand::Register(args) => operator_check_result(check_miner_registration(args.stake)),
         MinerCommand::Check(args) => operator_check_result(check_miner_start(
             &path_argument(&args.wallet),
-            &args.device,
+            args.device.as_str(),
             &args.node.to_string(),
         )),
         MinerCommand::Run(args) => {
             let runtime = &args.runtime;
             let node_runtime = &runtime.node_runtime;
             let address = wallet_address_hex(&args.wallet)?;
-            let device_readiness = miner_device_readiness(&args.device)?;
+            let device_readiness = miner_device_readiness(args.device.as_str())?;
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
             let identity =

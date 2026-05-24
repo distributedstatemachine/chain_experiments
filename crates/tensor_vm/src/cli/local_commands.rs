@@ -1,4 +1,4 @@
-use super::value_types::HashArg;
+use super::value_types::{HashArg, MinerDeviceArg};
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
 use std::net::SocketAddr;
@@ -98,8 +98,13 @@ pub struct StakeArgs {
 pub struct MinerCheckArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub wallet: PathBuf,
-    #[arg(long, default_value = "cpu", value_name = "DEVICE")]
-    pub device: String,
+    #[arg(
+        long,
+        default_value_t = MinerDeviceArg::default(),
+        value_name = "DEVICE",
+        help = "Miner backend: cpu or cuda:N"
+    )]
+    pub device: MinerDeviceArg,
     #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
     pub node: Multiaddr,
 }
@@ -108,8 +113,13 @@ pub struct MinerCheckArgs {
 pub struct MinerRunArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub wallet: PathBuf,
-    #[arg(long, default_value = "cpu", value_name = "DEVICE")]
-    pub device: String,
+    #[arg(
+        long,
+        default_value_t = MinerDeviceArg::default(),
+        value_name = "DEVICE",
+        help = "Miner backend: cpu or cuda:N"
+    )]
+    pub device: MinerDeviceArg,
     #[command(flatten)]
     pub runtime: RoleRuntimeArgs,
 }

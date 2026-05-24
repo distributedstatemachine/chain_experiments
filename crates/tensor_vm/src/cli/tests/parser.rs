@@ -1,11 +1,11 @@
 use super::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
     EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
-    HashArg, HexBytesArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
-    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs,
-    NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
-    NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
-    PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
+    HashArg, HexBytesArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerDeviceArg,
+    MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs,
+    NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs,
+    NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand,
+    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
     PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs,
@@ -30,6 +30,10 @@ fn multiaddr(value: &str) -> libp2p::Multiaddr {
 
 fn socket_addr(value: &str) -> SocketAddr {
     value.parse().expect("test socket address must parse")
+}
+
+fn miner_device(value: &str) -> MinerDeviceArg {
+    value.parse().expect("test miner device must parse")
 }
 
 fn data_dir_args(data_dir: &str) -> DataDirArgs {
@@ -106,7 +110,7 @@ fn parses_documented_miner_commands() {
         .unwrap(),
         TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
             wallet: path("miner.key"),
-            device: "cpu".to_owned(),
+            device: miner_device("cpu"),
             node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
         }))
     );
@@ -138,7 +142,7 @@ fn parses_documented_miner_commands() {
         .unwrap(),
         TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
             wallet: path("miner.key"),
-            device: "cpu".to_owned(),
+            device: miner_device("cpu"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
@@ -177,7 +181,7 @@ fn parses_documented_miner_commands() {
         .unwrap(),
         TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
             wallet: path("miner.key"),
-            device: "cpu".to_owned(),
+            device: miner_device("cpu"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
@@ -1185,7 +1189,7 @@ fn clap_cli_defaults_runtime_arguments() {
         parse_test_cli(&["miner", "check", "--wallet", "miner.key"]).unwrap(),
         TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
             wallet: path("miner.key"),
-            device: "cpu".to_owned(),
+            device: miner_device("cpu"),
             node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
         }))
     );
@@ -1201,7 +1205,7 @@ fn clap_cli_defaults_runtime_arguments() {
         .unwrap(),
         TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
             wallet: path("miner.key"),
-            device: "cpu".to_owned(),
+            device: miner_device("cpu"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",

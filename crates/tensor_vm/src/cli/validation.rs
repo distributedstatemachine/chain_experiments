@@ -59,7 +59,7 @@ pub(super) fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadines
     if device.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("device argument is empty"));
     }
-    if matches!(device, "cpu" | "cpu-reference") {
+    if device == "cpu" {
         return Ok(MinerDeviceReadiness::CpuReference);
     }
 

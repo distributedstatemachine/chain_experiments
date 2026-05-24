@@ -88,58 +88,22 @@ fn execute_cli_rejects_invalid_local_args() {
         ])
         .is_err()
     );
-    assert!(
-        execute_cli(&[
-            "miner",
-            "check",
-            "--wallet",
-            "miner.key",
-            "--device",
-            "gpu0",
-            "--node",
-            "/ip4/127.0.0.1/tcp/4001",
-        ])
-        .is_err()
-    );
-    assert!(
-        execute_cli(&[
-            "miner",
-            "check",
-            "--wallet",
-            "miner.key",
-            "--device",
-            "cuda:abc",
-            "--node",
-            "/ip4/127.0.0.1/tcp/4001",
-        ])
-        .is_err()
-    );
-    assert!(
-        execute_cli(&[
-            "miner",
-            "check",
-            "--wallet",
-            "miner.key",
-            "--device",
-            "cuda:",
-            "--node",
-            "/ip4/127.0.0.1/tcp/4001",
-        ])
-        .is_err()
-    );
-    assert!(
-        execute_cli(&[
-            "miner",
-            "check",
-            "--wallet",
-            "miner.key",
-            "--device",
-            " ",
-            "--node",
-            "/ip4/127.0.0.1/tcp/4001",
-        ])
-        .is_err()
-    );
+    for invalid_device in ["cpu-reference", "gpu0", "cuda:abc", "cuda:", " "] {
+        assert!(
+            parse_test_cli(&[
+                "miner",
+                "check",
+                "--wallet",
+                "miner.key",
+                "--device",
+                invalid_device,
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+            ])
+            .is_err(),
+            "invalid miner device {invalid_device:?} must be rejected by Clap"
+        );
+    }
     assert!(
         parse_test_cli(&[
             "miner",
