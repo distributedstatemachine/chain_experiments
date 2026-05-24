@@ -743,6 +743,8 @@ spaghetti around.
   replaced operator role/runtime readiness fragments with typed status-field checks.
 - Iteration 294 replaced the final local CPU check script substring inventory with exact block-status,
   convergence, network-evidence, and ready-report shell-line assertions.
+- Iteration 295 added exact trimmed-line assertions for public deployment env, systemd, and nginx
+  templates, replacing the template substring inventory in the deployment-docs test.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

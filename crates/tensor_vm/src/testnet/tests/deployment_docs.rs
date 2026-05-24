@@ -1,50 +1,65 @@
+use std::collections::BTreeSet;
+
+fn trimmed_lines(document: &str) -> BTreeSet<&str> {
+    document.lines().map(str::trim).collect()
+}
+
+fn assert_trimmed_lines(document: &str, expected_lines: &[&str], label: &str) {
+    let lines = trimmed_lines(document);
+    for expected in expected_lines {
+        assert!(
+            lines.contains(expected),
+            "{label} should contain exact line {expected}"
+        );
+    }
+}
+
 #[test]
 fn public_deployment_templates_require_libp2p_and_https_surfaces() {
     let env = include_str!("../../../../../deploy/tensorvm/env/public-testnet.env.example");
-    for required in [
-        "TVMD_LISTEN=127.0.0.1:8545",
-        "TVMD_P2P_LISTEN=/ip4/0.0.0.0/tcp/4001",
-        "TVMD_DATA_DIR=/var/lib/tensorvm",
-        "TVMD_AUTH_TOKEN=replace-with-high-entropy-token",
-        "tvmd service peer add --data-dir \"$TVMD_DATA_DIR\"",
-    ] {
-        assert!(
-            env.contains(required),
-            "deployment env template should contain {required}"
-        );
-    }
+    assert_trimmed_lines(
+        env,
+        &[
+            "TVMD_LISTEN=127.0.0.1:8545",
+            "TVMD_P2P_LISTEN=/ip4/0.0.0.0/tcp/4001",
+            "TVMD_DATA_DIR=/var/lib/tensorvm",
+            "TVMD_AUTH_TOKEN=replace-with-high-entropy-token",
+            "TVMD_MAX_REQUESTS=0",
+            r#"# tvmd service peer add --data-dir "$TVMD_DATA_DIR" --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001"#,
+        ],
+        "deployment env template",
+    );
 
     let systemd = include_str!("../../../../../deploy/tensorvm/systemd/tensorvm.service");
-    for required in [
-        "ExecStartPre=/usr/local/bin/tvmd service init --data-dir ${TVMD_DATA_DIR}",
-        "ExecStart=/usr/local/bin/tvmd service serve",
-        "--p2p-listen ${TVMD_P2P_LISTEN}",
-        "--data-dir ${TVMD_DATA_DIR}",
-        "--auth-token ${TVMD_AUTH_TOKEN}",
-        "ReadWritePaths=/var/lib/tensorvm",
-        "NoNewPrivileges=true",
-        "ProtectSystem=strict",
-    ] {
-        assert!(
-            systemd.contains(required),
-            "systemd service template should contain {required}"
-        );
-    }
+    assert_trimmed_lines(
+        systemd,
+        &[
+            "EnvironmentFile=/etc/tensorvm/public-testnet.env",
+            "ExecStartPre=/usr/local/bin/tvmd service init --data-dir ${TVMD_DATA_DIR}",
+            "ExecStart=/usr/local/bin/tvmd service serve --listen ${TVMD_LISTEN} --p2p-listen ${TVMD_P2P_LISTEN} --data-dir ${TVMD_DATA_DIR} --auth-token ${TVMD_AUTH_TOKEN} --max-requests ${TVMD_MAX_REQUESTS}",
+            "ReadWritePaths=/var/lib/tensorvm",
+            "NoNewPrivileges=true",
+            "ProtectSystem=strict",
+        ],
+        "systemd service template",
+    );
 
     let nginx = include_str!("../../../../../deploy/tensorvm/nginx/tensorvm.conf");
-    for required in [
-        "listen 443 ssl http2;",
-        "server_name rpc.example.test explorer.example.test faucet.example.test telemetry.example.test;",
-        "proxy_set_header X-Forwarded-Proto https;",
-        "client_max_body_size 2m;",
-        "proxy_pass http://tensorvm_service;",
-        "return 301 https://$host$request_uri;",
-    ] {
-        assert!(
-            nginx.contains(required),
-            "nginx template should contain {required}"
-        );
-    }
+    assert_trimmed_lines(
+        nginx,
+        &[
+            "upstream tensorvm_service {",
+            "server 127.0.0.1:8545;",
+            "listen 443 ssl http2;",
+            "server_name rpc.example.test explorer.example.test faucet.example.test telemetry.example.test;",
+            "proxy_set_header X-Forwarded-Proto https;",
+            "client_max_body_size 2m;",
+            "proxy_pass http://tensorvm_service;",
+            "listen 80;",
+            "return 301 https://$host$request_uri;",
+        ],
+        "nginx template",
+    );
 }
 
 #[test]
