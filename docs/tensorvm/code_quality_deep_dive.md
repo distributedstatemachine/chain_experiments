@@ -873,6 +873,8 @@ spaghetti around.
   `local-testnet-seed.out` to one captured report per service with exact `status_value` field assertions.
 - Iteration 349 changed `local-cpu-ready` readiness checks from repeated file greps to one captured
   readiness report per service, validating role, libp2p, identity, profile, and device fields exactly.
+- Iteration 350 removed the local CPU checker's remaining `grep` dependency by replacing exact-line and
+  explorer-page probes with shell string helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -27,7 +27,14 @@ require_command() {
 }
 
 contains_line() {
-  printf '%s\n' "$1" | grep -qx "$2"
+  case "
+$1
+" in
+    *"
+$2
+"*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 text_contains() {
@@ -77,7 +84,6 @@ is_u64() {
 }
 
 require_command docker
-require_command grep
 require_command sed
 require_command sort
 require_command wc
@@ -369,11 +375,11 @@ EXPLORER_WS_URL=$(json_string websocket_url "$EXPLORER_HEALTH") \
 text_contains "$EXPLORER_WS_URL" "/explorer/ws?token=" \
   || fail "standalone explorer does not publish the TensorVM websocket URL"
 EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")
-printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' \
+text_contains "$EXPLORER_PAGE" "TensorVM Explorer" \
   || fail "standalone explorer page is not reachable"
-printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' \
+text_contains "$EXPLORER_PAGE" 'data-ui="ratzilla-tui"' \
   || fail "standalone explorer page is not the default Ratzilla-style TUI"
-printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' \
+text_contains "$EXPLORER_PAGE" "new WebSocket" \
   || fail "standalone explorer page does not poll TensorVM over websocket"
 
 LIVE_CHAIN_HEAD=""

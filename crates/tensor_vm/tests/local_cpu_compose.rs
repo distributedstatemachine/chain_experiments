@@ -447,7 +447,6 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &[
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
-            r#"require_command grep"#,
             r#"require_command sed"#,
             r#"require_command sort"#,
             r#"require_command wc"#,
@@ -566,6 +565,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' || fail "live tensor row was not fetchable""#,
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' || fail "live tensor chunk was not fetchable""#,
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' || fail "live tensor opening was not fetchable""#,
+            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' || fail "standalone explorer page is not reachable""#,
+            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,
+            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' || fail "standalone explorer page does not poll TensorVM over websocket""#,
+            r#"require_command grep"#,
         ],
     );
 
@@ -578,9 +581,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"EXPLORER_WS_URL=$(json_string websocket_url "$EXPLORER_HEALTH") || fail "standalone explorer does not publish the TensorVM websocket URL""#,
             r#"text_contains "$EXPLORER_WS_URL" "/explorer/ws?token=" || fail "standalone explorer does not publish the TensorVM websocket URL""#,
             r#"EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")"#,
-            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' || fail "standalone explorer page is not reachable""#,
-            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,
-            r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' || fail "standalone explorer page does not poll TensorVM over websocket""#,
+            r#"text_contains "$EXPLORER_PAGE" "TensorVM Explorer" || fail "standalone explorer page is not reachable""#,
+            r#"text_contains "$EXPLORER_PAGE" 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,
+            r#"text_contains "$EXPLORER_PAGE" "new WebSocket" || fail "standalone explorer page does not poll TensorVM over websocket""#,
             r#"LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")"#,
             r#"[ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2""#,
             r#"[ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks""#,
