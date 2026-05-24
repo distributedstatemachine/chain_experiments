@@ -1008,6 +1008,8 @@ spaghetti around.
   test parameter mutations with explicit crate-test-only `Chain` helper methods.
 - Iteration 416 moved the zero-work liveness study off direct `Chain.params` and `Chain.blocks`
   reads, clearing non-chain-module direct access to those fields.
+- Iteration 417 tightened the rewritten clap CLI surface with root examples, argument help text,
+  URL/file completion hints, hidden auth-token env values, and a command-model debug assertion.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

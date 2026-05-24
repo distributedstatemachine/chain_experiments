@@ -19,11 +19,18 @@ pub use super::public_evidence_commands::{
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};
 
+const TVMD_AFTER_HELP: &str = "Examples:
+  tvmd node init --data-dir .tensorvm
+  tvmd node serve --auth-token local-dev-token
+  tvmd miner run --wallet miner.key --auth-token local-dev-token
+  tvmd public preflight docs/tensorvm/public-testnet.preflight";
+
 #[derive(Clone, Debug, Eq, PartialEq, Parser)]
 #[command(
     name = "tvmd",
     version,
     about = "Run TensorVM nodes and generate public-testnet evidence.",
+    after_help = TVMD_AFTER_HELP,
     propagate_version = true,
     arg_required_else_help = true
 )]

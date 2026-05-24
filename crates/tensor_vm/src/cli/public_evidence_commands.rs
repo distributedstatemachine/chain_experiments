@@ -103,311 +103,519 @@ pub enum EvidenceNodeCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicTestnetManifestArgs {
-    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet preflight manifest to validate.")]
     pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceManifestArgs {
-    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet evidence manifest to validate.")]
     pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Stable 32-byte service endpoint identifier."
+    )]
     pub endpoint_id: HashArg,
-    #[arg(long, value_name = "URL")]
+    #[arg(long, value_name = "URL", value_hint = ValueHint::Url, help = "Public URL for the service endpoint.")]
     pub public_url: String,
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Health-check path observed on the public service."
+    )]
     pub health_path: String,
-    #[arg(long, value_name = "HEIGHT")]
+    #[arg(
+        long,
+        value_name = "HEIGHT",
+        help = "First block height covered by the observation window."
+    )]
     pub first_block: u64,
-    #[arg(long, value_name = "HEIGHT")]
+    #[arg(
+        long,
+        value_name = "HEIGHT",
+        help = "Last block height covered by the observation window."
+    )]
     pub last_block: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Successful public reachability observations."
+    )]
     pub reachable_count: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Signed health checks included in the evidence."
+    )]
     pub signed_health_check_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthFromFileArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Stable 32-byte service endpoint identifier."
+    )]
     pub endpoint_id: HashArg,
-    #[arg(long, value_name = "URL")]
+    #[arg(long, value_name = "URL", value_hint = ValueHint::Url, help = "Public URL for the service endpoint.")]
     pub public_url: String,
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Health-check path observed on the public service."
+    )]
     pub health_path: String,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Captured health-observation record file.")]
     pub observation_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Stable 32-byte service endpoint identifier."
+    )]
     pub endpoint_id: HashArg,
-    #[arg(long, value_name = "URL")]
+    #[arg(long, value_name = "URL", value_hint = ValueHint::Url, help = "Public URL for the service endpoint.")]
     pub public_url: String,
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Content path observed on the public service."
+    )]
     pub content_path: String,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Merkle root or content hash committed by the observation."
+    )]
     pub content_root: HashArg,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
     pub observed_at: u64,
-    #[arg(long, value_name = "BYTES")]
+    #[arg(
+        long,
+        value_name = "BYTES",
+        help = "Minimum byte length accepted for the observed content."
+    )]
     pub min_content_bytes: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromBytesArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Stable 32-byte service endpoint identifier."
+    )]
     pub endpoint_id: HashArg,
-    #[arg(long, value_name = "URL")]
+    #[arg(long, value_name = "URL", value_hint = ValueHint::Url, help = "Public URL for the service endpoint.")]
     pub public_url: String,
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Content path observed on the public service."
+    )]
     pub content_path: String,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
     pub observed_at: u64,
-    #[arg(long = "content-hex", value_name = "HEX")]
+    #[arg(
+        long = "content-hex",
+        value_name = "HEX",
+        help = "Observed response bytes encoded as hex."
+    )]
     pub content: HexBytesArg,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromFileArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Stable 32-byte service endpoint identifier."
+    )]
     pub endpoint_id: HashArg,
-    #[arg(long, value_name = "URL")]
+    #[arg(long, value_name = "URL", value_hint = ValueHint::Url, help = "Public URL for the service endpoint.")]
     pub public_url: String,
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Content path observed on the public service."
+    )]
     pub content_path: String,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
     pub observed_at: u64,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "File containing observed response bytes.")]
     pub content_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being summarized.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Root hash of the supporting-record set."
+    )]
     pub record_root: HashArg,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Number of records covered by the root."
+    )]
     pub record_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being published.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI for the supporting-record artifact.")]
     pub artifact_uri: String,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Root hash of the supporting-record set."
+    )]
     pub record_root: HashArg,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Number of records covered by the artifact."
+    )]
     pub record_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromRootsArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being published.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI for the supporting-record artifact.")]
     pub artifact_uri: String,
-    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1..)]
+    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1.., help = "Comma-delimited record roots to aggregate.")]
     pub record_roots: Vec<HashArg>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromFileArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being published.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI for the supporting-record artifact.")]
     pub artifact_uri: String,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "File containing supporting records to summarize.")]
     pub record_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromRootsArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being summarized.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1..)]
+    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1.., help = "Comma-delimited record roots to aggregate.")]
     pub record_roots: Vec<HashArg>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromFileArgs {
-    #[arg(long)]
+    #[arg(long, help = "Supporting-record class being summarized.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "File containing supporting records to summarize.")]
     pub record_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Operator identifier for the observed node."
+    )]
     pub operator_id: HashArg,
-    #[arg(long, value_name = "PEER_ID")]
+    #[arg(long, value_name = "PEER_ID", help = "Observed libp2p peer ID.")]
     pub peer_id: PeerId,
-    #[arg(long, value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        value_name = "MULTIADDR",
+        help = "Public libp2p listen multiaddress."
+    )]
     pub listen_address: Multiaddr,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
     pub observed_at: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(long, value_name = "N", help = "Number of active gossipsub topics.")]
     pub gossip_topics: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(long, value_name = "N", help = "Number of request-response protocols.")]
     pub request_response_protocols: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Bootstrap peers configured by the node."
+    )]
     pub bootstrap_peers: u64,
-    #[arg(long, value_name = "BYTES")]
+    #[arg(
+        long,
+        value_name = "BYTES",
+        help = "Maximum request-response transmit size."
+    )]
     pub max_transmit_bytes: u64,
-    #[arg(long, value_name = "SECONDS")]
+    #[arg(long, value_name = "SECONDS", help = "Request-response timeout.")]
     pub request_timeout_seconds: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(long, value_name = "N", help = "Maximum concurrent libp2p streams.")]
     pub max_concurrent_streams: u64,
-    #[arg(long, value_name = "SECONDS")]
+    #[arg(long, value_name = "SECONDS", help = "Idle connection timeout.")]
     pub idle_timeout_seconds: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationFromServiceLogArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Operator identifier for the observed node."
+    )]
     pub operator_id: HashArg,
-    #[arg(long, value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        value_name = "MULTIADDR",
+        help = "Public libp2p listen multiaddress."
+    )]
     pub listen_address: Multiaddr,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
     pub observed_at: u64,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Captured node service log.")]
     pub service_log: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicationArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI where the evidence bundle is published.")]
     pub public_uri: String,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Number of manifest signatures included."
+    )]
     pub manifest_signature_count: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Number of independent auditor records included."
+    )]
     pub independent_auditor_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct AuditorRecordArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI where the evidence bundle is published.")]
     pub public_uri: String,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address or identifier of the independent auditor."
+    )]
     pub auditor_id: AddressArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public URI for the auditor's review artifact.")]
     pub audit_uri: String,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the audit observation."
+    )]
     pub observed_at: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp at run-window start."
+    )]
     pub started_at: u64,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp at run-window end."
+    )]
     pub ended_at: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Blocks observed during the run window."
+    )]
     pub observed_blocks: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowFromFileArgs {
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Address signing the evidence manifest."
+    )]
     pub manifest_signer: AddressArg,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "File containing observed block records.")]
     pub block_observation_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public node role being observed.")]
     pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Node account address.")]
     pub address: AddressArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
     pub operator_id: HashArg,
-    #[arg(long, value_name = "HEIGHT")]
+    #[arg(
+        long,
+        value_name = "HEIGHT",
+        help = "First block height covered by the heartbeat window."
+    )]
     pub first_block: u64,
-    #[arg(long, value_name = "HEIGHT")]
+    #[arg(
+        long,
+        value_name = "HEIGHT",
+        help = "Last block height covered by the heartbeat window."
+    )]
     pub last_block: u64,
-    #[arg(long, value_name = "N")]
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Heartbeat records observed in the window."
+    )]
     pub heartbeat_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatFromFileArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public node role being observed.")]
     pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Node account address.")]
     pub address: AddressArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
     pub operator_id: HashArg,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "File containing heartbeat records.")]
     pub heartbeat_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct OperatorAttestationArgs {
-    #[arg(long)]
+    #[arg(long, help = "Public node role being attested.")]
     pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Node account address.")]
     pub address: AddressArg,
-    #[arg(long, value_name = "HEX")]
+    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
     pub operator_id: HashArg,
-    #[arg(long, value_name = "URI")]
+    #[arg(long, value_name = "URI", value_hint = ValueHint::Url, help = "Public operator identity URI.")]
     pub identity_uri: String,
-    #[arg(long, value_name = "UNIX_SECONDS")]
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the attestation observation."
+    )]
     pub observed_at: u64,
 }
 

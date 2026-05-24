@@ -90,13 +90,17 @@ pub enum LocalnetCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct StakeArgs {
-    #[arg(long, value_name = "TOKENS")]
+    #[arg(
+        long,
+        value_name = "TOKENS",
+        help = "Stake amount to validate for registration."
+    )]
     pub stake: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerCheckArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the miner wallet key.")]
     pub wallet: PathBuf,
     #[arg(
         long,
@@ -105,13 +109,18 @@ pub struct MinerCheckArgs {
         help = "Miner backend: cpu or cuda:N"
     )]
     pub device: MinerDeviceArg,
-    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p address of the TensorVM node to use."
+    )]
     pub node: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerRunArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the miner wallet key.")]
     pub wallet: PathBuf,
     #[arg(
         long,
@@ -126,15 +135,20 @@ pub struct MinerRunArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorCheckArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the validator wallet key.")]
     pub wallet: PathBuf,
-    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p address of the TensorVM node to use."
+    )]
     pub node: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorRunArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the wallet key for the role.")]
     pub wallet: PathBuf,
     #[command(flatten)]
     pub runtime: RoleRuntimeArgs,
@@ -142,7 +156,12 @@ pub struct ValidatorRunArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RoleRuntimeArgs {
-    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p address of the TensorVM node to use."
+    )]
     pub node: Multiaddr,
     #[command(flatten)]
     pub node_runtime: NodeRuntimeArgs,
@@ -150,51 +169,132 @@ pub struct RoleRuntimeArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeRuntimeArgs {
-    #[arg(long, env = "TVMD_LISTEN", default_value_t = default_listen_addr(), value_name = "ADDR")]
+    #[arg(
+        long,
+        env = "TVMD_LISTEN",
+        default_value_t = default_listen_addr(),
+        value_name = "ADDR",
+        help = "RPC and service listen address."
+    )]
     pub listen: SocketAddr,
-    #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        env = "TVMD_P2P_LISTEN",
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p listen multiaddress."
+    )]
     pub p2p_listen: Multiaddr,
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Deterministic 32-byte seed for the libp2p identity."
+    )]
     pub identity_seed: Option<HashArg>,
-    #[arg(long, env = "TVMD_AUTH_TOKEN", value_name = "TOKEN")]
+    #[arg(
+        long,
+        env = "TVMD_AUTH_TOKEN",
+        value_name = "TOKEN",
+        hide_env_values = true,
+        help = "Bearer token required by local RPC, explorer, faucet, and telemetry endpoints."
+    )]
     pub auth_token: String,
-    #[arg(long, env = "TVMD_MAX_REQUESTS", default_value_t = DEFAULT_MAX_REQUESTS, value_name = "N")]
+    #[arg(
+        long,
+        env = "TVMD_MAX_REQUESTS",
+        default_value_t = DEFAULT_MAX_REQUESTS,
+        value_name = "N",
+        help = "Maximum RPC requests before the service exits; 0 keeps serving."
+    )]
     pub max_requests: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct DataDirArgs {
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct LocalCpuVerifyArgs {
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
-    #[arg(long)]
+    #[arg(long, help = "Emit the verification report as JSON.")]
     pub json: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodePeerAddArgs {
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "PEER_ID")]
+    #[arg(
+        long,
+        value_name = "PEER_ID",
+        help = "Peer ID to persist as a bootstrap peer."
+    )]
     pub peer_id: PeerId,
-    #[arg(long, value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        value_name = "MULTIADDR",
+        help = "Reachable multiaddress for the peer."
+    )]
     pub address: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeCheckArgs {
-    #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    #[arg(
+        long,
+        env = "TVMD_P2P_LISTEN",
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p listen multiaddress to validate."
+    )]
     pub p2p_listen: Multiaddr,
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "HEX")]
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Deterministic 32-byte seed for the libp2p identity."
+    )]
     pub identity_seed: Option<HashArg>,
 }
 
@@ -206,8 +306,19 @@ pub struct NodeServeArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeBlockArgs {
-    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
+    #[arg(
+        long,
+        env = "TVMD_DATA_DIR",
+        default_value = DEFAULT_DATA_DIR,
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath,
+        help = "Node store directory."
+    )]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "HEIGHT")]
+    #[arg(
+        long,
+        value_name = "HEIGHT",
+        help = "Block height to load from the node store."
+    )]
     pub height: u64,
 }

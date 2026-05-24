@@ -1,4 +1,5 @@
 use super::*;
+use clap::CommandFactory;
 use clap::Parser;
 use clap::error::ErrorKind;
 
@@ -12,9 +13,16 @@ fn clap_help(args: &[&str]) -> String {
 }
 
 #[test]
+fn clap_command_model_is_valid() {
+    TvmdCli::command().debug_assert();
+}
+
+#[test]
 fn clap_help_exposes_the_tvmd_command_tree() {
     let help = clap_help(&["--help"]);
     assert!(help.contains("Usage: tvmd <COMMAND>"));
+    assert!(help.contains("tvmd node init --data-dir .tensorvm"));
+    assert!(help.contains("tvmd public preflight docs/tensorvm/public-testnet.preflight"));
     for command in [
         "node",
         "miner",
@@ -46,6 +54,8 @@ fn clap_help_exposes_the_tvmd_command_tree() {
             "miner run help should list {argument}"
         );
     }
+    assert!(miner_run.contains("Path to the miner wallet key."));
+    assert!(miner_run.contains("Bearer token required by local RPC"));
 
     let evidence = clap_help(&["public", "evidence", "--help"]);
     for command in [
