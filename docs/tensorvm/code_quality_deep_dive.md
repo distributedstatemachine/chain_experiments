@@ -875,6 +875,8 @@ spaghetti around.
   readiness report per service, validating role, libp2p, identity, profile, and device fields exactly.
 - Iteration 350 removed the local CPU checker's remaining `grep` dependency by replacing exact-line and
   explorer-page probes with shell string helpers.
+- Iteration 351 removed the local CPU checker's remaining `sed` dependency by using direct service-file
+  reads and a shell key-value field lookup for status reports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

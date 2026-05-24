@@ -58,7 +58,7 @@ unique_count() {
 read_service_file() {
   service="$1"
   path="$2"
-  output=$(compose exec -T "$service" sed -n 'p' "$path") || return 1
+  output=$(compose exec -T "$service" cat "$path") || return 1
   printf '%s\n' "$output" | tr -d '\r'
 }
 
@@ -73,7 +73,18 @@ read_seed_report() {
 status_value() {
   key="$1"
   document="$2"
-  printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'
+  prefix="${key}="
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      "$prefix"*)
+        printf '%s\n' "${line#"$prefix"}"
+        return 0
+        ;;
+    esac
+  done <<EOF
+$document
+EOF
+  printf '\n'
 }
 
 is_u64() {
@@ -84,7 +95,6 @@ is_u64() {
 }
 
 require_command docker
-require_command sed
 require_command sort
 require_command wc
 require_command curl

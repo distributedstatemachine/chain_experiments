@@ -447,12 +447,12 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &[
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
-            r#"require_command sed"#,
             r#"require_command sort"#,
             r#"require_command wc"#,
             r#"require_command curl"#,
             r#"require_command python3"#,
             r#"require_command timeout"#,
+            r#"output=$(compose exec -T "$service" cat "$path") || return 1"#,
             r#"compose config --quiet"#,
             r#"CONFIG_SERVICES=$(compose config --services)"#,
             r#"[ "$(unique_count "$TMP_DIR/operator_ids")" = "15" ] || fail "operator IDs are not distinct""#,
@@ -569,6 +569,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,
             r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'new WebSocket' || fail "standalone explorer page does not poll TensorVM over websocket""#,
             r#"require_command grep"#,
+            r#"require_command sed"#,
+            r#"output=$(compose exec -T "$service" sed -n 'p' "$path") || return 1"#,
+            r#"printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'"#,
         ],
     );
 
