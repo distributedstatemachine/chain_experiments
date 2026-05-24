@@ -12,7 +12,7 @@ fn local_testnet_can_bootstrap_from_shared_profile() {
     let testnet = LocalTestnet::from_profile(&profile, hash_bytes(b"test", &[b"profile"]));
 
     assert_eq!(TestnetConfig::from_profile(&profile).miner_count, 3);
-    assert_eq!(testnet.chain.params.epoch_length, 17);
+    assert_eq!(testnet.chain.params().epoch_length, 17);
     assert_eq!(testnet.miners.len(), 3);
     assert_eq!(testnet.validators.len(), 2);
     assert_eq!(
@@ -96,20 +96,20 @@ fn local_testnet_runs_full_matmul_receipt_attestation_settlement_round() {
 
     assert_eq!(
         testnet.chain.state().receipts().len(),
-        testnet.chain.params.replication_factor
+        testnet.chain.params().replication_factor
     );
     assert_eq!(
         testnet.chain.state().settled_receipts().len(),
-        testnet.chain.params.replication_factor
+        testnet.chain.params().replication_factor
     );
-    assert_eq!(testnet.chain.blocks.len(), 1);
+    assert_eq!(testnet.chain.blocks().len(), 1);
     assert!(testnet.telemetry().total_tensor_work > 0);
     let rewarded_miners = testnet
         .miners
         .iter()
         .filter(|miner| testnet.chain.state().rewards().balance(miner) > 0)
         .count();
-    assert!(rewarded_miners >= testnet.chain.params.agreement_quorum);
+    assert!(rewarded_miners >= testnet.chain.params().agreement_quorum);
 
     let evidence = testnet.public_testnet_evidence(
         &PublicTestnetCriteria {
@@ -188,13 +188,13 @@ fn local_testnet_runs_linear_training_receipt_state_transition_round() {
 
     assert_eq!(
         testnet.chain.state().receipts().len(),
-        testnet.chain.params.replication_factor
+        testnet.chain.params().replication_factor
     );
     assert_eq!(
         testnet.chain.state().settled_receipts().len(),
-        testnet.chain.params.replication_factor
+        testnet.chain.params().replication_factor
     );
-    assert_eq!(testnet.chain.blocks.len(), 1);
+    assert_eq!(testnet.chain.blocks().len(), 1);
     assert_eq!(testnet.chain.state().model_states().len(), 1);
     assert_eq!(
         testnet
@@ -212,5 +212,5 @@ fn local_testnet_runs_linear_training_receipt_state_transition_round() {
         .iter()
         .filter(|miner| testnet.chain.state().rewards().balance(miner) > 0)
         .count();
-    assert!(rewarded_miners >= testnet.chain.params.agreement_quorum);
+    assert!(rewarded_miners >= testnet.chain.params().agreement_quorum);
 }

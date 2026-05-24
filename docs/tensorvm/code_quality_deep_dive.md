@@ -998,6 +998,8 @@ spaghetti around.
   accessors, removing another cluster of direct test reads from `Chain` internals.
 - Iteration 411 moved boundary tests onto `Chain`/`ChainState`/`ChainParams` accessors so the
   last chain-test suite with broad direct field reads follows the same encapsulation boundary.
+- Iteration 412 moved RPC route/explorer block reads and external RPC/testnet test parameter reads
+  onto `Chain` accessors instead of reaching through crate-visible fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

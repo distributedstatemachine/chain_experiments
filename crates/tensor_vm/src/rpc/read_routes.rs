@@ -8,7 +8,7 @@ impl RpcNode {
         self.ok(json!({
             "height": self.chain.state().height(),
             "epoch": self.chain.state().epoch(),
-            "block_count": self.chain.blocks.len(),
+            "block_count": self.chain.blocks().len(),
             "state_root": hex(&self.chain.state_root()),
         })
         .to_string())
@@ -22,7 +22,7 @@ impl RpcNode {
         let Ok(height) = height.parse::<usize>() else {
             return self.bad_request("invalid block height");
         };
-        let Some(block) = self.chain.blocks.get(height) else {
+        let Some(block) = self.chain.blocks().get(height) else {
             return self.not_found("block not found");
         };
         self.ok(json!({
@@ -110,7 +110,7 @@ impl RpcNode {
             "service": service,
             "height": self.chain.state().height(),
             "epoch": self.chain.state().epoch(),
-            "block_count": self.chain.blocks.len(),
+            "block_count": self.chain.blocks().len(),
             "faucet_configured": self.faucet.is_some(),
         })
         .to_string())

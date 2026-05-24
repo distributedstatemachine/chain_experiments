@@ -94,13 +94,13 @@ fn rpc_node_synthetic_round_retains_live_tensors_for_rpc_fetch() {
         chain
             .register_miner(
                 address(format!("rpc-live-tensor-miner-{index}").as_bytes()),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(format!("rpc-live-tensor-validator-{index}").as_bytes()),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
     }

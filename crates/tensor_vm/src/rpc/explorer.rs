@@ -11,7 +11,7 @@ pub(super) fn explorer_summary(chain: &Chain) -> ExplorerSummary {
     ExplorerSummary {
         height: chain.state().height(),
         epoch: chain.state().epoch(),
-        block_count: chain.blocks.len(),
+        block_count: chain.blocks().len(),
         miner_count: chain.state().miners().len(),
         validator_count: chain.state().validators().len(),
         job_count: chain.state().jobs().len(),
@@ -59,7 +59,7 @@ pub(super) fn explorer_account(chain: &Chain, address: &Address) -> ExplorerAcco
 
 pub(super) fn explorer_blocks(chain: &Chain, limit: usize) -> Vec<ExplorerBlock> {
     chain
-        .blocks
+        .blocks()
         .iter()
         .rev()
         .take(limit)
