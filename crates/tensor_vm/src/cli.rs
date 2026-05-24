@@ -20,6 +20,7 @@ mod local_execution_values;
 mod local_parser;
 mod local_role_descriptions;
 mod local_role_execution;
+mod local_role_parser;
 mod local_service_descriptions;
 mod local_service_execution;
 mod network_evidence;
@@ -64,10 +65,12 @@ pub use commands::{CliCommand, ManifestArgs as PublicTestnetManifestArgs, Public
 pub use descriptions::describe_command;
 pub use execution::execute_reference_cli_command;
 pub use local_parser::{
-    DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand, MinerCommand,
-    MinerRunArgs, MinerStartArgs, ProposerCommand, ServiceBlockArgs, ServiceCommand,
-    ServicePeerAddArgs, ServicePeerCommand, ServiceReadinessArgs, ServiceServeArgs, StakeArgs,
-    ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+    DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand, ServiceBlockArgs,
+    ServiceCommand, ServicePeerAddArgs, ServicePeerCommand, ServiceReadinessArgs, ServiceServeArgs,
+};
+pub use local_role_parser::{
+    MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand, StakeArgs, ValidatorCommand,
+    ValidatorRunArgs, ValidatorStartArgs,
 };
 #[cfg(test)]
 use network_evidence::{

@@ -1,5 +1,5 @@
 use super::local_description_values::identity_description;
-use super::local_parser::{MinerCommand, ProposerCommand, ValidatorCommand};
+use super::local_role_parser::{MinerCommand, ProposerCommand, ValidatorCommand};
 use crate::p2p::Libp2pControlPlaneConfig;
 
 pub(super) fn describe_miner_command(command: &MinerCommand) -> String {

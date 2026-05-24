@@ -387,6 +387,10 @@ spaghetti around.
 - Iteration 153 moved local service command execution into `cli/local_service_execution.rs`,
   leaving `cli/local_execution.rs` as a compact local command-family dispatcher plus the tiny
   local-testnet and local-cpu execution handlers.
+- Iteration 154 moved local miner, validator, and proposer clap command/argument structs into
+  `cli/local_role_parser.rs`, aligning role parsing with the existing role description and
+  execution modules while narrowing `cli/local_parser.rs` toward service/local-testnet/local-cpu
+  clap shape.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

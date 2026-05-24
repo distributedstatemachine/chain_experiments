@@ -1,7 +1,5 @@
-use super::local_parser::{
-    LocalCpuCommand, LocalTestnetCommand, MinerCommand, ProposerCommand, ServiceCommand,
-    ValidatorCommand,
-};
+use super::local_parser::{LocalCpuCommand, LocalTestnetCommand, ServiceCommand};
+use super::local_role_parser::{MinerCommand, ProposerCommand, ValidatorCommand};
 use super::public_evidence_parser::PublicEvidenceCommand;
 use clap::{Args, Subcommand};
 

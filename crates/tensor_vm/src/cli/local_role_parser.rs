@@ -4,64 +4,52 @@ use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum ServiceCommand {
-    Init(DataDirArgs),
-    Peer {
-        #[command(subcommand)]
-        command: ServicePeerCommand,
-    },
-    Readiness(ServiceReadinessArgs),
-    Serve(ServiceServeArgs),
-    Status(DataDirArgs),
-    Block(ServiceBlockArgs),
+pub enum MinerCommand {
+    Register(StakeArgs),
+    Start(MinerStartArgs),
+    Run(MinerRunArgs),
+    Status,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum ServicePeerCommand {
-    Add(ServicePeerAddArgs),
+pub enum ValidatorCommand {
+    Register(StakeArgs),
+    Start(ValidatorStartArgs),
+    Run(ValidatorRunArgs),
+    Status,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum LocalTestnetCommand {
-    Seed(DataDirArgs),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
-pub enum LocalCpuCommand {
-    Verify(LocalCpuVerifyArgs),
+pub enum ProposerCommand {
+    Run(ValidatorRunArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct DataDirArgs {
+pub struct StakeArgs {
     #[arg(long)]
-    pub data_dir: String,
+    pub stake: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServicePeerAddArgs {
+pub struct MinerStartArgs {
     #[arg(long)]
-    pub data_dir: String,
+    pub wallet: String,
     #[arg(long)]
-    pub peer_id: String,
+    pub device: String,
     #[arg(long)]
-    pub address: String,
+    pub node: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceReadinessArgs {
+pub struct MinerRunArgs {
     #[arg(long)]
-    pub p2p_listen: String,
+    pub wallet: String,
     #[arg(long)]
-    pub data_dir: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    pub identity_seed: Option<Hash>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceServeArgs {
+    pub device: String,
+    #[arg(long)]
+    pub node: String,
     #[arg(long)]
     pub listen: String,
     #[arg(long)]
@@ -77,17 +65,29 @@ pub struct ServiceServeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceBlockArgs {
+pub struct ValidatorStartArgs {
     #[arg(long)]
-    pub data_dir: String,
+    pub wallet: String,
     #[arg(long)]
-    pub height: u64,
+    pub node: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct LocalCpuVerifyArgs {
+pub struct ValidatorRunArgs {
+    #[arg(long)]
+    pub wallet: String,
+    #[arg(long)]
+    pub node: String,
+    #[arg(long)]
+    pub listen: String,
+    #[arg(long)]
+    pub p2p_listen: String,
     #[arg(long)]
     pub data_dir: String,
+    #[arg(long, value_parser = parse_hash_value)]
+    pub identity_seed: Option<Hash>,
     #[arg(long)]
-    pub json: bool,
+    pub auth_token: String,
+    #[arg(long)]
+    pub max_requests: usize,
 }
