@@ -1,3 +1,6 @@
+pub use super::public_evidence_network_commands::{
+    EvidenceNetworkCommand, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+};
 pub use super::public_evidence_record_commands::{
     EvidenceRecordCommand, PublicEvidenceRecordKindArg, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
@@ -10,7 +13,6 @@ pub use super::public_evidence_service_commands::{
 use super::value_types::{AddressArg, HashArg};
 use crate::testnet::PublicNodeRole;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
-use libp2p::{Multiaddr, PeerId};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
@@ -51,15 +53,6 @@ pub enum EvidenceCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceNetworkCommand {
-    #[command(about = "Generate public libp2p network runtime evidence.")]
-    Observation(NetworkObservationArgs),
-    #[command(about = "Generate public libp2p network runtime evidence from a service log.")]
-    FromServiceLog(NetworkObservationFromServiceLogArgs),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceRunCommand {
     #[command(about = "Generate signed run-window evidence.")]
     Window(RunWindowArgs),
@@ -88,76 +81,6 @@ pub struct PublicTestnetManifestArgs {
 pub struct PublicEvidenceManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet evidence manifest to validate.")]
     pub manifest: PathBuf,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationArgs {
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Operator identifier for the observed node."
-    )]
-    pub operator_id: HashArg,
-    #[arg(long, value_name = "PEER_ID", help = "Observed libp2p peer ID.")]
-    pub peer_id: PeerId,
-    #[arg(
-        long,
-        value_name = "MULTIADDR",
-        help = "Public libp2p listen multiaddress."
-    )]
-    pub listen_address: Multiaddr,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
-    #[arg(long, value_name = "N", help = "Number of active gossipsub topics.")]
-    pub gossip_topics: u64,
-    #[arg(long, value_name = "N", help = "Number of request-response protocols.")]
-    pub request_response_protocols: u64,
-    #[arg(
-        long,
-        value_name = "N",
-        help = "Bootstrap peers configured by the node."
-    )]
-    pub bootstrap_peers: u64,
-    #[arg(
-        long,
-        value_name = "BYTES",
-        help = "Maximum request-response transmit size."
-    )]
-    pub max_transmit_bytes: u64,
-    #[arg(long, value_name = "SECONDS", help = "Request-response timeout.")]
-    pub request_timeout_seconds: u64,
-    #[arg(long, value_name = "N", help = "Maximum concurrent libp2p streams.")]
-    pub max_concurrent_streams: u64,
-    #[arg(long, value_name = "SECONDS", help = "Idle connection timeout.")]
-    pub idle_timeout_seconds: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationFromServiceLogArgs {
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Operator identifier for the observed node."
-    )]
-    pub operator_id: HashArg,
-    #[arg(
-        long,
-        value_name = "MULTIADDR",
-        help = "Public libp2p listen multiaddress."
-    )]
-    pub listen_address: Multiaddr,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Captured node service log.")]
-    pub service_log: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

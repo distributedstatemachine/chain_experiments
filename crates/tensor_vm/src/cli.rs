@@ -21,6 +21,7 @@ mod network_evidence;
 mod node_evidence;
 mod public_evidence_commands;
 mod public_evidence_execution;
+mod public_evidence_network_commands;
 mod public_evidence_network_execution;
 mod public_evidence_node_execution;
 mod public_evidence_publication_execution;

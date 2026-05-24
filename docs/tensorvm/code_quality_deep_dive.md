@@ -1016,6 +1016,9 @@ spaghetti around.
 - Iteration 419 split the public supporting-record clap command family into
   `cli/public_evidence_record_commands.rs`, moving record args and the record-kind value enum out
   of the mixed public evidence command module without changing external re-exports.
+- Iteration 420 split the public libp2p network evidence clap command family into
+  `cli/public_evidence_network_commands.rs`, isolating network args and libp2p-specific imports from
+  the mixed public evidence command module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
