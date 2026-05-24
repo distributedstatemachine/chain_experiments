@@ -1079,6 +1079,9 @@ spaghetti around.
 - Iteration 443 split public run-window Clap parser coverage into
   `cli/tests/public_evidence_run_window_parser.rs`, leaving the remaining mixed public parser suite
   focused on manifest, node, service, network, and record command families.
+- Iteration 444 split public node heartbeat, heartbeat-file, and operator-attestation Clap parser
+  coverage into `cli/tests/public_evidence_node_parser.rs`, leaving the mixed public parser suite
+  focused on manifest, service, network, and record command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

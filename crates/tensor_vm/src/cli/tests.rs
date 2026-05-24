@@ -17,6 +17,7 @@ mod manifest_reports;
 mod parser_support;
 mod public_evidence_network_rejections;
 mod public_evidence_network_reports;
+mod public_evidence_node_parser;
 mod public_evidence_node_rejections;
 mod public_evidence_node_reports;
 mod public_evidence_publication_parser;
