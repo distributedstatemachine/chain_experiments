@@ -263,6 +263,8 @@ spaghetti around.
   ingest fixtures sit beside the ingest orchestration instead of the node facade.
 - Iteration 109 moved network payload application tests into `node/payload_application.rs`, leaving
   `node.rs` with facade re-exports and the remaining payload processor retry coverage.
+- Iteration 110 moved the chain payload processor retry test into `node/payload_processor.rs`, so
+  `node.rs` is now a small public facade over the split node submodules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
