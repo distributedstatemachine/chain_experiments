@@ -992,6 +992,8 @@ spaghetti around.
   names are rejected at parse time instead of passing through as loose strings.
 - Iteration 408 moved account, challenge, model-command, and reward test assertions onto
   `Chain`/`ChainState` accessors and used the existing model optimizer test helper for setup.
+- Iteration 409 moved attestation tests off direct `ChainState` and `ChainParams` field reads,
+  using the existing state and params accessors throughout the suite.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

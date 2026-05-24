@@ -27,9 +27,9 @@ fn invalid_attestations_do_not_create_quorum() {
         ))
         .unwrap();
     assert!(!chain.has_attestation_quorum(&receipt.receipt_id));
-    assert_ne!(attestation_root(&chain.state.attestations), [0; 32]);
+    assert_ne!(attestation_root(chain.state().attestations()), [0; 32]);
     chain.settle_epoch(1_000, 500);
-    assert_eq!(chain.state.rewards.balance(&miner), 0);
+    assert_eq!(chain.state().rewards().balance(&miner), 0);
 }
 
 #[test]
@@ -67,20 +67,20 @@ fn unavailable_data_attestation_penalizes_receipt_miner_once() {
     }
 
     assert_eq!(
-        chain.state.miners.get(&miner).unwrap().reputation,
+        chain.state().miners().get(&miner).unwrap().reputation,
         -1,
         "availability penalty is per receipt, not per validator"
     );
     assert!(
         chain
-            .state
-            .data_unavailable_receipts
+            .state()
+            .data_unavailable_receipts()
             .contains(&receipt.receipt_id)
     );
-    assert_ne!(attestation_root(&chain.state.attestations), [0; 32]);
+    assert_ne!(attestation_root(chain.state().attestations()), [0; 32]);
     assert!(!chain.has_attestation_quorum(&receipt.receipt_id));
     chain.settle_epoch(1_000, 500);
-    assert_eq!(chain.state.rewards.balance(&miner), 0);
+    assert_eq!(chain.state().rewards().balance(&miner), 0);
 }
 
 #[test]
@@ -114,10 +114,20 @@ fn mismatched_attestation_metadata_penalizes_validator_and_is_rejected() {
         Err(TvmError::InvalidReceipt("attestation receipt mismatch"))
     );
     assert_eq!(
-        chain.state.validators.get(&validator).unwrap().reputation,
+        chain
+            .state()
+            .validators()
+            .get(&validator)
+            .unwrap()
+            .reputation,
         -1
     );
-    assert!(!chain.state.attestations.contains_key(&receipt.receipt_id));
+    assert!(
+        !chain
+            .state()
+            .attestations()
+            .contains_key(&receipt.receipt_id)
+    );
 }
 
 #[test]
@@ -147,7 +157,7 @@ fn duplicate_receipts_and_validator_attestations_are_rejected() {
         &b,
         &c,
         &hash_bytes(b"test", &[b"validation"]),
-        &chain.params.freivalds,
+        &chain.params().freivalds,
     )
     .unwrap();
     chain.submit_job(JobState::TensorOp(job));
@@ -176,8 +186,8 @@ fn duplicate_receipts_and_validator_attestations_are_rejected() {
     );
     assert_eq!(
         chain
-            .state
-            .attestations
+            .state()
+            .attestations()
             .get(&receipt.receipt_id)
             .unwrap()
             .len(),
@@ -269,7 +279,12 @@ fn unassigned_validator_attestations_are_rejected() {
             "validator not assigned to receipt"
         ))
     );
-    assert!(!chain.state.attestations.contains_key(&receipt.receipt_id));
+    assert!(
+        !chain
+            .state()
+            .attestations()
+            .contains_key(&receipt.receipt_id)
+    );
     chain
         .submit_attestation(ValidatorAttestation::new(assigned, 10_000, statement))
         .unwrap();
