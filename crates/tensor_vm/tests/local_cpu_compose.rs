@@ -500,6 +500,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\"\([^\"]*\)\".*/\1/p" | sed -n '1p'"#,
             r#"printf '%s\n' "$document" | grep -o "\"$key\":[1-9][0-9]*" | wc -l | tr -d ' '"#,
             r#"printf '%s\n' "$document" | grep -o "\"$key\":\"$value\"" | wc -l | tr -d ' '"#,
+            r#"printf '%s\n' "$EXPLORER_HEALTH" | grep -q '"tensorvm_explorer_ready":true' || fail "standalone explorer health is not ready""#,
+            r#"printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' || fail "standalone explorer does not publish the TensorVM websocket URL""#,
         ],
     );
 
@@ -508,8 +510,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &[
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null || fail "gateway route is not reachable: $path""#,
             r#"EXPLORER_HEALTH=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/health")"#,
-            r#"printf '%s\n' "$EXPLORER_HEALTH" | grep -q '"tensorvm_explorer_ready":true' || fail "standalone explorer health is not ready""#,
-            r#"printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' || fail "standalone explorer does not publish the TensorVM websocket URL""#,
+            r#"json_bool_true tensorvm_explorer_ready "$EXPLORER_HEALTH" || fail "standalone explorer health is not ready""#,
+            r#"EXPLORER_WS_URL=$(json_string websocket_url "$EXPLORER_HEALTH") || fail "standalone explorer does not publish the TensorVM websocket URL""#,
+            r#"text_contains "$EXPLORER_WS_URL" "/explorer/ws?token=" || fail "standalone explorer does not publish the TensorVM websocket URL""#,
             r#"EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")"#,
             r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' || fail "standalone explorer page is not reachable""#,
             r#"printf '%s\n' "$EXPLORER_PAGE" | grep -q 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,

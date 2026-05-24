@@ -865,6 +865,8 @@ spaghetti around.
 - Iteration 345 replaced the local CPU deployment checker's receipt JSON field-count regex helpers with
   structured Python JSON traversal, so live receipt attestation and primitive-type policy checks no longer
   depend on grep over serialized JSON text.
+- Iteration 346 moved standalone explorer health readiness and websocket URL checks from grepping JSON text
+  onto the shared JSON helpers, leaving HTML page probes as text reachability checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

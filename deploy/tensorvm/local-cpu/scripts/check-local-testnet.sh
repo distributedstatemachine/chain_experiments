@@ -30,6 +30,13 @@ contains_line() {
   printf '%s\n' "$1" | grep -qx "$2"
 }
 
+text_contains() {
+  case "$1" in
+    *"$2"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 csv_contains_value() {
   case ",$1," in
     *",$2,"*) return 0 ;;
@@ -315,9 +322,11 @@ for path in /health /rpc/health /chain/head /jobs/current /explorer/health /expl
 done
 
 EXPLORER_HEALTH=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/health")
-printf '%s\n' "$EXPLORER_HEALTH" | grep -q '"tensorvm_explorer_ready":true' \
+json_bool_true tensorvm_explorer_ready "$EXPLORER_HEALTH" \
   || fail "standalone explorer health is not ready"
-printf '%s\n' "$EXPLORER_HEALTH" | grep -q '/explorer/ws?token=' \
+EXPLORER_WS_URL=$(json_string websocket_url "$EXPLORER_HEALTH") \
+  || fail "standalone explorer does not publish the TensorVM websocket URL"
+text_contains "$EXPLORER_WS_URL" "/explorer/ws?token=" \
   || fail "standalone explorer does not publish the TensorVM websocket URL"
 EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")
 printf '%s\n' "$EXPLORER_PAGE" | grep -q 'TensorVM Explorer' \
