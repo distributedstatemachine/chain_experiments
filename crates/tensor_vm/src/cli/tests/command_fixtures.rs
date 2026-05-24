@@ -99,20 +99,6 @@ pub(super) enum EvidenceFixture {
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
     },
-    Publication {
-        bundle_id: Hash,
-        public_uri: String,
-        manifest_signer: Address,
-        manifest_signature_count: u64,
-        independent_auditor_count: u64,
-    },
-    AuditorRecord {
-        bundle_id: Hash,
-        public_uri: String,
-        auditor_id: Address,
-        audit_uri: String,
-        observed_at_unix_seconds: u64,
-    },
     RunWindow {
         bundle_id: Hash,
         manifest_signer: Address,
@@ -383,32 +369,6 @@ impl EvidenceFixture {
                     idle_timeout_seconds: idle_connection_timeout_seconds,
                 }),
             )),
-            Self::Publication {
-                bundle_id,
-                public_uri,
-                manifest_signer,
-                manifest_signature_count,
-                independent_auditor_count,
-            } => public_evidence_command(EvidenceCommand::Publish(PublicationArgs {
-                bundle_id: hash_arg(bundle_id),
-                public_uri,
-                manifest_signer: address_arg(manifest_signer),
-                manifest_signature_count,
-                independent_auditor_count,
-            })),
-            Self::AuditorRecord {
-                bundle_id,
-                public_uri,
-                auditor_id,
-                audit_uri,
-                observed_at_unix_seconds,
-            } => public_evidence_command(EvidenceCommand::Audit(AuditorRecordArgs {
-                bundle_id: hash_arg(bundle_id),
-                public_uri,
-                auditor_id: address_arg(auditor_id),
-                audit_uri,
-                observed_at: observed_at_unix_seconds,
-            })),
             Self::RunWindow {
                 bundle_id,
                 manifest_signer,

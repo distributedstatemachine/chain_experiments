@@ -961,6 +961,8 @@ spaghetti around.
 - Iteration 393 moved public record summary-file and artifact-file report cases from
   `EvidenceFixture` to direct `EvidenceCommand` execution and removed the now-dead file-backed
   record fixture variants.
+- Iteration 394 moved public publication and auditor rejection tests from `EvidenceFixture` to direct
+  `EvidenceCommand` execution and removed the now-dead publication fixture variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
