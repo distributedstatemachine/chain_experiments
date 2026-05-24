@@ -418,6 +418,9 @@ spaghetti around.
 - Iteration 163 moved public-evidence CLI rejection coverage into
   `cli/tests/public_evidence_rejections.rs`, leaving `cli/tests.rs` as shared CLI test fixtures and
   module wiring instead of a mixed inline test body.
+- Iteration 164 moved public-operator matching and network-runtime observation helper tests out of
+  `testnet.rs` into `testnet/tests/network_runtime.rs`, starting the split of the large inline
+  testnet test module along evidence-domain boundaries.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
