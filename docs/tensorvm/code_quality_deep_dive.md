@@ -409,6 +409,9 @@ spaghetti around.
 - Iteration 160 moved CLI command-description coverage into `cli/tests/command_descriptions.rs`,
   separating clap parsing/default tests from description snapshot assertions and further shrinking the
   parent CLI test module.
+- Iteration 161 moved the remaining documented clap parser/default/rejection tests into
+  `cli/tests/parser.rs`, leaving the parent CLI test module focused on shared fixtures and command
+  execution behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
