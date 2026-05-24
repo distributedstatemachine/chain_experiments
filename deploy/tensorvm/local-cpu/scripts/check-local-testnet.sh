@@ -65,7 +65,23 @@ require_command sed
 require_command sort
 require_command wc
 require_command curl
+require_command python3
 require_command timeout
+
+json_bool_true() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+try:
+    value = json.load(sys.stdin)[sys.argv[1]]
+except (KeyError, TypeError, json.JSONDecodeError):
+    sys.exit(1)
+sys.exit(0 if value is True else 1)
+' "$key"
+}
 
 json_number() {
   key="$1"
@@ -196,9 +212,9 @@ for service in $EXPECTED_SERVICES; do
   compose exec -T "$service" grep -q "blocks=2" /var/lib/tensorvm/local-testnet-seed.out \
     || fail "$service seeded local testnet did not start with 2 blocks"
   LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd localnet verify --data-dir /var/lib/tensorvm --json | tr -d '\r')
-  printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"structured_verifier_ready":true' \
+  json_bool_true structured_verifier_ready "$LOCAL_CPU_VERIFY" \
     || fail "$service local CPU structured verifier is not ready"
-  printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' \
+  json_bool_true ready "$LOCAL_CPU_VERIFY" \
     || fail "$service local CPU structured verifier did not accept node store"
 done
 

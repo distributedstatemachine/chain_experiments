@@ -856,6 +856,9 @@ spaghetti around.
 - Iteration 342 promoted miner, validator, and proposer to first-class Clap subcommands, removing the
   old role grouping so operators use shorter `tvmd miner ...`, `tvmd validator ...`, and
   `tvmd proposer ...` commands.
+- Iteration 343 moved the local CPU deployment checker's `tvmd localnet verify --json` readiness checks
+  from substring greps to a real JSON boolean parser, keeping Docker orchestration in shell while reducing
+  one policy-critical ad hoc parsing surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

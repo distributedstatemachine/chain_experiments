@@ -92,6 +92,16 @@ fn assert_shell_logical_lines(script: &str, expected_lines: &[&str]) {
     }
 }
 
+fn assert_lacks_shell_logical_lines(script: &str, forbidden_lines: &[&str]) {
+    let actual_lines = shell_logical_lines(script);
+    for forbidden in forbidden_lines {
+        assert!(
+            actual_lines.iter().all(|line| line != forbidden),
+            "script should not contain logical line {forbidden}"
+        );
+    }
+}
+
 fn assert_status_value_reads(script: &str, document: &str, expected_reads: &[(&str, &str)]) {
     let actual_lines = shell_logical_lines(script);
     for (variable, key) in expected_reads {
@@ -442,6 +452,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"require_command sort"#,
             r#"require_command wc"#,
             r#"require_command curl"#,
+            r#"require_command python3"#,
             r#"require_command timeout"#,
             r#"compose config --quiet"#,
             r#"CONFIG_SERVICES=$(compose config --services)"#,
@@ -450,8 +461,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"[ "$(unique_count "$TMP_DIR/node_multiaddrs")" = "15" ] || fail "node multiaddrs are not distinct""#,
             r#"compose exec -T "$service" grep -q "p2p_identity_seeded=true" /var/lib/tensorvm/local-cpu-ready || fail "$service is missing stable libp2p identity readiness""#,
             r#"LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd localnet verify --data-dir /var/lib/tensorvm --json | tr -d '\r')"#,
-            r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"structured_verifier_ready":true' || fail "$service local CPU structured verifier is not ready""#,
-            r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' || fail "$service local CPU structured verifier did not accept node store""#,
+            r#"json_bool_true structured_verifier_ready "$LOCAL_CPU_VERIFY" || fail "$service local CPU structured verifier is not ready""#,
+            r#"json_bool_true ready "$LOCAL_CPU_VERIFY" || fail "$service local CPU structured verifier did not accept node store""#,
             r#"compose exec -T miner-00 grep -q "settled_receipts=10" /var/lib/tensorvm/local-testnet-seed.out || fail "seeded local testnet did not report settled receipts""#,
             r#"compose exec -T miner-00 grep -q "matmul_settled=true" /var/lib/tensorvm/local-testnet-seed.out || fail "seeded local testnet did not settle matmul work""#,
             r#"compose exec -T miner-00 grep -q "linear_training_settled=true" /var/lib/tensorvm/local-testnet-seed.out || fail "seeded local testnet did not settle linear training work""#,
@@ -477,6 +488,14 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"rewarded_miners=${SEED_REWARDED_MINERS}"#,
             r#"finality_rate_bps=10000"#,
             r#"data_availability_bps=10000"#,
+        ],
+    );
+
+    assert_lacks_shell_logical_lines(
+        &check_script,
+        &[
+            r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"structured_verifier_ready":true' || fail "$service local CPU structured verifier is not ready""#,
+            r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' || fail "$service local CPU structured verifier did not accept node store""#,
         ],
     );
 
