@@ -173,15 +173,11 @@ pub(super) fn try_parse_http_request(
     };
     let mut lines = header_text.split("\r\n");
     let first_line = lines.next().unwrap_or_default();
-    let mut first_parts = first_line.split_whitespace();
-    let method = match first_parts.next() {
-        Some(method) => method.to_owned(),
-        None => return Some(ParsedHttpRequest::BadRequest),
+    let Ok(request_line) = parse_http_request_line(first_line) else {
+        return Some(ParsedHttpRequest::BadRequest);
     };
-    let (path, query_auth_token) = match first_parts.next() {
-        Some(path) => split_path_and_auth_token(path),
-        None => return Some(ParsedHttpRequest::BadRequest),
-    };
+    let method = request_line.method.to_owned();
+    let (path, query_auth_token) = split_path_and_auth_token(request_line.path);
 
     let mut content_length = 0_usize;
     let mut auth_token = query_auth_token;
@@ -243,6 +239,29 @@ pub(super) fn try_parse_http_request(
         },
         auth_token,
     })
+}
+
+pub(super) struct HttpRequestLine<'a> {
+    pub(super) method: &'a str,
+    pub(super) path: &'a str,
+}
+
+pub(super) enum HttpRequestLineError {
+    MissingMethod,
+    MissingPath,
+}
+
+pub(super) fn parse_http_request_line(
+    line: &str,
+) -> Result<HttpRequestLine<'_>, HttpRequestLineError> {
+    let mut parts = line.split_whitespace();
+    let Some(method) = parts.next() else {
+        return Err(HttpRequestLineError::MissingMethod);
+    };
+    let Some(path) = parts.next() else {
+        return Err(HttpRequestLineError::MissingPath);
+    };
+    Ok(HttpRequestLine { method, path })
 }
 
 pub(super) fn split_path_and_auth_token(path: &str) -> (String, Option<String>) {

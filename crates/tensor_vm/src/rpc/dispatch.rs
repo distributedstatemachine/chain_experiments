@@ -1,6 +1,7 @@
 use super::explorer::{
     explorer_jobs, explorer_miners, explorer_overview, explorer_summary, explorer_validators,
 };
+use super::http::{HttpRequestLineError, parse_http_request_line};
 use super::render::{faucet_page_html, telemetry_dashboard_html};
 use super::{RpcNode, RpcRequest, RpcResponse};
 use crate::hash::hex;
@@ -63,16 +64,18 @@ impl RpcNode {
         let Some(first_line) = raw.lines().next() else {
             return self.bad_request("empty request");
         };
-        let mut parts = first_line.split_whitespace();
-        let Some(method) = parts.next() else {
-            return self.bad_request("missing method");
-        };
-        let Some(path) = parts.next() else {
-            return self.bad_request("missing path");
+        let request_line = match parse_http_request_line(first_line) {
+            Ok(request_line) => request_line,
+            Err(HttpRequestLineError::MissingMethod) => {
+                return self.bad_request("missing method");
+            }
+            Err(HttpRequestLineError::MissingPath) => {
+                return self.bad_request("missing path");
+            }
         };
         self.handle(&RpcRequest {
-            method: method.to_owned(),
-            path: path.to_owned(),
+            method: request_line.method.to_owned(),
+            path: request_line.path.to_owned(),
             body: Vec::new(),
         })
     }

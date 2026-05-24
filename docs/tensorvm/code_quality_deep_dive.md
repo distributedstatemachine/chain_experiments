@@ -776,6 +776,9 @@ spaghetti around.
 - Iteration 308 introduced an explicit transaction-body parser for txpool envelopes, moving command
   dispatch, argument extraction, and extra-token rejection out of the raw whitespace-scanner flow while
   preserving the existing transaction wire format.
+- Iteration 309 centralized RPC HTTP request-line parsing so the socket HTTP parser and in-memory
+  `handle_http_text` test/dispatch path share one method/path extraction boundary instead of maintaining
+  parallel whitespace scanners.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
