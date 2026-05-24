@@ -14,7 +14,7 @@ pub(super) fn execute_public_evidence_service_command(
         EvidenceServiceCommand::Health(args) => {
             service_health_evidence_line(ServiceHealthEvidenceLine {
                 kind: args.kind.into(),
-                endpoint_id: args.endpoint_id,
+                endpoint_id: args.endpoint_id.into_hash(),
                 public_url: &args.public_url,
                 health_path: &args.health_path,
                 first_seen_block: args.first_block,
@@ -25,23 +25,23 @@ pub(super) fn execute_public_evidence_service_command(
         }
         EvidenceServiceCommand::HealthFile(args) => service_health_evidence_line_from_file(
             args.kind.into(),
-            args.endpoint_id,
+            args.endpoint_id.into_hash(),
             &args.public_url,
             &args.health_path,
             &path_argument(&args.observation_file),
         ),
         EvidenceServiceCommand::Content(args) => service_content_evidence_line(
             args.kind.into(),
-            args.endpoint_id,
+            args.endpoint_id.into_hash(),
             &args.public_url,
             &args.content_path,
-            args.content_root,
+            args.content_root.into_hash(),
             args.observed_at,
             args.min_content_bytes,
         ),
         EvidenceServiceCommand::ContentBytes(args) => service_content_evidence_line_from_bytes(
             args.kind.into(),
-            args.endpoint_id,
+            args.endpoint_id.into_hash(),
             &args.public_url,
             &args.content_path,
             args.observed_at,
@@ -52,7 +52,7 @@ pub(super) fn execute_public_evidence_service_command(
             .and_then(|content_bytes| {
                 service_content_evidence_line_from_bytes(
                     args.kind.into(),
-                    args.endpoint_id,
+                    args.endpoint_id.into_hash(),
                     &args.public_url,
                     &args.content_path,
                     args.observed_at,

@@ -6,9 +6,9 @@ pub use super::local_commands::{
 };
 pub use super::public_evidence_commands::{
     AuditorRecordArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
-    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
-    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs,
-    NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
+    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, NetworkObservationArgs,
+    NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
+    OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
     PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
@@ -16,6 +16,7 @@ pub use super::public_evidence_commands::{
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs,
 };
+pub use super::value_types::{AddressArg, HashArg, HexBytesArg};
 use clap::{Parser, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Parser)]

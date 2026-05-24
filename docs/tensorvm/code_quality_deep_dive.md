@@ -819,6 +819,9 @@ spaghetti around.
   preserving the txpool wire format's exact 64-character token requirement.
 - Iteration 326 routed RPC path hash decoding through the shared fixed-hash parser, preserving the route
   parser's exact 64-character segment requirement while removing its local hex loop.
+- Iteration 327 moved `tvmd` hex hash, address, identity-seed, and byte payload CLI values onto typed
+  Clap `FromStr` wrappers, keeping the Clap command tree as the argument boundary without resurrecting
+  retired top-level command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

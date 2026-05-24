@@ -40,7 +40,8 @@ pub(super) fn execute_miner_command(
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = p2p_identity_report(node_runtime.identity_seed);
+            let identity =
+                p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
             let wallet = path_argument(&args.wallet);
             let data_dir = path_argument(&node_runtime.data_dir);
             Ok(format!(
@@ -103,7 +104,8 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = p2p_identity_report(node_runtime.identity_seed);
+            let identity =
+                p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
             let wallet = path_argument(&args.wallet);
             let data_dir = path_argument(&node_runtime.data_dir);
             Ok(format!(
@@ -130,7 +132,7 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
     ensure_data_dir(&node_runtime.data_dir)?;
     ensure_auth_token(&node_runtime.auth_token)?;
     let p2p_config = Libp2pControlPlaneConfig::default();
-    let identity = p2p_identity_report(node_runtime.identity_seed);
+    let identity = p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
     let wallet = path_argument(&args.wallet);
     let data_dir = path_argument(&node_runtime.data_dir);
     Ok(format!(

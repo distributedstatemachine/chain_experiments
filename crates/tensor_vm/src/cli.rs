@@ -7,7 +7,6 @@ use crate::runtime::cuda_kernels_compiled;
 #[cfg(test)]
 use crate::testnet::sign_public_evidence_record;
 mod arguments;
-mod command_values;
 mod commands;
 mod local_commands;
 #[cfg(test)]
@@ -32,6 +31,7 @@ mod reports;
 mod run_window_evidence;
 mod service_evidence;
 mod validation;
+mod value_types;
 
 #[cfg(test)]
 use arguments::{
@@ -39,13 +39,13 @@ use arguments::{
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
 pub use commands::{
-    AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
-    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
-    LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
-    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs,
-    NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
-    NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
-    PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
+    AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
+    EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
+    HashArg, HexBytesArg, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand,
+    MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs,
+    NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs,
+    NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand,
+    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
     PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleCommand, RoleRuntimeArgs,

@@ -1,6 +1,6 @@
 use crate::error::{Result, TvmError};
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
-use crate::types::{Hash, parse_hash_hex, parse_hex_bytes};
+use crate::types::{Hash, parse_hash_hex};
 
 pub(super) fn exact_comma_fields<'a>(
     value: &'a str,
@@ -98,8 +98,4 @@ pub(super) fn public_evidence_record_field_prefix(kind: PublicEvidenceRecordKind
 
 pub(super) fn parse_hash_argument(value: &str) -> Result<Hash> {
     parse_hash_hex(value).map_err(|_| TvmError::InvalidReceipt("invalid hash argument"))
-}
-
-pub(super) fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
-    parse_hex_bytes(value).map_err(|_| TvmError::InvalidReceipt("invalid hex bytes argument"))
 }

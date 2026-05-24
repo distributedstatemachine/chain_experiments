@@ -13,7 +13,7 @@ pub(super) fn execute_public_evidence_network_command(
     match command {
         EvidenceNetworkCommand::Observation(args) => {
             network_observation_evidence_line(NetworkObservationEvidenceLine {
-                operator_id: args.operator_id,
+                operator_id: args.operator_id.into_hash(),
                 peer_id: &args.peer_id.to_string(),
                 listen_address: &args.listen_address.to_string(),
                 observed_at_unix_seconds: args.observed_at,
@@ -27,7 +27,7 @@ pub(super) fn execute_public_evidence_network_command(
             })
         }
         EvidenceNetworkCommand::FromServiceLog(args) => network_observation_from_service_log(
-            args.operator_id,
+            args.operator_id.into_hash(),
             &args.listen_address.to_string(),
             args.observed_at,
             &path_argument(&args.service_log),

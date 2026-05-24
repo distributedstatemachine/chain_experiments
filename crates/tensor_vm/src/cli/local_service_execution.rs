@@ -29,7 +29,7 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
         NodeCommand::Check(args) => {
             ensure_data_dir(&args.data_dir)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = p2p_identity_report(args.identity_seed);
+            let identity = p2p_identity_report(args.identity_seed.map(|seed| seed.into_hash()));
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(
                 "command=service_readiness\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nnode_store_required=true\nlibp2p_ready=true",
@@ -46,7 +46,7 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
             ensure_data_dir(&runtime.data_dir)?;
             ensure_auth_token(&runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = p2p_identity_report(runtime.identity_seed);
+            let identity = p2p_identity_report(runtime.identity_seed.map(|seed| seed.into_hash()));
             let data_dir = path_argument(&runtime.data_dir);
             Ok(format!(
                 "command=service_serve\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nauth_enabled=true\nmax_requests={}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true",

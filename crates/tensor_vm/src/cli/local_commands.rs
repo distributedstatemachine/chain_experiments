@@ -1,5 +1,4 @@
-use super::command_values::parse_hash_value;
-use crate::types::Hash;
+use super::value_types::HashArg;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
 use std::net::SocketAddr;
@@ -161,8 +160,8 @@ pub struct NodeRuntimeArgs {
     pub p2p_listen: Multiaddr,
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
-    pub identity_seed: Option<Hash>,
+    #[arg(long, value_name = "HEX")]
+    pub identity_seed: Option<HashArg>,
     #[arg(long, env = "TVMD_AUTH_TOKEN", value_name = "TOKEN")]
     pub auth_token: String,
     #[arg(long, env = "TVMD_MAX_REQUESTS", default_value_t = DEFAULT_MAX_REQUESTS, value_name = "N")]
@@ -199,8 +198,8 @@ pub struct NodeCheckArgs {
     pub p2p_listen: Multiaddr,
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
     pub data_dir: PathBuf,
-    #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
-    pub identity_seed: Option<Hash>,
+    #[arg(long, value_name = "HEX")]
+    pub identity_seed: Option<HashArg>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

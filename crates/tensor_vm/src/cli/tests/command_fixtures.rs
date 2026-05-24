@@ -295,6 +295,22 @@ pub(super) fn peer_id_arg(value: String) -> PeerId {
     value.parse().expect("fixture peer ID must parse")
 }
 
+pub(super) fn hash_arg(value: Hash) -> HashArg {
+    HashArg::new(value)
+}
+
+pub(super) fn address_arg(value: Address) -> AddressArg {
+    AddressArg::new(value)
+}
+
+pub(super) fn hash_args(values: Vec<Hash>) -> Vec<HashArg> {
+    values.into_iter().map(HashArg::new).collect()
+}
+
+pub(super) fn hash_values(values: Vec<HashArg>) -> Vec<Hash> {
+    values.into_iter().map(HashArg::into_hash).collect()
+}
+
 fn public_evidence_command(command: EvidenceCommand) -> super::TvmdCommand {
     super::TvmdCommand::Public(PublicCommand::Evidence(command))
 }
@@ -337,7 +353,7 @@ impl CommandFixture {
                         listen: socket_addr_arg(listen),
                         p2p_listen: multiaddr_arg(p2p_listen),
                         data_dir: path_arg(data_dir),
-                        identity_seed,
+                        identity_seed: identity_seed.map(hash_arg),
                         auth_token,
                         max_requests,
                     },
@@ -371,7 +387,7 @@ impl CommandFixture {
                             listen: socket_addr_arg(listen),
                             p2p_listen: multiaddr_arg(p2p_listen),
                             data_dir: path_arg(data_dir),
-                            identity_seed,
+                            identity_seed: identity_seed.map(hash_arg),
                             auth_token,
                             max_requests,
                         },
@@ -399,7 +415,7 @@ impl CommandFixture {
                             listen: socket_addr_arg(listen),
                             p2p_listen: multiaddr_arg(p2p_listen),
                             data_dir: path_arg(data_dir),
-                            identity_seed,
+                            identity_seed: identity_seed.map(hash_arg),
                             auth_token,
                             max_requests,
                         },
@@ -429,7 +445,7 @@ impl CommandFixture {
             } => super::TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
                 p2p_listen: multiaddr_arg(p2p_listen),
                 data_dir: path_arg(data_dir),
-                identity_seed,
+                identity_seed: identity_seed.map(hash_arg),
             })),
             Self::ServiceServe {
                 listen,
@@ -443,7 +459,7 @@ impl CommandFixture {
                     listen: socket_addr_arg(listen),
                     p2p_listen: multiaddr_arg(p2p_listen),
                     data_dir: path_arg(data_dir),
-                    identity_seed,
+                    identity_seed: identity_seed.map(hash_arg),
                     auth_token,
                     max_requests,
                 },
@@ -487,7 +503,7 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Service(EvidenceServiceCommand::Health(
                 ServiceHealthArgs {
                     kind: service_kind_arg(kind),
-                    endpoint_id,
+                    endpoint_id: hash_arg(endpoint_id),
                     public_url,
                     health_path,
                     first_block: first_seen_block,
@@ -505,7 +521,7 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Service(
                 EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
                     kind: service_kind_arg(kind),
-                    endpoint_id,
+                    endpoint_id: hash_arg(endpoint_id),
                     public_url,
                     health_path,
                     observation_file: path_arg(observation_file),
@@ -522,10 +538,10 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Service(
                 EvidenceServiceCommand::Content(ServiceContentArgs {
                     kind: service_kind_arg(kind),
-                    endpoint_id,
+                    endpoint_id: hash_arg(endpoint_id),
                     public_url,
                     content_path,
-                    content_root,
+                    content_root: hash_arg(content_root),
                     observed_at: observed_at_unix_seconds,
                     min_content_bytes,
                 }),
@@ -540,7 +556,7 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Service(
                 EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
                     kind: service_kind_arg(kind),
-                    endpoint_id,
+                    endpoint_id: hash_arg(endpoint_id),
                     public_url,
                     content_path,
                     observed_at: observed_at_unix_seconds,
@@ -557,7 +573,7 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Service(
                 EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
                     kind: service_kind_arg(kind),
-                    endpoint_id,
+                    endpoint_id: hash_arg(endpoint_id),
                     public_url,
                     content_path,
                     observed_at: observed_at_unix_seconds,
@@ -573,9 +589,9 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(EvidenceRecordCommand::Summary(
                 RecordSummaryArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
-                    record_root,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
+                    record_root: hash_arg(record_root),
                     record_count,
                 },
             ))),
@@ -589,10 +605,10 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(EvidenceRecordCommand::Artifact(
                 RecordArtifactArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     artifact_uri,
-                    record_root,
+                    record_root: hash_arg(record_root),
                     record_count,
                 },
             ))),
@@ -605,10 +621,10 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(
                 EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     artifact_uri,
-                    record_roots,
+                    record_roots: hash_args(record_roots),
                 }),
             )),
             Self::PublicEvidenceRecordArtifactFromFile {
@@ -620,8 +636,8 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(
                 EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     artifact_uri,
                     record_file: path_arg(record_file),
                 }),
@@ -634,9 +650,9 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(
                 EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
-                    record_roots,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
+                    record_roots: hash_args(record_roots),
                 }),
             )),
             Self::PublicEvidenceRecordSummaryFromFile {
@@ -647,8 +663,8 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Record(
                 EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
                     kind: record_kind_arg(kind),
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     record_file: path_arg(record_file),
                 }),
             )),
@@ -666,7 +682,7 @@ impl CommandFixture {
                 idle_connection_timeout_seconds,
             } => public_evidence_command(EvidenceCommand::Network(
                 EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-                    operator_id,
+                    operator_id: hash_arg(operator_id),
                     peer_id: peer_id_arg(peer_id),
                     listen_address: multiaddr_arg(listen_address),
                     observed_at: observed_at_unix_seconds,
@@ -686,7 +702,7 @@ impl CommandFixture {
                 service_log,
             } => public_evidence_command(EvidenceCommand::Network(
                 EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
-                    operator_id,
+                    operator_id: hash_arg(operator_id),
                     listen_address: multiaddr_arg(listen_address),
                     observed_at: observed_at_unix_seconds,
                     service_log: path_arg(service_log),
@@ -699,9 +715,9 @@ impl CommandFixture {
                 manifest_signature_count,
                 independent_auditor_count,
             } => public_evidence_command(EvidenceCommand::Publish(PublicationArgs {
-                bundle_id,
+                bundle_id: hash_arg(bundle_id),
                 public_uri,
-                manifest_signer,
+                manifest_signer: address_arg(manifest_signer),
                 manifest_signature_count,
                 independent_auditor_count,
             })),
@@ -712,9 +728,9 @@ impl CommandFixture {
                 audit_uri,
                 observed_at_unix_seconds,
             } => public_evidence_command(EvidenceCommand::Audit(AuditorRecordArgs {
-                bundle_id,
+                bundle_id: hash_arg(bundle_id),
                 public_uri,
-                auditor_id,
+                auditor_id: address_arg(auditor_id),
                 audit_uri,
                 observed_at: observed_at_unix_seconds,
             })),
@@ -726,8 +742,8 @@ impl CommandFixture {
                 observed_blocks,
             } => public_evidence_command(EvidenceCommand::Run(EvidenceRunCommand::Window(
                 RunWindowArgs {
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     started_at: run_started_at_unix_seconds,
                     ended_at: run_ended_at_unix_seconds,
                     observed_blocks,
@@ -739,8 +755,8 @@ impl CommandFixture {
                 block_observation_file,
             } => public_evidence_command(EvidenceCommand::Run(EvidenceRunCommand::WindowFile(
                 RunWindowFromFileArgs {
-                    bundle_id,
-                    manifest_signer,
+                    bundle_id: hash_arg(bundle_id),
+                    manifest_signer: address_arg(manifest_signer),
                     block_observation_file: path_arg(block_observation_file),
                 },
             ))),
@@ -754,8 +770,8 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
                 NodeHeartbeatArgs {
                     role: node_role_arg(role),
-                    address,
-                    operator_id,
+                    address: address_arg(address),
+                    operator_id: hash_arg(operator_id),
                     first_block: first_seen_block,
                     last_block: last_seen_block,
                     heartbeat_count: signed_heartbeat_count,
@@ -769,8 +785,8 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Node(
                 EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
                     role: node_role_arg(role),
-                    address,
-                    operator_id,
+                    address: address_arg(address),
+                    operator_id: hash_arg(operator_id),
                     heartbeat_file: path_arg(heartbeat_file),
                 }),
             )),
@@ -783,8 +799,8 @@ impl CommandFixture {
             } => public_evidence_command(EvidenceCommand::Node(
                 EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
                     role: node_role_arg(role),
-                    address,
-                    operator_id,
+                    address: address_arg(address),
+                    operator_id: hash_arg(operator_id),
                     identity_uri,
                     observed_at: observed_at_unix_seconds,
                 }),
@@ -815,7 +831,11 @@ impl From<super::TvmdCommand> for CommandFixture {
                     listen: args.runtime.node_runtime.listen.to_string(),
                     p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
                     data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args.runtime.node_runtime.identity_seed,
+                    identity_seed: args
+                        .runtime
+                        .node_runtime
+                        .identity_seed
+                        .map(HashArg::into_hash),
                     auth_token: args.runtime.node_runtime.auth_token,
                     max_requests: args.runtime.node_runtime.max_requests,
                 },
@@ -833,7 +853,11 @@ impl From<super::TvmdCommand> for CommandFixture {
                     listen: args.runtime.node_runtime.listen.to_string(),
                     p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
                     data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args.runtime.node_runtime.identity_seed,
+                    identity_seed: args
+                        .runtime
+                        .node_runtime
+                        .identity_seed
+                        .map(HashArg::into_hash),
                     auth_token: args.runtime.node_runtime.auth_token,
                     max_requests: args.runtime.node_runtime.max_requests,
                 },
@@ -846,7 +870,11 @@ impl From<super::TvmdCommand> for CommandFixture {
                     listen: args.runtime.node_runtime.listen.to_string(),
                     p2p_listen: args.runtime.node_runtime.p2p_listen.to_string(),
                     data_dir: path_to_string(args.runtime.node_runtime.data_dir),
-                    identity_seed: args.runtime.node_runtime.identity_seed,
+                    identity_seed: args
+                        .runtime
+                        .node_runtime
+                        .identity_seed
+                        .map(HashArg::into_hash),
                     auth_token: args.runtime.node_runtime.auth_token,
                     max_requests: args.runtime.node_runtime.max_requests,
                 },
@@ -863,13 +891,13 @@ impl From<super::TvmdCommand> for CommandFixture {
                 NodeCommand::Check(args) => Self::ServiceReadiness {
                     p2p_listen: args.p2p_listen.to_string(),
                     data_dir: path_to_string(args.data_dir),
-                    identity_seed: args.identity_seed,
+                    identity_seed: args.identity_seed.map(HashArg::into_hash),
                 },
                 NodeCommand::Serve(args) => Self::ServiceServe {
                     listen: args.runtime.listen.to_string(),
                     p2p_listen: args.runtime.p2p_listen.to_string(),
                     data_dir: path_to_string(args.runtime.data_dir),
-                    identity_seed: args.runtime.identity_seed,
+                    identity_seed: args.runtime.identity_seed.map(HashArg::into_hash),
                     auth_token: args.runtime.auth_token,
                     max_requests: args.runtime.max_requests,
                 },
@@ -900,23 +928,23 @@ impl From<super::TvmdCommand> for CommandFixture {
                     manifest: path_to_string(args.manifest),
                 },
                 EvidenceCommand::Publish(args) => Self::PublicEvidencePublication {
-                    bundle_id: args.bundle_id,
+                    bundle_id: args.bundle_id.into_hash(),
                     public_uri: args.public_uri,
-                    manifest_signer: args.manifest_signer,
+                    manifest_signer: args.manifest_signer.into_address(),
                     manifest_signature_count: args.manifest_signature_count,
                     independent_auditor_count: args.independent_auditor_count,
                 },
                 EvidenceCommand::Audit(args) => Self::PublicEvidenceAuditorRecord {
-                    bundle_id: args.bundle_id,
+                    bundle_id: args.bundle_id.into_hash(),
                     public_uri: args.public_uri,
-                    auditor_id: args.auditor_id,
+                    auditor_id: args.auditor_id.into_address(),
                     audit_uri: args.audit_uri,
                     observed_at_unix_seconds: args.observed_at,
                 },
                 EvidenceCommand::Service(command) => match command {
                     EvidenceServiceCommand::Health(args) => Self::PublicEvidenceServiceHealth {
                         kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id,
+                        endpoint_id: args.endpoint_id.into_hash(),
                         public_url: args.public_url,
                         health_path: args.health_path,
                         first_seen_block: args.first_block,
@@ -927,7 +955,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                     EvidenceServiceCommand::HealthFile(args) => {
                         Self::PublicEvidenceServiceHealthFromFile {
                             kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id,
+                            endpoint_id: args.endpoint_id.into_hash(),
                             public_url: args.public_url,
                             health_path: args.health_path,
                             observation_file: path_to_string(args.observation_file),
@@ -935,17 +963,17 @@ impl From<super::TvmdCommand> for CommandFixture {
                     }
                     EvidenceServiceCommand::Content(args) => Self::PublicEvidenceServiceContent {
                         kind: args.kind.into(),
-                        endpoint_id: args.endpoint_id,
+                        endpoint_id: args.endpoint_id.into_hash(),
                         public_url: args.public_url,
                         content_path: args.content_path,
-                        content_root: args.content_root,
+                        content_root: args.content_root.into_hash(),
                         observed_at_unix_seconds: args.observed_at,
                         min_content_bytes: args.min_content_bytes,
                     },
                     EvidenceServiceCommand::ContentBytes(args) => {
                         Self::PublicEvidenceServiceContentFromBytes {
                             kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id,
+                            endpoint_id: args.endpoint_id.into_hash(),
                             public_url: args.public_url,
                             content_path: args.content_path,
                             observed_at_unix_seconds: args.observed_at,
@@ -955,7 +983,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                     EvidenceServiceCommand::ContentFile(args) => {
                         Self::PublicEvidenceServiceContentFromFile {
                             kind: args.kind.into(),
-                            endpoint_id: args.endpoint_id,
+                            endpoint_id: args.endpoint_id.into_hash(),
                             public_url: args.public_url,
                             content_path: args.content_path,
                             observed_at_unix_seconds: args.observed_at,
@@ -966,33 +994,33 @@ impl From<super::TvmdCommand> for CommandFixture {
                 EvidenceCommand::Record(command) => match command {
                     EvidenceRecordCommand::Summary(args) => Self::PublicEvidenceRecordSummary {
                         kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
-                        record_root: args.record_root,
+                        bundle_id: args.bundle_id.into_hash(),
+                        manifest_signer: args.manifest_signer.into_address(),
+                        record_root: args.record_root.into_hash(),
                         record_count: args.record_count,
                     },
                     EvidenceRecordCommand::Artifact(args) => Self::PublicEvidenceRecordArtifact {
                         kind: args.kind.into(),
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
+                        bundle_id: args.bundle_id.into_hash(),
+                        manifest_signer: args.manifest_signer.into_address(),
                         artifact_uri: args.artifact_uri,
-                        record_root: args.record_root,
+                        record_root: args.record_root.into_hash(),
                         record_count: args.record_count,
                     },
                     EvidenceRecordCommand::ArtifactRoots(args) => {
                         Self::PublicEvidenceRecordArtifactFromRoots {
                             kind: args.kind.into(),
-                            bundle_id: args.bundle_id,
-                            manifest_signer: args.manifest_signer,
+                            bundle_id: args.bundle_id.into_hash(),
+                            manifest_signer: args.manifest_signer.into_address(),
                             artifact_uri: args.artifact_uri,
-                            record_roots: args.record_roots,
+                            record_roots: hash_values(args.record_roots),
                         }
                     }
                     EvidenceRecordCommand::ArtifactFile(args) => {
                         Self::PublicEvidenceRecordArtifactFromFile {
                             kind: args.kind.into(),
-                            bundle_id: args.bundle_id,
-                            manifest_signer: args.manifest_signer,
+                            bundle_id: args.bundle_id.into_hash(),
+                            manifest_signer: args.manifest_signer.into_address(),
                             artifact_uri: args.artifact_uri,
                             record_file: path_to_string(args.record_file),
                         }
@@ -1000,16 +1028,16 @@ impl From<super::TvmdCommand> for CommandFixture {
                     EvidenceRecordCommand::SummaryRoots(args) => {
                         Self::PublicEvidenceRecordSummaryFromRoots {
                             kind: args.kind.into(),
-                            bundle_id: args.bundle_id,
-                            manifest_signer: args.manifest_signer,
-                            record_roots: args.record_roots,
+                            bundle_id: args.bundle_id.into_hash(),
+                            manifest_signer: args.manifest_signer.into_address(),
+                            record_roots: hash_values(args.record_roots),
                         }
                     }
                     EvidenceRecordCommand::SummaryFile(args) => {
                         Self::PublicEvidenceRecordSummaryFromFile {
                             kind: args.kind.into(),
-                            bundle_id: args.bundle_id,
-                            manifest_signer: args.manifest_signer,
+                            bundle_id: args.bundle_id.into_hash(),
+                            manifest_signer: args.manifest_signer.into_address(),
                             record_file: path_to_string(args.record_file),
                         }
                     }
@@ -1017,7 +1045,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                 EvidenceCommand::Network(command) => match command {
                     EvidenceNetworkCommand::Observation(args) => {
                         Self::PublicEvidenceNetworkObservation {
-                            operator_id: args.operator_id,
+                            operator_id: args.operator_id.into_hash(),
                             peer_id: args.peer_id.to_string(),
                             listen_address: args.listen_address.to_string(),
                             observed_at_unix_seconds: args.observed_at,
@@ -1032,7 +1060,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                     }
                     EvidenceNetworkCommand::FromServiceLog(args) => {
                         Self::PublicEvidenceNetworkObservationFromServiceLog {
-                            operator_id: args.operator_id,
+                            operator_id: args.operator_id.into_hash(),
                             listen_address: args.listen_address.to_string(),
                             observed_at_unix_seconds: args.observed_at,
                             service_log: path_to_string(args.service_log),
@@ -1041,23 +1069,23 @@ impl From<super::TvmdCommand> for CommandFixture {
                 },
                 EvidenceCommand::Run(command) => match command {
                     EvidenceRunCommand::Window(args) => Self::PublicEvidenceRunWindow {
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
+                        bundle_id: args.bundle_id.into_hash(),
+                        manifest_signer: args.manifest_signer.into_address(),
                         run_started_at_unix_seconds: args.started_at,
                         run_ended_at_unix_seconds: args.ended_at,
                         observed_blocks: args.observed_blocks,
                     },
                     EvidenceRunCommand::WindowFile(args) => Self::PublicEvidenceRunWindowFromFile {
-                        bundle_id: args.bundle_id,
-                        manifest_signer: args.manifest_signer,
+                        bundle_id: args.bundle_id.into_hash(),
+                        manifest_signer: args.manifest_signer.into_address(),
                         block_observation_file: path_to_string(args.block_observation_file),
                     },
                 },
                 EvidenceCommand::Node(command) => match command {
                     EvidenceNodeCommand::Heartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
                         role: args.role.into(),
-                        address: args.address,
-                        operator_id: args.operator_id,
+                        address: args.address.into_address(),
+                        operator_id: args.operator_id.into_hash(),
                         first_seen_block: args.first_block,
                         last_seen_block: args.last_block,
                         signed_heartbeat_count: args.heartbeat_count,
@@ -1065,16 +1093,16 @@ impl From<super::TvmdCommand> for CommandFixture {
                     EvidenceNodeCommand::HeartbeatFile(args) => {
                         Self::PublicEvidenceNodeHeartbeatFromFile {
                             role: args.role.into(),
-                            address: args.address,
-                            operator_id: args.operator_id,
+                            address: args.address.into_address(),
+                            operator_id: args.operator_id.into_hash(),
                             heartbeat_file: path_to_string(args.heartbeat_file),
                         }
                     }
                     EvidenceNodeCommand::OperatorAttestation(args) => {
                         Self::PublicEvidenceOperatorAttestation {
                             role: args.role.into(),
-                            address: args.address,
-                            operator_id: args.operator_id,
+                            address: args.address.into_address(),
+                            operator_id: args.operator_id.into_hash(),
                             identity_uri: args.identity_uri,
                             observed_at_unix_seconds: args.observed_at,
                         }
