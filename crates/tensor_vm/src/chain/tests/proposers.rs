@@ -33,7 +33,7 @@ fn fallback_proposer_handles_zero_stake_validator_records() {
     let mut chain = Chain::new(beacon);
     let validator = address(b"zero-stake-validator");
     chain.register_validator(validator, 10_000).unwrap();
-    chain.state.validators.get_mut(&validator).unwrap().stake = 0;
+    chain.set_validator_stake_for_testing(validator, 0).unwrap();
 
     assert_eq!(chain.proposer_for_next_epoch(&beacon), Some(validator));
 }
@@ -47,17 +47,8 @@ fn proposer_selection_ignores_tensorwork() {
     chain.register_miner(miner, 100).unwrap();
     chain.register_validator(validator, 10_000).unwrap();
     chain
-        .state
-        .miners
-        .get_mut(&miner)
-        .unwrap()
-        .settled_tensor_work = 1_000_000;
-    chain
-        .state
-        .miners
-        .get_mut(&miner)
-        .unwrap()
-        .pending_tensor_work = 1_000_000;
+        .set_miner_tensor_work_for_testing(miner, 1_000_000, 1_000_000)
+        .unwrap();
 
     assert_eq!(chain.proposer_for_next_epoch(&beacon), Some(validator));
     assert_eq!(

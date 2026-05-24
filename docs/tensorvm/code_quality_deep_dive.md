@@ -980,6 +980,8 @@ spaghetti around.
   that tests parse and execute clap commands directly.
 - Iteration 402 renamed the local libp2p CLI report helper module and functions away from
   fixture terminology and cleaned stale CLI test expectation wording.
+- Iteration 403 moved proposer edge-case tests off direct `ChainState` field mutation by adding
+  explicit crate-test-only `Chain` helpers for validator stake and miner tensor-work setup.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

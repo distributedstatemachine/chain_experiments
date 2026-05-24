@@ -30,6 +30,35 @@ impl Chain {
         Ok(())
     }
 
+    pub(crate) fn set_miner_tensor_work_for_testing(
+        &mut self,
+        miner: Address,
+        settled_tensor_work: u64,
+        pending_tensor_work: u64,
+    ) -> Result<()> {
+        let miner = self
+            .state
+            .miners
+            .get_mut(&miner)
+            .ok_or(TvmError::UnknownMiner)?;
+        miner.settled_tensor_work = settled_tensor_work;
+        miner.pending_tensor_work = pending_tensor_work;
+        Ok(())
+    }
+
+    pub(crate) fn set_validator_stake_for_testing(
+        &mut self,
+        validator: Address,
+        stake: u64,
+    ) -> Result<()> {
+        self.state
+            .validators
+            .get_mut(&validator)
+            .ok_or(TvmError::UnknownValidator)?
+            .stake = stake;
+        Ok(())
+    }
+
     pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
         self.state.receipts.insert(receipt.receipt_id(), receipt);
     }
