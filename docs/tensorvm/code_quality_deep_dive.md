@@ -656,6 +656,9 @@ spaghetti around.
   helper, removing direct `Chain::produce_block` calls from the runtime integration harness.
 - Iteration 252 reused the command-backed storage test helpers in simple node-store persistence fixtures,
   removing another set of direct registration and block-production setup calls from storage tests.
+- Iteration 253 expanded the storage command test helpers and routed the command-covered portions of the
+  node-store durable-chain fixture through them, reducing direct fixture calls for validator registration,
+  transfers, jobs, receipts, attestations, model registration, block production, and block votes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
