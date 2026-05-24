@@ -2,7 +2,6 @@ use super::*;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::{Address, Hash};
 use clap::Parser;
-use libp2p::PeerId;
 use std::path::PathBuf;
 
 pub(super) fn parse_test_cli(
@@ -86,19 +85,6 @@ pub(super) enum EvidenceFixture {
         manifest_signer: Address,
         record_roots: Vec<Hash>,
     },
-    NetworkObservation {
-        operator_id: Hash,
-        peer_id: String,
-        listen_address: String,
-        observed_at_unix_seconds: u64,
-        gossip_topic_count: u64,
-        request_response_protocol_count: u64,
-        bootstrap_peer_count: u64,
-        max_transmit_bytes: u64,
-        request_timeout_seconds: u64,
-        max_concurrent_streams: u64,
-        idle_connection_timeout_seconds: u64,
-    },
 }
 
 pub(super) fn execute_evidence_fixture(command: &EvidenceFixture) -> crate::error::Result<String> {
@@ -135,10 +121,6 @@ pub(super) fn path_arg(value: String) -> PathBuf {
 
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
     value.parse().expect("fixture multiaddr must parse")
-}
-
-pub(super) fn peer_id_arg(value: String) -> PeerId {
-    value.parse().expect("fixture peer ID must parse")
 }
 
 pub(super) fn hash_arg(value: Hash) -> HashArg {
@@ -307,33 +289,6 @@ impl EvidenceFixture {
                     bundle_id: hash_arg(bundle_id),
                     manifest_signer: address_arg(manifest_signer),
                     record_roots: hash_args(record_roots),
-                }),
-            )),
-            Self::NetworkObservation {
-                operator_id,
-                peer_id,
-                listen_address,
-                observed_at_unix_seconds,
-                gossip_topic_count,
-                request_response_protocol_count,
-                bootstrap_peer_count,
-                max_transmit_bytes,
-                request_timeout_seconds,
-                max_concurrent_streams,
-                idle_connection_timeout_seconds,
-            } => public_evidence_command(EvidenceCommand::Network(
-                EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-                    operator_id: hash_arg(operator_id),
-                    peer_id: peer_id_arg(peer_id),
-                    listen_address: multiaddr_arg(listen_address),
-                    observed_at: observed_at_unix_seconds,
-                    gossip_topics: gossip_topic_count,
-                    request_response_protocols: request_response_protocol_count,
-                    bootstrap_peers: bootstrap_peer_count,
-                    max_transmit_bytes,
-                    request_timeout_seconds,
-                    max_concurrent_streams,
-                    idle_timeout_seconds: idle_connection_timeout_seconds,
                 }),
             )),
         }

@@ -968,6 +968,8 @@ spaghetti around.
 - Iteration 396 moved public node heartbeat and operator-attestation rejection tests from
   `EvidenceFixture` to direct `EvidenceCommand` execution and removed the now-dead node fixture
   variants.
+- Iteration 397 moved public network observation rejection tests from `EvidenceFixture` to direct
+  `EvidenceCommand` execution and removed the now-dead network fixture variant.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

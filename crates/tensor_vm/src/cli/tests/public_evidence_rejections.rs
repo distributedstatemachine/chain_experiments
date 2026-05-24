@@ -3,163 +3,88 @@ use super::*;
 #[test]
 fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
     let peer_id = PeerId::random().to_string();
-    let make_network_observation = |operator_id,
-                                    peer_id: String,
-                                    listen_address: String,
-                                    observed_at_unix_seconds,
-                                    gossip_topic_count,
-                                    request_response_protocol_count,
-                                    bootstrap_peer_count,
-                                    max_transmit_bytes| {
-        EvidenceFixture::NetworkObservation {
-            operator_id,
-            peer_id,
-            listen_address,
-            observed_at_unix_seconds,
-            gossip_topic_count,
-            request_response_protocol_count,
-            bootstrap_peer_count,
-            max_transmit_bytes,
-            request_timeout_seconds: 10,
-            max_concurrent_streams: 128,
-            idle_connection_timeout_seconds: 60,
-        }
-    };
     let operator_id = hash_bytes(b"test", &[b"network-operator"]);
-    let public_listen_address = "/dns/node-a.tensorvm.net/tcp/4001".to_owned();
-    for invalid in [
-        make_network_observation(
+    let public_listen_address = "/dns/node-a.tensorvm.net/tcp/4001";
+    let invalid_network_observations = [
+        (
             [0; 32],
-            peer_id.clone(),
-            public_listen_address.clone(),
+            public_listen_address,
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (operator_id, public_listen_address, 0, (5, 3, 2, 1_048_576)),
+        (
             operator_id,
-            peer_id.clone(),
-            public_listen_address.clone(),
-            0,
-            5,
-            3,
-            2,
-            1_048_576,
-        ),
-        make_network_observation(
-            operator_id,
-            peer_id.clone(),
-            public_listen_address.clone(),
+            public_listen_address,
             1_700_000_000,
-            0,
-            3,
-            2,
-            1_048_576,
+            (0, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            public_listen_address.clone(),
+            public_listen_address,
             1_700_000_000,
-            5,
-            0,
-            2,
-            1_048_576,
+            (5, 0, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            public_listen_address.clone(),
+            public_listen_address,
             1_700_000_000,
-            5,
-            3,
-            0,
-            1_048_576,
+            (5, 3, 0, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            public_listen_address.clone(),
+            public_listen_address,
             1_700_000_000,
-            5,
-            3,
-            2,
-            0,
+            (5, 3, 2, 0),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            "/ip4/127.0.0.1/tcp/4001",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/ip4/8.8.8.8".to_owned(),
+            "/ip4/8.8.8.8",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/ip4/8.8.8.8/tcp/0".to_owned(),
+            "/ip4/8.8.8.8/tcp/0",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/ip4/8.8.8.8/udp/4001".to_owned(),
+            "/ip4/8.8.8.8/udp/4001",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/ip4/203.0.113.10/tcp/4001".to_owned(),
+            "/ip4/203.0.113.10/tcp/4001",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/dns/bad_host.tensorvm.net/tcp/4001".to_owned(),
+            "/dns/bad_host.tensorvm.net/tcp/4001",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-        make_network_observation(
+        (
             operator_id,
-            peer_id.clone(),
-            "/dns/node.tensorvm.example/tcp/4001".to_owned(),
+            "/dns/node.tensorvm.example/tcp/4001",
             1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
+            (5, 3, 2, 1_048_576),
         ),
-    ] {
-        assert!(execute_evidence_fixture(&invalid).is_err());
+    ];
+    for (operator_id, listen_address, observed_at, counts) in invalid_network_observations {
+        assert!(
+            execute_network_observation(operator_id, &peer_id, listen_address, observed_at, counts)
+                .is_err()
+        );
     }
     assert!(
         parse_test_cli(&[
@@ -684,6 +609,31 @@ fn execute_node_heartbeat_file(heartbeat_file: std::path::PathBuf) -> crate::err
             heartbeat_file,
         },
     )))
+}
+
+fn execute_network_observation(
+    operator_id: [u8; 32],
+    peer_id: &str,
+    listen_address: &str,
+    observed_at: u64,
+    counts: (u64, u64, u64, u64),
+) -> crate::error::Result<String> {
+    let (gossip_topics, request_response_protocols, bootstrap_peers, max_transmit_bytes) = counts;
+    execute_public_evidence_command(&EvidenceCommand::Network(
+        EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+            operator_id: hash_arg(operator_id),
+            peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+            listen_address: multiaddr_arg(listen_address.to_owned()),
+            observed_at,
+            gossip_topics,
+            request_response_protocols,
+            bootstrap_peers,
+            max_transmit_bytes,
+            request_timeout_seconds: 10,
+            max_concurrent_streams: 128,
+            idle_timeout_seconds: 60,
+        }),
+    ))
 }
 
 fn execute_operator_attestation(
