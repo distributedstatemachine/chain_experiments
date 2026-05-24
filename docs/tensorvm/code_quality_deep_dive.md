@@ -1047,6 +1047,8 @@ spaghetti around.
   `cli/tests/public_parser.rs`, removing the last generic parser test module name after the local split.
 - Iteration 431 moved the shared comma-record assertion helper out of the public evidence execution report
   suite and into `cli/tests/report_fields.rs`, preparing that oversized report test for family-level splits.
+- Iteration 432 split publication and auditor public evidence execution report coverage into
+  `cli/tests/public_evidence_publication_reports.rs`, reducing the monolithic execution report suite.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
