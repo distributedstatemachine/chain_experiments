@@ -332,8 +332,11 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
     });
     assert_eq!(explorer_page.status, 200);
     assert!(explorer_page.body.starts_with("<!doctype html>"));
-    assert!(explorer_page.body.contains("TensorVM Explorer"));
-    assert!(explorer_page.body.contains("new WebSocket"));
+    assert_eq!(
+        html_tag_text(&explorer_page.body, "title"),
+        "TensorVM Explorer"
+    );
+    assert_html_line(&explorer_page.body, "const ws = new WebSocket(WS_URL);");
 
     let explorer_health = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -362,7 +365,14 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(telemetry_page.status, 200);
-    assert!(telemetry_page.body.contains("Telemetry Dashboard"));
+    assert_eq!(
+        html_tag_text(&telemetry_page.body, "title"),
+        "TensorVM Telemetry"
+    );
+    assert_eq!(
+        html_tag_text(&telemetry_page.body, "h1"),
+        "Telemetry Dashboard"
+    );
 
     let telemetry_health = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -390,8 +400,12 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(faucet_page.status, 200);
-    assert!(faucet_page.body.contains("<h1>Faucet</h1>"));
-    assert!(faucet_page.body.contains("<dd>100</dd>"));
+    assert_eq!(html_tag_text(&faucet_page.body, "title"), "TensorVM Faucet");
+    assert_eq!(html_tag_text(&faucet_page.body, "h1"), "Faucet");
+    assert_eq!(
+        html_definition_value(&faucet_page.body, "Drip Amount"),
+        "100"
+    );
 
     let faucet_health = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -631,14 +645,14 @@ fn rpc_rejects_malformed_requests_and_missing_resources() {
         );
     }
 
-    assert!(
-        rpc.handle(&RpcRequest {
-            method: "GET".to_owned(),
-            path: "/faucet/page".to_owned(),
-            body: Vec::new(),
-        })
-        .body
-        .contains("Not configured")
+    let unconfigured_faucet_page = rpc.handle(&RpcRequest {
+        method: "GET".to_owned(),
+        path: "/faucet/page".to_owned(),
+        body: Vec::new(),
+    });
+    assert_eq!(
+        html_definition_value(&unconfigured_faucet_page.body, "Status"),
+        "Not configured"
     );
     assert_eq!(
         rpc.handle_mut(&RpcRequest {

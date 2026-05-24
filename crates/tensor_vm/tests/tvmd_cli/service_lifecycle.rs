@@ -222,7 +222,10 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
 
     let explorer = authenticated_get_request(rpc_port, "/explorer");
     assert_eq!(response_status_line(&explorer), "HTTP/1.1 200 OK");
-    assert!(response_body(&explorer).contains("TensorVM Explorer"));
+    assert_eq!(
+        html_tag_text(response_body(&explorer), "title"),
+        "TensorVM Explorer"
+    );
     assert_service_content_evidence_from_response(
         &data_dir,
         "explorer",
@@ -235,7 +238,10 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
 
     let faucet = authenticated_get_request(rpc_port, "/faucet/page");
     assert_eq!(response_status_line(&faucet), "HTTP/1.1 200 OK");
-    assert!(response_body(&faucet).contains("TensorVM Faucet"));
+    assert_eq!(
+        html_tag_text(response_body(&faucet), "title"),
+        "TensorVM Faucet"
+    );
     assert_service_content_evidence_from_response(
         &data_dir,
         "faucet",
@@ -248,7 +254,10 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
 
     let telemetry = authenticated_get_request(rpc_port, "/telemetry/dashboard");
     assert_eq!(response_status_line(&telemetry), "HTTP/1.1 200 OK");
-    assert!(response_body(&telemetry).contains("TensorVM Telemetry"));
+    assert_eq!(
+        html_tag_text(response_body(&telemetry), "title"),
+        "TensorVM Telemetry"
+    );
     assert_service_content_evidence_from_response(
         &data_dir,
         "telemetry",

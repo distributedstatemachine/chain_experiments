@@ -146,6 +146,15 @@ fn response_json_with_status(response: &str, status: &str) -> serde_json::Value 
     response_json(response)
 }
 
+fn html_tag_text<'a>(html: &'a str, tag: &str) -> &'a str {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    html.split_once(&open)
+        .and_then(|(_, tail)| tail.split_once(&close))
+        .map(|(value, _)| value)
+        .unwrap_or_else(|| panic!("HTML document must contain <{tag}> text"))
+}
+
 fn json_u64(json: &serde_json::Value, key: &str) -> u64 {
     json[key]
         .as_u64()

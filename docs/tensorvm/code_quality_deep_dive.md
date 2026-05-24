@@ -756,6 +756,8 @@ spaghetti around.
   trimmed-line assertions, removing the final document-wide substring loops from deployment docs coverage.
 - Iteration 300 replaced the API surface test's partial CLI command substring scans with exact route and
   command-list assertions, making the documented API surface coverage fail on drift instead of fragments.
+- Iteration 301 added small HTML test parsers for route and process-level service tests, replacing raw
+  rendered-page substring assertions with exact title, heading, definition-list, and JavaScript line checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

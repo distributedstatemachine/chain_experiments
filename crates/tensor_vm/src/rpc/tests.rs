@@ -37,6 +37,30 @@ fn json_hex_field<'a>(json: &'a serde_json::Value, field: &str) -> &'a str {
     value
 }
 
+fn html_tag_text<'a>(html: &'a str, tag: &str) -> &'a str {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    html.split_once(&open)
+        .and_then(|(_, tail)| tail.split_once(&close))
+        .map(|(value, _)| value)
+        .unwrap_or_else(|| panic!("HTML document must contain <{tag}> text"))
+}
+
+fn html_definition_value<'a>(html: &'a str, label: &str) -> &'a str {
+    let open = format!("<dt>{label}</dt><dd>");
+    html.split_once(&open)
+        .and_then(|(_, tail)| tail.split_once("</dd>"))
+        .map(|(value, _)| value)
+        .unwrap_or_else(|| panic!("HTML document must contain definition row {label:?}"))
+}
+
+fn assert_html_line(html: &str, expected: &str) {
+    assert!(
+        html.lines().map(str::trim).any(|line| line == expected),
+        "HTML document must contain exact line {expected:?}"
+    );
+}
+
 mod http;
 mod routes;
 mod tensors;
