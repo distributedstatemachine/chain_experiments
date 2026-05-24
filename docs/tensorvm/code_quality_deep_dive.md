@@ -1027,6 +1027,9 @@ spaghetti around.
 - Iteration 423 split public publication and auditor clap argument structs into
   `cli/public_evidence_publication_commands.rs`, leaving the mixed public evidence command module
   focused on top-level command routing and manifest path arguments.
+- Iteration 424 split miner, validator, proposer, and shared role-runtime clap command types into
+  `cli/local_role_commands.rs`, leaving `cli/local_commands.rs` focused on node, peer, runtime, and
+  localnet argument groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

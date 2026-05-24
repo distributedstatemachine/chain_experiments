@@ -13,6 +13,7 @@ mod local_commands;
 mod local_execution;
 #[cfg(test)]
 mod local_p2p_report_fields;
+mod local_role_commands;
 #[cfg(test)]
 mod local_role_execution;
 #[cfg(test)]
