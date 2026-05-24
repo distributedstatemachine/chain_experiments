@@ -259,6 +259,8 @@ spaghetti around.
   inline node test split without changing the public node facade.
 - Iteration 107 moved pending-payload retry and duplicate-queue tests into
   `node/pending_payloads.rs`, keeping retry fixtures colocated with the queue implementation.
+- Iteration 108 moved network ingest ordering and driver tests into `node/message_ingest.rs`, so
+  ingest fixtures sit beside the ingest orchestration instead of the node facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
