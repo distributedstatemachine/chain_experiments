@@ -458,6 +458,9 @@ spaghetti around.
   aggregation, and generated network-runtime observation evidence into
   `testnet/public_evidence_crypto.rs`, separating public-evidence cryptographic framing from the
   main testnet orchestration module.
+- Iteration 177 moved public preflight manifest parsing and launch-readiness manifest assembly into
+  `testnet/public_preflight_manifest.rs`, separating preflight input handling from public evidence
+  bundle manifest parsing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
