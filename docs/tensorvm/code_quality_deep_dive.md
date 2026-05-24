@@ -495,6 +495,9 @@ spaghetti around.
 - Iteration 188 moved public evidence and preflight manifest text/signature fixture builders into
   `testnet/tests/manifest_fixtures.rs`, reducing the parent test module to shared run/bundle fixture
   constructors and test module wiring.
+- Iteration 189 moved shared public run, service, network-observation, and evidence-bundle fixture
+  constructors into `testnet/tests/run_fixtures.rs`, leaving `testnet.rs` with production types,
+  shared helpers, and test module declarations.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
