@@ -122,14 +122,62 @@ sys.exit(1)
 json_positive_field_count() {
   key="$1"
   document="$2"
-  printf '%s\n' "$document" | grep -o "\"$key\":[1-9][0-9]*" | wc -l | tr -d ' '
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+def values(value):
+    if isinstance(value, dict):
+        yield value
+        for nested in value.values():
+            yield from values(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from values(nested)
+
+try:
+    document = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+key = sys.argv[1]
+count = 0
+for item in values(document):
+    value = item.get(key)
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        count += 1
+print(count)
+' "$key"
 }
 
 json_string_field_count() {
   key="$1"
   value="$2"
   document="$3"
-  printf '%s\n' "$document" | grep -o "\"$key\":\"$value\"" | wc -l | tr -d ' '
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+def values(value):
+    if isinstance(value, dict):
+        yield value
+        for nested in value.values():
+            yield from values(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from values(nested)
+
+try:
+    document = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+key = sys.argv[1]
+expected = sys.argv[2]
+count = 0
+for item in values(document):
+    if item.get(key) == expected:
+        count += 1
+print(count)
+' "$key" "$value"
 }
 
 read_service_status() {

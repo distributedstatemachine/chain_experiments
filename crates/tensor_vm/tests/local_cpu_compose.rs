@@ -498,6 +498,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' || fail "$service local CPU structured verifier did not accept node store""#,
             r#"printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\([0-9][0-9]*\).*/\1/p" | sed -n '1p'"#,
             r#"printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\"\([^\"]*\)\".*/\1/p" | sed -n '1p'"#,
+            r#"printf '%s\n' "$document" | grep -o "\"$key\":[1-9][0-9]*" | wc -l | tr -d ' '"#,
+            r#"printf '%s\n' "$document" | grep -o "\"$key\":\"$value\"" | wc -l | tr -d ' '"#,
         ],
     );
 

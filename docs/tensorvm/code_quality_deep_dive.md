@@ -862,6 +862,9 @@ spaghetti around.
 - Iteration 344 replaced the local CPU deployment checker's scalar JSON number and string extraction
   helpers with Python JSON readers, removing another sed/tr pipeline from live-chain and tensor-route
   policy checks.
+- Iteration 345 replaced the local CPU deployment checker's receipt JSON field-count regex helpers with
+  structured Python JSON traversal, so live receipt attestation and primitive-type policy checks no longer
+  depend on grep over serialized JSON text.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
