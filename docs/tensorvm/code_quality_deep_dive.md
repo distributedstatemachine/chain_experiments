@@ -588,6 +588,9 @@ spaghetti around.
 - Iteration 229 moved public-evidence service health/content invalid-argument coverage into
   `cli/tests/public_evidence_service_rejections.rs`, separating service evidence rejection cases from the
   remaining publication, node, network, and supporting-record rejection coverage.
+- Iteration 230 moved public-evidence publication and auditor-record invalid-argument coverage into
+  `cli/tests/public_evidence_publication_rejections.rs`, keeping publication-bound URI/signature/auditor
+  edge cases beside that command family and shrinking the remaining mixed rejection module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

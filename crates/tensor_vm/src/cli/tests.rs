@@ -16,6 +16,7 @@ mod manifest_fixtures;
 mod manifest_reports;
 mod network_observation;
 mod parser;
+mod public_evidence_publication_rejections;
 mod public_evidence_record_reports;
 mod public_evidence_rejections;
 mod public_evidence_service_rejections;
