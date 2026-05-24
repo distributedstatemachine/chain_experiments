@@ -936,6 +936,8 @@ spaghetti around.
 - Iteration 381 moved public evidence manifest, publication, audit, and run-window parser
   expectations from `EvidenceFixture` to direct `TvmdCommand` construction, then removed the now-dead
   fixture variants and redundant `Evidence` prefixes from the remaining fixture variants.
+- Iteration 382 moved public node heartbeat, heartbeat-file, and operator-attestation parser
+  expectations from `EvidenceFixture` to direct `TvmdCommand` construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

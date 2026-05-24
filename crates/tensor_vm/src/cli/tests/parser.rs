@@ -1,14 +1,15 @@
 use super::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceFixture,
-    EvidenceRunCommand, HashArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
-    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs,
-    NodeServeArgs, ProposerCommand, PublicCommand, PublicEvidenceManifestArgs,
-    PublicTestnetManifestArgs, PublicationArgs, RoleRuntimeArgs, RunWindowArgs,
+    EvidenceNodeCommand, EvidenceRunCommand, HashArg, LocalnetCommand, MinerCheckArgs,
+    MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs,
+    OperatorAttestationArgs, ProposerCommand, PublicCommand, PublicEvidenceManifestArgs,
+    PublicNodeRoleArg, PublicTestnetManifestArgs, PublicationArgs, RoleRuntimeArgs, RunWindowArgs,
     RunWindowFromFileArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand,
     ValidatorRunArgs, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
-use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
+use crate::testnet::{PublicEvidenceRecordKind, PublicServiceKind};
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
 use std::net::SocketAddr;
@@ -434,14 +435,16 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        EvidenceFixture::NodeHeartbeat {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            signed_heartbeat_count: 10,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
+            EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
+                role: PublicNodeRoleArg::Miner,
+                address: address_arg(address(b"miner-a")),
+                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                first_block: 0,
+                last_block: 9,
+                heartbeat_count: 10,
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -459,12 +462,14 @@ fn parses_documented_validator_commands() {
             "artifacts/miner-a-heartbeats.records",
         ])
         .unwrap(),
-        EvidenceFixture::NodeHeartbeatFromFile {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            heartbeat_file: "artifacts/miner-a-heartbeats.records".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
+            EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
+                role: PublicNodeRoleArg::Miner,
+                address: address_arg(address(b"miner-a")),
+                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                heartbeat_file: path("artifacts/miner-a-heartbeats.records"),
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -484,13 +489,15 @@ fn parses_documented_validator_commands() {
             "1700000000",
         ])
         .unwrap(),
-        EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
+            EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
+                role: PublicNodeRoleArg::Miner,
+                address: address_arg(address(b"miner-a")),
+                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
+                observed_at: 1_700_000_000,
+            }),
+        )))
     );
     let endpoint_id = manifest_hash(b"rpc-service");
     assert_eq!(
