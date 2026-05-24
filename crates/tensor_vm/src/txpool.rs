@@ -1,6 +1,6 @@
 use crate::chain::Transaction;
 use crate::error::{Result, TvmError};
-use crate::types::Hash;
+use crate::types::{Hash, parse_hash_hex};
 use std::collections::{BTreeSet, VecDeque};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -136,13 +136,7 @@ fn parse_hash_token(token: Option<&str>) -> Result<Hash> {
     if token.len() != 64 {
         return Err(TvmError::InvalidReceipt("invalid hash length"));
     }
-    let mut out = [0_u8; 32];
-    for (i, chunk) in token.as_bytes().chunks_exact(2).enumerate() {
-        let high = hex_value(chunk[0])?;
-        let low = hex_value(chunk[1])?;
-        out[i] = (high << 4) | low;
-    }
-    Ok(out)
+    parse_hash_hex(token).map_err(|_| TvmError::InvalidReceipt("invalid hex"))
 }
 
 fn parse_u64_token(token: Option<&str>) -> Result<u64> {
@@ -150,15 +144,6 @@ fn parse_u64_token(token: Option<&str>) -> Result<u64> {
         .ok_or(TvmError::InvalidReceipt("missing integer token"))?
         .parse()
         .map_err(|_| TvmError::InvalidReceipt("invalid integer token"))
-}
-
-fn hex_value(value: u8) -> Result<u8> {
-    match value {
-        b'0'..=b'9' => Ok(value - b'0'),
-        b'a'..=b'f' => Ok(value - b'a' + 10),
-        b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(TvmError::InvalidReceipt("invalid hex")),
-    }
 }
 
 #[cfg(test)]
@@ -263,6 +248,12 @@ mod tests {
         assert!(parse_transaction_envelope(b"").is_err());
         assert!(parse_transaction_envelope(b"register_miner").is_err());
         assert!(parse_transaction_envelope(b"register_miner not-hex").is_err());
+        assert!(
+            parse_transaction_envelope(
+                format!("register_miner 0x{}", hex(&address(b"prefixed"))).as_bytes()
+            )
+            .is_err()
+        );
         assert!(
             parse_transaction_envelope(format!("register_miner {}", "g".repeat(64)).as_bytes())
                 .is_err()

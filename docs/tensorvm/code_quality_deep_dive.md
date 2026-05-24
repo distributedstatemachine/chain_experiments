@@ -815,6 +815,8 @@ spaghetti around.
   fixed hashes and arbitrary byte arguments no longer maintain separate nibble decoders.
 - Iteration 324 reused the shared hex nibble decoder from RPC query-token percent decoding, leaving URL
   parsing local while eliminating the last separate hex digit lookup table.
+- Iteration 325 routed transaction-envelope hash token decoding through the shared fixed-hash parser while
+  preserving the txpool wire format's exact 64-character token requirement.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
