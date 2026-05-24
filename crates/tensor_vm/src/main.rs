@@ -1,10 +1,10 @@
+use clap::Parser;
 use tensor_vm::{
-    CliCommand,
+    Cli, CliCommand,
     cli::{
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
-    parse_cli_args,
 };
 
 #[path = "main/block_status.rs"]
@@ -75,18 +75,12 @@ use runtime_config::RoleServiceConfig;
 use status::service_status;
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match parse_cli_args(&args) {
-        Ok(command) => match execute_command(&command) {
-            Ok(output) => println!("{output}"),
-            Err(error) => {
-                eprintln!("{error}");
-                std::process::exit(1);
-            }
-        },
+    let command = Cli::parse().into_command();
+    match execute_command(&command) {
+        Ok(output) => println!("{output}"),
         Err(error) => {
             eprintln!("{error}");
-            std::process::exit(2);
+            std::process::exit(1);
         }
     }
 }

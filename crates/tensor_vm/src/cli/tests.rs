@@ -10,6 +10,14 @@ use crate::testnet::{
     public_network_runtime_observations_for_run,
 };
 use crate::types::{Hash, address, hash_bytes};
+use clap::Parser;
+
+fn parse_test_cli(args: &[&str]) -> std::result::Result<CliCommand, clap::Error> {
+    let mut argv = Vec::with_capacity(args.len() + 1);
+    argv.push("tvmd");
+    argv.extend_from_slice(args);
+    Cli::try_parse_from(argv).map(Cli::into_command)
+}
 
 fn manifest_hash(label: &[u8]) -> String {
     hex(&hash_bytes(b"test", &[label]))
@@ -552,11 +560,11 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
 #[test]
 fn parses_documented_miner_commands() {
     assert_eq!(
-        parse_cli_parts(&["miner", "register", "--stake", "100"]).unwrap(),
+        parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
         CliCommand::MinerRegister { stake: 100 }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "miner",
             "start",
             "--wallet",
@@ -574,11 +582,11 @@ fn parses_documented_miner_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&["miner", "status"]).unwrap(),
+        parse_test_cli(&["miner", "status"]).unwrap(),
         CliCommand::MinerStatus
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "miner",
             "run",
             "--wallet",
@@ -613,7 +621,7 @@ fn parses_documented_miner_commands() {
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "miner",
             "run",
             "--wallet",
@@ -653,11 +661,11 @@ fn parses_documented_miner_commands() {
 #[test]
 fn parses_documented_validator_commands() {
     assert_eq!(
-        parse_cli_parts(&["validator", "register", "--stake", "10000"]).unwrap(),
+        parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
         CliCommand::ValidatorRegister { stake: 10_000 }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "validator",
             "start",
             "--wallet",
@@ -672,11 +680,11 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&["validator", "status"]).unwrap(),
+        parse_test_cli(&["validator", "status"]).unwrap(),
         CliCommand::ValidatorStatus
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "validator",
             "run",
             "--wallet",
@@ -708,7 +716,7 @@ fn parses_documented_validator_commands() {
     );
     let identity_seed = "22".repeat(32);
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "validator",
             "run",
             "--wallet",
@@ -741,13 +749,13 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CliCommand::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "validate",
             "--manifest",
@@ -759,7 +767,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-testnet",
             "preflight",
             "--manifest",
@@ -773,7 +781,7 @@ fn parses_documented_validator_commands() {
     let bundle_id = manifest_hash(b"public-evidence-bundle");
     let manifest_signer = manifest_address(b"public-evidence-publisher");
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "publication",
             "--bundle-id",
@@ -797,7 +805,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "auditor-record",
             "--bundle-id",
@@ -821,7 +829,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "run-window",
             "--bundle-id",
@@ -845,7 +853,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "run-window-from-file",
             "--bundle-id",
@@ -863,7 +871,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "node-heartbeat",
             "--role",
@@ -890,7 +898,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "node-heartbeat-from-file",
             "--role",
@@ -911,7 +919,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "operator-attestation",
             "--role",
@@ -936,7 +944,7 @@ fn parses_documented_validator_commands() {
     );
     let endpoint_id = manifest_hash(b"rpc-service");
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "service-health",
             "--kind",
@@ -969,7 +977,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "service-health-from-file",
             "--kind",
@@ -994,7 +1002,7 @@ fn parses_documented_validator_commands() {
     );
     let content_root = manifest_hash(b"rpc-service-content");
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "service-content",
             "--kind",
@@ -1025,7 +1033,7 @@ fn parses_documented_validator_commands() {
     );
     let content_hex = hex(&[42_u8; 64]);
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "service-content-from-bytes",
             "--kind",
@@ -1052,7 +1060,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "service-content-from-file",
             "--kind",
@@ -1080,7 +1088,7 @@ fn parses_documented_validator_commands() {
     );
     let peer_id = PeerId::random().to_string();
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "network-observation",
             "--operator-id",
@@ -1122,7 +1130,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "network-observation-from-service-log",
             "--operator-id",
@@ -1144,7 +1152,7 @@ fn parses_documented_validator_commands() {
     );
     let record_root = manifest_hash(b"network-runtime-root");
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary",
             "--kind",
@@ -1168,7 +1176,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-artifact",
             "--kind",
@@ -1200,7 +1208,7 @@ fn parses_documented_validator_commands() {
         manifest_hash(b"network-observation-b")
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary-from-roots",
             "--kind",
@@ -1224,7 +1232,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-artifact-from-roots",
             "--kind",
@@ -1251,7 +1259,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary-from-file",
             "--kind",
@@ -1272,7 +1280,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-artifact-from-file",
             "--kind",
@@ -1296,14 +1304,14 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CliCommand::ServiceInit {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     let bootstrap_peer = PeerId::random().to_string();
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "peer",
             "add",
@@ -1322,7 +1330,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "readiness",
             "--p2p-listen",
@@ -1339,7 +1347,7 @@ fn parses_documented_validator_commands() {
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "readiness",
             "--p2p-listen",
@@ -1357,7 +1365,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "serve",
             "--listen",
@@ -1382,7 +1390,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "serve",
             "--listen",
@@ -1409,13 +1417,13 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_cli_parts(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CliCommand::ServiceStatus {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "block",
             "--data-dir",
@@ -1434,7 +1442,7 @@ fn parses_documented_validator_commands() {
 #[test]
 fn parses_documented_proposer_commands() {
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "proposer",
             "run",
             "--wallet",
@@ -1466,7 +1474,7 @@ fn parses_documented_proposer_commands() {
     );
     let identity_seed = "33".repeat(32);
     assert_eq!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "proposer",
             "run",
             "--wallet",
@@ -1502,19 +1510,13 @@ fn parses_documented_proposer_commands() {
 
 #[test]
 fn rejects_invalid_cli() {
-    assert!(parse_cli_parts(&["miner", "register"]).is_err());
-    assert!(parse_cli_parts(&["validator", "register", "--stake", "abc"]).is_err());
+    assert!(parse_test_cli(&["miner", "register"]).is_err());
+    assert!(parse_test_cli(&["validator", "register", "--stake", "abc"]).is_err());
 }
 
 #[test]
-fn parse_cli_args_and_describe_commands() {
-    let args = vec![
-        "miner".to_owned(),
-        "register".to_owned(),
-        "--stake".to_owned(),
-        "250".to_owned(),
-    ];
-    let command = parse_cli_args(&args).unwrap();
+fn clap_cli_parses_and_describes_commands() {
+    let command = parse_test_cli(&["miner", "register", "--stake", "250"]).unwrap();
     assert_eq!(command, CliCommand::MinerRegister { stake: 250 });
     let bootstrap_peer = PeerId::random().to_string();
 
@@ -3386,7 +3388,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "service",
             "serve",
             "--listen",
@@ -4349,7 +4351,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary",
             "--kind",
@@ -4366,7 +4368,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-artifact",
             "--kind",
@@ -4385,7 +4387,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary-from-roots",
             "--kind",
@@ -4403,7 +4405,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     let root_b = manifest_hash(b"network-observation-b");
     let padded_roots = format!("{root_a}, {root_b}");
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-summary-from-roots",
             "--kind",
@@ -4419,7 +4421,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     );
     let empty_root_entry = format!("{root_a},,{root_b}");
     assert!(
-        parse_cli_parts(&[
+        parse_test_cli(&[
             "public-evidence",
             "record-artifact-from-roots",
             "--kind",

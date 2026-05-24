@@ -298,6 +298,9 @@ spaghetti around.
   orchestration.
 - Iteration 123 extracted reference CLI command execution into `cli/execution.rs`, moving status and
   public-evidence output dispatch out of the parser module while preserving the public execution API.
+- Iteration 124 replaced the hand-rolled CLI parser with a typed `clap` command tree in
+  `cli/parser.rs`, making the binary parse directly through `Cli::parse()` instead of preserving the
+  old string-slice parser API.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
