@@ -684,6 +684,8 @@ spaghetti around.
   broad substring checks with keyed numeric and boolean assertions.
 - Iteration 265 converted public evidence/preflight integration checks to parsed stdout fields, removing
   substring assertions from those report-status tests.
+- Iteration 266 converted service lifecycle init, peer-add, readiness, and serve report checks to keyed
+  stdout assertions with numeric parsing for counters and libp2p limits.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

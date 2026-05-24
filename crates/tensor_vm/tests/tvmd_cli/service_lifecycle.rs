@@ -6,9 +6,12 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
     let init = run_tvmd(&["service", "init", "--data-dir", &data_dir_text]);
-    assert!(init.contains("command=service_init"));
-    assert!(init.contains("existing_store=false"));
-    assert!(init.contains("block_count="));
+    assert_eq!(stdout_value(&init, "command"), "service_init");
+    assert_eq!(stdout_value(&init, "data_dir"), data_dir_text);
+    assert_eq!(stdout_value(&init, "existing_store"), "false");
+    assert_eq!(stdout_value(&init, "recovered_store"), "false");
+    assert_eq!(stdout_u64(&init, "block_count"), 0);
+    assert_eq!(stdout_value(&init, "latest_block_hash").len(), 64);
 
     let peer_id = PeerId::random().to_string();
     let peer_add = run_tvmd(&[
@@ -22,10 +25,18 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "--address",
         "/ip4/127.0.0.1/tcp/4001",
     ]);
-    assert!(peer_add.contains("command=service_peer_add"));
-    assert!(peer_add.contains(&format!("peer_id={peer_id}")));
-    assert!(peer_add.contains("/p2p/"));
-    assert!(peer_add.contains("bootstrap_peers=1"));
+    assert_eq!(stdout_value(&peer_add, "command"), "service_peer_add");
+    assert_eq!(stdout_value(&peer_add, "data_dir"), data_dir_text);
+    assert_eq!(stdout_value(&peer_add, "peer_id"), peer_id);
+    assert_eq!(
+        stdout_value(&peer_add, "address"),
+        "/ip4/127.0.0.1/tcp/4001"
+    );
+    assert_eq!(
+        stdout_value(&peer_add, "bootstrap_address"),
+        format!("/ip4/127.0.0.1/tcp/4001/p2p/{peer_id}")
+    );
+    assert_eq!(stdout_u64(&peer_add, "bootstrap_peers"), 1);
 
     let readiness = run_tvmd(&[
         "service",
@@ -35,18 +46,22 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "--data-dir",
         &data_dir_text,
     ]);
-    assert!(readiness.contains("command=service_readiness"));
-    assert!(readiness.contains("p2p_runtime=libp2p"));
-    assert!(readiness.contains("p2p_peer_id="));
-    assert!(readiness.contains("p2p_gossipsub_topics="));
-    assert!(readiness.contains("p2p_request_response_protocols="));
-    assert!(readiness.contains("p2p_bootstrap_peers=1"));
-    assert!(readiness.contains("p2p_max_transmit_bytes=1048576"));
-    assert!(readiness.contains("p2p_request_timeout_seconds=10"));
-    assert!(readiness.contains("p2p_max_concurrent_streams=128"));
-    assert!(readiness.contains("p2p_idle_timeout_seconds=60"));
-    assert!(readiness.contains("node_store_ready=true"));
-    assert!(readiness.contains("libp2p_ready=true"));
+    assert_eq!(stdout_value(&readiness, "command"), "service_readiness");
+    assert_eq!(stdout_value(&readiness, "p2p_runtime"), "libp2p");
+    assert!(
+        stdout_value(&readiness, "p2p_peer_id")
+            .parse::<PeerId>()
+            .is_ok()
+    );
+    assert!(stdout_u64(&readiness, "p2p_gossipsub_topics") > 0);
+    assert!(stdout_u64(&readiness, "p2p_request_response_protocols") > 0);
+    assert_eq!(stdout_u64(&readiness, "p2p_bootstrap_peers"), 1);
+    assert_eq!(stdout_u64(&readiness, "p2p_max_transmit_bytes"), 1_048_576);
+    assert_eq!(stdout_u64(&readiness, "p2p_request_timeout_seconds"), 10);
+    assert_eq!(stdout_u64(&readiness, "p2p_max_concurrent_streams"), 128);
+    assert_eq!(stdout_u64(&readiness, "p2p_idle_timeout_seconds"), 60);
+    assert_eq!(stdout_value(&readiness, "node_store_ready"), "true");
+    assert_eq!(stdout_value(&readiness, "libp2p_ready"), "true");
 
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
@@ -232,17 +247,21 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
-    assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("p2p_runtime=libp2p"));
-    assert!(stdout.contains("p2p_peer_id="));
-    assert!(stdout.contains("p2p_gossipsub_topics="));
-    assert!(stdout.contains("p2p_request_response_protocols="));
-    assert!(stdout.contains("p2p_bootstrap_peers=1"));
-    assert!(stdout.contains("p2p_max_transmit_bytes=1048576"));
-    assert!(stdout.contains("p2p_request_timeout_seconds=10"));
-    assert!(stdout.contains("p2p_max_concurrent_streams=128"));
-    assert!(stdout.contains("p2p_idle_timeout_seconds=60"));
-    assert!(stdout.contains("served_requests=19"));
+    assert_eq!(stdout_value(&stdout, "command"), "service_serve");
+    assert_eq!(stdout_value(&stdout, "p2p_runtime"), "libp2p");
+    assert!(
+        stdout_value(&stdout, "p2p_peer_id")
+            .parse::<PeerId>()
+            .is_ok()
+    );
+    assert!(stdout_u64(&stdout, "p2p_gossipsub_topics") > 0);
+    assert!(stdout_u64(&stdout, "p2p_request_response_protocols") > 0);
+    assert_eq!(stdout_u64(&stdout, "p2p_bootstrap_peers"), 1);
+    assert_eq!(stdout_u64(&stdout, "p2p_max_transmit_bytes"), 1_048_576);
+    assert_eq!(stdout_u64(&stdout, "p2p_request_timeout_seconds"), 10);
+    assert_eq!(stdout_u64(&stdout, "p2p_max_concurrent_streams"), 128);
+    assert_eq!(stdout_u64(&stdout, "p2p_idle_timeout_seconds"), 60);
+    assert_eq!(stdout_u64(&stdout, "served_requests"), 19);
     let p2p_peer_id = stdout_value(&stdout, "p2p_peer_id");
     let p2p_gossipsub_topics = stdout_value(&stdout, "p2p_gossipsub_topics");
     let p2p_request_response_protocols = stdout_value(&stdout, "p2p_request_response_protocols");
