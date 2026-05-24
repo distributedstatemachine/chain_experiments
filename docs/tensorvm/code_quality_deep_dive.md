@@ -287,6 +287,9 @@ spaghetti around.
   command family.
 - Iteration 119 extracted CLI public node heartbeat and operator identity evidence helpers into
   `cli/node_evidence.rs`, keeping heartbeat observation parsing beside node evidence formatting.
+- Iteration 120 extracted CLI public network observation evidence and service-log parsing into
+  `cli/network_evidence.rs`, giving public evidence record aggregation a focused network-root
+  verifier to call into.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

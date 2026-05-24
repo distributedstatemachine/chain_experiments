@@ -11,10 +11,12 @@ use crate::testnet::{
     sign_public_evidence_record,
 };
 use crate::types::{Address, Hash, hash_bytes};
-use libp2p::{Multiaddr, PeerId};
+#[cfg(test)]
+use libp2p::PeerId;
 use std::collections::BTreeSet;
 
 mod arguments;
+mod network_evidence;
 mod network_observation;
 mod node_evidence;
 mod publication_evidence;
@@ -29,6 +31,13 @@ use arguments::{
     parse_u64, parse_usize, public_evidence_record_field_prefix, public_evidence_record_kind_tag,
     public_node_role_tag, public_service_kind_tag,
 };
+use network_evidence::{
+    NetworkObservationEvidenceLine, network_observation_evidence_line,
+    network_observation_evidence_line_from_service_log, network_observation_root_from_record_line,
+};
+#[cfg(test)]
+use network_evidence::{network_observation_root, service_log_field};
+#[cfg(test)]
 use network_observation::network_observation_multiaddr_is_public;
 #[cfg(test)]
 use network_observation::{public_dns_host, public_dns_host_is_well_formed};
@@ -2194,248 +2203,6 @@ fn parse_record_file_root(root: &str) -> Result<Hash> {
         return Err(TvmError::InvalidReceipt("invalid record root file line"));
     }
     parse_hash_argument(root)
-}
-
-fn network_observation_root_from_record_line(record: &str) -> Result<Hash> {
-    let fields = record.split(',').collect::<Vec<_>>();
-    if fields.len() != 13 {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
-    if fields.iter().any(|field| field.trim() != *field) {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
-    let operator_id = parse_hash_argument(fields[0])?;
-    if operator_id == [0; 32] {
-        return Err(TvmError::InvalidReceipt("operator id argument is empty"));
-    }
-    let peer_id = fields[1]
-        .parse::<PeerId>()
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p peer id"))?
-        .to_string();
-    let listen_address = fields[2]
-        .parse::<Multiaddr>()
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
-    if !network_observation_multiaddr_is_public(&listen_address) {
-        return Err(TvmError::InvalidReceipt(
-            "network observation address is not public",
-        ));
-    }
-    let listen_address = listen_address.to_string();
-    let input = NetworkObservationEvidenceLine {
-        operator_id,
-        peer_id: &peer_id,
-        listen_address: &listen_address,
-        observed_at_unix_seconds: parse_u64(fields[3])?,
-        gossip_topic_count: parse_u64(fields[4])?,
-        request_response_protocol_count: parse_u64(fields[5])?,
-        bootstrap_peer_count: parse_u64(fields[6])?,
-        max_transmit_bytes: parse_u64(fields[7])?,
-        request_timeout_seconds: parse_u64(fields[8])?,
-        max_concurrent_streams: parse_u64(fields[9])?,
-        idle_connection_timeout_seconds: parse_u64(fields[10])?,
-    };
-    if input.observed_at_unix_seconds == 0
-        || input.gossip_topic_count == 0
-        || input.request_response_protocol_count == 0
-        || input.bootstrap_peer_count == 0
-        || input.max_transmit_bytes == 0
-        || input.request_timeout_seconds == 0
-        || input.max_concurrent_streams == 0
-        || input.idle_connection_timeout_seconds == 0
-    {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
-    let record_root = parse_record_file_root(fields[11])?;
-    let record_signature = parse_record_file_root(fields[12])?;
-    let expected_root = network_observation_root(&input, &peer_id, &listen_address);
-    let expected_signature = hash_bytes(
-        b"tensor-vm-network-runtime-observation-signature-v1",
-        &[&operator_id, &expected_root],
-    );
-    if record_root != expected_root || record_signature != expected_signature {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
-    Ok(record_root)
-}
-
-struct NetworkObservationEvidenceLine<'a> {
-    operator_id: Hash,
-    peer_id: &'a str,
-    listen_address: &'a str,
-    observed_at_unix_seconds: u64,
-    gossip_topic_count: u64,
-    request_response_protocol_count: u64,
-    bootstrap_peer_count: u64,
-    max_transmit_bytes: u64,
-    request_timeout_seconds: u64,
-    max_concurrent_streams: u64,
-    idle_connection_timeout_seconds: u64,
-}
-
-fn network_observation_evidence_line(input: NetworkObservationEvidenceLine<'_>) -> Result<String> {
-    if input.operator_id == [0; 32] {
-        return Err(TvmError::InvalidReceipt("operator id argument is empty"));
-    }
-    if input.observed_at_unix_seconds == 0 {
-        return Err(TvmError::InvalidReceipt("observed-at argument is empty"));
-    }
-    if input.gossip_topic_count == 0 {
-        return Err(TvmError::InvalidReceipt("gossip topics argument is empty"));
-    }
-    if input.request_response_protocol_count == 0 {
-        return Err(TvmError::InvalidReceipt(
-            "request-response protocols argument is empty",
-        ));
-    }
-    if input.bootstrap_peer_count == 0 {
-        return Err(TvmError::InvalidReceipt(
-            "bootstrap peers argument is empty",
-        ));
-    }
-    if input.max_transmit_bytes == 0
-        || input.request_timeout_seconds == 0
-        || input.max_concurrent_streams == 0
-        || input.idle_connection_timeout_seconds == 0
-    {
-        return Err(TvmError::InvalidReceipt(
-            "network runtime control arguments must be positive",
-        ));
-    }
-
-    let peer_id = input
-        .peer_id
-        .parse::<PeerId>()
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p peer id"))?;
-    let listen_address = input
-        .listen_address
-        .parse::<Multiaddr>()
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))?;
-    if !network_observation_multiaddr_is_public(&listen_address) {
-        return Err(TvmError::InvalidReceipt(
-            "network observation address is not public",
-        ));
-    }
-
-    let peer_id = peer_id.to_string();
-    let listen_address = listen_address.to_string();
-    let root = network_observation_root(&input, &peer_id, &listen_address);
-    let signature = hash_bytes(
-        b"tensor-vm-network-runtime-observation-signature-v1",
-        &[&input.operator_id, &root],
-    );
-    Ok(format!(
-        "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
-        hex(&input.operator_id),
-        peer_id,
-        listen_address,
-        input.observed_at_unix_seconds,
-        input.gossip_topic_count,
-        input.request_response_protocol_count,
-        input.bootstrap_peer_count,
-        input.max_transmit_bytes,
-        input.request_timeout_seconds,
-        input.max_concurrent_streams,
-        input.idle_connection_timeout_seconds,
-        hex(&root),
-        hex(&signature)
-    ))
-}
-
-fn network_observation_evidence_line_from_service_log(
-    operator_id: Hash,
-    listen_address: &str,
-    observed_at_unix_seconds: u64,
-    service_log: &str,
-) -> Result<String> {
-    if service_log_field(service_log, "command")? != "service_serve" {
-        return Err(TvmError::InvalidReceipt("service log is not service_serve"));
-    }
-    if service_log_field(service_log, "p2p_runtime")? != "libp2p" {
-        return Err(TvmError::InvalidReceipt(
-            "service log does not prove libp2p runtime",
-        ));
-    }
-    network_observation_evidence_line(NetworkObservationEvidenceLine {
-        operator_id,
-        peer_id: service_log_field(service_log, "p2p_peer_id")?,
-        listen_address,
-        observed_at_unix_seconds,
-        gossip_topic_count: parse_u64(service_log_field(service_log, "p2p_gossipsub_topics")?)?,
-        request_response_protocol_count: parse_u64(service_log_field(
-            service_log,
-            "p2p_request_response_protocols",
-        )?)?,
-        bootstrap_peer_count: parse_u64(service_log_field(service_log, "p2p_bootstrap_peers")?)?,
-        max_transmit_bytes: parse_u64(service_log_field(service_log, "p2p_max_transmit_bytes")?)?,
-        request_timeout_seconds: parse_u64(service_log_field(
-            service_log,
-            "p2p_request_timeout_seconds",
-        )?)?,
-        max_concurrent_streams: parse_u64(service_log_field(
-            service_log,
-            "p2p_max_concurrent_streams",
-        )?)?,
-        idle_connection_timeout_seconds: parse_u64(service_log_field(
-            service_log,
-            "p2p_idle_timeout_seconds",
-        )?)?,
-    })
-}
-
-fn service_log_field<'a>(service_log: &'a str, key: &str) -> Result<&'a str> {
-    let prefix = format!("{key}=");
-    let mut found = None;
-    for line in service_log.lines() {
-        if let Some(value) = line.strip_prefix(&prefix) {
-            if found.is_some() {
-                return Err(TvmError::InvalidReceipt("duplicate service log field"));
-            }
-            if value.is_empty() || value.trim() != value {
-                return Err(TvmError::InvalidReceipt("invalid service log field"));
-            }
-            found = Some(value);
-        }
-    }
-    found.ok_or(TvmError::InvalidReceipt("missing service log field"))
-}
-
-fn network_observation_root(
-    input: &NetworkObservationEvidenceLine<'_>,
-    peer_id: &str,
-    listen_address: &str,
-) -> Hash {
-    let observed_at = input.observed_at_unix_seconds.to_le_bytes();
-    let gossip_topics = input.gossip_topic_count.to_le_bytes();
-    let request_response_protocols = input.request_response_protocol_count.to_le_bytes();
-    let bootstrap_peers = input.bootstrap_peer_count.to_le_bytes();
-    let max_transmit_bytes = input.max_transmit_bytes.to_le_bytes();
-    let request_timeout = input.request_timeout_seconds.to_le_bytes();
-    let max_streams = input.max_concurrent_streams.to_le_bytes();
-    let idle_timeout = input.idle_connection_timeout_seconds.to_le_bytes();
-    hash_bytes(
-        b"tensor-vm-network-runtime-observation-v1",
-        &[
-            &input.operator_id,
-            peer_id.as_bytes(),
-            listen_address.as_bytes(),
-            &observed_at,
-            &gossip_topics,
-            &request_response_protocols,
-            &bootstrap_peers,
-            &max_transmit_bytes,
-            &request_timeout,
-            &max_streams,
-            &idle_timeout,
-        ],
-    )
 }
 
 #[cfg(test)]
