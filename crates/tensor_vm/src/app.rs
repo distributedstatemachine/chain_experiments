@@ -1,6 +1,7 @@
 mod block_status;
 mod commands;
 mod runtime_config;
+mod runtime_services;
 mod runtime_status;
 mod runtime_status_snapshot;
 mod shared;
@@ -16,6 +17,7 @@ pub use runtime_config::{
     role_wallet_address, runtime_node_config, runtime_role_wallet_address_text,
     runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
+pub use runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services};
 pub use runtime_status::{format_role_runtime_report, write_role_runtime_status};
 pub use runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};
 pub use shared::{local_cpu_seed_beacon, p2p_identity_report};

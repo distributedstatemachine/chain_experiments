@@ -610,6 +610,9 @@ spaghetti around.
 - Iteration 236 moved role runtime status snapshot construction, runtime report formatting, and
   `role-runtime.status` writing into the library-owned `app` module, keeping runtime reporting with the
   app-owned command/status APIs instead of binary-private formatter modules.
+- Iteration 237 moved runtime service startup, including node-store loading, libp2p launch, RPC binding,
+  and p2p report metadata, into the library-owned `app` module so the runtime loop consumes an app startup
+  API instead of another binary-private service module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

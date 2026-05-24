@@ -33,9 +33,6 @@ mod runtime_production;
 #[path = "main/runtime_rpc.rs"]
 mod runtime_rpc;
 
-#[path = "main/runtime_services.rs"]
-mod runtime_services;
-
 #[path = "main/runtime_commands.rs"]
 mod runtime_commands;
 

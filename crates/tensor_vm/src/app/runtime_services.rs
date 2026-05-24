@@ -1,18 +1,17 @@
-use tensor_vm::{
+use super::{RuntimeP2pReport, ServiceRuntimeConfig, p2p_identity_report};
+use crate::{
     Faucet, Libp2pControlPlaneConfig, NodeStore, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy,
-    TensorVmLibp2pService,
-    app::{RuntimeP2pReport, ServiceRuntimeConfig, p2p_identity_report},
-    spawn_libp2p_service,
+    TensorVmLibp2pService, spawn_libp2p_service,
 };
 
-pub(super) struct RuntimeServices {
-    pub(super) store: NodeStore,
-    pub(super) server: RpcHttpServer,
-    pub(super) p2p_service: TensorVmLibp2pService,
-    pub(super) p2p_metadata: RuntimeP2pMetadata,
+pub struct RuntimeServices {
+    pub store: NodeStore,
+    pub server: RpcHttpServer,
+    pub p2p_service: TensorVmLibp2pService,
+    pub p2p_metadata: RuntimeP2pMetadata,
 }
 
-pub(super) struct RuntimeP2pMetadata {
+pub struct RuntimeP2pMetadata {
     peer_id: String,
     topics: usize,
     request_response_protocols: usize,
@@ -25,7 +24,7 @@ pub(super) struct RuntimeP2pMetadata {
 }
 
 impl RuntimeP2pMetadata {
-    pub(super) fn report(&self) -> RuntimeP2pReport<'_> {
+    pub fn report(&self) -> RuntimeP2pReport<'_> {
         RuntimeP2pReport {
             peer_id: &self.peer_id,
             topics: self.topics,
@@ -40,7 +39,7 @@ impl RuntimeP2pMetadata {
     }
 }
 
-pub(super) fn start_runtime_services(
+pub fn start_runtime_services(
     config: &ServiceRuntimeConfig,
 ) -> std::result::Result<RuntimeServices, String> {
     let network = &config.node.network;

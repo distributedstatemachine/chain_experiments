@@ -5,13 +5,13 @@ use super::{
     runtime_network::ingest_network_once as ingest_runtime_network_once,
     runtime_production::LocalProductionSchedule,
     runtime_rpc::serve_rpc_once as serve_runtime_rpc_once,
-    runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services},
     runtime_validator::tick_validator_role_work_once as tick_validator_role_worker_once,
 };
 use tensor_vm::{
     NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
     app::{
-        RuntimeRole, RuntimeStatusSnapshot, ServiceRuntimeConfig, format_role_runtime_report,
+        RuntimeP2pMetadata, RuntimeRole, RuntimeServices, RuntimeStatusSnapshot,
+        ServiceRuntimeConfig, format_role_runtime_report, start_runtime_services,
         write_role_runtime_status,
     },
 };
