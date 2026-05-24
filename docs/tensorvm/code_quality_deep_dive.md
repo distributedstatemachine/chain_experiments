@@ -1116,6 +1116,9 @@ spaghetti around.
 - Iteration 456 split public service Clap parser rejection coverage into
   `cli/tests/public_evidence_service_parser_rejections.rs`, leaving the service rejection suite focused
   on execution validation and observation-file errors.
+- Iteration 457 split service health execution and health-observation file rejection coverage into
+  `cli/tests/public_evidence_service_health_rejections.rs`, leaving the service rejection suite focused
+  on service content validation errors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
