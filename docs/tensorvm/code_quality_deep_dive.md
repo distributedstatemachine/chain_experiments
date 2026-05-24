@@ -1094,6 +1094,9 @@ spaghetti around.
 - Iteration 448 split direct public record summary/artifact report coverage into
   `cli/tests/public_evidence_record_summary_reports.rs`, narrowing the remaining record report suite
   toward aggregate-root, record-file, and supporting-record behavior.
+- Iteration 449 split aggregate-root public record summary/artifact report coverage into
+  `cli/tests/public_evidence_record_aggregate_reports.rs`, leaving the remaining record report suite
+  focused on record-file and supporting-record behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
