@@ -442,6 +442,9 @@ spaghetti around.
 - Iteration 171 moved the public preflight manifest readiness, pending-example, and malformed-input
   tests into `testnet/tests/preflight_manifest.rs`, leaving only the short unsigned/short-lived run
   evidence filter test inline in `testnet.rs`.
+- Iteration 172 moved the remaining unsigned and short-lived public run evidence filter test into
+  `testnet/tests/run_evidence.rs`, leaving `testnet.rs` with shared test fixtures and child-module
+  wiring instead of inline test cases.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
