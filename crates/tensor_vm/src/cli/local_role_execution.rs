@@ -1,9 +1,9 @@
 use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
-use super::local_execution_values::identity_report;
 use super::validation::{
     ensure_auth_token, ensure_data_dir, ensure_minimum_stake, miner_device_readiness,
     path_argument, wallet_address_hex,
 };
+use crate::app::p2p_identity_report;
 use crate::chain::ChainParams;
 use crate::error::Result;
 use crate::p2p::Libp2pControlPlaneConfig;
@@ -40,7 +40,7 @@ pub(super) fn execute_miner_command(
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = identity_report(node_runtime.identity_seed);
+            let identity = p2p_identity_report(node_runtime.identity_seed);
             let wallet = path_argument(&args.wallet);
             let data_dir = path_argument(&node_runtime.data_dir);
             Ok(format!(
@@ -103,7 +103,7 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = identity_report(node_runtime.identity_seed);
+            let identity = p2p_identity_report(node_runtime.identity_seed);
             let wallet = path_argument(&args.wallet);
             let data_dir = path_argument(&node_runtime.data_dir);
             Ok(format!(
@@ -130,7 +130,7 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
     ensure_data_dir(&node_runtime.data_dir)?;
     ensure_auth_token(&node_runtime.auth_token)?;
     let p2p_config = Libp2pControlPlaneConfig::default();
-    let identity = identity_report(node_runtime.identity_seed);
+    let identity = p2p_identity_report(node_runtime.identity_seed);
     let wallet = path_argument(&args.wallet);
     let data_dir = path_argument(&node_runtime.data_dir);
     Ok(format!(

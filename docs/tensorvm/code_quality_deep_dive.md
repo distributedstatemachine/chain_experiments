@@ -788,6 +788,9 @@ spaghetti around.
 - Iteration 312 removed the duplicate CLI public-network address filter and routed network evidence through
   the testnet-owned external multiaddr validator, moving the local/private-address edge coverage with that
   canonical owner.
+- Iteration 313 deleted the test-only CLI identity-report renderer and reused the app-owned
+  `p2p_identity_report` for local role and node readiness fixture output, leaving the identity seed status
+  text with one formatter.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

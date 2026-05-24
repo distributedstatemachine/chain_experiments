@@ -13,8 +13,6 @@ mod local_commands;
 #[cfg(test)]
 mod local_execution;
 #[cfg(test)]
-mod local_execution_values;
-#[cfg(test)]
 mod local_role_execution;
 #[cfg(test)]
 mod local_service_execution;
