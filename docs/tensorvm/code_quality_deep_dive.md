@@ -1053,6 +1053,9 @@ spaghetti around.
   `cli/tests/public_evidence_run_window_reports.rs`, continuing the family-level report test split.
 - Iteration 434 split public node heartbeat, heartbeat-file, and operator-attestation execution report
   coverage into `cli/tests/public_evidence_node_reports.rs`, further reducing the mixed report suite.
+- Iteration 435 split public service health/content execution report coverage into
+  `cli/tests/public_evidence_service_reports.rs`, leaving the mixed report suite focused on network
+  observation behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
