@@ -1,94 +1,25 @@
+use super::parser_support::{
+    address_arg, data_dir_args, hash_arg, miner_device, multiaddr, node_runtime_args, path,
+    role_runtime_args,
+};
 use super::{
-    AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
-    EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
-    HashArg, HexBytesArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerDeviceArg,
-    MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs,
-    NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs,
-    NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand,
-    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
-    PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
-    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs,
-    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
-    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs,
-    TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs, manifest_address,
-    manifest_auditor_uri, manifest_hash, parse_test_cli,
+    AuditorRecordArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
+    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
+    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, NetworkObservationArgs,
+    NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand,
+    NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand, NodeServeArgs,
+    OperatorAttestationArgs, ProposerCommand, PublicCommand, PublicEvidenceManifestArgs,
+    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
+    PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand,
+    ValidatorRunArgs, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-
-fn path(value: &str) -> PathBuf {
-    value.into()
-}
-
-fn multiaddr(value: &str) -> libp2p::Multiaddr {
-    value.parse().expect("test multiaddr must parse")
-}
-
-fn socket_addr(value: &str) -> SocketAddr {
-    value.parse().expect("test socket address must parse")
-}
-
-fn miner_device(value: &str) -> MinerDeviceArg {
-    value.parse().expect("test miner device must parse")
-}
-
-fn data_dir_args(data_dir: &str) -> DataDirArgs {
-    DataDirArgs {
-        data_dir: path(data_dir),
-    }
-}
-
-fn hash_arg(value: [u8; 32]) -> HashArg {
-    HashArg::new(value)
-}
-
-fn address_arg(value: [u8; 32]) -> AddressArg {
-    AddressArg::new(value)
-}
-
-fn node_runtime_args(
-    listen: &str,
-    p2p_listen: &str,
-    data_dir: &str,
-    identity_seed: Option<[u8; 32]>,
-    auth_token: &str,
-    max_requests: usize,
-) -> NodeRuntimeArgs {
-    NodeRuntimeArgs {
-        listen: socket_addr(listen),
-        p2p_listen: multiaddr(p2p_listen),
-        data_dir: path(data_dir),
-        identity_seed: identity_seed.map(super::HashArg::new),
-        auth_token: auth_token.to_owned(),
-        max_requests,
-    }
-}
-
-fn role_runtime_args(
-    node: &str,
-    listen: &str,
-    p2p_listen: &str,
-    data_dir: &str,
-    identity_seed: Option<[u8; 32]>,
-    auth_token: &str,
-    max_requests: usize,
-) -> RoleRuntimeArgs {
-    RoleRuntimeArgs {
-        node: multiaddr(node),
-        node_runtime: node_runtime_args(
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
-        ),
-    }
-}
 
 #[test]
 fn parses_documented_miner_commands() {
@@ -977,7 +908,7 @@ fn parses_documented_validator_commands() {
         TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
             p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
             data_dir: path("/var/lib/tensorvm"),
-            identity_seed: Some(super::HashArg::new([0x11; 32])),
+            identity_seed: Some(hash_arg([0x11; 32])),
         }))
     );
     assert_eq!(

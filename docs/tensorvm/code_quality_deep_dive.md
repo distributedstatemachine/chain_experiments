@@ -1037,6 +1037,9 @@ spaghetti around.
 - Iteration 427 moved shared local runtime and data-dir clap arguments into
   `cli/local_runtime_args.rs`, turning `cli/local_commands.rs` into a thin re-export boundary for local
   command families.
+- Iteration 428 extracted shared clap parser test constructors into `cli/tests/parser_support.rs`,
+  shrinking the catch-all parser module and preparing command-family parser suites without duplicating
+  argument fixtures.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

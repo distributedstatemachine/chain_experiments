@@ -15,6 +15,7 @@ mod local_validation;
 mod manifest_fixtures;
 mod manifest_reports;
 mod parser;
+mod parser_support;
 mod public_evidence_publication_rejections;
 mod public_evidence_record_reports;
 mod public_evidence_rejections;
