@@ -758,6 +758,9 @@ spaghetti around.
   command-list assertions, making the documented API surface coverage fail on drift instead of fragments.
 - Iteration 301 added small HTML test parsers for route and process-level service tests, replacing raw
   rendered-page substring assertions with exact title, heading, definition-list, and JavaScript line checks.
+- Iteration 302 replaced the remaining local CPU Compose artifact substring checks with exact trimmed-line
+  helpers, including exact topology-service names in the spec, required Dockerfile/.dockerignore lines, and
+  explicit absent NVIDIA runtime/device lines.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

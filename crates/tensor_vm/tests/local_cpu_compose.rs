@@ -22,6 +22,24 @@ fn has_trimmed_line(text: &str, expected: &str) -> bool {
     text.lines().any(|line| line.trim() == expected)
 }
 
+fn assert_has_trimmed_lines(text: &str, label: &str, expected_lines: &[&str]) {
+    for expected in expected_lines {
+        assert!(
+            has_trimmed_line(text, expected),
+            "{label} should contain exact trimmed line {expected}"
+        );
+    }
+}
+
+fn assert_lacks_trimmed_lines(text: &str, label: &str, forbidden_lines: &[&str]) {
+    for forbidden in forbidden_lines {
+        assert!(
+            !has_trimmed_line(text, forbidden),
+            "{label} should not contain exact trimmed line {forbidden}"
+        );
+    }
+}
+
 fn trimmed_lines(text: &str) -> BTreeSet<&str> {
     text.lines().map(str::trim).collect()
 }
@@ -180,8 +198,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     for service in miners.into_iter().chain(validators) {
         compose_service_section(&compose, service);
         assert!(
-            spec.contains(service),
-            "spec should name required service {service}"
+            has_trimmed_line(&spec, service),
+            "spec topology should name exact service {service}"
         );
     }
 
@@ -339,8 +357,11 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         env_file_value(&env_file, "TENSORVM_BOOTSTRAP_PEER_ID"),
         "12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
     );
-    let compose_lines = trimmed_lines(&compose);
-    assert!(compose_lines.contains("dockerfile: deploy/tensorvm/local-cpu/Dockerfile"));
+    assert_has_trimmed_lines(
+        &compose,
+        "local CPU compose build config",
+        &["dockerfile: deploy/tensorvm/local-cpu/Dockerfile"],
+    );
 
     let operator_ids = miner_sections
         .iter()
@@ -369,9 +390,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &dockerfile,
         "COPY deploy/tensorvm/local-cpu/scripts/entrypoint.sh /usr/local/bin/tensorvm-local-entrypoint"
     ));
-    let dockerignore_lines = trimmed_lines(&dockerignore);
-    assert!(dockerignore_lines.contains("target"));
-    assert!(dockerignore_lines.contains(".git"));
+    assert_has_trimmed_lines(&dockerignore, ".dockerignore", &["target", ".git"]);
     assert!(
         prefixed_trimmed_values(&dockerfile, "RUN ")
             .iter()
@@ -379,9 +398,13 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
                 .split_whitespace()
                 .any(|token| token == "--features"))
     );
+    let compose_lines = trimmed_lines(&compose);
     assert!(!compose_lines.iter().any(|line| line.starts_with("NVIDIA_")));
-    assert!(!compose_lines.contains("runtime: nvidia"));
-    assert!(!compose_lines.contains("devices:"));
+    assert_lacks_trimmed_lines(
+        &compose,
+        "local CPU compose",
+        &["runtime: nvidia", "devices:"],
+    );
 
     assert_shell_logical_lines(
         &entrypoint,
