@@ -373,6 +373,10 @@ spaghetti around.
 - Iteration 149 moved public-evidence node heartbeat and operator-attestation descriptions into
   `cli/public_evidence_node_descriptions.rs`, leaving the parent public-evidence description module
   as a small dispatcher plus validate/preflight text.
+- Iteration 150 moved local miner, validator, and proposer command descriptions into
+  `cli/local_role_descriptions.rs` with shared identity-seed rendering in
+  `cli/local_description_values.rs`, narrowing `cli/local_descriptions.rs` to local command-family
+  dispatch plus service/local-testnet/local-cpu text.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
