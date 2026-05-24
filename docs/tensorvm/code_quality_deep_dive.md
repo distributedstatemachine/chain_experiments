@@ -567,6 +567,8 @@ spaghetti around.
   into focused modules, leaving `chain/tests/boundaries.rs` for rejection-boundary coverage only.
 - Iteration 222 split the remaining rejection-boundary scenario into registration/transfer, receipt,
   attestation, block-vote, and model/challenge tests, preserving coverage while localizing failures.
+- Iteration 223 moved public evidence and preflight manifest fixture builders into
+  `cli/tests/manifest_fixtures.rs`, reducing the CLI test harness root to command fixtures and module wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
