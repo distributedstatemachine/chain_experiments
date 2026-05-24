@@ -261,6 +261,8 @@ spaghetti around.
   `node/pending_payloads.rs`, keeping retry fixtures colocated with the queue implementation.
 - Iteration 108 moved network ingest ordering and driver tests into `node/message_ingest.rs`, so
   ingest fixtures sit beside the ingest orchestration instead of the node facade.
+- Iteration 109 moved network payload application tests into `node/payload_application.rs`, leaving
+  `node.rs` with facade re-exports and the remaining payload processor retry coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
