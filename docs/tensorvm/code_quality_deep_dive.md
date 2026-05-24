@@ -659,6 +659,9 @@ spaghetti around.
 - Iteration 253 expanded the storage command test helpers and routed the command-covered portions of the
   node-store durable-chain fixture through them, reducing direct fixture calls for validator registration,
   transfers, jobs, receipts, attestations, model registration, block production, and block votes.
+- Iteration 254 reused those storage command helpers in the chain-state durable fixture and added a
+  `CreditReward` helper, aligning the chain-state persistence fixture with the node-store command-backed
+  setup path.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

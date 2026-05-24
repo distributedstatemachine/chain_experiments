@@ -547,8 +547,11 @@ fn decode_hardware_class(tag: u8) -> Result<HardwareClass> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_support::{
+        credit_reward, produce_block, register_model, register_validator, submit_attestation,
+        submit_block_vote, submit_job, submit_receipt, transfer,
+    };
     use super::*;
-    use crate::chain::{ChainCommand, ChainEngine};
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
         PrimitiveType, TensorOpReceipt,
@@ -583,19 +586,17 @@ mod tests {
                 8_500,
             )
             .unwrap();
-        chain
-            .register_validator(validator, chain.params().validator_min_stake)
-            .unwrap();
+        register_validator(&mut chain, validator);
         chain.credit_account(miner, 1_000);
-        chain.transfer(miner, validator, 125).unwrap();
+        transfer(&mut chain, miner, validator, 125);
 
         let matmul = MatmulJob::synthetic(0, 7, 4, 3, 2, &beacon, 10);
         let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&matmul, miner, 1, 5).unwrap();
-        chain.submit_job(JobState::TensorOp(matmul.clone()));
+        submit_job(&mut chain, JobState::TensorOp(matmul.clone()));
         let mut no_modulus = MatmulJob::synthetic(0, 8, 2, 2, 2, &beacon, 11);
         no_modulus.modulus = None;
-        chain.submit_job(JobState::TensorOp(no_modulus));
-        chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
+        submit_job(&mut chain, JobState::TensorOp(no_modulus));
+        submit_receipt(&mut chain, ReceiptState::TensorOp(receipt.clone()));
         let attestation = ValidatorAttestation::new(
             validator,
             chain.params().validator_min_stake,
@@ -608,27 +609,25 @@ mod tests {
                 data_availability_passed: true,
             },
         );
-        chain.submit_attestation(attestation).unwrap();
+        submit_attestation(&mut chain, attestation);
 
         let model_id = hash_bytes(b"test", &[b"durable-model"]);
         let weights =
             Tensor::from_vec(vec![3, 2], DType::FieldElement, vec![1, 2, 3, 4, 5, 6]).unwrap();
-        chain
-            .register_model(
-                model_id,
-                hash_bytes(b"test", &[b"architecture"]),
-                weights.commitment_root(),
-                hash_bytes(b"test", &[b"config"]),
-            )
-            .unwrap();
-        chain
-            .register_model(
-                hash_bytes(b"test", &[b"durable-model-with-optimizer"]),
-                hash_bytes(b"test", &[b"architecture-2"]),
-                weights.commitment_root(),
-                hash_bytes(b"test", &[b"config-2"]),
-            )
-            .unwrap();
+        register_model(
+            &mut chain,
+            model_id,
+            hash_bytes(b"test", &[b"architecture"]),
+            weights.commitment_root(),
+            hash_bytes(b"test", &[b"config"]),
+        );
+        register_model(
+            &mut chain,
+            hash_bytes(b"test", &[b"durable-model-with-optimizer"]),
+            hash_bytes(b"test", &[b"architecture-2"]),
+            weights.commitment_root(),
+            hash_bytes(b"test", &[b"config-2"]),
+        );
         chain
             .set_model_optimizer_state_root_for_testing(
                 model_id,
@@ -648,27 +647,23 @@ mod tests {
         });
         let (linear_receipt, _output) =
             LinearTrainingStepReceipt::from_job(&linear, miner, &weights, 2, 7).unwrap();
-        chain.submit_job(JobState::LinearTrainingStep(linear));
-        chain.submit_linear_receipt(linear_receipt.clone()).unwrap();
+        submit_job(&mut chain, JobState::LinearTrainingStep(linear));
+        submit_receipt(
+            &mut chain,
+            ReceiptState::LinearTrainingStep(linear_receipt.clone()),
+        );
         chain.mark_receipt_settled_for_testing(receipt.receipt_id);
         chain.mark_receipt_data_unavailable_for_testing(linear_receipt.receipt_id);
-        chain
-            .apply_command(ChainCommand::CreditReward {
-                address: miner,
-                amount: 77,
-            })
-            .unwrap();
+        credit_reward(&mut chain, miner, 77);
         chain.set_reward_treasury_for_testing(11);
 
-        let block = chain.produce_block(validator, 1_000).unwrap();
-        chain
-            .submit_block_vote(BlockVote::new(
-                validator,
-                chain.params().validator_min_stake,
-                &block,
-            ))
-            .unwrap();
-        chain.produce_block(validator, 1_006).unwrap();
+        let block = produce_block(&mut chain, validator, 1_000);
+        let validator_stake = chain.params().validator_min_stake;
+        submit_block_vote(
+            &mut chain,
+            BlockVote::new(validator, validator_stake, &block),
+        );
+        produce_block(&mut chain, validator, 1_006);
         chain
     }
 

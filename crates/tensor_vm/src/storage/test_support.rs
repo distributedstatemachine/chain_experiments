@@ -67,6 +67,12 @@ pub(super) fn register_model(
         .unwrap();
 }
 
+pub(super) fn credit_reward(chain: &mut Chain, address: Address, amount: u64) {
+    chain
+        .apply_command(ChainCommand::CreditReward { address, amount })
+        .unwrap();
+}
+
 pub(super) fn produce_block(chain: &mut Chain, proposer: Address, timestamp: u64) -> TensorBlock {
     let block_count = chain.blocks().len();
     chain

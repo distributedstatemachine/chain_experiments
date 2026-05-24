@@ -158,15 +158,13 @@ impl ChainStore for NodeStore {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_support::{produce_block, register_block_producer};
     use super::super::test_support::{
-        register_model, register_validator, submit_attestation, submit_block_vote, submit_job,
-        submit_receipt, transfer,
+        credit_reward, register_model, register_validator, submit_attestation, submit_block_vote,
+        submit_job, submit_receipt, transfer,
     };
+    use super::super::test_support::{produce_block, register_block_producer};
     use super::*;
-    use crate::chain::{
-        BlockVote, ChainCommand, ChainParams, ChainParts, HardwareClass, JobState, ReceiptState,
-    };
+    use crate::chain::{BlockVote, ChainParams, ChainParts, HardwareClass, JobState, ReceiptState};
     use crate::jobs::{
         LinearTrainingStepJob, LinearTrainingStepReceipt, LinearTrainingStepSpec, MatmulJob,
         PrimitiveType, TensorOpReceipt,
@@ -280,12 +278,7 @@ mod tests {
         );
         chain.mark_receipt_settled_for_testing(receipt.receipt_id);
         chain.mark_receipt_data_unavailable_for_testing(linear_receipt.receipt_id);
-        chain
-            .apply_command(ChainCommand::CreditReward {
-                address: miner,
-                amount: 77,
-            })
-            .unwrap();
+        credit_reward(&mut chain, miner, 77);
         chain.set_reward_treasury_for_testing(11);
 
         let block = produce_block(&mut chain, validator, 1_000);
