@@ -535,6 +535,8 @@ spaghetti around.
   `rpc/tests/routes.rs`, starting the RPC test split while keeping shared fixtures in the parent test module.
 - Iteration 206 moved RPC HTTP parser/server, gateway policy, and response-format tests into
   `rpc/tests/http.rs`, continuing to reduce the RPC facade's inline test surface.
+- Iteration 207 moved RPC explorer websocket, frame, and websocket JSON/query helper tests into
+  `rpc/tests/websocket.rs`, leaving only tensor and synthetic-round tests inline in the facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
