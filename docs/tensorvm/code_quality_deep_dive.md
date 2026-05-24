@@ -517,6 +517,8 @@ spaghetti around.
   into `rpc/tensor_routes.rs`, separating tensor data serving from the main RPC route dispatcher.
 - Iteration 197 moved mutable RPC transaction, receipt-reference, attestation-reference, and faucet
   claim handlers into `rpc/mutations.rs`, isolating chain/txpool mutation paths from read routing.
+- Iteration 198 moved chain block, receipt, job, miner, validator, faucet-status, and health read
+  route helpers into `rpc/read_routes.rs`, narrowing `rpc.rs` toward dispatch and shared response helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
