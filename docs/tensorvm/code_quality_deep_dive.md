@@ -543,6 +543,8 @@ spaghetti around.
   leaving the RPC facade as production module wiring and public re-exports only.
 - Iteration 210 moved explicit chain test-state mutation helpers into `chain/test_helpers.rs`, keeping
   consensus-bypass fixture code out of the chain facade while preserving crate-test-only access.
+- Iteration 211 moved the large `ChainCommand`/`ChainEvent` command-boundary test into
+  `chain/tests/commands.rs`, starting the chain facade's inline test split around command ownership.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
