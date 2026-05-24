@@ -272,6 +272,9 @@ spaghetti around.
   checks.
 - Iteration 113 extracted shared CLI argument parsing and public-evidence tag helpers into
   `cli/arguments.rs`, reducing parser/helper coupling in the parent CLI module.
+- Iteration 114 extracted CLI runtime validation, address derivation, CUDA readiness, and endpoint
+  checks into `cli/validation.rs`, leaving the parent CLI module closer to command parsing and
+  dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

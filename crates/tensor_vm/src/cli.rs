@@ -2,8 +2,9 @@ use crate::chain::ChainParams;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::p2p::Libp2pControlPlaneConfig;
-#[cfg(feature = "cuda-kernels")]
+#[cfg(all(test, feature = "cuda-kernels"))]
 use crate::runtime::cuda_device_count;
+#[cfg(test)]
 use crate::runtime::cuda_kernels_compiled;
 use crate::testnet::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
@@ -13,13 +14,13 @@ use crate::testnet::{
     parse_public_testnet_evidence_manifest, parse_public_testnet_preflight_manifest,
     sign_public_evidence_record, sign_public_run_window,
 };
-use crate::types::{Address, Hash, address, hash_bytes};
+use crate::types::{Address, Hash, hash_bytes};
 use libp2p::{Multiaddr, PeerId};
 use std::collections::{BTreeMap, BTreeSet};
-use std::net::SocketAddr;
 
 mod arguments;
 mod network_observation;
+mod validation;
 
 use arguments::{
     parse_hash_argument, parse_hash_list_argument, parse_hex_bytes_argument,
@@ -30,6 +31,11 @@ use arguments::{
 use network_observation::network_observation_multiaddr_is_public;
 #[cfg(test)]
 use network_observation::{public_dns_host, public_dns_host_is_well_formed};
+use validation::{
+    ensure_auth_token, ensure_data_dir, ensure_libp2p_multiaddr, ensure_listen_addr,
+    ensure_minimum_stake, ensure_node_endpoint, json_escape, miner_device_readiness,
+    wallet_address_hex,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CliCommand {
@@ -3077,123 +3083,6 @@ pub fn validate_public_testnet_preflight_manifest(input: &str) -> Result<String>
         report.has_public_service_content_plan,
         report.has_public_service_plan,
     ))
-}
-
-fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
-    if stake < minimum {
-        return Err(TvmError::InsufficientStake);
-    }
-    Ok(())
-}
-
-fn wallet_address_hex(wallet: &str) -> Result<String> {
-    let wallet = wallet.trim();
-    if wallet.is_empty() {
-        return Err(TvmError::InvalidReceipt("wallet argument is empty"));
-    }
-    Ok(hex(&address(wallet.as_bytes())))
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum MinerDeviceReadiness {
-    CpuReference,
-    #[cfg(feature = "cuda-kernels")]
-    Cuda {
-        device_index: u32,
-        device_count: u32,
-    },
-}
-
-impl MinerDeviceReadiness {
-    fn report(&self) -> String {
-        match self {
-            Self::CpuReference => format!(
-                "device_backend=cpu-reference\ncuda_kernels_compiled={}",
-                cuda_kernels_compiled()
-            ),
-            #[cfg(feature = "cuda-kernels")]
-            Self::Cuda {
-                device_index,
-                device_count,
-            } => format!(
-                "device_backend=cuda\ngpu_backend_ready=true\ncuda_kernels_compiled=true\ncuda_device_index={device_index}\ncuda_device_count={device_count}"
-            ),
-        }
-    }
-}
-
-fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadiness> {
-    let device = device.trim();
-    if device.trim().is_empty() {
-        return Err(TvmError::InvalidReceipt("device argument is empty"));
-    }
-    if matches!(device, "cpu" | "cpu-reference") {
-        return Ok(MinerDeviceReadiness::CpuReference);
-    }
-
-    let Some(cuda_index) = device.strip_prefix("cuda:") else {
-        return Err(TvmError::InvalidReceipt("unsupported miner device"));
-    };
-    if cuda_index.is_empty() {
-        return Err(TvmError::InvalidReceipt("invalid cuda device"));
-    }
-    let device_index = cuda_index
-        .parse::<u32>()
-        .map_err(|_| TvmError::InvalidReceipt("invalid cuda device"))?;
-    #[cfg(not(feature = "cuda-kernels"))]
-    {
-        let _ = device_index;
-        Err(TvmError::InvalidReceipt("cuda kernels not compiled"))
-    }
-    #[cfg(feature = "cuda-kernels")]
-    {
-        let device_count = cuda_device_count()?;
-        if device_index >= device_count {
-            return Err(TvmError::InvalidReceipt("cuda device unavailable"));
-        }
-        Ok(MinerDeviceReadiness::Cuda {
-            device_index,
-            device_count,
-        })
-    }
-}
-
-fn ensure_node_endpoint(node: &str) -> Result<()> {
-    ensure_libp2p_multiaddr(node)
-        .map_err(|_| TvmError::InvalidReceipt("unsupported libp2p node endpoint"))
-}
-
-fn ensure_listen_addr(listen: &str) -> Result<()> {
-    listen
-        .parse::<SocketAddr>()
-        .map(|_| ())
-        .map_err(|_| TvmError::InvalidReceipt("invalid service listen address"))
-}
-
-fn ensure_libp2p_multiaddr(address: &str) -> Result<()> {
-    address
-        .trim()
-        .parse::<Multiaddr>()
-        .map(|_| ())
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))
-}
-
-fn ensure_data_dir(data_dir: &str) -> Result<()> {
-    if data_dir.trim().is_empty() {
-        return Err(TvmError::InvalidReceipt("data dir argument is empty"));
-    }
-    Ok(())
-}
-
-fn json_escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn ensure_auth_token(auth_token: &str) -> Result<()> {
-    if auth_token.trim().is_empty() {
-        return Err(TvmError::InvalidReceipt("auth token argument is empty"));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
