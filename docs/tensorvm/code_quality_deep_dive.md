@@ -480,6 +480,9 @@ spaghetti around.
 - Iteration 183 moved public preflight service-plan readiness checks and launch-readiness evaluation
   into `testnet/public_preflight_plan.rs`, keeping preflight policy beside but separate from
   preflight manifest parsing.
+- Iteration 184 moved public service kind, endpoint, signed health evidence, and content evidence
+  validation into `testnet/public_services.rs`, separating service proof policy from the remaining
+  public evidence bundle and node evidence types.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
