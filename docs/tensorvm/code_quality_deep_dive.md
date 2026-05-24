@@ -559,6 +559,8 @@ spaghetti around.
   `chain/tests/attestations.rs`, narrowing `chain/tests/settlement.rs` to settlement/quorum flows.
 - Iteration 218 moved reward allocation and reward-block failure tests into `chain/tests/rewards.rs`,
   keeping `chain/tests/blocks.rs` focused on block proposal, admission, finality, and canonical roots.
+- Iteration 219 moved proposer selection and validation-seed tests into `chain/tests/proposers.rs`,
+  narrowing `chain/tests/blocks.rs` to block production, finality, vote admission, and root commitments.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

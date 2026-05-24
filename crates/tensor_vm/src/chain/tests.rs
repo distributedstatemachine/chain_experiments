@@ -22,5 +22,6 @@ mod boundaries;
 mod challenges;
 mod commands;
 mod models;
+mod proposers;
 mod rewards;
 mod settlement;
