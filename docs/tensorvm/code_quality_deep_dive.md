@@ -1125,6 +1125,9 @@ spaghetti around.
 - Iteration 459 removed the remaining execution convenience methods from the Clap command types and
   routed the binary through `app::run(TvmdCli::parse())`, keeping Clap as a pure parse boundary with app
   dispatch owned by the application layer.
+- Iteration 460 split node-specific Clap parser and local node validation coverage into
+  `cli/tests/local_node_parser.rs` and `cli/tests/local_node_validation.rs`, leaving the mixed local
+  suites focused on localnet defaults and role argument validation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

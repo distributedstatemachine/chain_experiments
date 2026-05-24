@@ -12,6 +12,8 @@ mod command_helpers;
 mod local_cuda_validation;
 mod local_execution_reports;
 mod local_miner_parser;
+mod local_node_parser;
+mod local_node_validation;
 mod local_parser;
 mod local_role_parser;
 mod local_validation;
