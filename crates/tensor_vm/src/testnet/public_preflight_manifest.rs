@@ -1,9 +1,11 @@
+use super::public_manifest_fields::{
+    exact_manifest_record_fields, exact_manifest_scalar, parse_hash_hex, parse_manifest_bool,
+    parse_manifest_u64, parse_manifest_usize, parse_service_kind, reject_manifest_key_whitespace,
+    required_bool, required_u64, required_usize,
+};
 use super::{
     PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION, PublicDeploymentServicePlan,
     PublicNetworkRuntimeEvidence, PublicTestnetCriteria, PublicTestnetPreflightPlan, TestnetConfig,
-    exact_manifest_record_fields, exact_manifest_scalar, parse_hash_hex, parse_manifest_bool,
-    parse_manifest_u64, parse_manifest_usize, parse_service_kind, required_bool, required_u64,
-    required_usize,
 };
 use crate::error::{Result, TvmError};
 use std::collections::BTreeSet;
@@ -19,7 +21,7 @@ pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTest
         let (key, value) = raw_line.split_once('=').ok_or(TvmError::InvalidReceipt(
             "malformed preflight manifest line",
         ))?;
-        super::reject_manifest_key_whitespace(key)?;
+        reject_manifest_key_whitespace(key)?;
         let key = key.trim();
         if key != "service" && !scalar_fields.insert(key.to_owned()) {
             return Err(TvmError::InvalidReceipt(

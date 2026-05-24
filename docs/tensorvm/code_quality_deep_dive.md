@@ -461,6 +461,9 @@ spaghetti around.
 - Iteration 177 moved public preflight manifest parsing and launch-readiness manifest assembly into
   `testnet/public_preflight_manifest.rs`, separating preflight input handling from public evidence
   bundle manifest parsing.
+- Iteration 178 moved shared public manifest field validation, scalar parsing, hash decoding, and
+  required-field helpers into `testnet/public_manifest_fields.rs`, letting both public manifest
+  parsers depend on one small parsing utility module instead of the main testnet orchestration file.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

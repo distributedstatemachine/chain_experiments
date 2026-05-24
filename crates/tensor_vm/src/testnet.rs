@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 mod public_evidence_crypto;
+mod public_manifest_fields;
 mod public_operators;
 mod public_preflight_manifest;
 mod public_urls;
@@ -45,6 +46,11 @@ use public_evidence_crypto::{
 };
 pub(crate) use public_evidence_crypto::{
     aggregate_public_evidence_record_roots, public_network_runtime_observations_for_run,
+};
+use public_manifest_fields::{
+    exact_manifest_record_fields, exact_manifest_scalar, parse_hash_hex, parse_manifest_bool,
+    parse_manifest_u64, parse_service_kind, reject_manifest_key_whitespace, required_bool,
+    required_hash, required_string, required_u64,
 };
 #[cfg(test)]
 use public_operators::match_public_operator_address;
@@ -874,13 +880,6 @@ pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestn
     builder.finish()
 }
 
-fn reject_manifest_key_whitespace(key: &str) -> Result<()> {
-    if key.trim() != key {
-        return Err(TvmError::InvalidReceipt("malformed manifest field key"));
-    }
-    Ok(())
-}
-
 fn public_evidence_manifest_field_allows_repeated(key: &str) -> bool {
     matches!(
         key,
@@ -1538,106 +1537,6 @@ fn parse_manifest_service_content(value: &str) -> Result<PublicServiceContentEvi
     );
     evidence.content_signature = parse_hash_hex(fields[7])?;
     Ok(evidence)
-}
-
-fn exact_manifest_record_fields<'a>(
-    value: &'a str,
-    expected_fields: usize,
-    error: &'static str,
-) -> Result<Vec<&'a str>> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != expected_fields
-        || fields
-            .iter()
-            .any(|field| field.is_empty() || field.trim() != *field)
-    {
-        return Err(TvmError::InvalidReceipt(error));
-    }
-    Ok(fields)
-}
-
-fn exact_manifest_scalar(value: &str) -> Result<&str> {
-    if value.trim() != value {
-        return Err(TvmError::InvalidReceipt("malformed manifest scalar value"));
-    }
-    Ok(value)
-}
-
-fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
-    match value {
-        "rpc" => Ok(PublicServiceKind::Rpc),
-        "explorer" => Ok(PublicServiceKind::Explorer),
-        "faucet" => Ok(PublicServiceKind::Faucet),
-        "telemetry" => Ok(PublicServiceKind::Telemetry),
-        _ => Err(TvmError::InvalidReceipt("unknown service evidence kind")),
-    }
-}
-
-fn parse_hash_hex(value: &str) -> Result<Hash> {
-    let value = value.strip_prefix("0x").unwrap_or(value);
-    if value.len() != 64 {
-        return Err(TvmError::InvalidReceipt("invalid evidence hash length"));
-    }
-    let mut out = [0_u8; 32];
-    for (index, byte) in out.iter_mut().enumerate() {
-        let high = parse_hex_nibble(value.as_bytes()[index * 2])?;
-        let low = parse_hex_nibble(value.as_bytes()[index * 2 + 1])?;
-        *byte = (high << 4) | low;
-    }
-    Ok(out)
-}
-
-fn parse_hex_nibble(value: u8) -> Result<u8> {
-    match value {
-        b'0'..=b'9' => Ok(value - b'0'),
-        b'a'..=b'f' => Ok(value - b'a' + 10),
-        b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(TvmError::InvalidReceipt("invalid evidence hash hex")),
-    }
-}
-
-fn parse_manifest_u64(value: &str) -> Result<u64> {
-    value
-        .parse()
-        .map_err(|_| TvmError::InvalidReceipt("invalid evidence manifest number"))
-}
-
-fn parse_manifest_usize(value: &str) -> Result<usize> {
-    value
-        .parse()
-        .map_err(|_| TvmError::InvalidReceipt("invalid evidence manifest number"))
-}
-
-fn parse_manifest_bool(value: &str) -> Result<bool> {
-    match value {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(TvmError::InvalidReceipt(
-            "invalid evidence manifest boolean",
-        )),
-    }
-}
-
-fn required_u64(value: Option<u64>) -> Result<u64> {
-    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest number"))
-}
-
-fn required_usize(value: Option<usize>) -> Result<usize> {
-    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest number"))
-}
-
-fn required_bool(value: Option<bool>) -> Result<bool> {
-    value.ok_or(TvmError::InvalidReceipt(
-        "missing evidence manifest boolean",
-    ))
-}
-
-fn required_hash(value: Option<Hash>) -> Result<Hash> {
-    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest hash"))
-}
-
-fn required_string(value: Option<String>) -> Result<String> {
-    value.ok_or(TvmError::InvalidReceipt("missing evidence manifest string"))
 }
 
 impl PublicTestnetEvidenceBundle {
