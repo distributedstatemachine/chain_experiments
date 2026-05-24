@@ -504,6 +504,8 @@ spaghetti around.
 - Iteration 191 extracted the RPC HTTP server, response rendering, request parser, and query-token
   decoding into `rpc/http.rs`, leaving `rpc.rs` less coupled to transport framing while preserving the
   public `RpcHttpServer` and `http_response_text` exports.
+- Iteration 192 extracted read-only explorer DTO projection helpers into `rpc/explorer.rs`, keeping
+  account, block, miner, validator, receipt, job, and overview shaping separate from RPC route dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
