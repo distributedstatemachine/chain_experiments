@@ -87,13 +87,17 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         .expect("tvmd service serve must spawn");
 
     let unauthenticated_health = unauthenticated_get_request(rpc_port, "/health");
-    assert!(unauthenticated_health.contains("HTTP/1.1 401 Unauthorized"));
-    assert!(unauthenticated_health.contains("unauthorized"));
+    let unauthenticated_health =
+        response_json_with_status(&unauthenticated_health, "HTTP/1.1 401 Unauthorized");
+    assert_eq!(
+        unauthenticated_health["error"].as_str(),
+        Some("unauthorized")
+    );
 
     let health = authenticated_get_request(rpc_port, "/health");
-    assert!(health.contains("HTTP/1.1 200 OK"));
-    assert!(health.contains("\"status\":\"ok\""));
-    assert!(health.contains("\"service\":\"all\""));
+    let health = response_json_with_status(&health, "HTTP/1.1 200 OK");
+    assert_eq!(health["status"].as_str(), Some("ok"));
+    assert_eq!(health["service"].as_str(), Some("all"));
 
     for (path, service, endpoint_id, public_url) in [
         (
@@ -122,9 +126,9 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         ),
     ] {
         let response = authenticated_get_request(rpc_port, path);
-        assert!(response.contains("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"status\":\"ok\""));
-        assert!(response.contains(&format!("\"service\":\"{service}\"")));
+        let body = response_json_with_status(&response, "HTTP/1.1 200 OK");
+        assert_eq!(body["status"].as_str(), Some("ok"));
+        assert_eq!(body["service"].as_str(), Some(service));
         assert_service_health_evidence_from_response(
             service,
             &endpoint_id.repeat(32),
@@ -134,10 +138,16 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     }
 
     let chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(chain_head.contains("HTTP/1.1 200 OK"));
-    assert!(chain_head.contains("\"height\""));
-    assert!(chain_head.contains("\"block_count\""));
-    assert!(chain_head.contains("\"state_root\""));
+    let chain_head_body = response_json_with_status(&chain_head, "HTTP/1.1 200 OK");
+    json_u64(&chain_head_body, "height");
+    json_u64(&chain_head_body, "block_count");
+    assert_eq!(
+        chain_head_body["state_root"]
+            .as_str()
+            .expect("chain head state root must be a string")
+            .len(),
+        64
+    );
     assert_service_content_evidence_from_response(
         &data_dir,
         "rpc",
@@ -149,16 +159,21 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     );
 
     let current_epoch = authenticated_get_request(rpc_port, "/epoch/current");
-    assert!(current_epoch.contains("HTTP/1.1 200 OK"));
-    assert!(current_epoch.contains("\"epoch\""));
+    let current_epoch = response_json_with_status(&current_epoch, "HTTP/1.1 200 OK");
+    json_u64(&current_epoch, "epoch");
 
     let current_jobs = authenticated_get_request(rpc_port, "/jobs/current");
-    assert!(current_jobs.contains("HTTP/1.1 200 OK"));
-    assert!(current_jobs.contains("\"jobs\""));
+    let current_jobs = response_json_with_status(&current_jobs, "HTTP/1.1 200 OK");
+    assert!(
+        current_jobs["jobs"]
+            .as_array()
+            .expect("current jobs must be an array")
+            .is_empty()
+    );
 
     let genesis_block = authenticated_get_request(rpc_port, "/chain/block/0");
-    assert!(genesis_block.contains("HTTP/1.1 404 Not Found"));
-    assert!(genesis_block.contains("block not found"));
+    let genesis_block = response_json_with_status(&genesis_block, "HTTP/1.1 404 Not Found");
+    assert_eq!(genesis_block["error"].as_str(), Some("block not found"));
 
     let miner_address = "11".repeat(32);
     let tx = authenticated_request(
@@ -167,8 +182,8 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "/tx",
         &format!("register_miner {miner_address}"),
     );
-    assert!(tx.contains("HTTP/1.1 202 Accepted"));
-    assert!(tx.contains("\"accepted\":true"));
+    let tx = response_json_with_status(&tx, "HTTP/1.1 202 Accepted");
+    assert_eq!(tx["accepted"].as_bool(), Some(true));
 
     let validator_address = "44".repeat(32);
     let validator_tx = authenticated_request(
@@ -177,31 +192,37 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "/tx",
         &format!("register_validator {validator_address}"),
     );
-    assert!(validator_tx.contains("HTTP/1.1 202 Accepted"));
-    assert!(validator_tx.contains("\"accepted\":true"));
+    let validator_tx = response_json_with_status(&validator_tx, "HTTP/1.1 202 Accepted");
+    assert_eq!(validator_tx["accepted"].as_bool(), Some(true));
 
     let miner_state = authenticated_get_request(rpc_port, &format!("/miners/{miner_address}"));
-    assert!(miner_state.contains("HTTP/1.1 200 OK"));
-    assert!(miner_state.contains(&format!("\"address\":\"{miner_address}\"")));
-    assert!(miner_state.contains("\"stake\":100"));
+    let miner_state = response_json_with_status(&miner_state, "HTTP/1.1 200 OK");
+    assert_eq!(
+        miner_state["address"].as_str(),
+        Some(miner_address.as_str())
+    );
+    assert_eq!(miner_state["stake"].as_u64(), Some(100));
 
     let validator_state =
         authenticated_get_request(rpc_port, &format!("/validators/{validator_address}"));
-    assert!(validator_state.contains("HTTP/1.1 200 OK"));
-    assert!(validator_state.contains(&format!("\"address\":\"{validator_address}\"")));
-    assert!(validator_state.contains("\"stake\":10000"));
+    let validator_state = response_json_with_status(&validator_state, "HTTP/1.1 200 OK");
+    assert_eq!(
+        validator_state["address"].as_str(),
+        Some(validator_address.as_str())
+    );
+    assert_eq!(validator_state["stake"].as_u64(), Some(10_000));
 
     let receipt = authenticated_request(rpc_port, "POST", "/receipt", &"22".repeat(32));
-    assert!(receipt.contains("HTTP/1.1 202 Accepted"));
-    assert!(receipt.contains("\"accepted\":true"));
+    let receipt = response_json_with_status(&receipt, "HTTP/1.1 202 Accepted");
+    assert_eq!(receipt["accepted"].as_bool(), Some(true));
 
     let attestation = authenticated_request(rpc_port, "POST", "/attestation", &"33".repeat(32));
-    assert!(attestation.contains("HTTP/1.1 202 Accepted"));
-    assert!(attestation.contains("\"accepted\":true"));
+    let attestation = response_json_with_status(&attestation, "HTTP/1.1 202 Accepted");
+    assert_eq!(attestation["accepted"].as_bool(), Some(true));
 
     let explorer = authenticated_get_request(rpc_port, "/explorer");
-    assert!(explorer.contains("HTTP/1.1 200 OK"));
-    assert!(explorer.contains("TensorVM Explorer"));
+    assert_eq!(response_status_line(&explorer), "HTTP/1.1 200 OK");
+    assert!(response_body(&explorer).contains("TensorVM Explorer"));
     assert_service_content_evidence_from_response(
         &data_dir,
         "explorer",
@@ -213,8 +234,8 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     );
 
     let faucet = authenticated_get_request(rpc_port, "/faucet/page");
-    assert!(faucet.contains("HTTP/1.1 200 OK"));
-    assert!(faucet.contains("TensorVM Faucet"));
+    assert_eq!(response_status_line(&faucet), "HTTP/1.1 200 OK");
+    assert!(response_body(&faucet).contains("TensorVM Faucet"));
     assert_service_content_evidence_from_response(
         &data_dir,
         "faucet",
@@ -226,8 +247,8 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     );
 
     let telemetry = authenticated_get_request(rpc_port, "/telemetry/dashboard");
-    assert!(telemetry.contains("HTTP/1.1 200 OK"));
-    assert!(telemetry.contains("TensorVM Telemetry"));
+    assert_eq!(response_status_line(&telemetry), "HTTP/1.1 200 OK");
+    assert!(response_body(&telemetry).contains("TensorVM Telemetry"));
     assert_service_content_evidence_from_response(
         &data_dir,
         "telemetry",

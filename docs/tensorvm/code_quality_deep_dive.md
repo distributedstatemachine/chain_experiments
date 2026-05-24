@@ -715,6 +715,8 @@ spaghetti around.
   an explicit evidence executor, and moves role/service argument validation into the app boundary.
 - Iteration 280 converted the RPC HTTP transport tests from response substring checks to explicit
   status-line, header, body, and websocket-frame JSON assertions.
+- Iteration 281 reused parsed HTTP response helpers in the `tvmd_cli` integration harness, replacing
+  live service status and JSON substring checks with exact status-line and `serde_json` assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

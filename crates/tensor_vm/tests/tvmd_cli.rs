@@ -130,31 +130,47 @@ fn response_body(response: &str) -> &str {
         .expect("HTTP response must contain a body separator")
 }
 
-fn json_number_field(body: &str, key: &str) -> u64 {
-    let marker = format!("\"{key}\":");
-    let tail = body
-        .split_once(&marker)
-        .map(|(_, tail)| tail)
-        .expect("JSON numeric field must exist");
-    let digits = tail
-        .chars()
-        .take_while(|character| character.is_ascii_digit())
-        .collect::<String>();
-    digits.parse().expect("JSON numeric field must parse")
+fn response_status_line(response: &str) -> &str {
+    response
+        .lines()
+        .next()
+        .expect("HTTP response must include status line")
 }
 
-fn json_positive_field_count(body: &str, key: &str) -> usize {
-    let marker = format!("\"{key}\":");
-    body.match_indices(&marker)
-        .filter(|(idx, _)| {
-            let tail = &body[idx + marker.len()..];
-            let digits = tail
-                .chars()
-                .take_while(|character| character.is_ascii_digit())
-                .collect::<String>();
-            digits.parse::<u64>().is_ok_and(|value| value > 0)
-        })
-        .count()
+fn response_json(response: &str) -> serde_json::Value {
+    serde_json::from_str(response_body(response)).expect("HTTP response body must be JSON")
+}
+
+fn response_json_with_status(response: &str, status: &str) -> serde_json::Value {
+    assert_eq!(response_status_line(response), status);
+    response_json(response)
+}
+
+fn json_u64(json: &serde_json::Value, key: &str) -> u64 {
+    json[key]
+        .as_u64()
+        .unwrap_or_else(|| panic!("JSON field {key} must be an unsigned integer"))
+}
+
+fn json_positive_field_count(json: &serde_json::Value, key: &str) -> usize {
+    match json {
+        serde_json::Value::Object(fields) => {
+            let current = fields
+                .get(key)
+                .and_then(serde_json::Value::as_u64)
+                .is_some_and(|value| value > 0) as usize;
+            current
+                + fields
+                    .values()
+                    .map(|value| json_positive_field_count(value, key))
+                    .sum::<usize>()
+        }
+        serde_json::Value::Array(values) => values
+            .iter()
+            .map(|value| json_positive_field_count(value, key))
+            .sum(),
+        _ => 0,
+    }
 }
 
 fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
@@ -214,9 +230,9 @@ fn assert_service_health_evidence_from_response(
     public_url: &str,
     response: &str,
 ) {
-    assert!(response.contains("HTTP/1.1 200 OK"));
-    assert!(response.contains("\"status\":\"ok\""));
-    assert!(response.contains(&format!("\"service\":\"{kind}\"")));
+    let body = response_json_with_status(response, "HTTP/1.1 200 OK");
+    assert_eq!(body["status"].as_str(), Some("ok"));
+    assert_eq!(body["service"].as_str(), Some(kind));
     let health = run_tvmd(&[
         "evidence",
         "service",
@@ -370,35 +386,42 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
         .expect("tvmd service serve must spawn");
 
     let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(initial_chain_head.contains("HTTP/1.1 200 OK"));
-    let initial_height = json_number_field(response_body(&initial_chain_head), "height");
-    let initial_block_count = json_number_field(response_body(&initial_chain_head), "block_count");
+    assert_eq!(response_status_line(&initial_chain_head), "HTTP/1.1 200 OK");
+    let initial_chain_head = response_json(&initial_chain_head);
+    let initial_height = json_u64(&initial_chain_head, "height");
+    let initial_block_count = json_u64(&initial_chain_head, "block_count");
     assert!(initial_height >= 2);
     assert!(initial_block_count >= 2);
 
     std::thread::sleep(Duration::from_millis(150));
 
     let overview = authenticated_get_request(rpc_port, "/explorer/overview");
-    assert!(overview.contains("HTTP/1.1 200 OK"));
-    let overview_body = response_body(&overview);
-    assert!(json_number_field(overview_body, "job_count") >= 2);
-    assert!(json_number_field(overview_body, "receipt_count") >= 10);
-    assert!(json_number_field(overview_body, "settled_receipt_count") >= 10);
+    assert_eq!(response_status_line(&overview), "HTTP/1.1 200 OK");
+    let overview = response_json(&overview);
+    let summary = &overview["summary"];
+    assert!(json_u64(summary, "job_count") >= 2);
+    assert!(json_u64(summary, "receipt_count") >= 10);
+    assert!(json_u64(summary, "settled_receipt_count") >= 10);
 
     let receipts = authenticated_get_request(rpc_port, "/explorer/receipts/latest/500");
-    assert!(receipts.contains("HTTP/1.1 200 OK"));
-    let receipts_body = response_body(&receipts);
-    assert!(receipts_body.contains("\"validator_attestations\""));
-    assert!(json_positive_field_count(receipts_body, "attestation_count") >= 10);
+    assert_eq!(response_status_line(&receipts), "HTTP/1.1 200 OK");
+    let receipts = response_json(&receipts);
+    let receipts_array = receipts["receipts"]
+        .as_array()
+        .expect("latest receipts response must be a JSON array");
+    assert!(receipts_array.iter().all(|receipt| {
+        receipt
+            .get("validator_attestations")
+            .is_some_and(serde_json::Value::is_array)
+    }));
+    assert!(json_positive_field_count(&receipts, "attestation_count") >= 10);
 
     let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
+    assert_eq!(response_status_line(&later_chain_head), "HTTP/1.1 200 OK");
+    let later_chain_head = response_json(&later_chain_head);
+    assert_eq!(json_u64(&later_chain_head, "height"), initial_height);
     assert_eq!(
-        json_number_field(response_body(&later_chain_head), "height"),
-        initial_height
-    );
-    assert_eq!(
-        json_number_field(response_body(&later_chain_head), "block_count"),
+        json_u64(&later_chain_head, "block_count"),
         initial_block_count
     );
 
@@ -575,22 +598,22 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         .expect("tvmd validator run must spawn");
 
     let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(initial_chain_head.contains("HTTP/1.1 200 OK"));
-    let initial_height = json_number_field(response_body(&initial_chain_head), "height");
-    let initial_block_count = json_number_field(response_body(&initial_chain_head), "block_count");
+    assert_eq!(response_status_line(&initial_chain_head), "HTTP/1.1 200 OK");
+    let initial_chain_head = response_json(&initial_chain_head);
+    let initial_height = json_u64(&initial_chain_head, "height");
+    let initial_block_count = json_u64(&initial_chain_head, "block_count");
     assert!(initial_height >= 2);
     assert!(initial_block_count >= 2);
 
     std::thread::sleep(Duration::from_millis(150));
 
     let overview = authenticated_get_request(rpc_port, "/explorer/overview");
-    assert!(overview.contains("HTTP/1.1 200 OK"));
+    assert_eq!(response_status_line(&overview), "HTTP/1.1 200 OK");
     let later_chain_head = authenticated_get_request(rpc_port, "/chain/head");
-    assert!(later_chain_head.contains("HTTP/1.1 200 OK"));
-    assert!(json_number_field(response_body(&later_chain_head), "height") > initial_height);
-    assert!(
-        json_number_field(response_body(&later_chain_head), "block_count") > initial_block_count
-    );
+    assert_eq!(response_status_line(&later_chain_head), "HTTP/1.1 200 OK");
+    let later_chain_head = response_json(&later_chain_head);
+    assert!(json_u64(&later_chain_head, "height") > initial_height);
+    assert!(json_u64(&later_chain_head, "block_count") > initial_block_count);
 
     let output = child
         .wait_with_output()
@@ -705,7 +728,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
             .expect("tvmd role run must spawn");
 
         let health = authenticated_get_request(rpc_port, "/health");
-        assert!(health.contains("HTTP/1.1 200 OK"));
+        assert_eq!(response_status_line(&health), "HTTP/1.1 200 OK");
 
         let output = child.wait_with_output().expect("role process must exit");
         assert!(
