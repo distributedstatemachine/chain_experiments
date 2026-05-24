@@ -195,6 +195,16 @@ fn stdout_u64(stdout: &str, key: &str) -> u64 {
         .expect("expected numeric service stdout field")
 }
 
+fn stdout_hex_hash<'a>(stdout: &'a str, key: &str) -> &'a str {
+    let value = stdout_value(stdout, key);
+    assert_eq!(value.len(), 64, "expected {key} to be a 32-byte hex hash");
+    assert!(
+        value.chars().all(|character| character.is_ascii_hexdigit()),
+        "expected {key} to be hex"
+    );
+    value
+}
+
 fn trimmed_tvmd(args: &[&str]) -> String {
     run_tvmd(args).trim_end().to_owned()
 }
@@ -507,7 +517,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
         "--height",
         &latest_block_height_text,
     ]);
-    assert!(block.contains("command=service_block"));
+    assert_eq!(stdout_value(&block, "command"), "service_block");
     assert_eq!(stdout_value(&block, "height"), latest_block_height_text);
     assert_eq!(
         stdout_value(&block, "block_validation"),
@@ -519,43 +529,29 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
         stdout_value(&block, "tensorwork_proposer_selection"),
         "false"
     );
-    assert!(block.contains("settled_receipt_set_root="));
-    assert!(block.contains("checks_root="));
-    assert!(block.contains("difficulty_target="));
-    assert!(block.contains("nonce="));
-    assert!(block.contains("pow_hash="));
+    stdout_hex_hash(&block, "settled_receipt_set_root");
+    stdout_hex_hash(&block, "checks_root");
+    assert_eq!(stdout_value(&block, "checks_root_recomputed"), "true");
+    stdout_hex_hash(&block, "difficulty_target");
+    stdout_u64(&block, "nonce");
+    stdout_hex_hash(&block, "pow_header_hash");
+    stdout_hex_hash(&block, "pow_hash");
     assert_eq!(stdout_value(&block, "pow_valid"), "true");
-    assert_ne!(stdout_value(&block, "state_root"), "0".repeat(64));
+    assert_ne!(stdout_hex_hash(&block, "state_root"), "0".repeat(64));
     assert_eq!(stdout_value(&block, "finalized"), "true");
-    assert!(
-        stdout_value(&block, "block_vote_count")
-            .parse::<u64>()
-            .expect("service block vote count must parse")
-            > 0
-    );
+    assert!(stdout_u64(&block, "block_vote_count") > 0);
     assert_ne!(stdout_value(&block, "block_vote_validators"), "none");
     assert_eq!(stdout_value(&block, "finality_validated_block"), "true");
-    assert!(
-        stdout_value(&block, "receipt_count")
-            .parse::<u64>()
-            .expect("service block receipt count must parse")
-            > 0
-    );
+    let receipt_count = stdout_u64(&block, "receipt_count");
+    assert!(receipt_count > 0);
     assert_ne!(stdout_value(&block, "receipt_ids"), "none");
-    assert!(
-        stdout_value(&block, "settled_receipt_count")
-            .parse::<u64>()
-            .expect("service block settled receipt count must parse")
-            > 0
+    assert!(stdout_u64(&block, "settled_receipt_count") > 0);
+    assert_eq!(
+        stdout_u64(&block, "tensor_op_receipt_count")
+            + stdout_u64(&block, "linear_training_receipt_count"),
+        receipt_count
     );
-    assert!(block.contains("tensor_op_receipt_count="));
-    assert!(block.contains("linear_training_receipt_count="));
-    assert!(
-        stdout_value(&block, "latest_height")
-            .parse::<u64>()
-            .expect("service block latest height must parse")
-            >= 1
-    );
+    assert!(stdout_u64(&block, "latest_height") >= 1);
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
@@ -663,7 +659,10 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         "false"
     );
     assert_eq!(stdout_value(&block, "pow_valid"), "true");
-    assert!(block.contains("canonical_blockspace_valid="));
+    assert!(matches!(
+        stdout_value(&block, "canonical_blockspace_valid"),
+        "true" | "false"
+    ));
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }

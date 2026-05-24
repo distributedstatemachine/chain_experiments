@@ -725,6 +725,8 @@ spaghetti around.
   scans to keyed field, numeric, boolean, hash, and list assertions.
 - Iteration 285 converted service-lifecycle network evidence checks from prefix/substring scans to parsed
   comma-record, keyed summary, artifact, and exact CLI error assertions.
+- Iteration 286 converted the remaining `tvmd_cli` service-block report substring checks to keyed command,
+  hash, numeric, receipt-count, PoW, and canonical-blockspace assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
