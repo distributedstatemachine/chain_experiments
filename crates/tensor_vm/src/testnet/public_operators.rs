@@ -1,6 +1,5 @@
-use super::{
-    PublicNodeRole, PublicTestnetCriteria, PublicTestnetRunEvidence, public_node_role_tag,
-};
+use super::public_evidence_crypto::public_node_role_tag;
+use super::{PublicNodeRole, PublicTestnetCriteria, PublicTestnetRunEvidence};
 use crate::types::{Address, Hash, hash_bytes};
 use std::collections::{BTreeMap, BTreeSet};
 

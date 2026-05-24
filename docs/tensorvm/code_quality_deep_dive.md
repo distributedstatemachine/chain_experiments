@@ -454,6 +454,10 @@ spaghetti around.
 - Iteration 175 moved public-operator independence matching, quota search, and attestation-key
   derivation into `testnet/public_operators.rs`, keeping public-run criteria evaluation separate
   from the address/operator matching policy.
+- Iteration 176 moved public evidence record kinds, signing/message-domain helpers, record-root
+  aggregation, and generated network-runtime observation evidence into
+  `testnet/public_evidence_crypto.rs`, separating public-evidence cryptographic framing from the
+  main testnet orchestration module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
