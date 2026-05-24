@@ -70,6 +70,29 @@ impl KeyValueReportWriter {
         self.contents.push_str(&value);
     }
 
+    #[cfg(test)]
+    pub(crate) fn append_report(&mut self, report: &str) {
+        let mut addition = String::new();
+        for line in report.lines().filter(|line| !line.trim().is_empty()) {
+            if !addition.is_empty() {
+                addition.push('\n');
+            }
+            addition.push_str(line);
+        }
+        if addition.is_empty() {
+            return;
+        }
+        KeyValueReport::parse_strict(&addition).expect("invalid key-value subreport");
+
+        let mut combined = self.contents.clone();
+        if !combined.is_empty() {
+            combined.push('\n');
+        }
+        combined.push_str(&addition);
+        KeyValueReport::parse_strict(&combined).expect("duplicate key-value report field");
+        self.contents = combined;
+    }
+
     pub(crate) fn finish(self) -> String {
         self.contents
     }
@@ -132,5 +155,29 @@ mod tests {
         let parsed = KeyValueReport::parse_strict(&report).expect("writer output must parse");
         assert_eq!(parsed.value("command"), Some("service_serve"));
         assert_eq!(parsed.value("max_requests"), Some("7"));
+    }
+
+    #[test]
+    fn key_value_report_writer_appends_parseable_subreports() {
+        let mut report = KeyValueReportWriter::new();
+        report.field("command", "service_serve");
+        report.append_report("p2p_runtime=libp2p\np2p_identity_seeded=false\n");
+        let report = report.finish();
+
+        assert_eq!(
+            report,
+            "command=service_serve\np2p_runtime=libp2p\np2p_identity_seeded=false"
+        );
+        let parsed = KeyValueReport::parse_strict(&report).expect("writer output must parse");
+        assert_eq!(parsed.value("p2p_runtime"), Some("libp2p"));
+        assert_eq!(parsed.value("p2p_identity_seeded"), Some("false"));
+    }
+
+    #[test]
+    #[should_panic(expected = "duplicate key-value report field")]
+    fn key_value_report_writer_rejects_duplicate_appended_fields() {
+        let mut report = KeyValueReportWriter::new();
+        report.field("command", "service_serve");
+        report.append_report("command=service_status");
     }
 }

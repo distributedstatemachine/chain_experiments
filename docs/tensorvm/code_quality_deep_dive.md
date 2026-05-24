@@ -846,6 +846,9 @@ spaghetti around.
 - Iteration 338 moved app-owned miner and validator registration, readiness, and status reports onto the
   shared key-value report writer, including device-readiness fields, with parseability coverage for the
   operator-check surface.
+- Iteration 339 added a checked subreport append path to the key-value writer and moved local service CLI
+  fixture reports onto it, so node init, peer, readiness, serve, status, and block fixture outputs no
+  longer hand-format their status text.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
