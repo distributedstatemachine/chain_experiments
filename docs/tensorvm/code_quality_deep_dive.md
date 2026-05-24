@@ -477,6 +477,9 @@ spaghetti around.
 - Iteration 182 moved local testnet bootstrapping, participant endpoint validation, local round
   execution, telemetry/explorer adapters, and block finalization helpers into
   `testnet/local_harness.rs`, separating local orchestration from public testnet evidence types.
+- Iteration 183 moved public preflight service-plan readiness checks and launch-readiness evaluation
+  into `testnet/public_preflight_plan.rs`, keeping preflight policy beside but separate from
+  preflight manifest parsing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
