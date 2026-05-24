@@ -3,6 +3,7 @@ use super::parser_values::{PublicNodeRoleArg, parse_hash_value};
 use super::public_evidence_network_parser::{
     NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
 };
+use super::public_evidence_publication_parser::{AuditorRecordArgs, PublicationArgs};
 use super::public_evidence_record_parser::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
@@ -58,20 +59,8 @@ impl PublicEvidenceCommand {
             PublicEvidenceCommand::RecordSummaryFromFile(args) => args.into_command(),
             PublicEvidenceCommand::NetworkObservation(args) => args.into_command(),
             PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => args.into_command(),
-            PublicEvidenceCommand::Publication(args) => CliCommand::PublicEvidencePublication {
-                bundle_id: args.bundle_id,
-                public_uri: args.public_uri,
-                manifest_signer: args.manifest_signer,
-                manifest_signature_count: args.manifest_signature_count,
-                independent_auditor_count: args.independent_auditor_count,
-            },
-            PublicEvidenceCommand::AuditorRecord(args) => CliCommand::PublicEvidenceAuditorRecord {
-                bundle_id: args.bundle_id,
-                public_uri: args.public_uri,
-                auditor_id: args.auditor_id,
-                audit_uri: args.audit_uri,
-                observed_at_unix_seconds: args.observed_at,
-            },
+            PublicEvidenceCommand::Publication(args) => args.into_command(),
+            PublicEvidenceCommand::AuditorRecord(args) => args.into_command(),
             PublicEvidenceCommand::RunWindow(args) => CliCommand::PublicEvidenceRunWindow {
                 bundle_id: args.bundle_id,
                 manifest_signer: args.manifest_signer,
@@ -119,34 +108,6 @@ impl PublicEvidenceCommand {
 pub(super) struct ManifestArgs {
     #[arg(long)]
     manifest: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct PublicationArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long)]
-    public_uri: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    manifest_signature_count: u64,
-    #[arg(long)]
-    independent_auditor_count: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct AuditorRecordArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long)]
-    public_uri: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    auditor_id: Hash,
-    #[arg(long)]
-    audit_uri: String,
-    #[arg(long)]
-    observed_at: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

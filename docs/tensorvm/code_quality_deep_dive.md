@@ -326,6 +326,9 @@ spaghetti around.
 - Iteration 133 moved public-evidence network-observation clap argument structs and command conversion
   into `cli/public_evidence_network_parser.rs`, continuing to shrink `cli/public_evidence_parser.rs`
   toward a command-family router.
+- Iteration 134 moved public-evidence publication and auditor-record clap argument structs and command
+  conversion into `cli/public_evidence_publication_parser.rs`, keeping publication CLI shape beside its
+  evidence command family.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
