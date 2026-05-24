@@ -314,6 +314,9 @@ spaghetti around.
   dispatch plus public-evidence evidence generation.
 - Iteration 129 moved public-evidence and public-testnet reference command execution into
   `cli/public_evidence_execution.rs`, making `cli/execution.rs` a small command-family dispatcher.
+- Iteration 130 split CLI command descriptions into `cli/local_descriptions.rs` and
+  `cli/public_evidence_descriptions.rs`, leaving `cli/descriptions.rs` as the exported
+  command-family description dispatcher.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
