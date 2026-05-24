@@ -415,6 +415,9 @@ spaghetti around.
 - Iteration 162 moved the positive CLI command execution/report coverage into
   `cli/tests/execution_reports.rs`, isolating ready-path command output assertions from the remaining
   public-evidence rejection coverage.
+- Iteration 163 moved public-evidence CLI rejection coverage into
+  `cli/tests/public_evidence_rejections.rs`, leaving `cli/tests.rs` as shared CLI test fixtures and
+  module wiring instead of a mixed inline test body.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
