@@ -474,6 +474,9 @@ spaghetti around.
 - Iteration 181 moved public run evidence criteria evaluation, deployed service reachability checks,
   and service content uniqueness validation into `testnet/public_run_evidence.rs`, keeping public
   run policy separate from local testnet orchestration.
+- Iteration 182 moved local testnet bootstrapping, participant endpoint validation, local round
+  execution, telemetry/explorer adapters, and block finalization helpers into
+  `testnet/local_harness.rs`, separating local orchestration from public testnet evidence types.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
