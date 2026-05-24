@@ -867,6 +867,8 @@ spaghetti around.
   depend on grep over serialized JSON text.
 - Iteration 346 moved standalone explorer health readiness and websocket URL checks from grepping JSON text
   onto the shared JSON helpers, leaving HTML page probes as text reachability checks.
+- Iteration 347 replaced live tensor descriptor, row, chunk, and opening route greps in the local CPU
+  checker with parsed JSON field assertions, including descriptor-root and chunk-index consistency checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -126,6 +126,24 @@ sys.exit(1)
 ' "$key"
 }
 
+json_array_length() {
+  key="$1"
+  document="$2"
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+try:
+    value = json.load(sys.stdin)[sys.argv[1]]
+except (KeyError, TypeError, json.JSONDecodeError):
+    sys.exit(1)
+if isinstance(value, list):
+    print(len(value))
+    sys.exit(0)
+sys.exit(1)
+' "$key"
+}
+
 json_positive_field_count() {
   key="$1"
   document="$2"
@@ -398,15 +416,25 @@ done
 LIVE_TENSOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
 LIVE_TENSOR_ID=$(json_string tensor_id "$LIVE_TENSOR")
 [ -n "$LIVE_TENSOR_ID" ] || fail "live tensor route did not report a tensor id"
+LIVE_TENSOR_ROOT=$(json_string root "$LIVE_TENSOR")
+[ -n "$LIVE_TENSOR_ROOT" ] || fail "live tensor route did not report a tensor root"
 [ "$(json_number tensor_count "$LIVE_TENSOR")" -gt 0 ] || fail "live tensor route did not report retained tensors"
-curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor" | grep -q '"root":"' \
+LIVE_TENSOR_DESCRIPTOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor")
+LIVE_TENSOR_DESCRIPTOR_ROOT=$(json_string root "$LIVE_TENSOR_DESCRIPTOR") \
   || fail "live tensor descriptor was not fetchable"
-curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' \
-  || fail "live tensor row was not fetchable"
-curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' \
+[ "$LIVE_TENSOR_DESCRIPTOR_ROOT" = "$LIVE_TENSOR_ROOT" ] || fail "live tensor descriptor root did not match latest tensor root"
+LIVE_TENSOR_ROW=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0")
+[ "$(json_array_length row "$LIVE_TENSOR_ROW")" -gt 0 ] || fail "live tensor row was not fetchable"
+LIVE_TENSOR_CHUNK=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0")
+LIVE_TENSOR_CHUNK_BYTES=$(json_string bytes "$LIVE_TENSOR_CHUNK") \
   || fail "live tensor chunk was not fetchable"
-curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' \
+[ -n "$LIVE_TENSOR_CHUNK_BYTES" ] || fail "live tensor chunk was empty"
+[ "$(json_number chunk_index "$LIVE_TENSOR_CHUNK")" = "0" ] || fail "live tensor chunk index did not match request"
+LIVE_TENSOR_OPENING=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0")
+LIVE_TENSOR_OPENING_PROOF_LEN=$(json_number proof_len "$LIVE_TENSOR_OPENING") \
   || fail "live tensor opening was not fetchable"
+[ -n "$LIVE_TENSOR_OPENING_PROOF_LEN" ] || fail "live tensor opening did not report a proof length"
+[ "$(json_number chunk_index "$LIVE_TENSOR_OPENING")" = "0" ] || fail "live tensor opening index did not match request"
 
 LIVE_TENSOR_OP_BLOCK_HEIGHT=0
 LIVE_TENSOR_OP_BLOCK_RECEIPTS=0
