@@ -400,6 +400,9 @@ spaghetti around.
 - Iteration 157 moved the CLI network-observation address-filter test into
   `cli/tests/network_observation.rs`, starting the split of the large CLI test module along focused
   behavior-family boundaries.
+- Iteration 158 moved local CLI validation and CUDA-readiness tests into
+  `cli/tests/local_validation.rs`, separating local command validation from the public-evidence
+  invalid-argument coverage that remains in the parent CLI test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
