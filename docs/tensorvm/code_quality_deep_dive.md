@@ -727,6 +727,8 @@ spaghetti around.
   comma-record, keyed summary, artifact, and exact CLI error assertions.
 - Iteration 286 converted the remaining `tvmd_cli` service-block report substring checks to keyed command,
   hash, numeric, receipt-count, PoW, and canonical-blockspace assertions.
+- Iteration 287 added local compose/env structure helpers and moved local CPU operator, producer,
+  explorer, wallet, volume, network, and env-file assertions off broad substring scans.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

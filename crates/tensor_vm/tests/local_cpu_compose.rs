@@ -10,6 +10,58 @@ fn repo_path(relative: &str) -> String {
         .into_owned()
 }
 
+fn trimmed_yaml_scalar(value: &str) -> &str {
+    let value = value.trim();
+    value
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(value)
+}
+
+fn has_trimmed_line(text: &str, expected: &str) -> bool {
+    text.lines().any(|line| line.trim() == expected)
+}
+
+fn compose_service_section<'a>(compose: &'a str, service: &str) -> &'a str {
+    let marker = format!("  {service}:\n");
+    let start = compose
+        .find(&marker)
+        .unwrap_or_else(|| panic!("compose service {service} must exist"));
+    let body_start = start + marker.len();
+    let rest = &compose[body_start..];
+    let next_service = rest.match_indices("\n  ").find_map(|(idx, _)| {
+        rest[idx + 3..]
+            .chars()
+            .next()
+            .is_some_and(|character| !character.is_whitespace())
+            .then_some(idx)
+    });
+    let networks = rest.find("\nnetworks:");
+    let end = match (next_service, networks) {
+        (Some(next_service), Some(networks)) => next_service.min(networks),
+        (Some(next_service), None) => next_service,
+        (None, Some(networks)) => networks,
+        (None, None) => rest.len(),
+    };
+    &rest[..end]
+}
+
+fn compose_env_value<'a>(service_section: &'a str, key: &str) -> &'a str {
+    let prefix = format!("{key}: ");
+    service_section
+        .lines()
+        .find_map(|line| line.trim().strip_prefix(&prefix).map(trimmed_yaml_scalar))
+        .unwrap_or_else(|| panic!("compose service missing environment field {key}"))
+}
+
+fn env_file_value<'a>(env_file: &'a str, key: &str) -> &'a str {
+    env_file
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .find_map(|(field, value)| (field == key).then_some(value))
+        .unwrap_or_else(|| panic!("env file missing field {key}"))
+}
+
 #[test]
 fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     for path in [
@@ -66,64 +118,167 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "validator-04",
     ];
     for service in miners.into_iter().chain(validators) {
-        assert!(
-            compose.contains(&format!("  {service}:")),
-            "compose should define service {service}"
-        );
+        compose_service_section(&compose, service);
         assert!(
             spec.contains(service),
             "spec should name required service {service}"
         );
     }
 
-    assert_eq!(compose.matches("TENSORVM_ROLE: miner").count(), 10);
-    assert_eq!(compose.matches("TENSORVM_ROLE: validator").count(), 5);
-    assert_eq!(compose.matches(":/var/lib/tensorvm").count(), 15);
-    assert!(compose.contains("tensorvm-local"));
-    assert!(compose.contains("127.0.0.1:8545:8545"));
-    assert!(compose.contains("127.0.0.1:4001:4001"));
-    assert!(compose.contains("  explorer:"));
-    assert!(compose.contains("127.0.0.1:${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}:8080"));
-    assert!(compose.contains("/usr/local/bin/tensorvm-explorer"));
-    assert!(compose.contains("entrypoint: [\"/usr/local/bin/tensorvm-explorer\", \"serve\"]"));
-    assert!(compose.contains("health-check"));
-    assert!(compose.contains("TENSORVM_EXPLORER_WS_URL"));
-    assert!(compose.contains("/explorer/ws?token=local-cpu-testnet-token"));
-    assert!(compose.contains("condition: service_healthy"));
-    assert!(compose.contains("TENSORVM_SEED_LOCAL_TESTNET: \"true\""));
-    assert_eq!(
-        compose
-            .matches("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS: \"1000\"")
-            .count(),
-        1
-    );
-    assert_eq!(
-        compose
-            .matches("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\"")
-            .count(),
-        1
-    );
-    assert!(!compose.contains("TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"));
-    assert!(
-        compose
-            .split("  validator-00:")
-            .nth(1)
-            .and_then(|section| section.split("  validator-01:").next())
-            .expect("validator-00 section should be present")
-            .contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER: \"true\"")
-    );
-    assert!(compose.contains("TENSORVM_WALLET: testnet-miner-0"));
-    assert!(compose.contains("TENSORVM_WALLET: testnet-miner-9"));
-    assert!(compose.contains("TENSORVM_WALLET: testnet-validator-0"));
-    assert!(compose.contains("TENSORVM_WALLET: testnet-validator-4"));
-    assert!(!compose.contains("TENSORVM_WALLET: local-miner-"));
-    assert!(!compose.contains("TENSORVM_WALLET: local-validator-"));
-    assert!(env_file.contains("TENSORVM_SEED_LOCAL_TESTNET=true"));
-    assert!(env_file.contains("TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS=1000"));
-    assert!(env_file.contains("TENSORVM_LOCAL_CPU_ROLE_PRODUCER=false"));
-    assert!(env_file.contains(
-        "TENSORVM_BOOTSTRAP_PEER_ID=12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
+    assert!(has_trimmed_line(&compose, "name: tensorvm-local-cpu"));
+    assert!(has_trimmed_line(&compose, "tensorvm-local:"));
+    assert!(has_trimmed_line(&compose, "driver: bridge"));
+    assert!(!has_trimmed_line(
+        &compose,
+        "TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"
     ));
+
+    let miner_sections = miners
+        .iter()
+        .map(|service| (*service, compose_service_section(&compose, service)))
+        .collect::<Vec<_>>();
+    let validator_sections = validators
+        .iter()
+        .map(|service| (*service, compose_service_section(&compose, service)))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        miner_sections
+            .iter()
+            .filter(|(_, section)| compose_env_value(section, "TENSORVM_ROLE") == "miner")
+            .count(),
+        10
+    );
+    assert_eq!(
+        validator_sections
+            .iter()
+            .filter(|(_, section)| compose_env_value(section, "TENSORVM_ROLE") == "validator")
+            .count(),
+        5
+    );
+    for (idx, (service, section)) in miner_sections.iter().enumerate() {
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_OPERATOR_NAME"),
+            *service
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_WALLET"),
+            format!("testnet-miner-{idx}")
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_NODE_MULTIADDR"),
+            format!("/dns4/{service}/tcp/4001")
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_P2P_LISTEN"),
+            "/ip4/0.0.0.0/tcp/4001"
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_RPC_LISTEN"),
+            "0.0.0.0:8545"
+        );
+        assert!(
+            has_trimmed_line(section, &format!("- {service}-data:/var/lib/tensorvm")),
+            "compose service {service} must mount its data volume"
+        );
+    }
+    for (idx, (service, section)) in validator_sections.iter().enumerate() {
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_OPERATOR_NAME"),
+            *service
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_WALLET"),
+            format!("testnet-validator-{idx}")
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_NODE_MULTIADDR"),
+            format!("/dns4/{service}/tcp/4001")
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_P2P_LISTEN"),
+            "/ip4/0.0.0.0/tcp/4001"
+        );
+        assert_eq!(
+            compose_env_value(section, "TENSORVM_RPC_LISTEN"),
+            "0.0.0.0:8545"
+        );
+        assert!(
+            has_trimmed_line(section, &format!("- {service}-data:/var/lib/tensorvm")),
+            "compose service {service} must mount its data volume"
+        );
+    }
+    let bootstrap_miner = compose_service_section(&compose, "miner-00");
+    assert_eq!(
+        compose_env_value(bootstrap_miner, "TENSORVM_IS_BOOTSTRAP"),
+        "true"
+    );
+    assert_eq!(
+        compose_env_value(bootstrap_miner, "TENSORVM_SEED_LOCAL_TESTNET"),
+        "true"
+    );
+    assert!(has_trimmed_line(
+        bootstrap_miner,
+        r#"- "127.0.0.1:8545:8545""#
+    ));
+    assert!(has_trimmed_line(
+        bootstrap_miner,
+        r#"- "127.0.0.1:4001:4001""#
+    ));
+    let producer_validator = compose_service_section(&compose, "validator-00");
+    assert_eq!(
+        compose_env_value(producer_validator, "TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS"),
+        "1000"
+    );
+    assert_eq!(
+        compose_env_value(producer_validator, "TENSORVM_LOCAL_CPU_ROLE_PRODUCER"),
+        "true"
+    );
+    for service in validators.iter().skip(1) {
+        let section = compose_service_section(&compose, service);
+        assert!(
+            section
+                .lines()
+                .all(|line| !line.trim().starts_with("TENSORVM_LOCAL_CPU_ROLE_PRODUCER:")),
+            "only validator-00 should enable local production"
+        );
+    }
+
+    let explorer = compose_service_section(&compose, "explorer");
+    assert!(has_trimmed_line(
+        explorer,
+        r#"entrypoint: ["/usr/local/bin/tensorvm-explorer", "serve"]"#
+    ));
+    assert_eq!(
+        compose_env_value(explorer, "TENSORVM_EXPLORER_LISTEN"),
+        "0.0.0.0:8080"
+    );
+    assert_eq!(
+        compose_env_value(explorer, "TENSORVM_EXPLORER_WS_URL"),
+        "ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token"
+    );
+    assert!(has_trimmed_line(
+        explorer,
+        r#"- "127.0.0.1:${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}:8080""#
+    ));
+    assert!(has_trimmed_line(explorer, r#""health-check","#));
+    assert!(has_trimmed_line(explorer, "condition: service_healthy"));
+
+    assert_eq!(
+        env_file_value(&env_file, "TENSORVM_SEED_LOCAL_TESTNET"),
+        "true"
+    );
+    assert_eq!(
+        env_file_value(&env_file, "TENSORVM_LOCAL_CPU_BLOCK_INTERVAL_MS"),
+        "1000"
+    );
+    assert_eq!(
+        env_file_value(&env_file, "TENSORVM_LOCAL_CPU_ROLE_PRODUCER"),
+        "false"
+    );
+    assert_eq!(
+        env_file_value(&env_file, "TENSORVM_BOOTSTRAP_PEER_ID"),
+        "12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
+    );
     assert_eq!(
         compose
             .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
@@ -131,9 +286,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         1
     );
 
-    let operator_ids = compose
-        .lines()
-        .filter_map(|line| line.trim().strip_prefix("TENSORVM_OPERATOR_ID: "))
+    let operator_ids = miner_sections
+        .iter()
+        .chain(validator_sections.iter())
+        .map(|(_, section)| compose_env_value(section, "TENSORVM_OPERATOR_ID"))
         .collect::<BTreeSet<_>>();
     assert_eq!(operator_ids.len(), 15);
 
