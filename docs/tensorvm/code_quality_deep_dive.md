@@ -492,6 +492,9 @@ spaghetti around.
 - Iteration 187 moved public node role, signed heartbeat evidence, and operator identity attestation
   validation into `testnet/public_node_evidence.rs`, leaving the top-level testnet module focused on
   shared public-testnet structs and aggregate report shapes.
+- Iteration 188 moved public evidence and preflight manifest text/signature fixture builders into
+  `testnet/tests/manifest_fixtures.rs`, reducing the parent test module to shared run/bundle fixture
+  constructors and test module wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
