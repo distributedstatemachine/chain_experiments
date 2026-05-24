@@ -18,6 +18,7 @@ fail() {
 [ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable"
 . "$TOPOLOGY_FILE"
 EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
+EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
@@ -63,7 +64,7 @@ read_service_status() {
   service="$1"
   attempt=0
   while [ "$attempt" -lt 90 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
+    if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi
@@ -78,7 +79,7 @@ read_service_block() {
   height="$2"
   attempt=0
   while [ "$attempt" -lt 90 ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
+    if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi
@@ -92,7 +93,7 @@ wait_service_ready() {
   service="$1"
   attempt=0
   while [ "$attempt" -lt 90 ]; do
-    if timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready 2>/dev/null < /dev/null; then
+    if timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready 2>/dev/null < /dev/null; then
       return 0
     fi
     attempt=$((attempt + 1))
