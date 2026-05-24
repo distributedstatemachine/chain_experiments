@@ -27,6 +27,7 @@ mod public_evidence_publication_reports;
 mod public_evidence_record_parser;
 mod public_evidence_record_rejections;
 mod public_evidence_record_reports;
+mod public_evidence_record_summary_reports;
 mod public_evidence_run_window_parser;
 mod public_evidence_run_window_rejections;
 mod public_evidence_run_window_reports;

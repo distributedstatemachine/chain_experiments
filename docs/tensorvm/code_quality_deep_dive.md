@@ -1091,6 +1091,9 @@ spaghetti around.
 - Iteration 447 split public supporting-record Clap parser coverage into
   `cli/tests/public_evidence_record_parser.rs`, leaving `cli/tests/public_parser.rs` focused on
   public manifest parsing and retired top-level command rejection.
+- Iteration 448 split direct public record summary/artifact report coverage into
+  `cli/tests/public_evidence_record_summary_reports.rs`, narrowing the remaining record report suite
+  toward aggregate-root, record-file, and supporting-record behavior.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
