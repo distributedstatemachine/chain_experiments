@@ -1049,6 +1049,8 @@ spaghetti around.
   suite and into `cli/tests/report_fields.rs`, preparing that oversized report test for family-level splits.
 - Iteration 432 split publication and auditor public evidence execution report coverage into
   `cli/tests/public_evidence_publication_reports.rs`, reducing the monolithic execution report suite.
+- Iteration 433 split public run-window execution report and observation-file equivalence coverage into
+  `cli/tests/public_evidence_run_window_reports.rs`, continuing the family-level report test split.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
