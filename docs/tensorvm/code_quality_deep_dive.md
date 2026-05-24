@@ -1051,6 +1051,8 @@ spaghetti around.
   `cli/tests/public_evidence_publication_reports.rs`, reducing the monolithic execution report suite.
 - Iteration 433 split public run-window execution report and observation-file equivalence coverage into
   `cli/tests/public_evidence_run_window_reports.rs`, continuing the family-level report test split.
+- Iteration 434 split public node heartbeat, heartbeat-file, and operator-attestation execution report
+  coverage into `cli/tests/public_evidence_node_reports.rs`, further reducing the mixed report suite.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
