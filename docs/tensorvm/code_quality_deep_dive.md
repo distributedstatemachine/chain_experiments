@@ -285,6 +285,8 @@ spaghetti around.
 - Iteration 118 extracted CLI public run-window evidence formatting and observation parsing into
   `cli/run_window_evidence.rs`, leaving the parent CLI module with only dispatch wiring for that
   command family.
+- Iteration 119 extracted CLI public node heartbeat and operator identity evidence helpers into
+  `cli/node_evidence.rs`, keeping heartbeat observation parsing beside node evidence formatting.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
