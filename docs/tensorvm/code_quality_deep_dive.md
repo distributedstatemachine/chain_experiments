@@ -539,6 +539,8 @@ spaghetti around.
   `rpc/tests/websocket.rs`, leaving only tensor and synthetic-round tests inline in the facade.
 - Iteration 208 moved the remaining RPC tensor route and synthetic-round tensor retention tests into
   `rpc/tests/tensors.rs`, leaving `rpc.rs` as RPC module wiring plus shared test-module imports.
+- Iteration 209 moved the shared RPC test harness imports and child-module wiring into `rpc/tests.rs`,
+  leaving the RPC facade as production module wiring and public re-exports only.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
