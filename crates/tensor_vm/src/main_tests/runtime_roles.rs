@@ -1,11 +1,9 @@
-use super::super::{
-    runtime_commands::RoleRunLoop,
-    runtime_config::{
-        RoleServiceConfig, RuntimeRole, chain_profile_from_label, runtime_role_wallet_registered,
-        runtime_role_wallet_registration,
-    },
-};
+use super::super::runtime_commands::RoleRunLoop;
 use super::*;
+use tensor_vm::app::{
+    RoleServiceConfig, RuntimeRole, chain_profile_from_label, runtime_role_wallet_registered,
+    runtime_role_wallet_registration,
+};
 
 #[test]
 fn runtime_role_policy_allows_only_validator_local_production() {

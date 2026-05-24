@@ -2,8 +2,8 @@ use clap::Parser;
 use tensor_vm::{
     TvmdCli, TvmdCommand,
     app::{
-        add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
-        service_block_status, service_status, verify_local_cpu_store,
+        RoleServiceConfig, add_service_peer, check_service_readiness, init_service_store,
+        seed_local_testnet, service_block_status, service_status, verify_local_cpu_store,
     },
     cli::{
         EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
@@ -39,9 +39,6 @@ mod runtime_services;
 #[path = "main/runtime_commands.rs"]
 mod runtime_commands;
 
-#[path = "main/runtime_config.rs"]
-mod runtime_config;
-
 #[path = "main/runtime_status.rs"]
 mod runtime_status;
 
@@ -59,7 +56,6 @@ mod validator_role;
 
 use runtime::serve_service;
 use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
-use runtime_config::RoleServiceConfig;
 
 fn path_arg(path: &std::path::Path) -> String {
     path.to_string_lossy().into_owned()

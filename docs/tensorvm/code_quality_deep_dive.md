@@ -604,6 +604,9 @@ spaghetti around.
 - Iteration 234 moved service status and block-status report builders into the same library-owned `app`
   module, leaving the binary to call application reporting APIs instead of owning the status formatter
   modules directly.
+- Iteration 235 moved runtime role/config construction, wallet registration helpers, and role-service
+  command config structs into the library-owned `app` module, so the remaining binary runtime modules depend
+  on an application config API rather than a binary-private `runtime_config` owner.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

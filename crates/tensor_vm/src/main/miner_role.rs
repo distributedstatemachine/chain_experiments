@@ -1,12 +1,10 @@
 use std::collections::BTreeSet;
 
-use super::{
-    network::{chain_announcement_checkpoint, publish_new_chain_announcements},
-    runtime_config::{ServiceRuntimeConfig, runtime_role_wallet_registration},
-};
+use super::network::{chain_announcement_checkpoint, publish_new_chain_announcements};
 use tensor_vm::{
     Chain, ChainCommand, ChainEngine, JobScheduler, NodeRuntimeState, NodeStore, RpcHttpServer,
     RpcNode, Tensor, TensorVmLibp2pService,
+    app::{ServiceRuntimeConfig, runtime_role_wallet_registration},
     hash::hex,
     roles::CpuReferenceMinerRole,
     types::{Address, Hash},

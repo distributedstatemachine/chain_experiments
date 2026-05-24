@@ -1,9 +1,6 @@
-use super::{
-    runtime::run_role_runtime_loop,
-    runtime_config::{
-        RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, role_wallet_address,
-        runtime_node_config,
-    },
+use super::runtime::run_role_runtime_loop;
+use tensor_vm::app::{
+    RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, role_wallet_address, runtime_node_config,
 };
 
 pub(super) fn run_miner_service(

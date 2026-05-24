@@ -1,8 +1,7 @@
-use super::runtime_config::{
-    RuntimeRole, runtime_role_wallet_registered, runtime_role_wallet_registration,
-};
 use tensor_vm::{
-    NetworkEventIngest, NodeRuntimeState, RpcHttpServer, TensorVmLibp2pService, types::Address,
+    NetworkEventIngest, NodeRuntimeState, RpcHttpServer, TensorVmLibp2pService,
+    app::{RuntimeRole, runtime_role_wallet_registered, runtime_role_wallet_registration},
+    types::Address,
 };
 
 pub(super) struct RuntimeStatusSnapshot {

@@ -1,4 +1,4 @@
-use super::runtime_config::{RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
+use tensor_vm::app::{RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
 
 pub(super) use super::runtime_loop::RoleRuntimeLoop;
 

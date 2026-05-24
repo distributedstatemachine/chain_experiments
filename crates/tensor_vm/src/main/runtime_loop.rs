@@ -2,7 +2,6 @@ use std::{thread, time::Duration};
 
 use super::{
     miner_role::tick_miner_role_work_once,
-    runtime_config::{RuntimeRole, ServiceRuntimeConfig},
     runtime_network::ingest_network_once as ingest_runtime_network_once,
     runtime_production::LocalProductionSchedule,
     runtime_rpc::serve_rpc_once as serve_runtime_rpc_once,
@@ -12,7 +11,10 @@ use super::{
     },
     runtime_validator::tick_validator_role_work_once as tick_validator_role_worker_once,
 };
-use tensor_vm::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+use tensor_vm::{
+    NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
+    app::{RuntimeRole, ServiceRuntimeConfig},
+};
 
 pub(super) struct RoleRuntimeLoop {
     config: ServiceRuntimeConfig,

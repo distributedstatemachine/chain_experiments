@@ -1,25 +1,26 @@
 use std::time::Duration;
-use tensor_vm::{
+
+use crate::{
     Chain, ChainProfile, NetworkConfig, NodeConfig, NodeRole,
     hash::hex,
     types::{Address, address},
 };
 
 #[derive(Clone, Copy, Debug)]
-pub(super) struct RoleServiceConfig<'a> {
-    pub(super) wallet: &'a str,
-    pub(super) device: Option<&'a str>,
-    pub(super) node: &'a str,
-    pub(super) listen: &'a str,
-    pub(super) p2p_listen: &'a str,
-    pub(super) data_dir: &'a str,
-    pub(super) identity_seed: Option<[u8; 32]>,
-    pub(super) auth_token: &'a str,
-    pub(super) max_requests: usize,
+pub struct RoleServiceConfig<'a> {
+    pub wallet: &'a str,
+    pub device: Option<&'a str>,
+    pub node: &'a str,
+    pub listen: &'a str,
+    pub p2p_listen: &'a str,
+    pub data_dir: &'a str,
+    pub identity_seed: Option<[u8; 32]>,
+    pub auth_token: &'a str,
+    pub max_requests: usize,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum RuntimeRole {
+pub enum RuntimeRole {
     Service,
     Miner,
     Validator,
@@ -27,7 +28,7 @@ pub(super) enum RuntimeRole {
 }
 
 impl RuntimeRole {
-    pub(super) fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
             Self::Service => "service",
             Self::Miner => "miner",
@@ -36,7 +37,7 @@ impl RuntimeRole {
         }
     }
 
-    pub(super) fn node_role(self) -> NodeRole {
+    pub fn node_role(self) -> NodeRole {
         match self {
             Self::Service => NodeRole::Gateway,
             Self::Miner => NodeRole::Miner,
@@ -51,7 +52,7 @@ fn runtime_chain_profile() -> std::result::Result<ChainProfile, String> {
     chain_profile_from_label(&label)
 }
 
-pub(super) fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, String> {
+pub fn chain_profile_from_label(label: &str) -> std::result::Result<ChainProfile, String> {
     ChainProfile::from_label(label).ok_or_else(|| {
         format!(
             "unsupported TENSORVM_CHAIN_PROFILE {label:?}; expected local_cpu, public_testnet, or mainnet"
@@ -59,7 +60,7 @@ pub(super) fn chain_profile_from_label(label: &str) -> std::result::Result<Chain
     })
 }
 
-pub(super) fn runtime_node_config(
+pub fn runtime_node_config(
     data_dir: &str,
     role: RuntimeRole,
     listen: &str,
@@ -82,14 +83,14 @@ pub(super) fn runtime_node_config(
 }
 
 #[derive(Debug)]
-pub(super) struct ServiceRuntimeConfig {
-    pub(super) runtime_command: &'static str,
-    pub(super) role: RuntimeRole,
-    pub(super) role_wallet_address: Option<Address>,
-    pub(super) node: NodeConfig,
+pub struct ServiceRuntimeConfig {
+    pub runtime_command: &'static str,
+    pub role: RuntimeRole,
+    pub role_wallet_address: Option<Address>,
+    pub node: NodeConfig,
 }
 
-pub(super) fn role_wallet_address(wallet: &str) -> std::result::Result<Address, String> {
+pub fn role_wallet_address(wallet: &str) -> std::result::Result<Address, String> {
     let wallet = wallet.trim();
     if wallet.is_empty() {
         return Err("wallet argument is empty".to_owned());
@@ -97,13 +98,13 @@ pub(super) fn role_wallet_address(wallet: &str) -> std::result::Result<Address, 
     Ok(address(wallet.as_bytes()))
 }
 
-pub(super) fn runtime_role_wallet_address_text(address: Option<Address>) -> String {
+pub fn runtime_role_wallet_address_text(address: Option<Address>) -> String {
     address
         .map(|address| hex(&address))
         .unwrap_or_else(|| "none".to_owned())
 }
 
-pub(super) fn runtime_role_wallet_registration(
+pub fn runtime_role_wallet_registration(
     role: RuntimeRole,
     address: Option<Address>,
     chain: &Chain,
@@ -132,7 +133,7 @@ pub(super) fn runtime_role_wallet_registration(
     }
 }
 
-pub(super) fn runtime_role_wallet_registered(
+pub fn runtime_role_wallet_registered(
     role: RuntimeRole,
     address: Option<Address>,
     chain: &Chain,
