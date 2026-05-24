@@ -793,6 +793,8 @@ spaghetti around.
   text with one formatter.
 - Iteration 314 added a shared `KeyValueReport` parser for app-owned status/log text, replacing the
   separate service-status file scanner and CLI service-log field loop used by network evidence generation.
+- Iteration 315 reused `KeyValueReport` in the crate-internal CLI report assertion helper, removing another
+  bespoke `key=value` parser from local execution, manifest, and public-evidence report coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
