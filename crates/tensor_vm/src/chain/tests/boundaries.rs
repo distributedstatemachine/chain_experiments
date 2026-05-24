@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
+fn chain_rejects_registration_profile_and_transfer_edges() {
     let beacon = hash_bytes(b"test", &[b"beacon"]);
     let mut chain = Chain::new(beacon);
     let miner = address(b"boundary-miner");
@@ -94,6 +94,21 @@ fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
         chain.apply_transaction(None, Transaction::ClaimReward(miner)),
         Err(TvmError::InvalidReceipt("no reward to claim"))
     );
+}
+
+#[test]
+fn chain_rejects_receipt_boundary_errors() {
+    let beacon = hash_bytes(b"test", &[b"beacon"]);
+    let mut chain = Chain::new(beacon);
+    let miner = address(b"boundary-miner");
+    chain
+        .register_miner_with_profile(
+            miner,
+            chain.params.miner_min_stake,
+            HardwareClass::DatacenterGpu,
+            9_000,
+        )
+        .unwrap();
 
     let job = MatmulJob::synthetic(0, 77, 2, 2, 2, &beacon, 10);
     let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
@@ -149,11 +164,27 @@ fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
         linear_receipt.receipt_id
     );
     assert_eq!(
-        chain.submit_linear_receipt(linear_receipt.clone()),
+        chain.submit_linear_receipt(linear_receipt),
         Err(TvmError::InvalidReceipt("duplicate receipt"))
     );
+}
 
-    chain.submit_job(JobState::TensorOp(job.clone()));
+#[test]
+fn chain_rejects_attestation_boundary_errors() {
+    let beacon = hash_bytes(b"test", &[b"beacon"]);
+    let mut chain = Chain::new(beacon);
+    let miner = address(b"boundary-miner");
+    let validator = address(b"boundary-validator");
+    chain
+        .register_miner(miner, chain.params.miner_min_stake)
+        .unwrap();
+    chain
+        .register_validator(validator, chain.params.validator_min_stake)
+        .unwrap();
+
+    let job = MatmulJob::synthetic(0, 77, 2, 2, 2, &beacon, 10);
+    let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
+    chain.submit_job(JobState::TensorOp(job));
     chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
     let statement = AttestationStatement {
         receipt_id: receipt.receipt_id,
@@ -193,6 +224,16 @@ fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
         )),
         Err(TvmError::UnknownReceipt)
     );
+}
+
+#[test]
+fn chain_rejects_block_vote_boundary_errors() {
+    let beacon = hash_bytes(b"test", &[b"beacon"]);
+    let mut chain = Chain::new(beacon);
+    let validator = address(b"boundary-validator");
+    chain
+        .register_validator(validator, chain.params.validator_min_stake)
+        .unwrap();
 
     let block = chain.produce_block(validator, 1_000).unwrap();
     assert_eq!(
@@ -219,7 +260,18 @@ fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
         )),
         Err(TvmError::InvalidReceipt("unknown block"))
     );
+}
 
+#[test]
+fn chain_rejects_model_and_challenge_boundary_errors() {
+    let beacon = hash_bytes(b"test", &[b"beacon"]);
+    let mut chain = Chain::new(beacon);
+    let validator = address(b"boundary-validator");
+    chain
+        .register_validator(validator, chain.params.validator_min_stake)
+        .unwrap();
+
+    let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
     let model = hash_bytes(b"test", &[b"missing-model"]);
     assert_eq!(
         chain.apply_model_transition(&model, 0, &weights.commitment_root(), [1; 32]),
