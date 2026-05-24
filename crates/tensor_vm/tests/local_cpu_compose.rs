@@ -22,6 +22,16 @@ fn has_trimmed_line(text: &str, expected: &str) -> bool {
     text.lines().any(|line| line.trim() == expected)
 }
 
+fn trimmed_lines(text: &str) -> BTreeSet<&str> {
+    text.lines().map(str::trim).collect()
+}
+
+fn prefixed_trimmed_values<'a>(text: &'a str, prefix: &str) -> Vec<&'a str> {
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix(prefix))
+        .collect()
+}
+
 fn compose_service_section<'a>(compose: &'a str, service: &str) -> &'a str {
     let marker = format!("  {service}:\n");
     let start = compose
@@ -279,12 +289,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         env_file_value(&env_file, "TENSORVM_BOOTSTRAP_PEER_ID"),
         "12D3KooWS2oXcVvmNNWTiUzwDWJavRHQmewe1NDfJB7SxP43jA7s"
     );
-    assert_eq!(
-        compose
-            .matches("dockerfile: deploy/tensorvm/local-cpu/Dockerfile")
-            .count(),
-        1
-    );
+    let compose_lines = trimmed_lines(&compose);
+    assert!(compose_lines.contains("dockerfile: deploy/tensorvm/local-cpu/Dockerfile"));
 
     let operator_ids = miner_sections
         .iter()
@@ -293,15 +299,39 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         .collect::<BTreeSet<_>>();
     assert_eq!(operator_ids.len(), 15);
 
-    assert!(dockerfile.contains("cargo build -p tensor_vm --release"));
-    assert!(dockerfile.contains("cargo build -p tensor_vm_explorer --release"));
-    assert!(dockerfile.contains("target/release/tensorvm-explorer"));
-    assert!(dockerignore.lines().any(|line| line == "target"));
-    assert!(dockerignore.lines().any(|line| line == ".git"));
-    assert!(!dockerfile.contains("--features cuda-kernels"));
-    assert!(!compose.contains("NVIDIA_VISIBLE_DEVICES"));
-    assert!(!compose.contains("cuda:"));
-    assert!(!compose.contains("devices:"));
+    assert_eq!(
+        prefixed_trimmed_values(&dockerfile, "RUN "),
+        [
+            "cargo build -p tensor_vm --release",
+            "cargo build -p tensor_vm_explorer --release",
+            r#"useradd --system --home-dir /var/lib/tensorvm --shell /usr/sbin/nologin tensorvm \"#,
+            "chmod 0755 /usr/local/bin/tvmd /usr/local/bin/tensorvm-explorer /usr/local/bin/tensorvm-local-entrypoint",
+        ]
+    );
+    assert_eq!(
+        prefixed_trimmed_values(&dockerfile, "COPY --from=builder "),
+        [
+            "/workspace/target/release/tvmd /usr/local/bin/tvmd",
+            "/workspace/target/release/tensorvm-explorer /usr/local/bin/tensorvm-explorer",
+        ]
+    );
+    assert!(has_trimmed_line(
+        &dockerfile,
+        "COPY deploy/tensorvm/local-cpu/scripts/entrypoint.sh /usr/local/bin/tensorvm-local-entrypoint"
+    ));
+    let dockerignore_lines = trimmed_lines(&dockerignore);
+    assert!(dockerignore_lines.contains("target"));
+    assert!(dockerignore_lines.contains(".git"));
+    assert!(
+        prefixed_trimmed_values(&dockerfile, "RUN ")
+            .iter()
+            .all(|command| !command
+                .split_whitespace()
+                .any(|token| token == "--features"))
+    );
+    assert!(!compose_lines.iter().any(|line| line.starts_with("NVIDIA_")));
+    assert!(!compose_lines.contains("runtime: nvidia"));
+    assert!(!compose_lines.contains("devices:"));
 
     for required in [
         "tvmd service init",

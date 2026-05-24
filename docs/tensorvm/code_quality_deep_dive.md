@@ -729,6 +729,8 @@ spaghetti around.
   hash, numeric, receipt-count, PoW, and canonical-blockspace assertions.
 - Iteration 287 added local compose/env structure helpers and moved local CPU operator, producer,
   explorer, wallet, volume, network, and env-file assertions off broad substring scans.
+- Iteration 288 reused the local CPU deployment test structure helpers for Dockerfile, dockerignore, and
+  CPU-only compose guards, replacing broad build-artifact substring scans with exact line assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
