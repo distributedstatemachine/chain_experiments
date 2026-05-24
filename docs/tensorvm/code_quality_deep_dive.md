@@ -918,6 +918,8 @@ spaghetti around.
   topology policy script.
 - Iteration 373 routed test-only CLI operator check fixtures through the production operator-check
   helpers instead of duplicating register/check/status report construction.
+- Iteration 374 shared the test-only CLI libp2p fixture report fields across local role and service
+  fixtures.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

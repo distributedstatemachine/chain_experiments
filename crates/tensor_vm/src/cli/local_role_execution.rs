@@ -1,4 +1,7 @@
 use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
+use super::local_fixture_reports::{
+    write_default_libp2p_limit_fields, write_libp2p_fixture_fields,
+};
 use super::validation::{
     ensure_auth_token, ensure_data_dir, miner_device_readiness, path_argument, wallet_address_hex,
 };
@@ -8,7 +11,6 @@ use crate::app::{
     validator_status,
 };
 use crate::error::{Result, TvmError};
-use crate::p2p::Libp2pControlPlaneConfig;
 
 pub(super) fn execute_miner_command(command: &MinerCommand) -> Result<String> {
     match command {
@@ -25,7 +27,6 @@ pub(super) fn execute_miner_command(command: &MinerCommand) -> Result<String> {
             let device_readiness = miner_device_readiness(&args.device)?;
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
-            let p2p_config = Libp2pControlPlaneConfig::default();
             let identity =
                 p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
             let wallet = path_argument(&args.wallet);
@@ -42,7 +43,7 @@ pub(super) fn execute_miner_command(command: &MinerCommand) -> Result<String> {
             write_libp2p_fixture_fields(&mut report);
             report.append_report(&device_readiness.report());
             report.append_report(&identity);
-            write_libp2p_limit_fields(&mut report, &p2p_config);
+            write_default_libp2p_limit_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("auth_enabled", true);
             report.field("max_requests", node_runtime.max_requests);
@@ -75,7 +76,6 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
             let address = wallet_address_hex(&args.wallet)?;
             ensure_data_dir(&node_runtime.data_dir)?;
             ensure_auth_token(&node_runtime.auth_token)?;
-            let p2p_config = Libp2pControlPlaneConfig::default();
             let identity =
                 p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
             let wallet = path_argument(&args.wallet);
@@ -90,7 +90,7 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
             report.field("p2p_listen", &node_runtime.p2p_listen);
             write_libp2p_fixture_fields(&mut report);
             report.append_report(&identity);
-            write_libp2p_limit_fields(&mut report, &p2p_config);
+            write_default_libp2p_limit_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("auth_enabled", true);
             report.field("max_requests", node_runtime.max_requests);
@@ -107,7 +107,6 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
     let address = wallet_address_hex(&args.wallet)?;
     ensure_data_dir(&node_runtime.data_dir)?;
     ensure_auth_token(&node_runtime.auth_token)?;
-    let p2p_config = Libp2pControlPlaneConfig::default();
     let identity = p2p_identity_report(node_runtime.identity_seed.map(|seed| seed.into_hash()));
     let wallet = path_argument(&args.wallet);
     let data_dir = path_argument(&node_runtime.data_dir);
@@ -121,43 +120,13 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
     report.field("p2p_listen", &node_runtime.p2p_listen);
     write_libp2p_fixture_fields(&mut report);
     report.append_report(&identity);
-    write_libp2p_limit_fields(&mut report, &p2p_config);
+    write_default_libp2p_limit_fields(&mut report);
     report.field("data_dir", data_dir);
     report.field("auth_enabled", true);
     report.field("max_requests", node_runtime.max_requests);
     report.field("reference_verifier_ready", true);
     report.field("role_runtime_ready", true);
     Ok(report.finish())
-}
-
-fn write_libp2p_fixture_fields(report: &mut KeyValueReportWriter) {
-    report.field("p2p_runtime", "libp2p");
-    report.field("p2p_gossipsub", "enabled");
-    report.field("p2p_identify", "enabled");
-    report.field("p2p_kademlia", "enabled");
-    report.field("p2p_request_response", "enabled");
-}
-
-fn write_libp2p_limit_fields(
-    report: &mut KeyValueReportWriter,
-    p2p_config: &Libp2pControlPlaneConfig,
-) {
-    report.field(
-        "p2p_max_transmit_bytes",
-        p2p_config.max_gossipsub_transmit_bytes,
-    );
-    report.field(
-        "p2p_request_timeout_seconds",
-        p2p_config.request_timeout_seconds,
-    );
-    report.field(
-        "p2p_max_concurrent_streams",
-        p2p_config.max_concurrent_request_streams,
-    );
-    report.field(
-        "p2p_idle_timeout_seconds",
-        p2p_config.idle_connection_timeout_seconds,
-    );
 }
 
 fn operator_check_result(result: std::result::Result<String, String>) -> Result<String> {

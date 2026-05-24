@@ -1,8 +1,11 @@
 use super::commands::{NodeCommand, NodePeerCommand};
+use super::local_fixture_reports::{
+    write_default_libp2p_limit_fields, write_libp2p_fixture_fields,
+};
 use super::validation::{ensure_auth_token, ensure_data_dir, path_argument};
 use crate::app::{KeyValueReportWriter, p2p_identity_report};
 use crate::error::Result;
-use crate::p2p::{Libp2pControlPlaneConfig, PeerRecord};
+use crate::p2p::PeerRecord;
 
 pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
     match command {
@@ -32,34 +35,14 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
         }
         NodeCommand::Check(args) => {
             ensure_data_dir(&args.data_dir)?;
-            let p2p_config = Libp2pControlPlaneConfig::default();
             let identity = p2p_identity_report(args.identity_seed.map(|seed| seed.into_hash()));
             let data_dir = path_argument(&args.data_dir);
             let mut report = KeyValueReportWriter::new();
             report.field("command", "service_readiness");
             report.field("p2p_listen", &args.p2p_listen);
-            report.field("p2p_runtime", "libp2p");
-            report.field("p2p_gossipsub", "enabled");
-            report.field("p2p_identify", "enabled");
-            report.field("p2p_kademlia", "enabled");
-            report.field("p2p_request_response", "enabled");
+            write_libp2p_fixture_fields(&mut report);
             report.append_report(&identity);
-            report.field(
-                "p2p_max_transmit_bytes",
-                p2p_config.max_gossipsub_transmit_bytes,
-            );
-            report.field(
-                "p2p_request_timeout_seconds",
-                p2p_config.request_timeout_seconds,
-            );
-            report.field(
-                "p2p_max_concurrent_streams",
-                p2p_config.max_concurrent_request_streams,
-            );
-            report.field(
-                "p2p_idle_timeout_seconds",
-                p2p_config.idle_connection_timeout_seconds,
-            );
+            write_default_libp2p_limit_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("node_store_required", true);
             report.field("libp2p_ready", true);
@@ -69,35 +52,15 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
             let runtime = &args.runtime;
             ensure_data_dir(&runtime.data_dir)?;
             ensure_auth_token(&runtime.auth_token)?;
-            let p2p_config = Libp2pControlPlaneConfig::default();
             let identity = p2p_identity_report(runtime.identity_seed.map(|seed| seed.into_hash()));
             let data_dir = path_argument(&runtime.data_dir);
             let mut report = KeyValueReportWriter::new();
             report.field("command", "service_serve");
             report.field("listen", runtime.listen);
             report.field("p2p_listen", &runtime.p2p_listen);
-            report.field("p2p_runtime", "libp2p");
-            report.field("p2p_gossipsub", "enabled");
-            report.field("p2p_identify", "enabled");
-            report.field("p2p_kademlia", "enabled");
-            report.field("p2p_request_response", "enabled");
+            write_libp2p_fixture_fields(&mut report);
             report.append_report(&identity);
-            report.field(
-                "p2p_max_transmit_bytes",
-                p2p_config.max_gossipsub_transmit_bytes,
-            );
-            report.field(
-                "p2p_request_timeout_seconds",
-                p2p_config.request_timeout_seconds,
-            );
-            report.field(
-                "p2p_max_concurrent_streams",
-                p2p_config.max_concurrent_request_streams,
-            );
-            report.field(
-                "p2p_idle_timeout_seconds",
-                p2p_config.idle_connection_timeout_seconds,
-            );
+            write_default_libp2p_limit_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("auth_enabled", true);
             report.field("max_requests", runtime.max_requests);
