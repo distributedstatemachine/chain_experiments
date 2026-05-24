@@ -48,9 +48,10 @@ unique_count() {
   sort -u "$1" | wc -l | tr -d ' '
 }
 
-seed_report_value() {
-  key="$1"
-  compose exec -T miner-00 sed -n "s/^${key}=//p" /var/lib/tensorvm/local-testnet-seed.out | tr -d '\r'
+read_seed_report() {
+  service="$1"
+  output=$(compose exec -T "$service" sed -n 'p' /var/lib/tensorvm/local-testnet-seed.out) || return 1
+  printf '%s\n' "$output" | tr -d '\r'
 }
 
 status_value() {
@@ -302,11 +303,13 @@ done
 [ "$(unique_count "$TMP_DIR/node_multiaddrs")" = "15" ] || fail "node multiaddrs are not distinct"
 
 for service in $EXPECTED_SERVICES; do
-  compose exec -T "$service" grep -q "command=local_testnet_seed" /var/lib/tensorvm/local-testnet-seed.out \
+  SEED_REPORT=$(read_seed_report "$service") \
     || fail "$service did not seed local testnet chain state"
-  compose exec -T "$service" grep -q "height=2" /var/lib/tensorvm/local-testnet-seed.out \
+  [ "$(status_value command "$SEED_REPORT")" = "local_testnet_seed" ] \
+    || fail "$service did not seed local testnet chain state"
+  [ "$(status_value height "$SEED_REPORT")" = "2" ] \
     || fail "$service seeded local testnet did not start at height 2"
-  compose exec -T "$service" grep -q "blocks=2" /var/lib/tensorvm/local-testnet-seed.out \
+  [ "$(status_value blocks "$SEED_REPORT")" = "2" ] \
     || fail "$service seeded local testnet did not start with 2 blocks"
   LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd localnet verify --data-dir /var/lib/tensorvm --json | tr -d '\r')
   json_bool_true structured_verifier_ready "$LOCAL_CPU_VERIFY" \
@@ -315,23 +318,30 @@ for service in $EXPECTED_SERVICES; do
     || fail "$service local CPU structured verifier did not accept node store"
 done
 
-compose exec -T miner-00 grep -q "command=local_testnet_seed" /var/lib/tensorvm/local-testnet-seed.out \
+MINER_SEED_REPORT=$(read_seed_report miner-00) \
   || fail "miner-00 did not seed local testnet chain state"
-compose exec -T miner-00 grep -q "settled_receipts=10" /var/lib/tensorvm/local-testnet-seed.out \
+[ "$(status_value command "$MINER_SEED_REPORT")" = "local_testnet_seed" ] \
+  || fail "miner-00 did not seed local testnet chain state"
+SEED_SETTLED_RECEIPTS=$(status_value settled_receipts "$MINER_SEED_REPORT")
+[ "$SEED_SETTLED_RECEIPTS" = "10" ] \
   || fail "seeded local testnet did not report settled receipts"
-compose exec -T miner-00 grep -q "matmul_settled=true" /var/lib/tensorvm/local-testnet-seed.out \
+SEED_MATMUL_SETTLED=$(status_value matmul_settled "$MINER_SEED_REPORT")
+[ "$SEED_MATMUL_SETTLED" = "true" ] \
   || fail "seeded local testnet did not settle matmul work"
-compose exec -T miner-00 grep -q "linear_training_settled=true" /var/lib/tensorvm/local-testnet-seed.out \
+SEED_LINEAR_TRAINING_SETTLED=$(status_value linear_training_settled "$MINER_SEED_REPORT")
+[ "$SEED_LINEAR_TRAINING_SETTLED" = "true" ] \
   || fail "seeded local testnet did not settle linear training work"
-compose exec -T miner-00 grep -q "finality_rate_bps=10000" /var/lib/tensorvm/local-testnet-seed.out \
+SEED_FINALITY_RATE_BPS=$(status_value finality_rate_bps "$MINER_SEED_REPORT")
+[ "$SEED_FINALITY_RATE_BPS" = "10000" ] \
   || fail "seeded local testnet did not report full finality"
-compose exec -T miner-00 grep -q "data_availability_bps=10000" /var/lib/tensorvm/local-testnet-seed.out \
+SEED_DATA_AVAILABILITY_BPS=$(status_value data_availability_bps "$MINER_SEED_REPORT")
+[ "$SEED_DATA_AVAILABILITY_BPS" = "10000" ] \
   || fail "seeded local testnet did not report full data availability"
-SEED_REWARDED_MINERS=$(seed_report_value rewarded_miners)
+SEED_REWARDED_MINERS=$(status_value rewarded_miners "$MINER_SEED_REPORT")
 [ "${SEED_REWARDED_MINERS:-0}" -gt 0 ] || fail "seeded local testnet did not report miner rewards"
-SEED_TOTAL_REWARD_BALANCE=$(seed_report_value total_reward_balance)
+SEED_TOTAL_REWARD_BALANCE=$(status_value total_reward_balance "$MINER_SEED_REPORT")
 [ -n "$SEED_TOTAL_REWARD_BALANCE" ] || fail "seeded local testnet did not report total reward balance"
-SEED_ATTESTATION_COUNT=$(seed_report_value attestation_count)
+SEED_ATTESTATION_COUNT=$(status_value attestation_count "$MINER_SEED_REPORT")
 [ -n "$SEED_ATTESTATION_COUNT" ] || fail "seeded local testnet did not report attestation count"
 
 for path in /health /rpc/health /chain/head /jobs/current /explorer/health /explorer /faucet/health /faucet/page /telemetry/health /telemetry/dashboard; do

@@ -869,6 +869,8 @@ spaghetti around.
   onto the shared JSON helpers, leaving HTML page probes as text reachability checks.
 - Iteration 347 replaced live tensor descriptor, row, chunk, and opening route greps in the local CPU
   checker with parsed JSON field assertions, including descriptor-root and chunk-index consistency checks.
+- Iteration 348 changed local-testnet seed report checks from repeated greps over
+  `local-testnet-seed.out` to one captured report per service with exact `status_value` field assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
