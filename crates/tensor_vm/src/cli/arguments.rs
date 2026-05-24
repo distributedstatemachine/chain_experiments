@@ -8,7 +8,11 @@ pub(super) fn exact_comma_fields<'a>(
     error: &'static str,
 ) -> Result<Vec<&'a str>> {
     let fields = value.split(',').collect::<Vec<_>>();
-    if fields.len() != expected_len || fields.iter().any(|field| field.trim() != *field) {
+    if fields.len() != expected_len
+        || fields
+            .iter()
+            .any(|field| field.is_empty() || field.trim() != *field)
+    {
         return Err(TvmError::InvalidReceipt(error));
     }
     Ok(fields)

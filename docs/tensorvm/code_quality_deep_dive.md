@@ -767,6 +767,9 @@ spaghetti around.
   preserving shorthand commands while removing the test-only hand-written JSON field extractors.
 - Iteration 305 added a shared exact comma-field parser for CLI evidence records and moved network,
   node-heartbeat, service-health, and run-window observation parsers off repeated raw split/count logic.
+- Iteration 306 reused the shared exact comma-field parser for public supporting-record payloads, removed
+  the local split/count helper, and made empty/whitespace field rejection consistent across CLI evidence
+  record parsers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
