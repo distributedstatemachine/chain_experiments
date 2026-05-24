@@ -527,6 +527,8 @@ spaghetti around.
   the facade, preserving the public API while reducing root-module responsibility.
 - Iteration 202 moved shared RPC response constructors into `rpc/response.rs`, keeping status/body
   formatting centralized without leaving helper plumbing in the facade.
+- Iteration 203 moved RPC dispatch and dynamic route matching into `rpc/dispatch.rs`, leaving the
+  facade centered on node state construction and public re-exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
