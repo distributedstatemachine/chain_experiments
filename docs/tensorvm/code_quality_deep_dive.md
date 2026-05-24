@@ -1040,6 +1040,9 @@ spaghetti around.
 - Iteration 428 extracted shared clap parser test constructors into `cli/tests/parser_support.rs`,
   shrinking the catch-all parser module and preparing command-family parser suites without duplicating
   argument fixtures.
+- Iteration 429 moved local miner, validator, proposer, node, localnet, defaults, and invalid-argument
+  parser coverage into `cli/tests/local_parser.rs`, leaving `cli/tests/parser.rs` focused on public
+  command parsing and global retired-family rejection.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

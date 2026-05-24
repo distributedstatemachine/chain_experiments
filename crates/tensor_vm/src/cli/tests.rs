@@ -11,6 +11,7 @@ mod command_help;
 mod command_helpers;
 mod execution_reports;
 mod local_execution_reports;
+mod local_parser;
 mod local_validation;
 mod manifest_fixtures;
 mod manifest_reports;
