@@ -1,8 +1,8 @@
 use clap::Parser;
-use tensor_vm::TvmdCli;
+use tensor_vm::{TvmdCli, app};
 
 fn main() {
-    match TvmdCli::parse().execute() {
+    match app::run(TvmdCli::parse()) {
         Ok(output) => println!("{output}"),
         Err(error) => {
             eprintln!("{error}");

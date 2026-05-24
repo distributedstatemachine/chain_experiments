@@ -18,16 +18,8 @@ use super::{
     serve_service, service_block_status, service_status, verify_local_cpu_store,
 };
 
-impl TvmdCli {
-    pub fn execute(&self) -> std::result::Result<String, String> {
-        self.command.execute()
-    }
-}
-
-impl TvmdCommand {
-    pub fn execute(&self) -> std::result::Result<String, String> {
-        execute_tvmd_command(self)
-    }
+pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
+    execute_tvmd_command(&cli.command)
 }
 
 pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {

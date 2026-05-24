@@ -1122,6 +1122,9 @@ spaghetti around.
 - Iteration 458 split CUDA miner readiness validation into `cli/tests/local_cuda_validation.rs`
   and added a shared CLI-argument execution helper, leaving local validation focused on invalid local
   argument paths.
+- Iteration 459 removed the remaining execution convenience methods from the Clap command types and
+  routed the binary through `app::run(TvmdCli::parse())`, keeping Clap as a pure parse boundary with app
+  dispatch owned by the application layer.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
