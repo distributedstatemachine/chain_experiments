@@ -1,5 +1,68 @@
 use super::*;
 
+fn http_status_line(response: &str) -> &str {
+    response
+        .lines()
+        .next()
+        .expect("HTTP response must include status line")
+}
+
+fn http_body(response: &str) -> &str {
+    response
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .expect("HTTP response must include header/body separator")
+}
+
+fn http_header<'a>(response: &'a str, header: &str) -> &'a str {
+    response
+        .lines()
+        .skip(1)
+        .take_while(|line| !line.is_empty())
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case(header).then_some(value.trim())
+        })
+        .unwrap_or_else(|| panic!("HTTP response must include {header} header"))
+}
+
+fn websocket_text_payload(frame: &[u8]) -> String {
+    assert_eq!(frame.first().copied(), Some(0x81));
+    let length_byte = frame
+        .get(1)
+        .copied()
+        .expect("websocket frame must include length byte");
+    assert_eq!(length_byte & 0x80, 0, "server websocket frame is unmasked");
+    let length_indicator = length_byte & 0x7f;
+    let (length, payload_start) = match length_indicator {
+        0..=125 => (usize::from(length_indicator), 2),
+        126 => {
+            let bytes: [u8; 2] = frame[2..4]
+                .try_into()
+                .expect("16-bit websocket length must be present");
+            (usize::from(u16::from_be_bytes(bytes)), 4)
+        }
+        127 => {
+            let bytes: [u8; 8] = frame[2..10]
+                .try_into()
+                .expect("64-bit websocket length must be present");
+            (
+                usize::try_from(u64::from_be_bytes(bytes))
+                    .expect("websocket frame length must fit usize"),
+                10,
+            )
+        }
+        _ => unreachable!("7-bit length indicator is always bounded"),
+    };
+    let payload_end = payload_start + length;
+    assert!(frame.len() >= payload_end);
+    if frame.len() > payload_end {
+        assert_eq!(&frame[payload_end..], &[0x88, 0]);
+    }
+    String::from_utf8(frame[payload_start..payload_end].to_vec())
+        .expect("websocket payload must be UTF-8 text")
+}
+
 #[test]
 fn rpc_http_server_returns_bad_request_and_payload_too_large() {
     use std::io::ErrorKind;
@@ -32,10 +95,13 @@ fn rpc_http_server_returns_bad_request_and_payload_too_large() {
     let server_thread = std::thread::spawn(move || server.serve_n(2).unwrap());
 
     let bad = send_raw(addr, b"GET");
-    assert!(bad.starts_with("HTTP/1.1 400 Bad Request"));
+    assert_eq!(http_status_line(&bad), "HTTP/1.1 400 Bad Request");
 
     let too_large = send_raw(addr, b"POST /tx HTTP/1.1\r\ncontent-length: 3\r\n\r\nabc");
-    assert!(too_large.starts_with("HTTP/1.1 413 Payload Too Large"));
+    assert_eq!(
+        http_status_line(&too_large),
+        "HTTP/1.1 413 Payload Too Large"
+    );
 
     server_thread.join().unwrap();
 }
@@ -236,23 +302,26 @@ fn rpc_formats_http_response() {
         body: "{\"accepted\":true}".to_owned(),
     };
     let text = http_response_text(&response);
-    assert!(text.starts_with("HTTP/1.1 202 Accepted"));
-    assert!(text.ends_with("{\"accepted\":true}"));
+    assert_eq!(http_status_line(&text), "HTTP/1.1 202 Accepted");
+    assert_eq!(http_body(&text), "{\"accepted\":true}");
     let conflict = http_response_text(&RpcResponse {
         status: 409,
         body: "{\"error\":\"duplicate transaction\"}".to_owned(),
     });
-    assert!(conflict.starts_with("HTTP/1.1 409 Conflict"));
+    assert_eq!(http_status_line(&conflict), "HTTP/1.1 409 Conflict");
     let limited = http_response_text(&RpcResponse {
         status: 429,
         body: "{\"error\":\"rate limit exceeded\"}".to_owned(),
     });
-    assert!(limited.starts_with("HTTP/1.1 429 Too Many Requests"));
+    assert_eq!(http_status_line(&limited), "HTTP/1.1 429 Too Many Requests");
     let html = http_response_text(&RpcResponse {
         status: 200,
         body: "<!doctype html><html></html>".to_owned(),
     });
-    assert!(html.contains("content-type: text/html; charset=utf-8"));
+    assert_eq!(
+        http_header(&html, "content-type"),
+        "text/html; charset=utf-8"
+    );
 }
 
 #[test]
@@ -285,8 +354,11 @@ fn rpc_http_server_serves_socket_request() {
     client.read_to_string(&mut response).unwrap();
     server_thread.join().unwrap();
 
-    assert!(response.starts_with("HTTP/1.1 200 OK"));
-    assert!(response.contains("\"height\":0"));
+    assert_eq!(http_status_line(&response), "HTTP/1.1 200 OK");
+    let body = json_text(http_body(&response));
+    assert_eq!(body["height"].as_u64(), Some(0));
+    assert_eq!(body["block_count"].as_u64(), Some(0));
+    json_hex_field(&body, "state_root");
 }
 
 #[test]
@@ -327,14 +399,18 @@ fn rpc_http_server_serves_explorer_websocket_poll() {
     let mut response = Vec::new();
     client.read_to_end(&mut response).unwrap();
     server_thread.join().unwrap();
-    let mut full_response = handshake;
-    full_response.extend_from_slice(&response);
-    let response = String::from_utf8_lossy(&full_response);
-
-    assert!(response.contains("101 Switching Protocols"));
-    assert!(response.contains("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
-    assert!(response.contains("\"type\":\"overview\""));
-    assert!(response.contains("\"block_count\":1"));
+    let handshake = std::str::from_utf8(&handshake).expect("websocket handshake must be UTF-8");
+    assert_eq!(
+        http_status_line(handshake),
+        "HTTP/1.1 101 Switching Protocols"
+    );
+    assert_eq!(
+        http_header(handshake, "sec-websocket-accept"),
+        "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    );
+    let response = json_text(&websocket_text_payload(&response));
+    assert_eq!(response["type"].as_str(), Some("overview"));
+    assert_eq!(response["summary"]["block_count"].as_u64(), Some(1));
 }
 
 #[test]
@@ -344,7 +420,7 @@ fn rpc_http_server_rejects_bad_websocket_routes_and_auth() {
             RpcGateway::new(RpcNode::new(Chain::new(beacon)), RpcPolicy::default()),
             b"GET /wrong/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
         );
-    assert!(bad_route.starts_with("HTTP/1.1 404 Not Found"));
+    assert_eq!(http_status_line(&bad_route), "HTTP/1.1 404 Not Found");
 
     let unauthorized = serve_one_http_request(
             RpcGateway::new(
@@ -357,7 +433,7 @@ fn rpc_http_server_rejects_bad_websocket_routes_and_auth() {
             ),
             b"GET /explorer/ws HTTP/1.1\r\nhost: localhost\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
         );
-    assert!(unauthorized.starts_with("HTTP/1.1 401 Unauthorized"));
+    assert_eq!(http_status_line(&unauthorized), "HTTP/1.1 401 Unauthorized");
 }
 
 fn serve_one_http_request(gateway: RpcGateway, request: &[u8]) -> String {

@@ -713,6 +713,8 @@ spaghetti around.
 - Iteration 279 removed the runtime dependency on the preserved CLI execution facade: `tvmd` now parses
   through the Clap command tree, dispatches app commands directly, keeps public-evidence generation behind
   an explicit evidence executor, and moves role/service argument validation into the app boundary.
+- Iteration 280 converted the RPC HTTP transport tests from response substring checks to explicit
+  status-line, header, body, and websocket-frame JSON assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
