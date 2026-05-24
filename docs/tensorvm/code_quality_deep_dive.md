@@ -329,6 +329,8 @@ spaghetti around.
 - Iteration 134 moved public-evidence publication and auditor-record clap argument structs and command
   conversion into `cli/public_evidence_publication_parser.rs`, keeping publication CLI shape beside its
   evidence command family.
+- Iteration 135 moved public-evidence run-window clap argument structs and command conversion into
+  `cli/public_evidence_run_window_parser.rs`, keeping run-duration parser shape beside run-window evidence.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

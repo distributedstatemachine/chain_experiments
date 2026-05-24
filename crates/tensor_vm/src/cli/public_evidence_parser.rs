@@ -8,6 +8,7 @@ use super::public_evidence_record_parser::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
+use super::public_evidence_run_window_parser::{RunWindowArgs, RunWindowFromFileArgs};
 use super::public_evidence_service_parser::{
     ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs,
@@ -61,20 +62,8 @@ impl PublicEvidenceCommand {
             PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => args.into_command(),
             PublicEvidenceCommand::Publication(args) => args.into_command(),
             PublicEvidenceCommand::AuditorRecord(args) => args.into_command(),
-            PublicEvidenceCommand::RunWindow(args) => CliCommand::PublicEvidenceRunWindow {
-                bundle_id: args.bundle_id,
-                manifest_signer: args.manifest_signer,
-                run_started_at_unix_seconds: args.started_at,
-                run_ended_at_unix_seconds: args.ended_at,
-                observed_blocks: args.observed_blocks,
-            },
-            PublicEvidenceCommand::RunWindowFromFile(args) => {
-                CliCommand::PublicEvidenceRunWindowFromFile {
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    block_observation_file: args.block_observation_file,
-                }
-            }
+            PublicEvidenceCommand::RunWindow(args) => args.into_command(),
+            PublicEvidenceCommand::RunWindowFromFile(args) => args.into_command(),
             PublicEvidenceCommand::NodeHeartbeat(args) => CliCommand::PublicEvidenceNodeHeartbeat {
                 role: args.role.into(),
                 address: args.address,
@@ -108,30 +97,6 @@ impl PublicEvidenceCommand {
 pub(super) struct ManifestArgs {
     #[arg(long)]
     manifest: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RunWindowArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    started_at: u64,
-    #[arg(long)]
-    ended_at: u64,
-    #[arg(long)]
-    observed_blocks: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RunWindowFromFileArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    block_observation_file: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
