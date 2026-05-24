@@ -471,6 +471,9 @@ spaghetti around.
   checks, auditor validation, operator attestation matching, and network observation aggregation into
   `testnet/public_evidence_bundle.rs`, separating bundle-level evidence policy from the main
   testnet module.
+- Iteration 181 moved public run evidence criteria evaluation, deployed service reachability checks,
+  and service content uniqueness validation into `testnet/public_run_evidence.rs`, keeping public
+  run policy separate from local testnet orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
