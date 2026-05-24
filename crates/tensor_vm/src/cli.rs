@@ -18,6 +18,7 @@ mod local_descriptions;
 mod local_execution;
 mod local_parser;
 mod local_role_descriptions;
+mod local_service_descriptions;
 mod network_evidence;
 mod network_observation;
 mod node_evidence;

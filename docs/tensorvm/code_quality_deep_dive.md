@@ -377,6 +377,9 @@ spaghetti around.
   `cli/local_role_descriptions.rs` with shared identity-seed rendering in
   `cli/local_description_values.rs`, narrowing `cli/local_descriptions.rs` to local command-family
   dispatch plus service/local-testnet/local-cpu text.
+- Iteration 151 moved local service command descriptions into
+  `cli/local_service_descriptions.rs`, leaving `cli/local_descriptions.rs` as a small local
+  command-family dispatcher plus the tiny local-testnet and local-cpu descriptions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
