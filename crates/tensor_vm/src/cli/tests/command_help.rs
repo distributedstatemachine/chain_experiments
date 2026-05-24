@@ -1,5 +1,6 @@
 use super::*;
 use clap::Parser;
+use clap::error::ErrorKind;
 
 fn clap_help(args: &[&str]) -> String {
     let mut argv = Vec::with_capacity(args.len() + 1);
@@ -14,19 +15,21 @@ fn clap_help(args: &[&str]) -> String {
 fn clap_help_exposes_the_tvmd_command_tree() {
     let help = clap_help(&["--help"]);
     assert!(help.contains("Usage: tvmd <COMMAND>"));
-    for command in ["node", "role", "localnet", "public"] {
+    for command in [
+        "node",
+        "miner",
+        "validator",
+        "proposer",
+        "localnet",
+        "public",
+    ] {
         assert!(
             help.contains(command),
             "top-level help should list {command}"
         );
     }
 
-    let role = clap_help(&["role", "--help"]);
-    for command in ["miner", "validator", "proposer"] {
-        assert!(role.contains(command), "role help should list {command}");
-    }
-
-    let miner_run = clap_help(&["role", "miner", "run", "--help"]);
+    let miner_run = clap_help(&["miner", "run", "--help"]);
     for argument in [
         "--wallet <PATH>",
         "--device <DEVICE>",
@@ -58,11 +61,12 @@ fn clap_help_exposes_the_tvmd_command_tree() {
 #[test]
 fn clap_incomplete_command_groups_show_group_help() {
     for (args, commands) in [
-        (&["role"][..], &["miner", "validator", "proposer"][..]),
+        (&["miner"][..], &["register", "check", "run", "status"][..]),
         (
-            &["role", "miner"][..],
+            &["validator"][..],
             &["register", "check", "run", "status"][..],
         ),
+        (&["proposer"][..], &["run"][..]),
         (
             &["node"][..],
             &["init", "peer", "check", "serve", "status", "block"][..],
@@ -104,9 +108,7 @@ fn clap_incomplete_command_groups_show_group_help() {
 #[test]
 fn clap_rejects_retired_top_level_command_families() {
     for command in [
-        "miner",
-        "validator",
-        "proposer",
+        "role",
         "service",
         "testnet",
         "evidence",
@@ -115,8 +117,10 @@ fn clap_rejects_retired_top_level_command_families() {
         "local-testnet",
         "local-cpu",
     ] {
+        let error = TvmdCli::try_parse_from(["tvmd", command])
+            .expect_err("retired top-level command should not parse");
         assert!(
-            parse_test_cli(&[command, "--help"]).is_err(),
+            matches!(error.kind(), ErrorKind::InvalidSubcommand),
             "retired top-level command {command} must not be preserved"
         );
     }

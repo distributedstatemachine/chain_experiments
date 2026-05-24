@@ -23,20 +23,6 @@ fn default_p2p_listen_addr() -> Multiaddr {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum RoleCommand {
-    #[command(about = "Register, check, run, or inspect a miner role.")]
-    #[command(subcommand)]
-    Miner(MinerCommand),
-    #[command(about = "Register, check, run, or inspect a validator role.")]
-    #[command(subcommand)]
-    Validator(ValidatorCommand),
-    #[command(about = "Run a proposer role.")]
-    #[command(subcommand)]
-    Proposer(ProposerCommand),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum MinerCommand {
     #[command(about = "Check miner registration stake requirements.")]
     Register(StakeArgs),

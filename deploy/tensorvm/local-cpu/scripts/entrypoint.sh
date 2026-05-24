@@ -39,15 +39,15 @@ fi
 
 case "$ROLE" in
   miner)
-    tvmd role miner register --stake "$MINER_STAKE" > "$DATA_DIR/role-register.out"
-    tvmd role miner check \
+    tvmd miner register --stake "$MINER_STAKE" > "$DATA_DIR/role-register.out"
+    tvmd miner check \
       --wallet "$WALLET" \
       --device cpu \
       --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out"
     ;;
   validator)
-    tvmd role validator register --stake "$VALIDATOR_STAKE" > "$DATA_DIR/role-register.out"
-    tvmd role validator check \
+    tvmd validator register --stake "$VALIDATOR_STAKE" > "$DATA_DIR/role-register.out"
+    tvmd validator check \
       --wallet "$WALLET" \
       --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out"
     ;;
@@ -86,7 +86,7 @@ tvmd node check \
 case "$ROLE" in
   miner)
     if [ "$RUNTIME_COMMAND" = "proposer_run" ]; then
-      exec tvmd role proposer run \
+      exec tvmd proposer run \
         --wallet "$WALLET" \
         --node "$NODE_MULTIADDR" \
         --listen "$RPC_LISTEN" \
@@ -96,7 +96,7 @@ case "$ROLE" in
         --auth-token "$AUTH_TOKEN" \
         --max-requests 0
     fi
-    exec tvmd role miner run \
+    exec tvmd miner run \
       --wallet "$WALLET" \
       --device cpu \
       --node "$NODE_MULTIADDR" \
@@ -108,7 +108,7 @@ case "$ROLE" in
       --max-requests 0
     ;;
   validator)
-    exec tvmd role validator run \
+    exec tvmd validator run \
       --wallet "$WALLET" \
       --node "$NODE_MULTIADDR" \
       --listen "$RPC_LISTEN" \

@@ -841,8 +841,8 @@ spaghetti around.
 - Iteration 336 moved local CPU verify key-value output, including the CLI fixture path, onto the shared
   report writer so typed verify structs no longer hand-format their text status form.
 - Iteration 337 tightened the Clap command tree so incomplete nested command groups show their scoped help
-  directly, keeping the ergonomic `tvmd node ...`, `tvmd role ...`, `tvmd localnet ...`, and
-  `tvmd public ...` surfaces without reintroducing legacy aliases.
+  directly for the then-current node, role, localnet, and public command groups without reintroducing
+  legacy aliases.
 - Iteration 338 moved app-owned miner and validator registration, readiness, and status reports onto the
   shared key-value report writer, including device-readiness fields, with parseability coverage for the
   operator-check surface.
@@ -851,6 +851,11 @@ spaghetti around.
   longer hand-format their status text.
 - Iteration 340 moved local role CLI fixture reports for miner, validator, and proposer registration,
   checks, runs, and statuses onto the shared key-value report writer, including device and p2p subreports.
+- Iteration 341 moved the remaining local CLI fixture seed report onto the shared key-value report writer,
+  finishing the local role, service, and localnet fixture report-rendering cleanup.
+- Iteration 342 promoted miner, validator, and proposer to first-class Clap subcommands, removing the
+  old role grouping so operators use shorter `tvmd miner ...`, `tvmd validator ...`, and
+  `tvmd proposer ...` commands.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -1170,8 +1175,8 @@ Fix:
 - Replace `stdout.contains(...)` tests with parsed assertions.
 
 The CLI should not regress to a giant string-slice match. The current `tvmd` surface is the Clap command
-tree, with no preserved legacy top-level `public-evidence`, `public-testnet`, `local-testnet`, or
-`local-cpu` command families:
+tree, with no preserved legacy top-level `role`, `public-evidence`, `public-testnet`, `local-testnet`,
+or `local-cpu` command families:
 
 ```rust
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -1185,22 +1190,22 @@ pub struct TvmdCli {
 
 #[derive(Subcommand, Debug)]
 pub enum TvmdCommand {
+    Node(NodeCommand),
     Miner(MinerCommand),
     Validator(ValidatorCommand),
     Proposer(ProposerCommand),
-    Service(ServiceCommand),
-    Testnet(TestnetCommand),
-    Evidence(EvidenceCommand),
+    Localnet(LocalnetCommand),
+    Public(PublicCommand),
 }
 
 #[derive(Subcommand, Debug)]
-pub enum ServiceCommand {
+pub enum NodeCommand {
     Init(DataDirArgs),
-    Peer(ServicePeerCommand),
-    Readiness(ServiceReadinessArgs),
-    Serve(ServiceServeArgs),
+    Peer(NodePeerCommand),
+    Check(NodeCheckArgs),
+    Serve(NodeServeArgs),
     Status(DataDirArgs),
-    Block(ServiceBlockArgs),
+    Block(NodeBlockArgs),
 }
 
 #[derive(Args, Debug)]

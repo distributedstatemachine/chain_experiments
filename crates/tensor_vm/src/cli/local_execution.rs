@@ -1,5 +1,5 @@
 use super::TvmdCommand;
-use super::commands::{LocalnetCommand, RoleCommand};
+use super::commands::LocalnetCommand;
 use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
 };
@@ -12,11 +12,9 @@ use crate::error::Result;
 pub(super) fn execute_local_cli_command(command: &TvmdCommand) -> Result<String> {
     let params = ChainParams::default();
     match command {
-        TvmdCommand::Role(RoleCommand::Miner(command)) => execute_miner_command(command, &params),
-        TvmdCommand::Role(RoleCommand::Validator(command)) => {
-            execute_validator_command(command, &params)
-        }
-        TvmdCommand::Role(RoleCommand::Proposer(command)) => execute_proposer_command(command),
+        TvmdCommand::Miner(command) => execute_miner_command(command, &params),
+        TvmdCommand::Validator(command) => execute_validator_command(command, &params),
+        TvmdCommand::Proposer(command) => execute_proposer_command(command),
         TvmdCommand::Node(command) => execute_node_command(command),
         TvmdCommand::Localnet(command) => execute_localnet_command(command),
         TvmdCommand::Public(_) => unreachable!("public commands are handled by cli::execution"),
@@ -28,10 +26,11 @@ fn execute_localnet_command(command: &LocalnetCommand) -> Result<String> {
         LocalnetCommand::Seed(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
-            Ok(format!(
-                "command=local_testnet_seed\ndata_dir={}\nlocal_cpu_seed_ready=true",
-                data_dir
-            ))
+            let mut report = KeyValueReportWriter::new();
+            report.field("command", "local_testnet_seed");
+            report.field("data_dir", data_dir);
+            report.field("local_cpu_seed_ready", true);
+            Ok(report.finish())
         }
         LocalnetCommand::Verify(args) => {
             ensure_data_dir(&args.data_dir)?;

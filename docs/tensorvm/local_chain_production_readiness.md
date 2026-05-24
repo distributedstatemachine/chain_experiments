@@ -114,8 +114,8 @@ The local bundle is useful and should remain the first operational target:
   matrix.
 - `tvmd node init` validates the complete node store on restart and repairs torn snapshot/block-log
   state from `chain.state` before readiness is allowed.
-- Compose now execs role-specific runtime commands for counted operators: all miners run `tvmd role miner run`,
-  all validators run `tvmd role validator run`, `validator-00` carries the single local producer flag,
+- Compose now execs role-specific runtime commands for counted operators: all miners run `tvmd miner run`,
+  all validators run `tvmd validator run`, `validator-00` carries the single local producer flag,
   `tvmd node status` reports `runtime_command`, and the checker fails unless all 15 operators report the
   role command expected for their Compose service.
 - Counted role runtimes now derive a chain address from their configured wallet label, persist
@@ -215,7 +215,7 @@ The first chain-core cleanup slices are already in the tree:
   address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
   wallet labels for counted miner and validator operators, and the checker requires those registrations
   before accepting operator readiness.
-- `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` now construct explicit role-run loop
+- `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` now construct explicit role-run loop
   wrappers before entering the shared runtime. The runtime loop has named steps for status writes, RPC
   serving, network ingestion, role-owned miner receipt submission, role-owned validator attestation
   submission, and optional local production, preserving current consensus behavior while narrowing the
@@ -251,14 +251,14 @@ Required fix:
 
 ### 2. Miner And Validator Containers Still Delegate Internals To The Service Runtime
 
-`tvmd role miner check` and `tvmd role validator check` prove local readiness. Containers now exec the matching
-long-running `tvmd role miner run`, `tvmd role validator run`, or `tvmd role proposer run` surface. Those role commands
+`tvmd miner check` and `tvmd validator check` prove local readiness. Containers now exec the matching
+long-running `tvmd miner run`, `tvmd validator run`, or `tvmd proposer run` surface. Those role commands
 still delegate their inner serving path to the shared service runtime, so they prove the command surface
 and Compose contract but not independent role ownership yet.
 
 Required fix:
 
-- Keep `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` as counted operator entrypoints.
+- Keep `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` as counted operator entrypoints.
 - Move miner, validator, and proposer internals out of the generic service loop so each role loop owns
   only its role responsibilities.
 - Keep readiness commands as preflight checks, not the runtime.
@@ -658,9 +658,9 @@ smaller chain modules and the existing test module.
 - Initially run them against the existing RPC endpoints.
 - Then move gossip/request-response ingestion into the node runtime.
 
-Status: started. `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` are long-running
-role-specific command surfaces. Compose uses `tvmd role miner run` for all counted miners and
-`tvmd role validator run` for all validators, with `validator-00` carrying the single local timed producer flag;
+Status: started. `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` are long-running
+role-specific command surfaces. Compose uses `tvmd miner run` for all counted miners and
+`tvmd validator run` for all validators, with `validator-00` carrying the single local timed producer flag;
 the local checker verifies those runtime commands through ready files and `tvmd node status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block/block-payload/block-vote gossip observations, and target-head block-payload gossip

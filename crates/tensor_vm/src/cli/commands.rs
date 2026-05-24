@@ -1,7 +1,7 @@
 pub use super::local_commands::{
     DataDirArgs, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
     NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs,
-    NodeServeArgs, ProposerCommand, RoleCommand, RoleRuntimeArgs, StakeArgs, ValidatorCheckArgs,
+    NodeServeArgs, ProposerCommand, RoleRuntimeArgs, StakeArgs, ValidatorCheckArgs,
     ValidatorCommand, ValidatorRunArgs,
 };
 pub use super::public_evidence_commands::{
@@ -38,9 +38,15 @@ pub enum TvmdCommand {
     #[command(about = "Manage a TensorVM node store, RPC service, and libp2p peers.")]
     #[command(subcommand)]
     Node(NodeCommand),
-    #[command(about = "Register, check, run, or inspect miner, validator, and proposer roles.")]
+    #[command(about = "Register, check, run, or inspect a miner role.")]
     #[command(subcommand)]
-    Role(RoleCommand),
+    Miner(MinerCommand),
+    #[command(about = "Register, check, run, or inspect a validator role.")]
+    #[command(subcommand)]
+    Validator(ValidatorCommand),
+    #[command(about = "Run a proposer role.")]
+    #[command(subcommand)]
+    Proposer(ProposerCommand),
     #[command(about = "Seed and verify a local TensorVM testnet.")]
     #[command(subcommand)]
     Localnet(LocalnetCommand),

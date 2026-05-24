@@ -93,7 +93,6 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "role",
             "miner",
             "check",
             "--wallet",
@@ -107,7 +106,6 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "role",
             "validator",
             "check",
             "--wallet",

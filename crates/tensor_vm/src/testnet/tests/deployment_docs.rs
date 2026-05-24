@@ -170,7 +170,7 @@ fn public_deployment_readme_records_scaffold_boundary_and_operator_flow() {
             "`evidence record artifact-file`. Each signed block, finality, libp2p,",
             "the raw records behind that root; publish exactly one artifact locator for each of those six supporting",
             "cargo build -p tensor_vm --release --features cuda-kernels",
-            "target/release/tvmd role miner check --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001",
+            "target/release/tvmd miner check --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001",
             "sudo -u tensorvm /usr/local/bin/tvmd node peer add --data-dir /var/lib/tensorvm --peer-id \"$BOOTSTRAP_PEER_ID\" --address /dns/bootstrap.tensorvm.net/tcp/4001",
             "sudo -u tensorvm /usr/local/bin/tvmd node check --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm",
             "it is not public GPU-miner evidence. Set `cuda_ready_miner_count` in the preflight manifest to the number",

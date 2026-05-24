@@ -1929,8 +1929,8 @@ done by separate miner and validator processes.
 `tvmd` commands must respect this boundary:
 
 ```text
-tvmd role miner run      starts exactly one miner node role
-tvmd role validator run  starts exactly one validator node role, including useful-verification PoW eligibility
+tvmd miner run      starts exactly one miner node role
+tvmd validator run  starts exactly one validator node role, including useful-verification PoW eligibility
 tvmd node serve  starts exactly one node service surface for the configured role/profile
 tvmd node init   initializes one node data directory
 tvmd node peer   edits one node's peer book
@@ -1944,14 +1944,14 @@ CPU mode.
 ### 31.1 Miner CLI
 
 ```bash
-tvmd role miner register --stake 100
+tvmd miner register --stake 100
 
-tvmd role miner check \
+tvmd miner check \
   --wallet miner.key \
   --device cuda:0 \
   --node /ip4/127.0.0.1/tcp/4001
 
-tvmd role miner run \
+tvmd miner run \
   --wallet miner.key \
   --device cpu \
   --node /ip4/127.0.0.1/tcp/4001 \
@@ -1962,7 +1962,7 @@ tvmd role miner run \
   --auth-token service-token \
   --max-requests 0
 
-tvmd role miner status
+tvmd miner status
 ```
 
 `--device cpu` selects the deterministic CPU reference backend used by Gate 0. `--device cuda:N` is a
@@ -1973,13 +1973,13 @@ readiness surface; `miner run` is the long-running role entrypoint used by the l
 ### 31.2 Validator CLI
 
 ```bash
-tvmd role validator register --stake 10000
+tvmd validator register --stake 10000
 
-tvmd role validator check \
+tvmd validator check \
   --wallet validator.key \
   --node /ip4/127.0.0.1/tcp/4001
 
-tvmd role validator run \
+tvmd validator run \
   --wallet validator.key \
   --node /ip4/127.0.0.1/tcp/4001 \
   --listen 0.0.0.0:8545 \
@@ -1989,7 +1989,7 @@ tvmd role validator run \
   --auth-token service-token \
   --max-requests 0
 
-tvmd role validator status
+tvmd validator status
 ```
 
 `validator start` is the preflight readiness surface; `validator run` is the long-running role entrypoint
@@ -2035,7 +2035,7 @@ Those templates include checked preflight and non-full-spec post-run evidence ex
 post-run example is only a signature-domain and parser shape check and cannot substitute for the required
 7-day external public-run evidence.
 The preflight manifest must include a `cuda_ready_miner_count` equal to the planned `miner_count`, derived
-from successful `tvmd role miner check --device cuda:N` readiness checks on the planned public miner hosts.
+from successful `tvmd miner check --device cuda:N` readiness checks on the planned public miner hosts.
 It must also include a `libp2p_ready_node_count` equal to `miner_count + validator_count`, derived from
 successful mandatory-libp2p node readiness checks on the planned public miners and validators.
 The `tvmd node check --p2p-listen <multiaddr> --data-dir <path>` command loads the initialized

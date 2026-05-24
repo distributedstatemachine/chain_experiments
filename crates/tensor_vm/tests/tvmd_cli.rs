@@ -555,7 +555,6 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
         .args([
-            "role",
             "validator",
             "run",
             "--wallet",
@@ -579,7 +578,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("tvmd role validator run must spawn");
+        .expect("tvmd validator run must spawn");
 
     let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert_eq!(response_status_line(&initial_chain_head), "HTTP/1.1 200 OK");
@@ -665,12 +664,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
 
         let rpc_port = free_local_port();
         let listen = format!("127.0.0.1:{rpc_port}");
-        let mut args = vec![
-            "role".to_owned(),
-            role.to_owned(),
-            "run".to_owned(),
-            "--wallet".to_owned(),
-        ];
+        let mut args = vec![role.to_owned(), "run".to_owned(), "--wallet".to_owned()];
         let (wallet, expected_registration) = match role {
             "miner" => ("testnet-miner-0", "miner"),
             "validator" => ("testnet-validator-0", "validator"),
@@ -717,7 +711,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("tvmd role run must spawn");
+            .expect("role-specific tvmd command must spawn");
 
         let health = authenticated_get_request(rpc_port, "/health");
         assert_eq!(response_status_line(&health), "HTTP/1.1 200 OK");

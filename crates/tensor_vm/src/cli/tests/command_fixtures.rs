@@ -258,7 +258,9 @@ pub(super) enum CommandFixture {
 pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
     let cli_command = command.clone().into_cli_command();
     match &cli_command {
-        super::TvmdCommand::Role(_)
+        super::TvmdCommand::Miner(_)
+        | super::TvmdCommand::Validator(_)
+        | super::TvmdCommand::Proposer(_)
         | super::TvmdCommand::Node(_)
         | super::TvmdCommand::Localnet(_) => {
             super::local_execution::execute_local_cli_command(&cli_command)
@@ -319,21 +321,17 @@ impl CommandFixture {
     fn into_cli_command(self) -> super::TvmdCommand {
         match self {
             Self::MinerRegister { stake } => {
-                super::TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Register(StakeArgs {
-                    stake,
-                })))
+                super::TvmdCommand::Miner(MinerCommand::Register(StakeArgs { stake }))
             }
             Self::MinerStart {
                 wallet,
                 device,
                 node,
-            } => {
-                super::TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Check(MinerCheckArgs {
-                    wallet: path_arg(wallet),
-                    device,
-                    node: multiaddr_arg(node),
-                })))
-            }
+            } => super::TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
+                wallet: path_arg(wallet),
+                device,
+                node: multiaddr_arg(node),
+            })),
             Self::MinerRun {
                 wallet,
                 device,
@@ -344,7 +342,7 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            } => super::TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
                 wallet: path_arg(wallet),
                 device,
                 runtime: RoleRuntimeArgs {
@@ -358,17 +356,17 @@ impl CommandFixture {
                         max_requests,
                     },
                 },
-            }))),
-            Self::MinerStatus => super::TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Status)),
-            Self::ValidatorRegister { stake } => super::TvmdCommand::Role(RoleCommand::Validator(
-                ValidatorCommand::Register(StakeArgs { stake }),
-            )),
-            Self::ValidatorStart { wallet, node } => super::TvmdCommand::Role(
-                RoleCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
+            })),
+            Self::MinerStatus => super::TvmdCommand::Miner(MinerCommand::Status),
+            Self::ValidatorRegister { stake } => {
+                super::TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake }))
+            }
+            Self::ValidatorStart { wallet, node } => {
+                super::TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
                     wallet: path_arg(wallet),
                     node: multiaddr_arg(node),
-                })),
-            ),
+                }))
+            }
             Self::ValidatorRun {
                 wallet,
                 node,
@@ -378,25 +376,21 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Run(
-                ValidatorRunArgs {
-                    wallet: path_arg(wallet),
-                    runtime: RoleRuntimeArgs {
-                        node: multiaddr_arg(node),
-                        node_runtime: NodeRuntimeArgs {
-                            listen: socket_addr_arg(listen),
-                            p2p_listen: multiaddr_arg(p2p_listen),
-                            data_dir: path_arg(data_dir),
-                            identity_seed: identity_seed.map(hash_arg),
-                            auth_token,
-                            max_requests,
-                        },
+            } => super::TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+                wallet: path_arg(wallet),
+                runtime: RoleRuntimeArgs {
+                    node: multiaddr_arg(node),
+                    node_runtime: NodeRuntimeArgs {
+                        listen: socket_addr_arg(listen),
+                        p2p_listen: multiaddr_arg(p2p_listen),
+                        data_dir: path_arg(data_dir),
+                        identity_seed: identity_seed.map(hash_arg),
+                        auth_token,
+                        max_requests,
                     },
                 },
-            ))),
-            Self::ValidatorStatus => {
-                super::TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Status))
-            }
+            })),
+            Self::ValidatorStatus => super::TvmdCommand::Validator(ValidatorCommand::Status),
             Self::ProposerRun {
                 wallet,
                 node,
@@ -406,22 +400,20 @@ impl CommandFixture {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::TvmdCommand::Role(RoleCommand::Proposer(ProposerCommand::Run(
-                ValidatorRunArgs {
-                    wallet: path_arg(wallet),
-                    runtime: RoleRuntimeArgs {
-                        node: multiaddr_arg(node),
-                        node_runtime: NodeRuntimeArgs {
-                            listen: socket_addr_arg(listen),
-                            p2p_listen: multiaddr_arg(p2p_listen),
-                            data_dir: path_arg(data_dir),
-                            identity_seed: identity_seed.map(hash_arg),
-                            auth_token,
-                            max_requests,
-                        },
+            } => super::TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
+                wallet: path_arg(wallet),
+                runtime: RoleRuntimeArgs {
+                    node: multiaddr_arg(node),
+                    node_runtime: NodeRuntimeArgs {
+                        listen: socket_addr_arg(listen),
+                        p2p_listen: multiaddr_arg(p2p_listen),
+                        data_dir: path_arg(data_dir),
+                        identity_seed: identity_seed.map(hash_arg),
+                        auth_token,
+                        max_requests,
                     },
                 },
-            ))),
+            })),
             Self::ServiceInit { data_dir } => {
                 super::TvmdCommand::Node(NodeCommand::Init(DataDirArgs {
                     data_dir: path_arg(data_dir),
@@ -817,7 +809,7 @@ impl CommandFixture {
 impl From<super::TvmdCommand> for CommandFixture {
     fn from(command: super::TvmdCommand) -> Self {
         match command {
-            super::TvmdCommand::Role(RoleCommand::Miner(command)) => match command {
+            super::TvmdCommand::Miner(command) => match command {
                 MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
                 MinerCommand::Check(args) => Self::MinerStart {
                     wallet: path_to_string(args.wallet),
@@ -841,7 +833,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                 },
                 MinerCommand::Status => Self::MinerStatus,
             },
-            super::TvmdCommand::Role(RoleCommand::Validator(command)) => match command {
+            super::TvmdCommand::Validator(command) => match command {
                 ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
                 ValidatorCommand::Check(args) => Self::ValidatorStart {
                     wallet: path_to_string(args.wallet),
@@ -863,7 +855,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                 },
                 ValidatorCommand::Status => Self::ValidatorStatus,
             },
-            super::TvmdCommand::Role(RoleCommand::Proposer(command)) => match command {
+            super::TvmdCommand::Proposer(command) => match command {
                 ProposerCommand::Run(args) => Self::ProposerRun {
                     wallet: path_to_string(args.wallet),
                     node: args.runtime.node.to_string(),

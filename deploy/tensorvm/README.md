@@ -70,7 +70,7 @@ Node-heartbeat records can be derived from saved per-block
 
 ```bash
 cargo build -p tensor_vm --release --features cuda-kernels
-target/release/tvmd role miner check --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001
+target/release/tvmd miner check --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001
 sudo install -m 0755 target/release/tvmd /usr/local/bin/tvmd
 sudo useradd --system --home-dir /var/lib/tensorvm --shell /usr/sbin/nologin tensorvm
 sudo install -d -o tensorvm -g tensorvm /var/lib/tensorvm

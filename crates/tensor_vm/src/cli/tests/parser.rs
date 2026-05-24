@@ -9,12 +9,11 @@ use libp2p::PeerId;
 #[test]
 fn parses_documented_miner_commands() {
     assert_eq!(
-        parse_test_cli(&["role", "miner", "register", "--stake", "100"]).unwrap(),
+        parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
         CommandFixture::MinerRegister { stake: 100 }
     );
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "miner",
             "check",
             "--wallet",
@@ -32,12 +31,11 @@ fn parses_documented_miner_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["role", "miner", "status"]).unwrap(),
+        parse_test_cli(&["miner", "status"]).unwrap(),
         CommandFixture::MinerStatus
     );
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "miner",
             "run",
             "--wallet",
@@ -73,7 +71,6 @@ fn parses_documented_miner_commands() {
     let identity_seed = "11".repeat(32);
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "miner",
             "run",
             "--wallet",
@@ -113,12 +110,11 @@ fn parses_documented_miner_commands() {
 #[test]
 fn parses_documented_validator_commands() {
     assert_eq!(
-        parse_test_cli(&["role", "validator", "register", "--stake", "10000"]).unwrap(),
+        parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
         CommandFixture::ValidatorRegister { stake: 10_000 }
     );
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "validator",
             "check",
             "--wallet",
@@ -133,12 +129,11 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["role", "validator", "status"]).unwrap(),
+        parse_test_cli(&["validator", "status"]).unwrap(),
         CommandFixture::ValidatorStatus
     );
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "validator",
             "run",
             "--wallet",
@@ -171,7 +166,6 @@ fn parses_documented_validator_commands() {
     let identity_seed = "22".repeat(32);
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "validator",
             "run",
             "--wallet",
@@ -935,7 +929,6 @@ fn parses_documented_validator_commands() {
 fn parses_documented_proposer_commands() {
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "proposer",
             "run",
             "--wallet",
@@ -968,7 +961,6 @@ fn parses_documented_proposer_commands() {
     let identity_seed = "33".repeat(32);
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "proposer",
             "run",
             "--wallet",
@@ -1004,8 +996,8 @@ fn parses_documented_proposer_commands() {
 
 #[test]
 fn rejects_invalid_cli() {
-    assert!(parse_test_cli(&["role", "miner", "register"]).is_err());
-    assert!(parse_test_cli(&["role", "validator", "register", "--stake", "abc"]).is_err());
+    assert!(parse_test_cli(&["miner", "register"]).is_err());
+    assert!(parse_test_cli(&["validator", "register", "--stake", "abc"]).is_err());
     assert!(
         parse_test_cli(&[
             "node",
@@ -1019,7 +1011,6 @@ fn rejects_invalid_cli() {
     );
     assert!(
         parse_test_cli(&[
-            "role",
             "miner",
             "run",
             "--wallet",
@@ -1035,6 +1026,7 @@ fn rejects_invalid_cli() {
 
 #[test]
 fn rejects_retired_top_level_command_families() {
+    assert!(parse_test_cli(&["role", "miner", "status"]).is_err());
     assert!(
         parse_test_cli(&[
             "public-evidence",
@@ -1058,7 +1050,7 @@ fn rejects_retired_top_level_command_families() {
 #[test]
 fn clap_cli_defaults_runtime_arguments() {
     assert_eq!(
-        parse_test_cli(&["role", "miner", "check", "--wallet", "miner.key"]).unwrap(),
+        parse_test_cli(&["miner", "check", "--wallet", "miner.key"]).unwrap(),
         CommandFixture::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
@@ -1067,7 +1059,6 @@ fn clap_cli_defaults_runtime_arguments() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "role",
             "miner",
             "run",
             "--wallet",

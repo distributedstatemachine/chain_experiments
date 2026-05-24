@@ -65,7 +65,7 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/healt
 ```
 
 `cuda_ready_miner_count` must match `miner_count` and should be derived from successful
-`tvmd role miner check --device cuda:N` readiness checks on each planned public miner host, not from a copied
+`tvmd miner check --device cuda:N` readiness checks on each planned public miner host, not from a copied
 boolean.
 `libp2p_ready_node_count` must match `miner_count + validator_count` and should be derived from successful
 `tvmd node check --p2p-listen <multiaddr> --data-dir <path>` checks on every planned public miner

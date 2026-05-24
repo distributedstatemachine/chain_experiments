@@ -48,8 +48,8 @@ pub use commands::{
     PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
     PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleCommand, RoleRuntimeArgs,
-    RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs,
+    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs, TvmdCli,
     TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,
 };

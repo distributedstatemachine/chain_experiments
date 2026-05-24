@@ -167,7 +167,7 @@ initialize or load its durable node store
 load its stable wallet and libp2p identity
 seed the bootstrap peer book, except for miner-00
 start the mandatory libp2p control plane
-start its role command as `tvmd role miner run` or `tvmd role validator run`; `validator-00` is the only service
+start its role command as `tvmd miner run` or `tvmd validator run`; `validator-00` is the only service
 with the local timed producer flag
 report readiness only after the role process and libp2p runtime are live
 ```

@@ -46,8 +46,8 @@ docker compose -f deploy/tensorvm/local-cpu/docker-compose.yml down -v
 
 The checked run starts 10 miner containers and 5 validator containers, verifies 15 distinct operator IDs,
 15 distinct stable libp2p peer IDs, and 15 distinct node multiaddrs, requires 15 libp2p-ready nodes,
-requires 10 CPU-ready miners and zero CUDA-required miners, requires all miners to run `tvmd role miner run`,
-all validators to run `tvmd role validator run`, and `validator-00` to be the single local timed producer as
+requires 10 CPU-ready miners and zero CUDA-required miners, requires all miners to run `tvmd miner run`,
+all validators to run `tvmd validator run`, and `validator-00` to be the single local timed producer as
 reported by `runtime_command` and role status, requires live role-loop counters, the `local_cpu` chain
 profile, decoded network-event ingestion, decoded block, job, receipt, and attestation payload application, and
 network-applied block counters for every non-producer, plus observed job/receipt/attestation/block payload gossip
@@ -170,7 +170,7 @@ continues finalizing blocks after restart.
   TCP/TLS/Yamux swarm construction, Gossipsub subscriptions, Identify, Kademlia discovery/address
   registration, JSON request-response protocols, `tvmd node peer add` bootstrap seeding,
   `tvmd node check` startup checks for the mandatory libp2p control-plane runtime,
-  `tvmd node serve` startup of the same runtime, `tvmd role miner run` and `tvmd role validator run`
+  `tvmd node serve` startup of the same runtime, `tvmd miner run` and `tvmd validator run`
   role-specific surfaces that Compose uses for counted operators, durable bootstrap peer-book persistence
   with peer-ID-preserving DNS/TCP dial multiaddrs and bootstrap redial, generic HTTP request reading, a socketed stdlib RPC server with auth/body/rate-limit policy checks,
   explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,

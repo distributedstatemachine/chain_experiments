@@ -110,21 +110,21 @@ pub const TENSOR_DATA_RPC_ROUTES: &[&str] = &[
 ];
 
 pub const MINER_CLI_COMMANDS: &[&str] = &[
-    "tvmd role miner register --stake <tokens>",
-    "tvmd role miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
-    "tvmd role miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-    "tvmd role miner status",
+    "tvmd miner register --stake <tokens>",
+    "tvmd miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
+    "tvmd miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd miner status",
 ];
 
 pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
-    "tvmd role validator register --stake <tokens>",
-    "tvmd role validator check --wallet <key> [--node <libp2p-multiaddr>]",
-    "tvmd role validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-    "tvmd role validator status",
+    "tvmd validator register --stake <tokens>",
+    "tvmd validator check --wallet <key> [--node <libp2p-multiaddr>]",
+    "tvmd validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd validator status",
 ];
 
 pub const PROPOSER_CLI_COMMANDS: &[&str] = &[
-    "tvmd role proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
 ];
 
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
@@ -214,25 +214,25 @@ mod tests {
         assert_eq!(
             MINER_CLI_COMMANDS,
             &[
-                "tvmd role miner register --stake <tokens>",
-                "tvmd role miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
-                "tvmd role miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-                "tvmd role miner status",
+                "tvmd miner register --stake <tokens>",
+                "tvmd miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
+                "tvmd miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd miner status",
             ]
         );
         assert_eq!(
             VALIDATOR_CLI_COMMANDS,
             &[
-                "tvmd role validator register --stake <tokens>",
-                "tvmd role validator check --wallet <key> [--node <libp2p-multiaddr>]",
-                "tvmd role validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-                "tvmd role validator status",
+                "tvmd validator register --stake <tokens>",
+                "tvmd validator check --wallet <key> [--node <libp2p-multiaddr>]",
+                "tvmd validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd validator status",
             ]
         );
         assert_eq!(
             PROPOSER_CLI_COMMANDS,
             &[
-                "tvmd role proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
             ]
         );
         assert_eq!(

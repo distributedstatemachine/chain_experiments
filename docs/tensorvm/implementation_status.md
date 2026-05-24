@@ -147,7 +147,7 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator/proposer commands, with local
   stake, wallet, device where relevant, mandatory libp2p node-endpoint validation, and structured readiness
   reports
-- Role-specific long-running `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` command
+- Role-specific long-running `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` command
   surfaces that validate the role config, start the mandatory libp2p-backed service runtime, write live
   role-loop counters from a reusable node runtime state object, delegate decoded network message ordering,
   invalid event accounting, block/job/receipt/attestation/block-vote payload application, pending payload
@@ -300,7 +300,7 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 - Local CPU Docker Compose deployment bundle under `deploy/tensorvm/local-cpu/`, with a CPU-only
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
-  readiness, role-specific `tvmd role miner run` and `tvmd role validator run` Compose entrypoints checked through
+  readiness, role-specific `tvmd miner run` and `tvmd validator run` Compose entrypoints checked through
   `runtime_command` status, explicit role-run loop wrappers feeding a shared runtime loop
   boundary, registered role wallet address and role registration status persisted through
   `role-runtime.status` and checked through `tvmd node status`, runtime policy that prevents service,
@@ -445,8 +445,8 @@ The workspace currently has 262 passing tests under Tarpaulin:
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
-that persists a settled two-block local chain, a role-run command test that proves `tvmd role miner run`,
-`tvmd role validator run`, and `tvmd role proposer run` serve through role-specific loop wrappers and runtime
+that persists a settled two-block local chain, a role-run command test that proves `tvmd miner run`,
+`tvmd validator run`, and `tvmd proposer run` serve through role-specific loop wrappers and runtime
 surfaces with mandatory libp2p startup, then proves registered local-testnet role wallet addresses are
 exposed through role-run stdout and `tvmd node status`, bounded service startup can generate live
 synthetic CPU jobs and append unfinalized live blocks when no validator role loop has voted, plus a supervised
