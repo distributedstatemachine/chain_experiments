@@ -370,6 +370,9 @@ spaghetti around.
 - Iteration 148 moved public-evidence run-window descriptions into
   `cli/public_evidence_run_window_descriptions.rs`, keeping run-window CLI text beside its parser
   and execution command-family modules.
+- Iteration 149 moved public-evidence node heartbeat and operator-attestation descriptions into
+  `cli/public_evidence_node_descriptions.rs`, leaving the parent public-evidence description module
+  as a small dispatcher plus validate/preflight text.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
