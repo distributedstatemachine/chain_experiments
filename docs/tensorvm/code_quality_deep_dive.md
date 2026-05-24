@@ -246,6 +246,9 @@ spaghetti around.
 - Iteration 102 split `PendingNetworkPayloads` queue and retry bookkeeping into
   `node/pending_payloads.rs`, keeping the same public `node` re-export while shrinking the network
   ingestion module toward payload application only.
+- Iteration 103 split network payload apply result types, processor traits, and chain/context
+  processor adapters into `node/payload_processor.rs`, leaving `node.rs` to orchestrate message
+  ingest and concrete payload application.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
