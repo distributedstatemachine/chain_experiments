@@ -747,6 +747,8 @@ spaghetti around.
   templates, replacing the template substring inventory in the deployment-docs test.
 - Iteration 296 reused deployment-docs trimmed-line assertions for the public runbook preflight gate
   and evidence command list, replacing another pair of runbook substring inventories.
+- Iteration 297 converted the public deployment README scaffold-artifact and public-route checks to
+  exact trimmed-line assertions, leaving only prose/operator-flow inventories in that test.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

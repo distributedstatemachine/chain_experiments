@@ -131,37 +131,35 @@ fn public_deployment_runbook_records_required_evidence_flow() {
 #[test]
 fn public_deployment_readme_records_scaffold_boundary_and_operator_flow() {
     let readme = include_str!("../../../../../deploy/tensorvm/README.md");
-    for required in [
-        "These files are not public-testnet evidence by themselves",
-        "env/public-testnet.env.example",
-        "RUNBOOK.md",
-        "systemd/tensorvm.service",
-        "nginx/tensorvm.conf",
-        "manifests/public-testnet.preflight.example",
-        "manifests/public-testnet.evidence.example",
-    ] {
-        assert!(
-            readme.contains(required),
-            "deployment README should list scaffold artifact {required}"
-        );
-    }
+    assert_trimmed_lines(
+        readme,
+        &[
+            "the TensorVM MVP spec. These files are not public-testnet evidence by themselves; they are pre-run",
+            "- `env/public-testnet.env.example` - environment file consumed by the systemd unit",
+            "- `RUNBOOK.md` - operator runbook for launch, evidence collection, validation, and publication",
+            "- `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration",
+            "- `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames",
+            "- `manifests/public-testnet.preflight.example` - manifest shape accepted by the parser, but not launch-ready",
+            "- `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by",
+        ],
+        "deployment README scaffold artifact list",
+    );
 
-    for route in [
-        "GET /health",
-        "GET /rpc/health",
-        "GET /explorer/health",
-        "GET /faucet/health",
-        "GET /telemetry/health",
-        "GET /chain/head",
-        "GET /explorer",
-        "GET /faucet/page",
-        "GET /telemetry/dashboard",
-    ] {
-        assert!(
-            readme.contains(route),
-            "deployment README should record public route {route}"
-        );
-    }
+    assert_trimmed_lines(
+        readme,
+        &[
+            "GET /health",
+            "GET /rpc/health",
+            "GET /explorer/health",
+            "GET /faucet/health",
+            "GET /telemetry/health",
+            "GET /chain/head",
+            "GET /explorer",
+            "GET /faucet/page",
+            "GET /telemetry/dashboard",
+        ],
+        "deployment README public route list",
+    );
 
     for required in [
         "signed service-health records",
