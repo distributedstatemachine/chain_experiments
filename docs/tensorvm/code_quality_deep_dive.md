@@ -958,6 +958,9 @@ spaghetti around.
   `EvidenceCommand` execution.
 - Iteration 392 moved public record summary-roots and artifact-roots report cases from
   `EvidenceFixture` to direct `EvidenceCommand` execution.
+- Iteration 393 moved public record summary-file and artifact-file report cases from
+  `EvidenceFixture` to direct `EvidenceCommand` execution and removed the now-dead file-backed
+  record fixture variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

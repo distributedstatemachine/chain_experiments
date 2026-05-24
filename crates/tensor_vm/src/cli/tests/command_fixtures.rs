@@ -80,24 +80,11 @@ pub(super) enum EvidenceFixture {
         artifact_uri: String,
         record_roots: Vec<Hash>,
     },
-    RecordArtifactFromFile {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        artifact_uri: String,
-        record_file: String,
-    },
     RecordSummaryFromRoots {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         record_roots: Vec<Hash>,
-    },
-    RecordSummaryFromFile {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        record_file: String,
     },
     NetworkObservation {
         operator_id: Hash,
@@ -356,21 +343,6 @@ impl EvidenceFixture {
                     record_roots: hash_args(record_roots),
                 }),
             )),
-            Self::RecordArtifactFromFile {
-                kind,
-                bundle_id,
-                manifest_signer,
-                artifact_uri,
-                record_file,
-            } => public_evidence_command(EvidenceCommand::Record(
-                EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
-                    kind: record_kind_arg(kind),
-                    bundle_id: hash_arg(bundle_id),
-                    manifest_signer: address_arg(manifest_signer),
-                    artifact_uri,
-                    record_file: path_arg(record_file),
-                }),
-            )),
             Self::RecordSummaryFromRoots {
                 kind,
                 bundle_id,
@@ -382,19 +354,6 @@ impl EvidenceFixture {
                     bundle_id: hash_arg(bundle_id),
                     manifest_signer: address_arg(manifest_signer),
                     record_roots: hash_args(record_roots),
-                }),
-            )),
-            Self::RecordSummaryFromFile {
-                kind,
-                bundle_id,
-                manifest_signer,
-                record_file,
-            } => public_evidence_command(EvidenceCommand::Record(
-                EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
-                    kind: record_kind_arg(kind),
-                    bundle_id: hash_arg(bundle_id),
-                    manifest_signer: address_arg(manifest_signer),
-                    record_file: path_arg(record_file),
                 }),
             )),
             Self::NetworkObservation {
