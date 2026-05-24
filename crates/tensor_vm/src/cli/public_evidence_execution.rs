@@ -1,18 +1,15 @@
 use super::CliCommand;
 use super::descriptions::describe_command;
-use super::network_evidence::{
-    NetworkObservationEvidenceLine, network_observation_evidence_line,
-    network_observation_evidence_line_from_service_log,
-};
 use super::node_evidence::{
     node_heartbeat_evidence_line, node_heartbeat_evidence_line_from_file,
     operator_identity_attestation_evidence_line,
 };
+use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_service_execution::execute_public_evidence_service_command;
 use super::publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
-use crate::error::{Result, TvmError};
+use crate::error::Result;
 
 pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Result<String> {
     if let Some(output) = execute_public_evidence_service_command(command) {
@@ -21,48 +18,11 @@ pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Resul
     if let Some(output) = execute_public_evidence_record_command(command) {
         return output;
     }
+    if let Some(output) = execute_public_evidence_network_command(command) {
+        return output;
+    }
 
     match command {
-        CliCommand::PublicEvidenceNetworkObservation {
-            operator_id,
-            peer_id,
-            listen_address,
-            observed_at_unix_seconds,
-            gossip_topic_count,
-            request_response_protocol_count,
-            bootstrap_peer_count,
-            max_transmit_bytes,
-            request_timeout_seconds,
-            max_concurrent_streams,
-            idle_connection_timeout_seconds,
-        } => network_observation_evidence_line(NetworkObservationEvidenceLine {
-            operator_id: *operator_id,
-            peer_id,
-            listen_address,
-            observed_at_unix_seconds: *observed_at_unix_seconds,
-            gossip_topic_count: *gossip_topic_count,
-            request_response_protocol_count: *request_response_protocol_count,
-            bootstrap_peer_count: *bootstrap_peer_count,
-            max_transmit_bytes: *max_transmit_bytes,
-            request_timeout_seconds: *request_timeout_seconds,
-            max_concurrent_streams: *max_concurrent_streams,
-            idle_connection_timeout_seconds: *idle_connection_timeout_seconds,
-        }),
-        CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
-            operator_id,
-            listen_address,
-            observed_at_unix_seconds,
-            service_log,
-        } => {
-            let log_contents = std::fs::read_to_string(service_log)
-                .map_err(|_| TvmError::Storage("failed to read service log file"))?;
-            network_observation_evidence_line_from_service_log(
-                *operator_id,
-                listen_address,
-                *observed_at_unix_seconds,
-                &log_contents,
-            )
-        }
         CliCommand::PublicEvidencePublication {
             bundle_id,
             public_uri,

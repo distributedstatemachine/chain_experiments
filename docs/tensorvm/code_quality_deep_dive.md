@@ -340,6 +340,9 @@ spaghetti around.
 - Iteration 138 moved public-evidence record summary/artifact command execution into
   `cli/public_evidence_record_execution.rs`, keeping record-root aggregation orchestration beside the
   record command family instead of in the parent public-evidence dispatcher.
+- Iteration 139 moved public-evidence network-observation command execution into
+  `cli/public_evidence_network_execution.rs`, isolating service-log reading and network observation
+  evidence dispatch from the parent public-evidence command router.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
