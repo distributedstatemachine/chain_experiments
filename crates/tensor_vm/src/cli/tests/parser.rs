@@ -1,7 +1,8 @@
 use super::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceFixture,
-    EvidenceNodeCommand, EvidenceRunCommand, EvidenceServiceCommand, HashArg, HexBytesArg,
-    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs,
+    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRunCommand, EvidenceServiceCommand,
+    HashArg, HexBytesArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs,
     NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
     NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
     PublicEvidenceManifestArgs, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetManifestArgs,
@@ -696,19 +697,21 @@ fn parses_documented_validator_commands() {
             "60",
         ])
         .unwrap(),
-        EvidenceFixture::NetworkObservation {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            peer_id: peer_id.clone(),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            gossip_topic_count: 5,
-            request_response_protocol_count: 4,
-            bootstrap_peer_count: 2,
-            max_transmit_bytes: 1_048_576,
-            request_timeout_seconds: 10,
-            max_concurrent_streams: 128,
-            idle_connection_timeout_seconds: 60,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
+            EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+                peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+                listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
+                observed_at: 1_700_000_000,
+                gossip_topics: 5,
+                request_response_protocols: 4,
+                bootstrap_peers: 2,
+                max_transmit_bytes: 1_048_576,
+                request_timeout_seconds: 10,
+                max_concurrent_streams: 128,
+                idle_timeout_seconds: 60,
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -726,12 +729,14 @@ fn parses_documented_validator_commands() {
             "artifacts/node-a-service.log",
         ])
         .unwrap(),
-        EvidenceFixture::NetworkObservationFromServiceLog {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            service_log: "artifacts/node-a-service.log".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
+            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+                listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
+                observed_at: 1_700_000_000,
+                service_log: path("artifacts/node-a-service.log"),
+            }),
+        )))
     );
     let record_root = manifest_hash(b"network-runtime-root");
     assert_eq!(

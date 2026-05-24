@@ -940,6 +940,8 @@ spaghetti around.
   expectations from `EvidenceFixture` to direct `TvmdCommand` construction.
 - Iteration 383 moved public service health/content parser expectations from `EvidenceFixture` to
   direct `TvmdCommand` construction.
+- Iteration 384 moved public network observation parser expectations from `EvidenceFixture` to direct
+  `TvmdCommand` construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
