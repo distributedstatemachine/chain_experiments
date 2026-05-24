@@ -438,7 +438,6 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"require_command sed"#,
             r#"require_command sort"#,
             r#"require_command wc"#,
-            r#"require_command cargo"#,
             r#"require_command curl"#,
             r#"require_command timeout"#,
             r#"compose config --quiet"#,
@@ -509,7 +508,6 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0" | grep -q '"row":' || fail "live tensor row was not fetchable""#,
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0" | grep -q '"bytes":"' || fail "live tensor chunk was not fetchable""#,
             r#"curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0" | grep -q '"proof_len":' || fail "live tensor opening was not fetchable""#,
-            r#"cargo test -p tensor_vm local_testnet --release"#,
             r#"standalone_explorer_ready=true"#,
             r#"standalone_explorer_websocket_polling=true"#,
             r#"live_block_production=true"#,
@@ -526,6 +524,18 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"live_tensor_fetch=true"#,
             r#"live_rewards=true"#,
         ],
+    );
+    assert!(
+        !shell_logical_lines(&check_script)
+            .iter()
+            .any(|line| line.starts_with("cargo test")),
+        "deployment checker should not run unit tests"
+    );
+    assert!(
+        !shell_logical_lines(&check_script)
+            .iter()
+            .any(|line| line == "require_command cargo"),
+        "deployment checker should not require a Rust toolchain"
     );
 
     assert_status_value_reads(

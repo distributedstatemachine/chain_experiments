@@ -800,6 +800,8 @@ spaghetti around.
 - Iteration 317 replaced local CPU verify JSON string formatting and manual escaping with typed
   `serde_json` serialization in both the app command and CLI fixture path, with process-level coverage
   parsing `tvmd localnet verify --json` as JSON.
+- Iteration 318 removed `cargo test` execution and the Rust toolchain requirement from the local CPU
+  deployment checker, keeping unit-test execution owned by CI instead of the shell readiness script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

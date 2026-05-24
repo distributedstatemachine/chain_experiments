@@ -64,7 +64,6 @@ require_command grep
 require_command sed
 require_command sort
 require_command wc
-require_command cargo
 require_command curl
 require_command timeout
 
@@ -891,8 +890,6 @@ done
 [ "$ALL_OPERATOR_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] || fail "operator network-observed latest head hash convergence was empty"
 [ -n "$ALL_OPERATOR_NETWORK_STATE_ROOT" ] || fail "operator network-observed latest state-root convergence was not observed"
 [ "$ALL_OPERATOR_NETWORK_STATE_ROOT" != "$ZERO_HASH" ] || fail "operator network-observed latest state-root convergence was empty"
-
-cargo test -p tensor_vm local_testnet --release
 
 cat <<STATUS
 local_cpu_testnet_ready=true
