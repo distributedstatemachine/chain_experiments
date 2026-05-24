@@ -421,6 +421,9 @@ spaghetti around.
 - Iteration 164 moved public-operator matching and network-runtime observation helper tests out of
   `testnet.rs` into `testnet/tests/network_runtime.rs`, starting the split of the large inline
   testnet test module along evidence-domain boundaries.
+- Iteration 165 moved local testnet bootstrap and matmul/linear round tests into
+  `testnet/tests/local_harness.rs`, separating local harness behavior from public evidence evaluation
+  coverage in the large testnet test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
