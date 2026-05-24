@@ -569,9 +569,9 @@ spaghetti around.
   attestation, block-vote, and model/challenge tests, preserving coverage while localizing failures.
 - Iteration 223 moved public evidence and preflight manifest fixture builders into
   `cli/tests/manifest_fixtures.rs`, reducing the CLI test harness root to command fixtures and module wiring.
-- Iteration 224 moved the CLI command fixture enum, parser adapter, execution/description adapters, and
-  command conversion helpers into `cli/tests/command_fixtures.rs`, leaving `cli/tests.rs` as shared imports
-  and child-module wiring.
+- Iteration 224 moved the then-existing CLI command fixture enum, parser adapter,
+  execution/description adapters, and command conversion helpers into a dedicated CLI test helper
+  module, leaving `cli/tests.rs` as shared imports and child-module wiring.
 - Iteration 225 split local runtime/service execution-report assertions into
   `cli/tests/local_execution_reports.rs`, leaving public-evidence output assertions in
   `cli/tests/execution_reports.rs`.
@@ -976,6 +976,8 @@ spaghetti around.
   and record kind inputs through clap parsing instead.
 - Iteration 400 renamed the leftover `cli/arguments.rs` record-field helper module to
   `cli/evidence_fields.rs` and made hash/numeric helpers explicit field parsers.
+- Iteration 401 renamed the CLI test command helper module away from fixture terminology now
+  that tests parse and execute clap commands directly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

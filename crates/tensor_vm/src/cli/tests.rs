@@ -7,8 +7,8 @@ use crate::testnet::{
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
 
-mod command_fixtures;
 mod command_help;
+mod command_helpers;
 mod execution_reports;
 mod local_execution_reports;
 mod local_validation;
@@ -22,6 +22,6 @@ mod public_evidence_run_window_rejections;
 mod public_evidence_service_rejections;
 mod report_fields;
 
-use command_fixtures::*;
+use command_helpers::*;
 use manifest_fixtures::*;
 use report_fields::*;

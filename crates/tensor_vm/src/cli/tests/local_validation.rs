@@ -2,7 +2,7 @@ use super::{execute_test_cli_command, parse_test_cli};
 use libp2p::PeerId;
 
 fn execute_cli(args: &[&str]) -> crate::error::Result<String> {
-    let command = parse_test_cli(args).expect("fixture CLI args must parse");
+    let command = parse_test_cli(args).expect("test CLI args must parse");
     execute_test_cli_command(&command)
 }
 

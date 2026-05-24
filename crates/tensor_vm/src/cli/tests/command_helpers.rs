@@ -36,7 +36,7 @@ pub(super) fn execute_test_cli_command(
 }
 
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
-    value.parse().expect("fixture multiaddr must parse")
+    value.parse().expect("test multiaddr must parse")
 }
 
 pub(super) fn hash_arg(value: Hash) -> HashArg {

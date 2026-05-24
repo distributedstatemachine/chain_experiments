@@ -1,8 +1,8 @@
 use super::*;
 
 fn execute_cli(args: &[&str]) -> String {
-    let command = parse_test_cli(args).expect("fixture CLI args must parse");
-    execute_test_cli_command(&command).expect("fixture CLI command must execute")
+    let command = parse_test_cli(args).expect("test CLI args must parse");
+    execute_test_cli_command(&command).expect("test CLI command must execute")
 }
 
 #[test]

@@ -25,11 +25,11 @@ fn path(value: &str) -> PathBuf {
 }
 
 fn multiaddr(value: &str) -> libp2p::Multiaddr {
-    value.parse().expect("fixture multiaddr must parse")
+    value.parse().expect("test multiaddr must parse")
 }
 
 fn socket_addr(value: &str) -> SocketAddr {
-    value.parse().expect("fixture socket address must parse")
+    value.parse().expect("test socket address must parse")
 }
 
 fn data_dir_args(data_dir: &str) -> DataDirArgs {
