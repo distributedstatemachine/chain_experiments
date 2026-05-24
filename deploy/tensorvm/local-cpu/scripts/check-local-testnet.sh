@@ -25,6 +25,11 @@ EXPECTED_MINER_COUNT="$LOCAL_CPU_MINER_COUNT"
 EXPECTED_VALIDATOR_COUNT="$LOCAL_CPU_VALIDATOR_COUNT"
 EXPECTED_SETTLED_RECEIPTS="$LOCAL_CPU_EXPECTED_SETTLED_RECEIPTS"
 EXPECTED_CUDA_REQUIRED_MINER_COUNT="$LOCAL_CPU_CUDA_REQUIRED_MINER_COUNT"
+EXPECTED_BOOTSTRAP_SERVICE="$LOCAL_CPU_BOOTSTRAP_SERVICE"
+EXPECTED_NETWORK_OBSERVER_SERVICE="$LOCAL_CPU_NETWORK_OBSERVER_SERVICE"
+EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT"
+EXPECTED_SEED_BLOCKS="$LOCAL_CPU_SEED_BLOCKS"
+EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -343,10 +348,10 @@ for service in $EXPECTED_SERVICES; do
     || fail "$service did not seed local testnet chain state"
   [ "$(status_value command "$SEED_REPORT")" = "local_testnet_seed" ] \
     || fail "$service did not seed local testnet chain state"
-  [ "$(status_value height "$SEED_REPORT")" = "2" ] \
-    || fail "$service seeded local testnet did not start at height 2"
-  [ "$(status_value blocks "$SEED_REPORT")" = "2" ] \
-    || fail "$service seeded local testnet did not start with 2 blocks"
+  [ "$(status_value height "$SEED_REPORT")" = "$EXPECTED_SEED_HEIGHT" ] \
+    || fail "$service seeded local testnet did not start at height $EXPECTED_SEED_HEIGHT"
+  [ "$(status_value blocks "$SEED_REPORT")" = "$EXPECTED_SEED_BLOCKS" ] \
+    || fail "$service seeded local testnet did not start with $EXPECTED_SEED_BLOCKS blocks"
   LOCAL_CPU_VERIFY=$(compose exec -T "$service" tvmd localnet verify --data-dir /var/lib/tensorvm --json | tr -d '\r')
   json_bool_true structured_verifier_ready "$LOCAL_CPU_VERIFY" \
     || fail "$service local CPU structured verifier is not ready"
@@ -354,10 +359,10 @@ for service in $EXPECTED_SERVICES; do
     || fail "$service local CPU structured verifier did not accept node store"
 done
 
-MINER_SEED_REPORT=$(read_seed_report miner-00) \
-  || fail "miner-00 did not seed local testnet chain state"
+MINER_SEED_REPORT=$(read_seed_report "$EXPECTED_BOOTSTRAP_SERVICE") \
+  || fail "$EXPECTED_BOOTSTRAP_SERVICE did not seed local testnet chain state"
 [ "$(status_value command "$MINER_SEED_REPORT")" = "local_testnet_seed" ] \
-  || fail "miner-00 did not seed local testnet chain state"
+  || fail "$EXPECTED_BOOTSTRAP_SERVICE did not seed local testnet chain state"
 SEED_SETTLED_RECEIPTS=$(status_value settled_receipts "$MINER_SEED_REPORT")
 [ "$SEED_SETTLED_RECEIPTS" = "$EXPECTED_SETTLED_RECEIPTS" ] \
   || fail "seeded local testnet did not report settled receipts"
@@ -368,10 +373,10 @@ SEED_LINEAR_TRAINING_SETTLED=$(status_value linear_training_settled "$MINER_SEED
 [ "$SEED_LINEAR_TRAINING_SETTLED" = "true" ] \
   || fail "seeded local testnet did not settle linear training work"
 SEED_FINALITY_RATE_BPS=$(status_value finality_rate_bps "$MINER_SEED_REPORT")
-[ "$SEED_FINALITY_RATE_BPS" = "10000" ] \
+[ "$SEED_FINALITY_RATE_BPS" = "$EXPECTED_FULL_RATE_BPS" ] \
   || fail "seeded local testnet did not report full finality"
 SEED_DATA_AVAILABILITY_BPS=$(status_value data_availability_bps "$MINER_SEED_REPORT")
-[ "$SEED_DATA_AVAILABILITY_BPS" = "10000" ] \
+[ "$SEED_DATA_AVAILABILITY_BPS" = "$EXPECTED_FULL_RATE_BPS" ] \
   || fail "seeded local testnet did not report full data availability"
 SEED_REWARDED_MINERS=$(status_value rewarded_miners "$MINER_SEED_REPORT")
 [ "${SEED_REWARDED_MINERS:-0}" -gt 0 ] || fail "seeded local testnet did not report miner rewards"
@@ -430,14 +435,14 @@ while [ "$attempt" -lt 30 ]; do
   LIVE_ATTESTED_RECEIPT_COUNT=$(json_positive_field_count attestation_count "$LIVE_RECEIPTS")
   LIVE_TENSOR_OP_RECEIPT_COUNT=$(json_string_field_count primitive_type tensor_op "$LIVE_RECEIPTS")
   LIVE_LINEAR_TRAINING_RECEIPT_COUNT=$(json_string_field_count primitive_type linear_training_step "$LIVE_RECEIPTS")
-  if [ "${LIVE_HEIGHT:-0}" -gt 2 ] \
-    && [ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] \
-    && [ "${LIVE_JOB_COUNT:-0}" -gt 2 ] \
+  if [ "${LIVE_HEIGHT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] \
+    && [ "${LIVE_BLOCK_COUNT:-0}" -gt "$EXPECTED_SEED_BLOCKS" ] \
+    && [ "${LIVE_JOB_COUNT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] \
     && [ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] \
     && [ "${LIVE_ATTESTATION_COUNT:-0}" -gt "$SEED_ATTESTATION_COUNT" ] \
-    && [ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] \
-    && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] \
-    && [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] \
+    && [ "${LIVE_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
+    && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
+    && [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
     && [ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] \
     && [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] \
     && [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ]; then
@@ -447,14 +452,14 @@ while [ "$attempt" -lt 30 ]; do
   sleep 1
 done
 
-[ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2"
-[ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks"
-[ "${LIVE_JOB_COUNT:-0}" -gt 2 ] || fail "protocol did not generate synthetic jobs after seed"
+[ "${LIVE_HEIGHT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "gateway chain head did not advance past seeded height $EXPECTED_SEED_HEIGHT"
+[ "${LIVE_BLOCK_COUNT:-0}" -gt "$EXPECTED_SEED_BLOCKS" ] || fail "gateway chain block count did not advance past seeded $EXPECTED_SEED_BLOCKS blocks"
+[ "${LIVE_JOB_COUNT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "protocol did not generate synthetic jobs after seed"
 [ "${LIVE_MODEL_COUNT:-0}" -gt 1 ] || fail "protocol did not settle a live LinearTrainingStep after seed"
 [ "${LIVE_ATTESTATION_COUNT:-0}" -gt "$SEED_ATTESTATION_COUNT" ] || fail "live synthetic jobs did not add validator attestations"
-[ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts"
-[ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts"
-[ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "live receipt details did not include validator attestations"
+[ "${LIVE_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not produce additional receipts"
+[ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not settle additional receipts"
+[ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "live receipt details did not include validator attestations"
 [ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts"
 [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
@@ -493,10 +498,10 @@ VALIDATOR_PROPOSER_EVIDENCE=false
 FINALITY_REQUIRES_USEFUL_POW=false
 BLOCK_FINALITY_VOTE_EVIDENCE=false
 BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))
-[ "$BLOCK_SCAN_START" -gt 2 ] || BLOCK_SCAN_START=3
+[ "$BLOCK_SCAN_START" -gt "$EXPECTED_SEED_HEIGHT" ] || BLOCK_SCAN_START=$((EXPECTED_SEED_HEIGHT + 1))
 BLOCK_SCAN_HEIGHT="$BLOCK_SCAN_START"
 while [ "$BLOCK_SCAN_HEIGHT" -le "$LIVE_HEIGHT" ]; do
-  if BLOCK_RAW=$(read_service_block miner-00 "$BLOCK_SCAN_HEIGHT"); then
+  if BLOCK_RAW=$(read_service_block "$EXPECTED_BOOTSTRAP_SERVICE" "$BLOCK_SCAN_HEIGHT"); then
     BLOCK_STATUS="$BLOCK_RAW"
     BLOCK_FINALIZED=$(status_value finalized "$BLOCK_STATUS")
     BLOCK_RECEIPT_IDS=$(status_value receipt_ids "$BLOCK_STATUS")
@@ -600,19 +605,19 @@ ALL_OPERATOR_NETWORK_HEAD_HASH=""
 ALL_OPERATOR_NETWORK_STATE_ROOT=""
 attempt=0
 while [ "$attempt" -lt 30 ]; do
-  TARGET_STATUS_RAW=$(read_service_status miner-01) \
-    || fail "could not read miner-01 network-observed service status"
+  TARGET_STATUS_RAW=$(read_service_status "$EXPECTED_NETWORK_OBSERVER_SERVICE") \
+    || fail "could not read $EXPECTED_NETWORK_OBSERVER_SERVICE network-observed service status"
   TARGET_STATUS="$TARGET_STATUS_RAW"
   CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value role_p2p_latest_observed_block_payload_height "$TARGET_STATUS")
   CANDIDATE_NETWORK_HEAD_HASH=$(status_value role_p2p_latest_observed_block_payload_hash "$TARGET_STATUS")
   CANDIDATE_NETWORK_HASHES=$(status_value role_p2p_observed_block_payload_hashes "$TARGET_STATUS")
   if [ -n "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
-    && [ "$CANDIDATE_NETWORK_HEAD_HEIGHT" -gt 2 ] \
+    && [ "$CANDIDATE_NETWORK_HEAD_HEIGHT" -gt "$EXPECTED_SEED_HEIGHT" ] \
     && [ -n "$CANDIDATE_NETWORK_HEAD_HASH" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "unknown" ] \
     && [ "$CANDIDATE_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] \
     && csv_contains_value "$CANDIDATE_NETWORK_HASHES" "$CANDIDATE_NETWORK_HEAD_HASH"; then
-    if NETWORK_BLOCK_RAW=$(read_service_block miner-01 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then
+    if NETWORK_BLOCK_RAW=$(read_service_block "$EXPECTED_NETWORK_OBSERVER_SERVICE" "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then
       NETWORK_BLOCK_STATUS="$NETWORK_BLOCK_RAW"
       NETWORK_BLOCK_HEIGHT=$(status_value height "$NETWORK_BLOCK_STATUS")
       NETWORK_BLOCK_HASH=$(status_value block_hash "$NETWORK_BLOCK_STATUS")
@@ -621,7 +626,7 @@ while [ "$attempt" -lt 30 ]; do
       NETWORK_BLOCK_VOTE_COUNT=$(status_value block_vote_count "$NETWORK_BLOCK_STATUS")
       if [ -n "$NETWORK_BLOCK_HEIGHT" ] \
         && [ "$NETWORK_BLOCK_HEIGHT" = "$CANDIDATE_NETWORK_HEAD_HEIGHT" ] \
-        && [ "$NETWORK_BLOCK_HEIGHT" -gt 2 ] \
+        && [ "$NETWORK_BLOCK_HEIGHT" -gt "$EXPECTED_SEED_HEIGHT" ] \
         && [ "$NETWORK_BLOCK_HASH" = "$CANDIDATE_NETWORK_HEAD_HASH" ] \
         && [ -n "$NETWORK_BLOCK_STATE_ROOT" ] \
         && [ "$NETWORK_BLOCK_STATE_ROOT" != "$ZERO_HASH" ] \
@@ -639,7 +644,7 @@ while [ "$attempt" -lt 30 ]; do
   sleep 1
 done
 [ -n "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" ] || fail "network-observed latest head height was not observed"
-[ "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" -gt 2 ] || fail "network-observed latest head did not advance past seeded height 2"
+[ "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "network-observed latest head did not advance past seeded height $EXPECTED_SEED_HEIGHT"
 [ -n "$ALL_OPERATOR_NETWORK_HEAD_HASH" ] || fail "network-observed latest head hash was not observed"
 [ "$ALL_OPERATOR_NETWORK_HEAD_HASH" != "$ZERO_HASH" ] || fail "network-observed latest head hash was empty"
 [ -n "$ALL_OPERATOR_NETWORK_STATE_ROOT" ] || fail "network-observed latest head state root was not observed"
@@ -1048,7 +1053,7 @@ done
 
 [ "$CONVERGED_OPERATOR_COUNT" = "$EXPECTED_SERVICE_COUNT" ] || fail "not all operators produced and finalized a live block"
 [ -n "$ALL_OPERATOR_MIN_HEIGHT" ] || fail "operator convergence height was not observed"
-[ "$ALL_OPERATOR_MIN_HEIGHT" -gt 2 ] || fail "not all operators advanced past seeded height 2"
+[ "$ALL_OPERATOR_MIN_HEIGHT" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "not all operators advanced past seeded height $EXPECTED_SEED_HEIGHT"
 [ -n "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ] || fail "operator live block hash convergence was not observed"
 [ "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" != "$ZERO_HASH" ] || fail "operator live block hash convergence was empty"
 [ -n "$ALL_OPERATOR_COMMON_HEAD_HASH" ] || fail "operator common head hash convergence was not observed"
@@ -1076,8 +1081,8 @@ settled_receipts=${EXPECTED_SETTLED_RECEIPTS}
 matmul_settled=true
 linear_training_settled=true
 rewarded_miners=${SEED_REWARDED_MINERS}
-finality_rate_bps=10000
-data_availability_bps=10000
+finality_rate_bps=${EXPECTED_FULL_RATE_BPS}
+data_availability_bps=${EXPECTED_FULL_RATE_BPS}
 standalone_explorer_ready=true
 standalone_explorer_websocket_polling=true
 live_block_production=true

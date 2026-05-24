@@ -885,6 +885,8 @@ spaghetti around.
   check, restart, and rolling-restart gates no longer duplicate the service inventory.
 - Iteration 355 derived local CPU checker service, miner, validator, settled-receipt, and CUDA-expected
   counts from the shared topology script instead of hard-coding those policy constants in the checker.
+- Iteration 356 moved the local CPU checker's bootstrap service, network observer, seed height/block
+  expectations, and full-rate basis-point constants into the shared topology script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
