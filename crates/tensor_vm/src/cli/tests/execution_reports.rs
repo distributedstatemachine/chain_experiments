@@ -3,13 +3,13 @@ use super::*;
 
 #[test]
 fn execute_evidence_fixture_reports_public_evidence_outputs() {
-    let publication = execute_evidence_fixture(&EvidenceFixture::Publication {
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+    let publication = execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
+        bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
-        manifest_signer: address(b"public-evidence-publisher"),
+        manifest_signer: address_arg(address(b"public-evidence-publisher")),
         manifest_signature_count: 1,
         independent_auditor_count: 1,
-    })
+    }))
     .unwrap();
     let bundle_id = manifest_hash(b"public-evidence-bundle");
     let manifest_signer = manifest_address(b"public-evidence-publisher");
@@ -29,14 +29,15 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ],
     );
 
-    let auditor_record = execute_evidence_fixture(&EvidenceFixture::AuditorRecord {
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
-        auditor_id: address(b"public-evidence-auditor-0"),
-        audit_uri: manifest_auditor_uri(),
-        observed_at_unix_seconds: 1_700_000_060,
-    })
-    .unwrap();
+    let auditor_record =
+        execute_public_evidence_command(&EvidenceCommand::Audit(AuditorRecordArgs {
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+            auditor_id: address_arg(address(b"public-evidence-auditor-0")),
+            audit_uri: manifest_auditor_uri(),
+            observed_at: 1_700_000_060,
+        }))
+        .unwrap();
     assert_eq!(
         auditor_record,
         format!(
@@ -47,13 +48,15 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         )
     );
 
-    let run_window = execute_evidence_fixture(&EvidenceFixture::RunWindow {
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        manifest_signer: address(b"public-evidence-publisher"),
-        run_started_at_unix_seconds: 1_700_000_000,
-        run_ended_at_unix_seconds: 1_700_000_060,
-        observed_blocks: 10,
-    })
+    let run_window = execute_public_evidence_command(&EvidenceCommand::Run(
+        EvidenceRunCommand::Window(RunWindowArgs {
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            started_at: 1_700_000_000,
+            ended_at: 1_700_000_060,
+            observed_blocks: 10,
+        }),
+    ))
     .unwrap();
     assert_eq!(
         run_window,
@@ -78,11 +81,13 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         .collect::<Vec<_>>()
         .join("\n");
     std::fs::write(&run_window_observation_file, run_window_observations).unwrap();
-    let run_window_from_file = execute_evidence_fixture(&EvidenceFixture::RunWindowFromFile {
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        manifest_signer: address(b"public-evidence-publisher"),
-        block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
-    })
+    let run_window_from_file = execute_public_evidence_command(&EvidenceCommand::Run(
+        EvidenceRunCommand::WindowFile(RunWindowFromFileArgs {
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            block_observation_file: run_window_observation_file.clone(),
+        }),
+    ))
     .unwrap();
     std::fs::remove_file(&run_window_observation_file).unwrap();
     assert_eq!(run_window_from_file, run_window);

@@ -944,6 +944,8 @@ spaghetti around.
   `TvmdCommand` construction.
 - Iteration 385 moved public supporting-record parser expectations from `EvidenceFixture` to direct
   `TvmdCommand` construction and removed the remaining parser fixture equality adapter.
+- Iteration 386 moved public publication, auditor, and run-window evidence report tests from
+  `EvidenceFixture` to direct `EvidenceCommand` execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
