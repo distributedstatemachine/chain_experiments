@@ -698,6 +698,8 @@ spaghetti around.
   handling for the embedded `service_serve` report and numeric runtime/network counters.
 - Iteration 272 added direct `serde_json` test parsing for RPC responses and converted the head, health,
   RPC health, and block route checks from raw substring matching to typed JSON field assertions.
+- Iteration 273 reused parsed RPC JSON assertions for the current-job and job-lookup routes, checking
+  exact job IDs, primitive types, tensor dimensions, training shapes, and deadlines.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

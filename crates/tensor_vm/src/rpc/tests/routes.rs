@@ -121,14 +121,44 @@ fn node_rpc_serves_current_jobs_and_job_lookup() {
         body: Vec::new(),
     });
     assert_eq!(current.status, 200);
-    assert!(current.body.contains("\"primitive_type\":\"tensor_op\""));
-    assert!(
-        current
-            .body
-            .contains("\"primitive_type\":\"linear_training_step\"")
+    let current = response_json(&current);
+    let jobs = current["jobs"]
+        .as_array()
+        .expect("current jobs response must contain jobs array");
+    assert_eq!(jobs.len(), 2);
+    let current_tensor_job = jobs
+        .iter()
+        .find(|job| job["primitive_type"].as_str() == Some("tensor_op"))
+        .expect("current jobs response must contain tensor op job");
+    let current_linear_job = jobs
+        .iter()
+        .find(|job| job["primitive_type"].as_str() == Some("linear_training_step"))
+        .expect("current jobs response must contain linear training job");
+    let tensor_job_id = hex(&job.job_id);
+    let linear_job_id = hex(&linear_job.job_id);
+    assert_eq!(
+        current_tensor_job["job_id"].as_str(),
+        Some(tensor_job_id.as_str())
     );
-    assert!(current.body.contains("\"m\":4"));
-    assert!(current.body.contains("\"input_shape\":[3,2]"));
+    assert_eq!(current_tensor_job["m"].as_u64(), Some(4));
+    assert_eq!(current_tensor_job["k"].as_u64(), Some(5));
+    assert_eq!(current_tensor_job["n"].as_u64(), Some(6));
+    assert_eq!(current_tensor_job["deadline_block"].as_u64(), Some(20));
+    assert_eq!(
+        current_linear_job["job_id"].as_str(),
+        Some(linear_job_id.as_str())
+    );
+    assert_eq!(current_linear_job["step"].as_u64(), Some(7));
+    assert_eq!(current_linear_job["input_shape"], serde_json::json!([3, 2]));
+    assert_eq!(
+        current_linear_job["weight_shape"],
+        serde_json::json!([2, 2])
+    );
+    assert_eq!(
+        current_linear_job["target_shape"],
+        serde_json::json!([3, 2])
+    );
+    assert_eq!(current_linear_job["deadline_block"].as_u64(), Some(30));
 
     let response = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -136,7 +166,10 @@ fn node_rpc_serves_current_jobs_and_job_lookup() {
         body: Vec::new(),
     });
     assert_eq!(response.status, 200);
-    assert!(response.body.contains("\"deadline_block\":20"));
+    let response = response_json(&response);
+    assert_eq!(response["job_id"].as_str(), Some(tensor_job_id.as_str()));
+    assert_eq!(response["primitive_type"].as_str(), Some("tensor_op"));
+    assert_eq!(response["deadline_block"].as_u64(), Some(20));
 
     let response = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -144,7 +177,13 @@ fn node_rpc_serves_current_jobs_and_job_lookup() {
         body: Vec::new(),
     });
     assert_eq!(response.status, 200);
-    assert!(response.body.contains("\"step\":7"));
+    let response = response_json(&response);
+    assert_eq!(response["job_id"].as_str(), Some(linear_job_id.as_str()));
+    assert_eq!(
+        response["primitive_type"].as_str(),
+        Some("linear_training_step")
+    );
+    assert_eq!(response["step"].as_u64(), Some(7));
 }
 
 #[test]
