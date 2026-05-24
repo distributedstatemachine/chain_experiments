@@ -749,6 +749,9 @@ spaghetti around.
   and evidence command list, replacing another pair of runbook substring inventories.
 - Iteration 297 converted the public deployment README scaffold-artifact and public-route checks to
   exact trimmed-line assertions, leaving only prose/operator-flow inventories in that test.
+- Iteration 298 removed the test-only hand-written CLI description mirror, added direct Clap help
+  coverage for the `tvmd` command tree and retired top-level families, and made the binary execute through
+  the parsed Clap command object instead of extracting a command for a separate call.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

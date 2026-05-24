@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::cli::{
     EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
-    TestnetCommand, TvmdCommand, ValidatorCommand, execute_public_evidence_command,
+    TestnetCommand, TvmdCli, TvmdCommand, ValidatorCommand, execute_public_evidence_command,
     validate_public_evidence_manifest, validate_public_testnet_preflight_manifest,
 };
 
@@ -16,6 +16,18 @@ use super::{
     run_miner_service, run_proposer_service, run_validator_service, seed_local_testnet,
     serve_service, service_block_status, service_status, verify_local_cpu_store,
 };
+
+impl TvmdCli {
+    pub fn execute(&self) -> std::result::Result<String, String> {
+        self.command.execute()
+    }
+}
+
+impl TvmdCommand {
+    pub fn execute(&self) -> std::result::Result<String, String> {
+        execute_tvmd_command(self)
+    }
+}
 
 pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {

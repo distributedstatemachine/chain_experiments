@@ -2,14 +2,6 @@ use super::*;
 
 #[test]
 fn execute_command_fixture_reports_public_evidence_outputs() {
-    let public_command = CommandFixture::PublicEvidenceValidate {
-        manifest: "evidence.txt".to_owned(),
-    };
-    assert_eq!(
-        execute_command_fixture(&public_command).unwrap(),
-        describe_command_fixture(&public_command)
-    );
-
     let publication = execute_command_fixture(&CommandFixture::PublicEvidencePublication {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),

@@ -9,49 +9,25 @@ use crate::testnet::sign_public_evidence_record;
 mod arguments;
 mod command_values;
 mod commands;
-#[cfg(test)]
-mod descriptions;
 mod local_commands;
-#[cfg(test)]
-mod local_description_values;
-#[cfg(test)]
-mod local_descriptions;
 #[cfg(test)]
 mod local_execution;
 #[cfg(test)]
 mod local_execution_values;
 #[cfg(test)]
-mod local_role_descriptions;
-#[cfg(test)]
 mod local_role_execution;
-#[cfg(test)]
-mod local_service_descriptions;
 #[cfg(test)]
 mod local_service_execution;
 mod network_evidence;
 mod network_observation;
 mod node_evidence;
 mod public_evidence_commands;
-#[cfg(test)]
-mod public_evidence_descriptions;
 mod public_evidence_execution;
-#[cfg(test)]
-mod public_evidence_network_descriptions;
 mod public_evidence_network_execution;
-#[cfg(test)]
-mod public_evidence_node_descriptions;
 mod public_evidence_node_execution;
-#[cfg(test)]
-mod public_evidence_publication_descriptions;
 mod public_evidence_publication_execution;
-#[cfg(test)]
-mod public_evidence_record_descriptions;
 mod public_evidence_record_execution;
-#[cfg(test)]
-mod public_evidence_run_window_descriptions;
 mod public_evidence_run_window_execution;
-#[cfg(test)]
-mod public_evidence_service_descriptions;
 mod public_evidence_service_execution;
 mod publication_evidence;
 mod record_evidence;
@@ -80,8 +56,6 @@ pub use commands::{
     ServicePeerCommand, ServiceReadinessArgs, ServiceRuntimeArgs, ServiceServeArgs, StakeArgs,
     TestnetCommand, TvmdCli, TvmdCommand, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
 };
-#[cfg(test)]
-pub use descriptions::describe_cli_command;
 #[cfg(test)]
 use network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,

@@ -266,14 +266,12 @@ pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error:
             super::local_execution::execute_local_cli_command(&cli_command)
         }
         super::TvmdCommand::Evidence(super::EvidenceCommand::Validate(_)) => {
-            Ok(describe_command_fixture(command))
+            Err(crate::error::TvmError::InvalidReceipt(
+                "evidence validate reads manifests through the app dispatcher",
+            ))
         }
         super::TvmdCommand::Evidence(command) => super::execute_public_evidence_command(command),
     }
-}
-
-pub(super) fn describe_command_fixture(command: &CommandFixture) -> String {
-    super::describe_cli_command(&command.clone().into_cli_command())
 }
 
 pub(super) fn path_arg(value: String) -> PathBuf {
