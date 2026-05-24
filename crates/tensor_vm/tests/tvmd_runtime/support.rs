@@ -19,17 +19,11 @@ pub(super) fn insert_bundle_tensors(node: &mut RpcNode, bundle: &RoleReceiptBund
 }
 
 pub(super) fn report_field<'a>(report: &'a str, key: &str) -> &'a str {
-    report
-        .lines()
-        .find_map(|line| line.strip_prefix(key))
-        .and_then(|value| value.strip_prefix('='))
-        .unwrap_or_else(|| panic!("expected report field {key}"))
+    super::report_fields::report_value(report, key)
 }
 
 pub(super) fn report_u64(report: &str, key: &str) -> u64 {
-    report_field(report, key)
-        .parse()
-        .unwrap_or_else(|_| panic!("expected numeric report field {key}"))
+    super::report_fields::report_u64(report, key)
 }
 
 pub(super) fn http_status_line(response: &str) -> &str {

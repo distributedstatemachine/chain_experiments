@@ -47,6 +47,9 @@ mod runtime_state;
 #[path = "tvmd_runtime/service_commands.rs"]
 mod service_commands;
 
+#[path = "support/report_fields.rs"]
+mod report_fields;
+
 #[path = "tvmd_runtime/support.rs"]
 mod support;
 use support::{

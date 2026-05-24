@@ -8,6 +8,12 @@ use libp2p::PeerId;
 use tensor_vm::hash::hex;
 use tensor_vm::types::address;
 
+#[path = "support/report_fields.rs"]
+mod report_fields;
+use report_fields::{
+    report_u64 as stdout_u64, report_value as stdout_value, report_values as stdout_values,
+};
+
 fn workspace_root() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -180,28 +186,6 @@ fn json_positive_field_count(json: &serde_json::Value, key: &str) -> usize {
             .sum(),
         _ => 0,
     }
-}
-
-fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
-    stdout
-        .lines()
-        .find_map(|line| line.strip_prefix(key))
-        .and_then(|value| value.strip_prefix('='))
-        .expect("expected service stdout field")
-}
-
-fn stdout_values<'a>(stdout: &'a str, key: &str) -> Vec<&'a str> {
-    stdout
-        .lines()
-        .filter_map(|line| line.strip_prefix(key))
-        .filter_map(|value| value.strip_prefix('='))
-        .collect()
-}
-
-fn stdout_u64(stdout: &str, key: &str) -> u64 {
-    stdout_value(stdout, key)
-        .parse()
-        .expect("expected numeric service stdout field")
 }
 
 fn stdout_hex_hash<'a>(stdout: &'a str, key: &str) -> &'a str {

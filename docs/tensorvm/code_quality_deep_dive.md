@@ -795,6 +795,8 @@ spaghetti around.
   separate service-status file scanner and CLI service-log field loop used by network evidence generation.
 - Iteration 315 reused `KeyValueReport` in the crate-internal CLI report assertion helper, removing another
   bespoke `key=value` parser from local execution, manifest, and public-evidence report coverage.
+- Iteration 316 added a shared integration-test report-field parser for `tvmd_cli` and `tvmd_runtime`,
+  preserving repeated-field assertions while removing two more ad hoc stdout/status `key=value` scanners.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
