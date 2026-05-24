@@ -20,6 +20,7 @@ fail() {
 EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
 EXPECTED_RESTART_CHECKER_RETRY_LIMIT="$LOCAL_CPU_RESTART_CHECKER_RETRY_LIMIT"
 EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
+EXPECTED_CHECKER_RETRY_SLEEP_SECONDS="$LOCAL_CPU_CHECKER_RETRY_SLEEP_SECONDS"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
@@ -70,7 +71,7 @@ read_service_status() {
       return 0
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
   done
   return 1
 }
@@ -85,7 +86,7 @@ read_service_block() {
       return 0
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
   done
   return 1
 }
@@ -98,7 +99,7 @@ wait_service_ready() {
       return 0
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
   done
   return 1
 }
