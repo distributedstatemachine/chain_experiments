@@ -561,6 +561,8 @@ spaghetti around.
   keeping `chain/tests/blocks.rs` focused on block proposal, admission, finality, and canonical roots.
 - Iteration 219 moved proposer selection and validation-seed tests into `chain/tests/proposers.rs`,
   narrowing `chain/tests/blocks.rs` to block production, finality, vote admission, and root commitments.
+- Iteration 220 moved chain transaction application and reference-submission rejection tests into
+  `chain/tests/transactions.rs`, reducing boundary tests to account/job, parameter, root, and rejection edges.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
