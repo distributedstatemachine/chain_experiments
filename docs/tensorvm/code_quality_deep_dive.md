@@ -914,6 +914,8 @@ spaghetti around.
   topology policy script.
 - Iteration 371 moved the restart continuity checker's full local CPU check timeout into the shared
   topology policy script.
+- Iteration 372 moved the restart continuity checker's default restart service set into the shared
+  topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
