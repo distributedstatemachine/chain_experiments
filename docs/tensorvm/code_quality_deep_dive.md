@@ -337,6 +337,9 @@ spaghetti around.
 - Iteration 137 moved public-evidence service health/content command execution into
   `cli/public_evidence_service_execution.rs`, narrowing `cli/public_evidence_execution.rs` toward a
   command-family dispatcher.
+- Iteration 138 moved public-evidence record summary/artifact command execution into
+  `cli/public_evidence_record_execution.rs`, keeping record-root aggregation orchestration beside the
+  record command family instead of in the parent public-evidence dispatcher.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

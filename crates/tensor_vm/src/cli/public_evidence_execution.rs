@@ -8,12 +8,9 @@ use super::node_evidence::{
     node_heartbeat_evidence_line, node_heartbeat_evidence_line_from_file,
     operator_identity_attestation_evidence_line,
 };
+use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_service_execution::execute_public_evidence_service_command;
 use super::publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
-use super::record_evidence::{
-    aggregate_public_evidence_record_roots, public_evidence_record_roots_from_file,
-    record_artifact_evidence_line, record_summary_evidence_lines,
-};
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
 use crate::error::{Result, TvmError};
 
@@ -21,102 +18,11 @@ pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Resul
     if let Some(output) = execute_public_evidence_service_command(command) {
         return output;
     }
+    if let Some(output) = execute_public_evidence_record_command(command) {
+        return output;
+    }
 
     match command {
-        CliCommand::PublicEvidenceRecordSummary {
-            kind,
-            bundle_id,
-            manifest_signer,
-            record_root,
-            record_count,
-        } => record_summary_evidence_lines(
-            *kind,
-            *bundle_id,
-            *manifest_signer,
-            *record_root,
-            *record_count,
-        ),
-        CliCommand::PublicEvidenceRecordArtifact {
-            kind,
-            bundle_id,
-            manifest_signer,
-            artifact_uri,
-            record_root,
-            record_count,
-        } => record_artifact_evidence_line(
-            *kind,
-            *bundle_id,
-            *manifest_signer,
-            artifact_uri,
-            *record_root,
-            *record_count,
-        ),
-        CliCommand::PublicEvidenceRecordArtifactFromRoots {
-            kind,
-            bundle_id,
-            manifest_signer,
-            artifact_uri,
-            record_roots,
-        } => {
-            let record_root = aggregate_public_evidence_record_roots(*kind, record_roots)?;
-            record_artifact_evidence_line(
-                *kind,
-                *bundle_id,
-                *manifest_signer,
-                artifact_uri,
-                record_root,
-                record_roots.len() as u64,
-            )
-        }
-        CliCommand::PublicEvidenceRecordArtifactFromFile {
-            kind,
-            bundle_id,
-            manifest_signer,
-            artifact_uri,
-            record_file,
-        } => {
-            let record_roots = public_evidence_record_roots_from_file(*kind, record_file)?;
-            let record_root = aggregate_public_evidence_record_roots(*kind, &record_roots)?;
-            record_artifact_evidence_line(
-                *kind,
-                *bundle_id,
-                *manifest_signer,
-                artifact_uri,
-                record_root,
-                record_roots.len() as u64,
-            )
-        }
-        CliCommand::PublicEvidenceRecordSummaryFromRoots {
-            kind,
-            bundle_id,
-            manifest_signer,
-            record_roots,
-        } => {
-            let record_root = aggregate_public_evidence_record_roots(*kind, record_roots)?;
-            record_summary_evidence_lines(
-                *kind,
-                *bundle_id,
-                *manifest_signer,
-                record_root,
-                record_roots.len() as u64,
-            )
-        }
-        CliCommand::PublicEvidenceRecordSummaryFromFile {
-            kind,
-            bundle_id,
-            manifest_signer,
-            record_file,
-        } => {
-            let record_roots = public_evidence_record_roots_from_file(*kind, record_file)?;
-            let record_root = aggregate_public_evidence_record_roots(*kind, &record_roots)?;
-            record_summary_evidence_lines(
-                *kind,
-                *bundle_id,
-                *manifest_signer,
-                record_root,
-                record_roots.len() as u64,
-            )
-        }
         CliCommand::PublicEvidenceNetworkObservation {
             operator_id,
             peer_id,
