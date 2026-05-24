@@ -5,9 +5,9 @@ use super::node_evidence::{
     operator_identity_attestation_evidence_line,
 };
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
+use super::public_evidence_publication_execution::execute_public_evidence_publication_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_service_execution::execute_public_evidence_service_command;
-use super::publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
 use crate::error::Result;
 
@@ -21,34 +21,11 @@ pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Resul
     if let Some(output) = execute_public_evidence_network_command(command) {
         return output;
     }
+    if let Some(output) = execute_public_evidence_publication_command(command) {
+        return output;
+    }
 
     match command {
-        CliCommand::PublicEvidencePublication {
-            bundle_id,
-            public_uri,
-            manifest_signer,
-            manifest_signature_count,
-            independent_auditor_count,
-        } => publication_evidence_lines(
-            *bundle_id,
-            public_uri,
-            *manifest_signer,
-            *manifest_signature_count,
-            *independent_auditor_count,
-        ),
-        CliCommand::PublicEvidenceAuditorRecord {
-            bundle_id,
-            public_uri,
-            auditor_id,
-            audit_uri,
-            observed_at_unix_seconds,
-        } => auditor_record_evidence_line(
-            *bundle_id,
-            public_uri,
-            *auditor_id,
-            audit_uri,
-            *observed_at_unix_seconds,
-        ),
         CliCommand::PublicEvidenceRunWindow {
             bundle_id,
             manifest_signer,
