@@ -1106,6 +1106,9 @@ spaghetti around.
 - Iteration 452 split direct public record execution argument rejection coverage into
   `cli/tests/public_evidence_record_execution_rejections.rs`, leaving the original record rejection
   suite focused on Clap parse-time invalid argument shapes.
+- Iteration 453 split miner, validator, and proposer Clap parser coverage into
+  `cli/tests/local_role_parser.rs`, leaving the local parser suite focused on node, localnet,
+  defaulting, and local invalid-argument parsing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
