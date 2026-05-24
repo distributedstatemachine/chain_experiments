@@ -267,6 +267,9 @@ spaghetti around.
   `node.rs` is now a small public facade over the split node submodules.
 - Iteration 111 moved the large inline CLI test module into `cli/tests.rs`, shrinking `cli.rs`
   toward parser and reference-command code while preserving private helper coverage.
+- Iteration 112 extracted public network-observation address filtering into
+  `cli/network_observation.rs`, giving the public-evidence path a focused owner for routability
+  checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
