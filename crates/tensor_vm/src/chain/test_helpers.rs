@@ -59,6 +59,18 @@ impl Chain {
         Ok(())
     }
 
+    pub(crate) fn set_receipt_submission_window_for_testing(&mut self, window: u64) {
+        self.params.receipt_submission_window = window;
+    }
+
+    pub(crate) fn set_validators_per_job_for_testing(&mut self, validators_per_job: usize) {
+        self.params.freivalds.validators_per_job = validators_per_job;
+    }
+
+    pub(crate) fn set_replication_factor_for_testing(&mut self, replication_factor: usize) {
+        self.params.replication_factor = replication_factor;
+    }
+
     pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
         self.state.receipts.insert(receipt.receipt_id(), receipt);
     }

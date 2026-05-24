@@ -44,7 +44,7 @@ impl SyntheticLocalJobSource {
             chain
                 .state()
                 .height()
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         )
     }
 
@@ -69,7 +69,7 @@ impl SyntheticLocalJobSource {
             deadline_block: chain
                 .state()
                 .height()
-                .saturating_add(chain.params.receipt_submission_window),
+                .saturating_add(chain.params().receipt_submission_window),
         })
     }
 
@@ -149,7 +149,7 @@ impl JobScheduler {
         });
         validators.truncate(
             chain
-                .params
+                .params()
                 .freivalds
                 .validators_per_job
                 .min(validators.len()),
@@ -170,7 +170,7 @@ impl JobScheduler {
             hash_to_u128(&draw)
         });
 
-        let target = chain.params.replication_factor.min(candidates.len());
+        let target = chain.params().replication_factor.min(candidates.len());
         let mut miners = Vec::with_capacity(target);
         let mut selected_addresses = BTreeSet::new();
         let mut selected_operators = BTreeSet::new();
@@ -239,7 +239,7 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"synthetic-source"]);
         let mut chain = Chain::new(beacon);
         chain.set_position_for_testing(10, 7);
-        chain.params.receipt_submission_window = 13;
+        chain.set_receipt_submission_window_for_testing(13);
         let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
 
         let Some(JobState::TensorOp(job)) = source.next_job(&chain) else {
@@ -275,7 +275,7 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"synthetic-linear-source"]);
         let mut chain = Chain::new(beacon);
         chain.set_position_for_testing(11, 3);
-        chain.params.receipt_submission_window = 13;
+        chain.set_receipt_submission_window_for_testing(13);
         let mut source = SyntheticLocalJobSource::new(JobScheduler::with_small_shape((2, 3, 4)));
         let weights = SyntheticLocalJobSource::linear_training_weights();
 
@@ -312,7 +312,7 @@ mod tests {
         assert_eq!(first, second);
         assert_eq!(
             first.validators.len(),
-            chain.params.freivalds.validators_per_job
+            chain.params().freivalds.validators_per_job
         );
         assert_eq!(first.receipt_id, receipt);
     }
@@ -321,7 +321,7 @@ mod tests {
     fn validator_assignment_is_bound_to_receipt_id() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let mut chain = Chain::new(beacon);
-        chain.params.freivalds.validators_per_job = 4;
+        chain.set_validators_per_job_for_testing(4);
         for i in 0..32 {
             register_validator(&mut chain, address(format!("validator-{i}").as_bytes()));
         }
@@ -351,7 +351,7 @@ mod tests {
         for i in 0..10 {
             register_miner(&mut chain, address(format!("miner-{i}").as_bytes()));
         }
-        chain.params.replication_factor = 4;
+        chain.set_replication_factor_for_testing(4);
         let scheduler = JobScheduler::default();
         let job = hash_bytes(b"test", &[b"job"]);
         let first = scheduler.assign_miners(&chain, job, &beacon);
@@ -383,7 +383,7 @@ mod tests {
                 )
                 .unwrap();
         }
-        chain.params.replication_factor = 4;
+        chain.set_replication_factor_for_testing(4);
 
         let scheduler = JobScheduler::default();
         let job = hash_bytes(b"test", &[b"operator-separated-job"]);
@@ -412,7 +412,7 @@ mod tests {
                 )
                 .unwrap();
         }
-        chain.params.replication_factor = 3;
+        chain.set_replication_factor_for_testing(3);
 
         let scheduler = JobScheduler::default();
         let job = hash_bytes(b"test", &[b"fallback-job"]);

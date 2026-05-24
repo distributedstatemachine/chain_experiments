@@ -1004,6 +1004,8 @@ spaghetti around.
   `Chain.blocks` field reads, keeping profile/run evidence code behind the accessor boundary.
 - Iteration 414 moved synthetic localnet production code and its unit tests off direct
   `Chain.params`/`Chain.blocks` reads, leaving the module on the same accessor path.
+- Iteration 415 moved scheduler production reads onto `Chain::params()` and replaced scheduler
+  test parameter mutations with explicit crate-test-only `Chain` helper methods.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
