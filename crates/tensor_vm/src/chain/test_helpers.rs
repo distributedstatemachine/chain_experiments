@@ -116,4 +116,8 @@ impl Chain {
         self.state.rewards =
             RewardState::from_parts(self.state.rewards.balances().clone(), treasury);
     }
+
+    pub(crate) fn credit_reward_for_testing(&mut self, address: Address, amount: u64) {
+        self.state.rewards.credit(address, amount);
+    }
 }

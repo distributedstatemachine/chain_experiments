@@ -986,6 +986,8 @@ spaghetti around.
   mutation by adding explicit crate-test-only helpers for injected votes, receipts, and blocks.
 - Iteration 405 moved settlement orphan-attestation setup onto the crate-test-only `Chain`
   helper and switched adjacent settlement assertions to immutable state accessors.
+- Iteration 406 moved command and transaction reward-claim test setup off direct reward-state
+  mutation by adding a crate-test-only `Chain::credit_reward_for_testing` helper.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

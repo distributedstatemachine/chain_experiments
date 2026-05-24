@@ -19,8 +19,8 @@ fn chain_applies_register_transfer_and_claim_reward_transactions() {
             .unwrap(),
         vec![ChainEvent::ValidatorRegistered(validator)]
     );
-    assert!(chain.state.miners.contains_key(&miner));
-    assert!(chain.state.validators.contains_key(&validator));
+    assert!(chain.state().miners().contains_key(&miner));
+    assert!(chain.state().validators().contains_key(&validator));
 
     chain.credit_account(miner, 500);
     assert_eq!(
@@ -39,9 +39,12 @@ fn chain_applies_register_transfer_and_claim_reward_transactions() {
             amount: 125,
         }]
     );
-    assert_eq!(chain.state.accounts.get(&receiver).unwrap().balance, 125);
+    assert_eq!(
+        chain.state().accounts().get(&receiver).unwrap().balance,
+        125
+    );
 
-    chain.state.rewards.credit(miner, 42);
+    chain.credit_reward_for_testing(miner, 42);
     assert_eq!(
         chain
             .apply_transaction(None, Transaction::ClaimReward(miner))
@@ -51,8 +54,8 @@ fn chain_applies_register_transfer_and_claim_reward_transactions() {
             amount: 42,
         }]
     );
-    assert_eq!(chain.state.rewards.balance(&miner), 0);
-    assert_eq!(chain.state.accounts.get(&miner).unwrap().balance, 417);
+    assert_eq!(chain.state().rewards().balance(&miner), 0);
+    assert_eq!(chain.state().accounts().get(&miner).unwrap().balance, 417);
 }
 
 #[test]
