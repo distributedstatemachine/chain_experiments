@@ -582,6 +582,9 @@ spaghetti around.
 - Iteration 227 moved `tvmd` public-testnet preflight and public-evidence manifest integration tests into
   `tests/tvmd_cli/public_evidence.rs`, leaving `tests/tvmd_cli.rs` focused on local service and role-runtime
   process flows plus shared integration helpers.
+- Iteration 228 moved the `tvmd` service lifecycle integration test into
+  `tests/tvmd_cli/service_lifecycle.rs`, keeping service init/peer/readiness/serve/public-surface evidence
+  checks together while reducing the root `tvmd_cli.rs` integration harness to shared helpers and role flows.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
