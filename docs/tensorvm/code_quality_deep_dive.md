@@ -531,6 +531,8 @@ spaghetti around.
   facade centered on node state construction and public re-exports.
 - Iteration 204 moved `RpcNode` state, constructors, tensor registry access, and synthetic-round
   helpers into `rpc/node.rs`, reducing the facade to module wiring plus tests.
+- Iteration 205 moved core RPC route, mutation, malformed-request, and receipt/status tests into
+  `rpc/tests/routes.rs`, starting the RPC test split while keeping shared fixtures in the parent test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
