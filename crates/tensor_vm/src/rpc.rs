@@ -25,6 +25,7 @@ mod mutations;
 mod parse;
 mod read_routes;
 mod render;
+mod response;
 mod tensor_routes;
 mod types;
 mod websocket;
@@ -209,36 +210,6 @@ impl RpcNode {
             ("GET", ["tensor", "latest"]) => self.tensor_latest(),
             ("GET", ["jobs", job_id]) => self.job(job_id),
             _ => self.not_found("route not found"),
-        }
-    }
-
-    fn ok(&self, body: String) -> RpcResponse {
-        RpcResponse { status: 200, body }
-    }
-
-    fn accepted(&self) -> RpcResponse {
-        RpcResponse {
-            status: 202,
-            body: "{\"accepted\":true}".to_owned(),
-        }
-    }
-
-    fn bad_request(&self, message: &str) -> RpcResponse {
-        Self::response(400, message)
-    }
-
-    fn not_found(&self, message: &str) -> RpcResponse {
-        Self::response(404, message)
-    }
-
-    fn conflict(&self, message: &str) -> RpcResponse {
-        Self::response(409, message)
-    }
-
-    fn response(status: u16, message: &str) -> RpcResponse {
-        RpcResponse {
-            status,
-            body: format!("{{\"error\":\"{message}\"}}"),
         }
     }
 }

@@ -525,6 +525,8 @@ spaghetti around.
   longer depend on utility code living in the main RPC facade.
 - Iteration 201 moved RPC request/response structs into `rpc/types.rs` and re-exported them from
   the facade, preserving the public API while reducing root-module responsibility.
+- Iteration 202 moved shared RPC response constructors into `rpc/response.rs`, keeping status/body
+  formatting centralized without leaving helper plumbing in the facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
