@@ -282,6 +282,9 @@ spaghetti around.
   of the parent CLI module.
 - Iteration 117 extracted CLI public evidence publication and auditor record builders into
   `cli/publication_evidence.rs`, separating publication proof formatting from command dispatch.
+- Iteration 118 extracted CLI public run-window evidence formatting and observation parsing into
+  `cli/run_window_evidence.rs`, leaving the parent CLI module with only dispatch wiring for that
+  command family.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
