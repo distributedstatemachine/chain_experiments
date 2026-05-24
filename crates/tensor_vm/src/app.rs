@@ -1,6 +1,9 @@
 mod block_status;
 mod commands;
+mod network;
 mod runtime_config;
+mod runtime_network;
+mod runtime_production;
 mod runtime_services;
 mod runtime_status;
 mod runtime_status_snapshot;
@@ -12,11 +15,17 @@ pub use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
 };
+pub use network::{
+    ChainAnnouncementCheckpoint, chain_announcement_checkpoint, ingest_network_events,
+    produce_and_publish_synthetic_round, publish_new_chain_announcements,
+};
 pub use runtime_config::{
     RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, chain_profile_from_label,
     role_wallet_address, runtime_node_config, runtime_role_wallet_address_text,
     runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
+pub use runtime_network::ingest_network_once;
+pub use runtime_production::LocalProductionSchedule;
 pub use runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services};
 pub use runtime_status::{format_role_runtime_report, write_role_runtime_status};
 pub use runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};

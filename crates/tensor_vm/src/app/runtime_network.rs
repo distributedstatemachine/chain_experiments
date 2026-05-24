@@ -1,7 +1,7 @@
-use super::network::ingest_network_events;
-use tensor_vm::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+use super::ingest_network_events;
+use crate::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
-pub(super) fn ingest_network_once(
+pub fn ingest_network_once(
     store: &NodeStore,
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,

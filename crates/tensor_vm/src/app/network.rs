@@ -1,5 +1,4 @@
-use std::collections::BTreeSet;
-use tensor_vm::{
+use crate::{
     Chain, ChainProfile, NetworkEventIngest, PendingNetworkPayloads, RpcHttpServer,
     TensorVmLibp2pService,
     api::P2pMessage,
@@ -12,8 +11,9 @@ use tensor_vm::{
     },
     types::{Address, Hash},
 };
+use std::collections::BTreeSet;
 
-pub(super) fn ingest_network_events(
+pub fn ingest_network_events(
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,
     local_producer: bool,
@@ -48,7 +48,7 @@ impl NetworkEventContext for RuntimeNetworkEventContext<'_> {
     }
 }
 
-pub(super) fn produce_and_publish_synthetic_round(
+pub fn produce_and_publish_synthetic_round(
     server: &mut RpcHttpServer,
     p2p_service: &TensorVmLibp2pService,
     profile: &ChainProfile,
@@ -79,7 +79,7 @@ pub(super) fn produce_and_publish_synthetic_round(
 
 fn publish_block_announcements(
     p2p_service: &TensorVmLibp2pService,
-    block: &tensor_vm::chain::TensorBlock,
+    block: &crate::chain::TensorBlock,
 ) -> std::result::Result<(), String> {
     let block_hash = block.hash();
     p2p_service
@@ -100,14 +100,14 @@ fn publish_block_announcements(
         .map_err(|error| format!("failed to publish block hash gossip: {error}"))
 }
 
-pub(super) struct ChainAnnouncementCheckpoint {
+pub struct ChainAnnouncementCheckpoint {
     jobs: BTreeSet<Hash>,
     receipts: BTreeSet<Hash>,
     attestations: BTreeSet<Hash>,
     block_votes: BTreeSet<(Hash, Address)>,
 }
 
-pub(super) fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementCheckpoint {
+pub fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementCheckpoint {
     ChainAnnouncementCheckpoint {
         jobs: chain.state().jobs().keys().copied().collect(),
         receipts: chain.state().receipts().keys().copied().collect(),
@@ -116,7 +116,7 @@ pub(super) fn chain_announcement_checkpoint(chain: &Chain) -> ChainAnnouncementC
     }
 }
 
-pub(super) fn publish_new_chain_announcements(
+pub fn publish_new_chain_announcements(
     p2p_service: &TensorVmLibp2pService,
     before: &ChainAnnouncementCheckpoint,
     chain: &Chain,

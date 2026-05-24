@@ -1,5 +1,4 @@
 use super::{
-    network::{chain_announcement_checkpoint, publish_new_chain_announcements},
     validator_fetch::fetch_validator_role_missing_tensors,
     validator_role::{
         submit_validator_role_attestation, submit_validator_role_block_vote,
@@ -8,7 +7,10 @@ use super::{
 };
 use tensor_vm::{
     NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
-    app::{ServiceRuntimeConfig, runtime_role_wallet_registration},
+    app::{
+        ServiceRuntimeConfig, chain_announcement_checkpoint, publish_new_chain_announcements,
+        runtime_role_wallet_registration,
+    },
 };
 
 pub(super) fn tick_validator_role_work_once(

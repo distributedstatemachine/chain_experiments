@@ -613,6 +613,9 @@ spaghetti around.
 - Iteration 237 moved runtime service startup, including node-store loading, libp2p launch, RPC binding,
   and p2p report metadata, into the library-owned `app` module so the runtime loop consumes an app startup
   API instead of another binary-private service module.
+- Iteration 238 moved runtime network ingestion, p2p announcement publishing, and scheduled local synthetic
+  production helpers into the library-owned `app` module, leaving role workers and the runtime loop to call
+  app-level network/runtime helpers instead of binary-private network modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

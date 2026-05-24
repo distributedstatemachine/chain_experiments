@@ -15,20 +15,11 @@ use tensor_vm::{
 #[path = "main/miner_role.rs"]
 mod miner_role;
 
-#[path = "main/network.rs"]
-mod network;
-
 #[path = "main/runtime.rs"]
 mod runtime;
 
 #[path = "main/runtime_loop.rs"]
 mod runtime_loop;
-
-#[path = "main/runtime_network.rs"]
-mod runtime_network;
-
-#[path = "main/runtime_production.rs"]
-mod runtime_production;
 
 #[path = "main/runtime_rpc.rs"]
 mod runtime_rpc;

@@ -1,22 +1,22 @@
 use std::time::{Duration, Instant};
 
-use super::network::produce_and_publish_synthetic_round;
-use tensor_vm::{ChainProfile, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+use super::produce_and_publish_synthetic_round;
+use crate::{ChainProfile, NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
 
-pub(super) struct LocalProductionSchedule {
+pub struct LocalProductionSchedule {
     block_interval: Option<Duration>,
     next_block_at: Option<Instant>,
 }
 
 impl LocalProductionSchedule {
-    pub(super) fn new(block_interval: Option<Duration>) -> Self {
+    pub fn new(block_interval: Option<Duration>) -> Self {
         Self {
             block_interval,
             next_block_at: block_interval.map(|interval| Instant::now() + interval),
         }
     }
 
-    pub(super) fn produce_if_due(
+    pub fn produce_if_due(
         &mut self,
         profile: &ChainProfile,
         local_producer: bool,
