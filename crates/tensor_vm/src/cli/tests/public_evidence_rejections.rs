@@ -261,47 +261,34 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
     assert!(parse_hash_argument("12").is_err());
     assert!(parse_hash_argument(&"g".repeat(64)).is_err());
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
-            role: PublicNodeRole::Miner,
-            address: [0; 32],
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            signed_heartbeat_count: 10,
-        })
+        execute_node_heartbeat(
+            [0; 32],
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            0,
+            9,
+            10
+        )
+        .is_err()
+    );
+    assert!(execute_node_heartbeat(address(b"miner-a"), [0; 32], 0, 9, 10).is_err());
+    assert!(
+        execute_node_heartbeat(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            10,
+            9,
+            10,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: [0; 32],
-            first_seen_block: 0,
-            last_seen_block: 9,
-            signed_heartbeat_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            first_seen_block: 10,
-            last_seen_block: 9,
-            signed_heartbeat_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            signed_heartbeat_count: 0,
-        })
+        execute_node_heartbeat(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            0,
+            9,
+            0,
+        )
         .is_err()
     );
     let miner_address_hex = manifest_address(b"miner-a");
@@ -348,68 +335,55 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         );
     }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeatFromFile {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            heartbeat_file: std::env::temp_dir()
-                .join(format!(
-                    "missing-tensor-vm-node-heartbeat-{}.records",
-                    std::process::id()
-                ))
-                .to_string_lossy()
-                .into_owned(),
-        })
+        execute_node_heartbeat_file(std::env::temp_dir().join(format!(
+            "missing-tensor-vm-node-heartbeat-{}.records",
+            std::process::id()
+        )))
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: [0; 32],
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-        })
+        execute_operator_attestation(
+            [0; 32],
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            "https://operators.tensorvm.net/miner-a",
+            1_700_000_000,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: [0; 32],
-            identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-        })
+        execute_operator_attestation(
+            address(b"miner-a"),
+            [0; 32],
+            "https://operators.tensorvm.net/miner-a",
+            1_700_000_000,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            identity_uri: "https://localhost/miner-a".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-        })
+        execute_operator_attestation(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            "https://localhost/miner-a",
+            1_700_000_000,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            identity_uri: "https://operators.tensorvm.net/".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-        })
+        execute_operator_attestation(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            "https://operators.tensorvm.net/",
+            1_700_000_000,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
-            identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-            observed_at_unix_seconds: 0,
-        })
+        execute_operator_attestation(
+            address(b"miner-a"),
+            hash_bytes(b"test", &[b"miner-a-operator"]),
+            "https://operators.tensorvm.net/miner-a",
+            0,
+        )
         .is_err()
     );
     assert!(
@@ -680,4 +654,51 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         })
         .is_err()
     );
+}
+
+fn execute_node_heartbeat(
+    address: [u8; 32],
+    operator_id: [u8; 32],
+    first_block: u64,
+    last_block: u64,
+    heartbeat_count: u64,
+) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
+        NodeHeartbeatArgs {
+            role: node_role_arg(PublicNodeRole::Miner),
+            address: address_arg(address),
+            operator_id: hash_arg(operator_id),
+            first_block,
+            last_block,
+            heartbeat_count,
+        },
+    )))
+}
+
+fn execute_node_heartbeat_file(heartbeat_file: std::path::PathBuf) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::HeartbeatFile(
+        NodeHeartbeatFromFileArgs {
+            role: node_role_arg(PublicNodeRole::Miner),
+            address: address_arg(address(b"miner-a")),
+            operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+            heartbeat_file,
+        },
+    )))
+}
+
+fn execute_operator_attestation(
+    address: [u8; 32],
+    operator_id: [u8; 32],
+    identity_uri: &str,
+    observed_at: u64,
+) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Node(
+        EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
+            role: node_role_arg(PublicNodeRole::Miner),
+            address: address_arg(address),
+            operator_id: hash_arg(operator_id),
+            identity_uri: identity_uri.to_owned(),
+            observed_at,
+        }),
+    ))
 }

@@ -99,27 +99,6 @@ pub(super) enum EvidenceFixture {
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
     },
-    NodeHeartbeat {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        signed_heartbeat_count: u64,
-    },
-    NodeHeartbeatFromFile {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        heartbeat_file: String,
-    },
-    OperatorAttestation {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        identity_uri: String,
-        observed_at_unix_seconds: u64,
-    },
 }
 
 pub(super) fn execute_evidence_fixture(command: &EvidenceFixture) -> crate::error::Result<String> {
@@ -355,51 +334,6 @@ impl EvidenceFixture {
                     request_timeout_seconds,
                     max_concurrent_streams,
                     idle_timeout_seconds: idle_connection_timeout_seconds,
-                }),
-            )),
-            Self::NodeHeartbeat {
-                role,
-                address,
-                operator_id,
-                first_seen_block,
-                last_seen_block,
-                signed_heartbeat_count,
-            } => public_evidence_command(EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
-                NodeHeartbeatArgs {
-                    role: node_role_arg(role),
-                    address: address_arg(address),
-                    operator_id: hash_arg(operator_id),
-                    first_block: first_seen_block,
-                    last_block: last_seen_block,
-                    heartbeat_count: signed_heartbeat_count,
-                },
-            ))),
-            Self::NodeHeartbeatFromFile {
-                role,
-                address,
-                operator_id,
-                heartbeat_file,
-            } => public_evidence_command(EvidenceCommand::Node(
-                EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
-                    role: node_role_arg(role),
-                    address: address_arg(address),
-                    operator_id: hash_arg(operator_id),
-                    heartbeat_file: path_arg(heartbeat_file),
-                }),
-            )),
-            Self::OperatorAttestation {
-                role,
-                address,
-                operator_id,
-                identity_uri,
-                observed_at_unix_seconds,
-            } => public_evidence_command(EvidenceCommand::Node(
-                EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-                    role: node_role_arg(role),
-                    address: address_arg(address),
-                    operator_id: hash_arg(operator_id),
-                    identity_uri,
-                    observed_at: observed_at_unix_seconds,
                 }),
             )),
         }

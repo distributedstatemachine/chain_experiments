@@ -965,6 +965,9 @@ spaghetti around.
   `EvidenceCommand` execution and removed the now-dead publication fixture variants.
 - Iteration 395 moved public run-window rejection tests from `EvidenceFixture` to direct
   `EvidenceCommand` execution and removed the now-dead run-window fixture variants.
+- Iteration 396 moved public node heartbeat and operator-attestation rejection tests from
+  `EvidenceFixture` to direct `EvidenceCommand` execution and removed the now-dead node fixture
+  variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
