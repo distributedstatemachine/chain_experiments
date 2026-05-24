@@ -1,4 +1,5 @@
 use super::{RpcGateway, RpcNode, RpcRequest, RpcResponse};
+use crate::types::hex_nibble_value;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
@@ -286,8 +287,10 @@ fn percent_decode(value: &str) -> String {
     while index < bytes.len() {
         if bytes[index] == b'%'
             && index + 2 < bytes.len()
-            && let (Some(high), Some(low)) =
-                (hex_nibble(bytes[index + 1]), hex_nibble(bytes[index + 2]))
+            && let (Some(high), Some(low)) = (
+                hex_nibble_value(bytes[index + 1]),
+                hex_nibble_value(bytes[index + 2]),
+            )
         {
             out.push((high << 4) | low);
             index += 3;
@@ -300,13 +303,4 @@ fn percent_decode(value: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
-}
-
-fn hex_nibble(value: u8) -> Option<u8> {
-    match value {
-        b'0'..=b'9' => Some(value - b'0'),
-        b'a'..=b'f' => Some(value - b'a' + 10),
-        b'A'..=b'F' => Some(value - b'A' + 10),
-        _ => None,
-    }
 }

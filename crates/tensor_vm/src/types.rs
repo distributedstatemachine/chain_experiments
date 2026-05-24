@@ -53,13 +53,17 @@ fn parse_hex_into(value: &str, out: &mut [u8]) -> std::result::Result<(), HexByt
     Ok(())
 }
 
-fn parse_hex_nibble(value: u8) -> std::result::Result<u8, HexBytesParseError> {
+pub(crate) fn hex_nibble_value(value: u8) -> Option<u8> {
     match value {
-        b'0'..=b'9' => Ok(value - b'0'),
-        b'a'..=b'f' => Ok(value - b'a' + 10),
-        b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(HexBytesParseError::InvalidHex),
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        b'A'..=b'F' => Some(value - b'A' + 10),
+        _ => None,
     }
+}
+
+fn parse_hex_nibble(value: u8) -> std::result::Result<u8, HexBytesParseError> {
+    hex_nibble_value(value).ok_or(HexBytesParseError::InvalidHex)
 }
 
 pub fn hash_bytes(domain: &[u8], parts: &[&[u8]]) -> Hash {
@@ -152,5 +156,14 @@ mod tests {
         assert_eq!(parse_hex_bytes("0x"), Err(HexBytesParseError::Empty));
         assert_eq!(parse_hex_bytes("abc"), Err(HexBytesParseError::OddLength));
         assert_eq!(parse_hex_bytes("00xz"), Err(HexBytesParseError::InvalidHex));
+    }
+
+    #[test]
+    fn hex_nibble_parser_accepts_digit_and_letter_values() {
+        assert_eq!(hex_nibble_value(b'0'), Some(0));
+        assert_eq!(hex_nibble_value(b'9'), Some(9));
+        assert_eq!(hex_nibble_value(b'a'), Some(10));
+        assert_eq!(hex_nibble_value(b'F'), Some(15));
+        assert_eq!(hex_nibble_value(b'z'), None);
     }
 }

@@ -813,6 +813,8 @@ spaghetti around.
   manifest parsing as domain-specific error wrappers instead of maintaining parallel 32-byte nibble loops.
 - Iteration 323 moved CLI `--content-hex` byte decoding onto the same typed hex parser utilities, so
   fixed hashes and arbitrary byte arguments no longer maintain separate nibble decoders.
+- Iteration 324 reused the shared hex nibble decoder from RPC query-token percent decoding, leaving URL
+  parsing local while eliminating the last separate hex digit lookup table.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
