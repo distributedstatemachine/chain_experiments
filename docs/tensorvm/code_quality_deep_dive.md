@@ -741,6 +741,8 @@ spaghetti around.
   assertions to exact shell logical lines, leaving the remaining inventory focused on operator status.
 - Iteration 293 added generated exact assertions for local CPU check script `status_value` reads and
   replaced operator role/runtime readiness fragments with typed status-field checks.
+- Iteration 294 replaced the final local CPU check script substring inventory with exact block-status,
+  convergence, network-evidence, and ready-report shell-line assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
