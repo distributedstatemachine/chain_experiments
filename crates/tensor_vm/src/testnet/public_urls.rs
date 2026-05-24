@@ -3,15 +3,11 @@ use libp2p::multiaddr::Protocol;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub(super) fn public_https_host(url: &str) -> Option<&str> {
-    let rest = public_https_url_rest(url)?;
-    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
-    public_https_authority_host(&rest[..authority_end])
+    public_https_authority_host(public_https_authority_text(url)?)
 }
 
 fn public_https_authority(url: &str) -> Option<(&str, Option<u16>)> {
-    let rest = public_https_url_rest(url)?;
-    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
-    public_https_authority_parts(&rest[..authority_end])
+    public_https_authority_parts(public_https_authority_text(url)?)
 }
 
 fn public_https_url_rest(url: &str) -> Option<&str> {
@@ -22,6 +18,12 @@ fn public_https_url_rest(url: &str) -> Option<&str> {
         return None;
     }
     url.strip_prefix("https://")
+}
+
+fn public_https_authority_text(url: &str) -> Option<&str> {
+    let rest = public_https_url_rest(url)?;
+    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    Some(&rest[..authority_end])
 }
 
 fn public_https_authority_host(authority: &str) -> Option<&str> {

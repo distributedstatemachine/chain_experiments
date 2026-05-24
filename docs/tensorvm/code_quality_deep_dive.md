@@ -822,6 +822,8 @@ spaghetti around.
 - Iteration 327 moved `tvmd` hex hash, address, identity-seed, and byte payload CLI values onto typed
   Clap `FromStr` wrappers, keeping the Clap command tree as the argument boundary without resurrecting
   retired top-level command families.
+- Iteration 328 centralized HTTPS authority slicing for public URL validation, so host extraction and
+  authority comparison share the same scheme, control-character, and path-boundary handling.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
