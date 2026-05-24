@@ -33,6 +33,8 @@ EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS"
 EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR"
 EXPECTED_LIVE_RECEIPT_QUERY_LIMIT="$LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT"
 EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH"
+EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT"
+EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -250,7 +252,7 @@ print(count)
 read_service_status() {
   service="$1"
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
+  while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
     if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
@@ -265,7 +267,7 @@ read_service_block() {
   service="$1"
   height="$2"
   attempt=0
-  while [ "$attempt" -lt 30 ]; do
+  while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
     if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
@@ -423,7 +425,7 @@ LIVE_ATTESTED_RECEIPT_COUNT=0
 LIVE_TENSOR_OP_RECEIPT_COUNT=0
 LIVE_LINEAR_TRAINING_RECEIPT_COUNT=0
 attempt=0
-while [ "$attempt" -lt 30 ]; do
+while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
   LIVE_CHAIN_HEAD=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
   LIVE_HEIGHT=$(json_number height "$LIVE_CHAIN_HEAD")
   LIVE_BLOCK_COUNT=$(json_number block_count "$LIVE_CHAIN_HEAD")
@@ -607,7 +609,7 @@ ALL_OPERATOR_NETWORK_HEAD_HEIGHT=""
 ALL_OPERATOR_NETWORK_HEAD_HASH=""
 ALL_OPERATOR_NETWORK_STATE_ROOT=""
 attempt=0
-while [ "$attempt" -lt 30 ]; do
+while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
   TARGET_STATUS_RAW=$(read_service_status "$EXPECTED_NETWORK_OBSERVER_SERVICE") \
     || fail "could not read $EXPECTED_NETWORK_OBSERVER_SERVICE network-observed service status"
   TARGET_STATUS="$TARGET_STATUS_RAW"
@@ -663,7 +665,7 @@ ALL_OPERATOR_COMMON_HEAD_HEIGHT=0
 ALL_OPERATOR_COMMON_HEAD_HASH=""
 CONVERGED_OPERATOR_COUNT=0
 attempt=0
-while [ "$attempt" -lt 60 ]; do
+while [ "$attempt" -lt "$EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT" ]; do
   CONVERGED_OPERATOR_COUNT=0
   ALL_OPERATOR_MIN_HEIGHT=""
   ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH=""

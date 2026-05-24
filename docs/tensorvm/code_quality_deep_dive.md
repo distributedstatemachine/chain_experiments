@@ -897,6 +897,8 @@ spaghetti around.
   policy script.
 - Iteration 361 moved the local CPU checker's useful-PoW block scan depth into the shared topology
   policy script.
+- Iteration 362 moved the local CPU checker's general retry and all-operator convergence retry limits
+  into the shared topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

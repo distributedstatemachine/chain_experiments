@@ -476,6 +476,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR=5"#,
             r#"LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT=500"#,
             r#"LOCAL_CPU_BLOCK_SCAN_DEPTH=40"#,
+            r#"LOCAL_CPU_CHECKER_RETRY_LIMIT=30"#,
+            r#"LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT=60"#,
         ],
     );
 
@@ -501,6 +503,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR""#,
             r#"EXPECTED_LIVE_RECEIPT_QUERY_LIMIT="$LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT""#,
             r#"EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH""#,
+            r#"EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT""#,
+            r#"EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT""#,
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
             r#"require_command sort"#,
@@ -606,6 +610,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"TARGET_STATUS_RAW=$(read_service_status miner-01) || fail "could not read miner-01 network-observed service status""#,
             r#"if BLOCK_RAW=$(read_service_block miner-00 "$BLOCK_SCAN_HEIGHT"); then"#,
             r#"BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))"#,
+            r#"while [ "$attempt" -lt 30 ]; do"#,
+            r#"while [ "$attempt" -lt 60 ]; do"#,
             r#"if NETWORK_BLOCK_RAW=$(read_service_block miner-01 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then"#,
             r#"[ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2""#,
             r#"[ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks""#,
@@ -1050,6 +1056,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &[
             r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
             r#"BLOCK_SCAN_START=$((LIVE_HEIGHT - EXPECTED_BLOCK_SCAN_DEPTH))"#,
+            r#"while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do"#,
+            r#"while [ "$attempt" -lt "$EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT" ]; do"#,
             r#"if BLOCK_RAW=$(read_service_block "$EXPECTED_BOOTSTRAP_SERVICE" "$BLOCK_SCAN_HEIGHT"); then"#,
             r#"if [ "$BLOCK_FINALIZED" = "true" ] && [ "$BLOCK_VALIDATION" = "useful_verification_pow" ] && [ "$BLOCK_POW_VALID" = "true" ] && [ -n "$BLOCK_NONCE" ] && [ -n "$BLOCK_DIFFICULTY_TARGET" ] && [ -n "$BLOCK_POW_HASH" ]; then"#,
             r#"USEFUL_POW_BLOCK_EVIDENCE=true"#,
