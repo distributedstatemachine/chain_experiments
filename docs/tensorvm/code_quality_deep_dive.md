@@ -806,6 +806,9 @@ spaghetti around.
   removing another one-off `KEY=value` scanner from the Compose artifact test.
 - Iteration 320 added a shared integration-test comma-record parser and moved `tvmd_cli` service,
   network, and supporting-record evidence assertions off inline `split(',')` helpers.
+- Iteration 321 routed crate-internal CLI evidence comma-record assertions through the same exact
+  comma-field parser used by evidence readers, removing the last local `split(',')` helper from CLI
+  report tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

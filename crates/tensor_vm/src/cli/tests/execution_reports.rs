@@ -1,3 +1,4 @@
+use super::super::arguments::exact_comma_fields;
 use super::*;
 
 #[test]
@@ -591,11 +592,6 @@ fn comma_record_fields<'a>(line: &'a str, prefix: &str, expected_len: usize) -> 
     let record = line
         .strip_prefix(prefix)
         .unwrap_or_else(|| panic!("record missing prefix {prefix:?}: {line}"));
-    let fields = record.split(',').collect::<Vec<_>>();
-    assert_eq!(
-        fields.len(),
-        expected_len,
-        "unexpected field count for {prefix:?}: {line}"
-    );
-    fields
+    exact_comma_fields(record, expected_len, "invalid comma record")
+        .unwrap_or_else(|error| panic!("unexpected comma record for {prefix:?}: {line}: {error}"))
 }
