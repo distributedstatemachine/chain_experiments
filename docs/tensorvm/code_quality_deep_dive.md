@@ -670,6 +670,8 @@ spaghetti around.
   runtime report assertions from substring checks to field-level expectations.
 - Iteration 258 reused the parsed CLI report helper in manifest report tests, replacing another
   substring-heavy status assertion surface with explicit field checks.
+- Iteration 259 reused the parsed CLI report helper for CUDA miner readiness assertions, shrinking the
+  remaining generated status substring checks in local CLI validation coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

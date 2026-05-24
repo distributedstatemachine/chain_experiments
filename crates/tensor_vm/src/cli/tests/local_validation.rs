@@ -22,11 +22,19 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
         let device_count = crate::runtime::cuda_device_count().unwrap_or(0);
         if device_count > 0 {
             let report = execute_command_fixture(&cuda_start).unwrap();
-            assert!(report.contains("device_backend=cuda"));
-            assert!(report.contains("gpu_backend_ready=true"));
-            assert!(report.contains("cuda_kernels_compiled=true"));
-            assert!(report.contains("cuda_device_index=0"));
-            assert!(report.contains(&format!("cuda_device_count={device_count}")));
+            let device_count_field = device_count.to_string();
+            super::assert_report_fields(
+                &report,
+                &[
+                    ("command", "miner_start"),
+                    ("device", "cuda:0"),
+                    ("device_backend", "cuda"),
+                    ("gpu_backend_ready", "true"),
+                    ("cuda_kernels_compiled", "true"),
+                    ("cuda_device_index", "0"),
+                    ("cuda_device_count", device_count_field.as_str()),
+                ],
+            );
         }
         assert!(
             execute_command_fixture(&CommandFixture::MinerStart {
