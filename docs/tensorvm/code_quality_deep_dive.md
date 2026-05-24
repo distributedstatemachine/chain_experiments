@@ -1113,6 +1113,9 @@ spaghetti around.
   leaving the local role parser suite focused on validator and proposer command shapes.
 - Iteration 455 split validator Clap parser coverage into `cli/tests/local_validator_parser.rs`,
   leaving the local role parser suite focused on proposer command shapes.
+- Iteration 456 split public service Clap parser rejection coverage into
+  `cli/tests/public_evidence_service_parser_rejections.rs`, leaving the service rejection suite focused
+  on execution validation and observation-file errors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

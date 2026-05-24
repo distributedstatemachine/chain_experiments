@@ -2,58 +2,6 @@ use super::*;
 
 #[test]
 fn execute_public_service_evidence_rejects_invalid_args() {
-    let service_endpoint_id = manifest_hash(b"rpc-service");
-    assert!(
-        parse_test_cli(&[
-            "public",
-            "evidence",
-            "service",
-            "health",
-            "--kind",
-            "archive",
-            "--endpoint-id",
-            &service_endpoint_id,
-            "--public-url",
-            "https://rpc.tensorvm.net/health",
-            "--health-path",
-            "/health",
-            "--first-block",
-            "0",
-            "--last-block",
-            "9",
-            "--reachable-count",
-            "10",
-            "--signed-health-check-count",
-            "10",
-        ])
-        .is_err()
-    );
-    assert!(
-        parse_test_cli(&[
-            "public",
-            "evidence",
-            "service",
-            "health",
-            "--kind",
-            "rpc",
-            "--endpoint-id",
-            "12",
-            "--public-url",
-            "https://rpc.tensorvm.net/health",
-            "--health-path",
-            "/health",
-            "--first-block",
-            "0",
-            "--last-block",
-            "9",
-            "--reachable-count",
-            "10",
-            "--signed-health-check-count",
-            "10",
-        ])
-        .is_err()
-    );
-
     for public_url in [
         "http://127.0.0.1/health",
         "https://rpc.example.test/health",
@@ -179,30 +127,6 @@ fn execute_public_service_evidence_rejects_invalid_args() {
         .is_err()
     );
 
-    let endpoint_id = hex(&hash_bytes(b"test", &[b"rpc-service"]));
-    for content_hex in ["zz", "abc"] {
-        assert!(
-            parse_test_cli(&[
-                "public",
-                "evidence",
-                "service",
-                "content-bytes",
-                "--kind",
-                "rpc",
-                "--endpoint-id",
-                &endpoint_id,
-                "--public-url",
-                "https://rpc.tensorvm.net/chain/head",
-                "--content-path",
-                "/chain/head",
-                "--observed-at",
-                "1700000000",
-                "--content-hex",
-                content_hex,
-            ])
-            .is_err()
-        );
-    }
     assert!(
         execute_service_content_bytes(ServiceContentFromBytesArgs {
             content: HexBytesArg::new(vec![1_u8; 63]),

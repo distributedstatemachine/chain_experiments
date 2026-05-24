@@ -39,6 +39,7 @@ mod public_evidence_run_window_parser;
 mod public_evidence_run_window_rejections;
 mod public_evidence_run_window_reports;
 mod public_evidence_service_parser;
+mod public_evidence_service_parser_rejections;
 mod public_evidence_service_rejections;
 mod public_evidence_service_reports;
 mod public_parser;
