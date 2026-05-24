@@ -826,6 +826,8 @@ spaghetti around.
   authority comparison share the same scheme, control-character, and path-boundary handling.
 - Iteration 329 extracted strict comma-field record parsing into a crate-private helper shared by CLI
   evidence readers and public manifest readers, removing another duplicated CSV-like validation loop.
+- Iteration 330 moved RPC dynamic-route path splitting into a fixed-capacity parser helper, keeping
+  route matching focused on method/segment dispatch instead of owning the trim/split logic inline.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

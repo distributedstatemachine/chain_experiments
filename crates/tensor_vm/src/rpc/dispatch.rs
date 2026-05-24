@@ -8,6 +8,8 @@ use crate::hash::hex;
 use crate::telemetry::TelemetrySnapshot;
 use tensor_vm_explorer::{explorer_shell_html, jobs_json, miners_json, validators_json};
 
+const MAX_DYNAMIC_ROUTE_SEGMENTS: usize = 4;
+
 impl RpcNode {
     pub fn handle(&self, request: &RpcRequest) -> RpcResponse {
         match (request.method.as_str(), request.path.as_str()) {
@@ -81,8 +83,8 @@ impl RpcNode {
     }
 
     fn handle_dynamic(&self, request: &RpcRequest) -> RpcResponse {
-        let path_parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
-        match (request.method.as_str(), path_parts.as_slice()) {
+        let path = DynamicRoutePath::parse(&request.path);
+        match (request.method.as_str(), path.segments()) {
             ("GET", ["chain", "block", height]) => self.chain_block(height),
             ("GET", ["receipts", receipt_id]) => self.receipt(receipt_id),
             ("GET", ["miners", address]) => self.miner(address),
@@ -106,5 +108,57 @@ impl RpcNode {
             ("GET", ["jobs", job_id]) => self.job(job_id),
             _ => self.not_found("route not found"),
         }
+    }
+}
+
+struct DynamicRoutePath<'a> {
+    segments: [&'a str; MAX_DYNAMIC_ROUTE_SEGMENTS],
+    len: usize,
+    overflow: bool,
+}
+
+impl<'a> DynamicRoutePath<'a> {
+    fn parse(path: &'a str) -> Self {
+        let mut parsed = Self {
+            segments: [""; MAX_DYNAMIC_ROUTE_SEGMENTS],
+            len: 0,
+            overflow: false,
+        };
+        for segment in path.trim_matches('/').split('/') {
+            if parsed.len == MAX_DYNAMIC_ROUTE_SEGMENTS {
+                parsed.overflow = true;
+                return parsed;
+            }
+            parsed.segments[parsed.len] = segment;
+            parsed.len += 1;
+        }
+        parsed
+    }
+
+    fn segments(&self) -> &[&'a str] {
+        if self.overflow {
+            &[]
+        } else {
+            &self.segments[..self.len]
+        }
+    }
+}
+
+#[cfg(test)]
+mod dynamic_route_path_tests {
+    use super::*;
+
+    #[test]
+    fn dynamic_route_path_preserves_current_segment_rules() {
+        assert_eq!(
+            DynamicRoutePath::parse("/chain/block/0/").segments(),
+            &["chain", "block", "0"]
+        );
+        assert_eq!(
+            DynamicRoutePath::parse("chain//block").segments(),
+            &["chain", "", "block"]
+        );
+        assert_eq!(DynamicRoutePath::parse("/").segments(), &[""]);
+        assert!(DynamicRoutePath::parse("/a/b/c/d/e").segments().is_empty());
     }
 }
