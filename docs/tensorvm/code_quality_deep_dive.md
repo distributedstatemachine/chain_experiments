@@ -277,6 +277,9 @@ spaghetti around.
   dispatch.
 - Iteration 115 extracted CLI public-testnet evidence and preflight report renderers into
   `cli/reports.rs`, preserving the exported validation functions while narrowing `cli.rs`.
+- Iteration 116 extracted CLI public service health and content evidence builders into
+  `cli/service_evidence.rs`, keeping service observation parsing and content-root generation out
+  of the parent CLI module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
