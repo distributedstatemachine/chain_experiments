@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::cli::{
     EvidenceCommand, LocalnetCommand, MinerCommand, NodeCommand, NodePeerCommand, ProposerCommand,
-    PublicCommand, RoleCommand, TvmdCli, TvmdCommand, ValidatorCommand,
+    PublicCommand, RoleCommand, RoleRuntimeArgs, TvmdCli, TvmdCommand, ValidatorCommand,
     execute_public_evidence_command, validate_public_evidence_manifest,
     validate_public_testnet_preflight_manifest,
 };
@@ -59,25 +59,14 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             &args.node.to_string(),
         ),
         TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Run(args))) => {
-            let runtime = &args.runtime;
-            let node_runtime = &runtime.node_runtime;
-            let wallet = path_arg(&args.wallet);
-            let node = runtime.node.to_string();
-            let listen = node_runtime.listen.to_string();
-            let p2p_listen = node_runtime.p2p_listen.to_string();
-            let data_dir = path_arg(&node_runtime.data_dir);
-            validate_miner_runtime(&wallet, &args.device, &data_dir, &node_runtime.auth_token)?;
-            run_miner_service(RoleServiceConfig {
-                wallet: &wallet,
-                device: Some(&args.device),
-                node: &node,
-                listen: &listen,
-                p2p_listen: &p2p_listen,
-                data_dir: &data_dir,
-                identity_seed: node_runtime.identity_seed,
-                auth_token: &node_runtime.auth_token,
-                max_requests: node_runtime.max_requests,
-            })
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            validate_miner_runtime(
+                &config.wallet,
+                &args.device,
+                &config.data_dir,
+                &config.auth_token,
+            )?;
+            run_miner_service(config.as_role_service_config(Some(&args.device)))
         }
         TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Status)) => Ok(miner_status()),
         TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Register(args))) => {
@@ -87,49 +76,17 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             check_validator_start(&path_arg(&args.wallet), &args.node.to_string())
         }
         TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Run(args))) => {
-            let runtime = &args.runtime;
-            let node_runtime = &runtime.node_runtime;
-            let wallet = path_arg(&args.wallet);
-            let node = runtime.node.to_string();
-            let listen = node_runtime.listen.to_string();
-            let p2p_listen = node_runtime.p2p_listen.to_string();
-            let data_dir = path_arg(&node_runtime.data_dir);
-            validate_role_runtime(&wallet, &data_dir, &node_runtime.auth_token)?;
-            run_validator_service(RoleServiceConfig {
-                wallet: &wallet,
-                device: None,
-                node: &node,
-                listen: &listen,
-                p2p_listen: &p2p_listen,
-                data_dir: &data_dir,
-                identity_seed: node_runtime.identity_seed,
-                auth_token: &node_runtime.auth_token,
-                max_requests: node_runtime.max_requests,
-            })
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
+            run_validator_service(config.as_role_service_config(None))
         }
         TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Status)) => {
             Ok(validator_status())
         }
         TvmdCommand::Role(RoleCommand::Proposer(ProposerCommand::Run(args))) => {
-            let runtime = &args.runtime;
-            let node_runtime = &runtime.node_runtime;
-            let wallet = path_arg(&args.wallet);
-            let node = runtime.node.to_string();
-            let listen = node_runtime.listen.to_string();
-            let p2p_listen = node_runtime.p2p_listen.to_string();
-            let data_dir = path_arg(&node_runtime.data_dir);
-            validate_role_runtime(&wallet, &data_dir, &node_runtime.auth_token)?;
-            run_proposer_service(RoleServiceConfig {
-                wallet: &wallet,
-                device: None,
-                node: &node,
-                listen: &listen,
-                p2p_listen: &p2p_listen,
-                data_dir: &data_dir,
-                identity_seed: node_runtime.identity_seed,
-                auth_token: &node_runtime.auth_token,
-                max_requests: node_runtime.max_requests,
-            })
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
+            run_proposer_service(config.as_role_service_config(None))
         }
         TvmdCommand::Node(NodeCommand::Init(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
@@ -184,6 +141,47 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
         }
         TvmdCommand::Public(PublicCommand::Evidence(command)) => {
             execute_public_evidence_command(command).map_err(|error| error.to_string())
+        }
+    }
+}
+
+struct RoleServiceDispatchConfig {
+    wallet: String,
+    node: String,
+    listen: String,
+    p2p_listen: String,
+    data_dir: String,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: String,
+    max_requests: usize,
+}
+
+impl RoleServiceDispatchConfig {
+    fn from_args(wallet: &Path, runtime: &RoleRuntimeArgs) -> Self {
+        let node_runtime = &runtime.node_runtime;
+        Self {
+            wallet: path_arg(wallet),
+            node: runtime.node.to_string(),
+            listen: node_runtime.listen.to_string(),
+            p2p_listen: node_runtime.p2p_listen.to_string(),
+            data_dir: path_arg(&node_runtime.data_dir),
+            identity_seed: node_runtime.identity_seed,
+            auth_token: node_runtime.auth_token.clone(),
+            max_requests: node_runtime.max_requests,
+        }
+    }
+
+    fn as_role_service_config<'a>(&'a self, device: Option<&'a str>) -> RoleServiceConfig<'a> {
+        RoleServiceConfig {
+            wallet: &self.wallet,
+            device,
+            node: &self.node,
+            listen: &self.listen,
+            p2p_listen: &self.p2p_listen,
+            data_dir: &self.data_dir,
+            identity_seed: self.identity_seed,
+            auth_token: &self.auth_token,
+            max_requests: self.max_requests,
         }
     }
 }

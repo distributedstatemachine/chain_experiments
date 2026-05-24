@@ -782,6 +782,9 @@ spaghetti around.
 - Iteration 310 replaced the retained top-level `tvmd` command families with a breaking Clap tree:
   `node`, `role`, `localnet`, and `public`, updating binary dispatch, deployment scripts, docs, and
   parser/help tests so old command names are rejected instead of carried as aliases.
+- Iteration 311 introduced an owned role-service dispatch config so `tvmd` miner, validator, and proposer
+  run dispatch share the same wallet/node/listen/data-dir/auth extraction path before validation and
+  service launch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
