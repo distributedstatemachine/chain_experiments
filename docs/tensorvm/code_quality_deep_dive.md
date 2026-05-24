@@ -956,6 +956,8 @@ spaghetti around.
   `EvidenceFixture` to direct `EvidenceCommand` execution.
 - Iteration 391 moved public record summary and artifact report cases from `EvidenceFixture` to direct
   `EvidenceCommand` execution.
+- Iteration 392 moved public record summary-roots and artifact-roots report cases from
+  `EvidenceFixture` to direct `EvidenceCommand` execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

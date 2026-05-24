@@ -158,12 +158,14 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
         &aggregate_root,
         roots.len() as u64,
     );
-    let aggregate_line = execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromRoots {
-        kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        manifest_signer: address(b"public-evidence-publisher"),
-        record_roots: roots.clone(),
-    })
+    let aggregate_line = execute_public_evidence_command(&EvidenceCommand::Record(
+        EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
+            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            record_roots: hash_args(roots.clone()),
+        }),
+    ))
     .unwrap();
     assert_eq!(
         aggregate_line,
@@ -182,15 +184,16 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
         &aggregate_root,
         roots.len() as u64,
     );
-    let aggregate_artifact_line =
-        execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromRoots {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
+    let aggregate_artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
+        EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
+            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            manifest_signer: address_arg(address(b"public-evidence-publisher")),
             artifact_uri: aggregate_artifact_uri.to_owned(),
-            record_roots: roots,
-        })
-        .unwrap();
+            record_roots: hash_args(roots),
+        }),
+    ))
+    .unwrap();
     assert_eq!(
         aggregate_artifact_line,
         format!(
