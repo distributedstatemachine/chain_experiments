@@ -467,6 +467,10 @@ spaghetti around.
 - Iteration 179 moved public evidence manifest parsing, record-line decoders, and evidence bundle
   manifest assembly into `testnet/public_evidence_manifest.rs`, leaving `testnet.rs` focused on
   evidence data types and orchestration logic rather than key-value parser state.
+- Iteration 180 moved public evidence bundle construction, report evaluation, record signature
+  checks, auditor validation, operator attestation matching, and network observation aggregation into
+  `testnet/public_evidence_bundle.rs`, separating bundle-level evidence policy from the main
+  testnet module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
