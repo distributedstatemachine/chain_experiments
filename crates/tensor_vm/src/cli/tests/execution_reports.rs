@@ -3,7 +3,7 @@ use super::*;
 
 #[test]
 fn execute_evidence_fixture_reports_public_evidence_outputs() {
-    let publication = execute_evidence_fixture(&EvidenceFixture::EvidencePublication {
+    let publication = execute_evidence_fixture(&EvidenceFixture::Publication {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -29,7 +29,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ],
     );
 
-    let auditor_record = execute_evidence_fixture(&EvidenceFixture::EvidenceAuditorRecord {
+    let auditor_record = execute_evidence_fixture(&EvidenceFixture::AuditorRecord {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
         auditor_id: address(b"public-evidence-auditor-0"),
@@ -47,7 +47,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         )
     );
 
-    let run_window = execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindow {
+    let run_window = execute_evidence_fixture(&EvidenceFixture::RunWindow {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
         run_started_at_unix_seconds: 1_700_000_000,
@@ -78,13 +78,12 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         .collect::<Vec<_>>()
         .join("\n");
     std::fs::write(&run_window_observation_file, run_window_observations).unwrap();
-    let run_window_from_file =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRunWindowFromFile {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
-        })
-        .unwrap();
+    let run_window_from_file = execute_evidence_fixture(&EvidenceFixture::RunWindowFromFile {
+        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        manifest_signer: address(b"public-evidence-publisher"),
+        block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
+    })
+    .unwrap();
     std::fs::remove_file(&run_window_observation_file).unwrap();
     assert_eq!(run_window_from_file, run_window);
 
@@ -103,7 +102,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ),
     ];
     for (role, address_label, operator_label, tag) in node_cases {
-        let node = execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeat {
+        let node = execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
             role,
             address: address(address_label),
             operator_id: hash_bytes(b"test", &[operator_label]),
@@ -142,29 +141,27 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
             .collect::<Vec<_>>()
             .join("\n");
         std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
-        let node_from_file =
-            execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeatFromFile {
-                role,
-                address: address(address_label),
-                operator_id: hash_bytes(b"test", &[operator_label]),
-                heartbeat_file: heartbeat_file.to_string_lossy().into_owned(),
-            })
-            .unwrap();
+        let node_from_file = execute_evidence_fixture(&EvidenceFixture::NodeHeartbeatFromFile {
+            role,
+            address: address(address_label),
+            operator_id: hash_bytes(b"test", &[operator_label]),
+            heartbeat_file: heartbeat_file.to_string_lossy().into_owned(),
+        })
+        .unwrap();
         std::fs::remove_file(&heartbeat_file).unwrap();
         assert_eq!(node_from_file, node);
     }
 
     let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
     let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
-    let operator_attestation =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
-            role: PublicNodeRole::Miner,
-            address: address(b"miner-a"),
-            operator_id,
-            identity_uri: operator_identity_uri.clone(),
-            observed_at_unix_seconds: 1_700_000_000,
-        })
-        .unwrap();
+    let operator_attestation = execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
+        role: PublicNodeRole::Miner,
+        address: address(b"miner-a"),
+        operator_id,
+        identity_uri: operator_identity_uri.clone(),
+        observed_at_unix_seconds: 1_700_000_000,
+    })
+    .unwrap();
     assert_eq!(
         operator_attestation,
         format!(
@@ -175,7 +172,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         )
     );
 
-    let service_health = execute_evidence_fixture(&EvidenceFixture::EvidenceServiceHealth {
+    let service_health = execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
         kind: PublicServiceKind::Rpc,
         endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
         public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -213,7 +210,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         .join("\n");
     std::fs::write(&health_observation_file, health_observations).unwrap();
     let service_health_from_file =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceServiceHealthFromFile {
+        execute_evidence_fixture(&EvidenceFixture::ServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -233,7 +230,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ),
     ];
     for (kind, label, tag) in additional_service_cases {
-        let line = execute_evidence_fixture(&EvidenceFixture::EvidenceServiceHealth {
+        let line = execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
             kind,
             endpoint_id: hash_bytes(b"test", &[label]),
             public_url: public_service_url(kind).to_owned(),
@@ -262,7 +259,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         );
     }
 
-    let service_content = execute_evidence_fixture(&EvidenceFixture::EvidenceServiceContent {
+    let service_content = execute_evidence_fixture(&EvidenceFixture::ServiceContent {
         kind: PublicServiceKind::Rpc,
         endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
         public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -296,7 +293,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
     let observed_content = vec![7_u8; 80];
     let observed_content_root = public_service_content_root(&observed_content);
     let service_content_from_bytes =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceServiceContentFromBytes {
+        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -327,7 +324,7 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
     ));
     std::fs::write(&content_file, &observed_content).unwrap();
     let service_content_from_file =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceServiceContentFromFile {
+        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -340,21 +337,20 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
     assert_eq!(service_content_from_file, service_content_from_bytes);
 
     let peer_id = PeerId::random().to_string();
-    let network_observation =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNetworkObservation {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            peer_id: peer_id.clone(),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            gossip_topic_count: 5,
-            request_response_protocol_count: 4,
-            bootstrap_peer_count: 2,
-            max_transmit_bytes: 1_048_576,
-            request_timeout_seconds: 10,
-            max_concurrent_streams: 128,
-            idle_connection_timeout_seconds: 60,
-        })
-        .unwrap();
+    let network_observation = execute_evidence_fixture(&EvidenceFixture::NetworkObservation {
+        operator_id: hash_bytes(b"test", &[b"network-operator"]),
+        peer_id: peer_id.clone(),
+        listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+        observed_at_unix_seconds: 1_700_000_000,
+        gossip_topic_count: 5,
+        request_response_protocol_count: 4,
+        bootstrap_peer_count: 2,
+        max_transmit_bytes: 1_048_576,
+        request_timeout_seconds: 10,
+        max_concurrent_streams: 128,
+        idle_connection_timeout_seconds: 60,
+    })
+    .unwrap();
     let observation_input = NetworkObservationEvidenceLine {
         operator_id: hash_bytes(b"test", &[b"network-operator"]),
         peer_id: &peer_id,
@@ -522,7 +518,7 @@ p2p_idle_timeout_seconds=60
     ));
     std::fs::write(&service_log_file, &service_log).unwrap();
     let network_observation_from_file =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNetworkObservationFromServiceLog {
+        execute_evidence_fixture(&EvidenceFixture::NetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -533,7 +529,7 @@ p2p_idle_timeout_seconds=60
     assert_eq!(network_observation_from_file, network_observation);
 
     assert_eq!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNetworkObservationFromServiceLog {
+        execute_evidence_fixture(&EvidenceFixture::NetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,

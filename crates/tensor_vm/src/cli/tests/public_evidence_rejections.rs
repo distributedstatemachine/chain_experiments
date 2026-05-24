@@ -11,7 +11,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
                                     request_response_protocol_count,
                                     bootstrap_peer_count,
                                     max_transmit_bytes| {
-        EvidenceFixture::EvidenceNetworkObservation {
+        EvidenceFixture::NetworkObservation {
             operator_id,
             peer_id,
             listen_address,
@@ -261,7 +261,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
     assert!(parse_hash_argument("12").is_err());
     assert!(parse_hash_argument(&"g".repeat(64)).is_err());
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeat {
+        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -272,7 +272,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeat {
+        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -283,7 +283,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeat {
+        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -294,7 +294,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeat {
+        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -348,7 +348,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         );
     }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNodeHeartbeatFromFile {
+        execute_evidence_fixture(&EvidenceFixture::NodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -363,7 +363,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
+        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -373,7 +373,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
+        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -383,7 +383,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
+        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -393,7 +393,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
+        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -403,7 +403,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceOperatorAttestation {
+        execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -509,7 +509,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         ])
         .is_err()
     );
-    let valid_record_summary = EvidenceFixture::EvidenceRecordSummary {
+    let valid_record_summary = EvidenceFixture::RecordSummary {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -517,7 +517,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         record_count: 4,
     };
     assert!(execute_evidence_fixture(&valid_record_summary).is_ok());
-    let valid_record_artifact = EvidenceFixture::EvidenceRecordArtifact {
+    let valid_record_artifact = EvidenceFixture::RecordArtifact {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -527,7 +527,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
     };
     assert!(execute_evidence_fixture(&valid_record_artifact).is_ok());
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummary {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -537,7 +537,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummary {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -547,7 +547,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummary {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -557,7 +557,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummary {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -567,7 +567,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -578,7 +578,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -589,7 +589,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -600,7 +600,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -611,7 +611,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -622,7 +622,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -633,7 +633,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -642,7 +642,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -652,7 +652,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
     );
     let duplicate_record_root = hash_bytes(b"test", &[b"network-runtime-root"]);
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -661,7 +661,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifactFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -671,7 +671,7 @@ fn execute_evidence_fixture_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifactFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),

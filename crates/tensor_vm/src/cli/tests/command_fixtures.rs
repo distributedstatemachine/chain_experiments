@@ -16,10 +16,7 @@ pub(super) fn parse_test_cli(
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum EvidenceFixture {
-    EvidenceValidate {
-        manifest: String,
-    },
-    EvidenceServiceHealth {
+    ServiceHealth {
         kind: PublicServiceKind,
         endpoint_id: Hash,
         public_url: String,
@@ -29,14 +26,14 @@ pub(super) enum EvidenceFixture {
         reachable_observation_count: u64,
         signed_health_check_count: u64,
     },
-    EvidenceServiceHealthFromFile {
+    ServiceHealthFromFile {
         kind: PublicServiceKind,
         endpoint_id: Hash,
         public_url: String,
         health_path: String,
         observation_file: String,
     },
-    EvidenceServiceContent {
+    ServiceContent {
         kind: PublicServiceKind,
         endpoint_id: Hash,
         public_url: String,
@@ -45,7 +42,7 @@ pub(super) enum EvidenceFixture {
         observed_at_unix_seconds: u64,
         min_content_bytes: u64,
     },
-    EvidenceServiceContentFromBytes {
+    ServiceContentFromBytes {
         kind: PublicServiceKind,
         endpoint_id: Hash,
         public_url: String,
@@ -53,7 +50,7 @@ pub(super) enum EvidenceFixture {
         observed_at_unix_seconds: u64,
         content_bytes: Vec<u8>,
     },
-    EvidenceServiceContentFromFile {
+    ServiceContentFromFile {
         kind: PublicServiceKind,
         endpoint_id: Hash,
         public_url: String,
@@ -61,14 +58,14 @@ pub(super) enum EvidenceFixture {
         observed_at_unix_seconds: u64,
         content_file: String,
     },
-    EvidenceRecordSummary {
+    RecordSummary {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         record_root: Hash,
         record_count: u64,
     },
-    EvidenceRecordArtifact {
+    RecordArtifact {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
@@ -76,33 +73,33 @@ pub(super) enum EvidenceFixture {
         record_root: Hash,
         record_count: u64,
     },
-    EvidenceRecordArtifactFromRoots {
+    RecordArtifactFromRoots {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         artifact_uri: String,
         record_roots: Vec<Hash>,
     },
-    EvidenceRecordArtifactFromFile {
+    RecordArtifactFromFile {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         artifact_uri: String,
         record_file: String,
     },
-    EvidenceRecordSummaryFromRoots {
+    RecordSummaryFromRoots {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         record_roots: Vec<Hash>,
     },
-    EvidenceRecordSummaryFromFile {
+    RecordSummaryFromFile {
         kind: PublicEvidenceRecordKind,
         bundle_id: Hash,
         manifest_signer: Address,
         record_file: String,
     },
-    EvidenceNetworkObservation {
+    NetworkObservation {
         operator_id: Hash,
         peer_id: String,
         listen_address: String,
@@ -115,39 +112,39 @@ pub(super) enum EvidenceFixture {
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
     },
-    EvidenceNetworkObservationFromServiceLog {
+    NetworkObservationFromServiceLog {
         operator_id: Hash,
         listen_address: String,
         observed_at_unix_seconds: u64,
         service_log: String,
     },
-    EvidencePublication {
+    Publication {
         bundle_id: Hash,
         public_uri: String,
         manifest_signer: Address,
         manifest_signature_count: u64,
         independent_auditor_count: u64,
     },
-    EvidenceAuditorRecord {
+    AuditorRecord {
         bundle_id: Hash,
         public_uri: String,
         auditor_id: Address,
         audit_uri: String,
         observed_at_unix_seconds: u64,
     },
-    EvidenceRunWindow {
+    RunWindow {
         bundle_id: Hash,
         manifest_signer: Address,
         run_started_at_unix_seconds: u64,
         run_ended_at_unix_seconds: u64,
         observed_blocks: u64,
     },
-    EvidenceRunWindowFromFile {
+    RunWindowFromFile {
         bundle_id: Hash,
         manifest_signer: Address,
         block_observation_file: String,
     },
-    EvidenceNodeHeartbeat {
+    NodeHeartbeat {
         role: PublicNodeRole,
         address: Address,
         operator_id: Hash,
@@ -155,21 +152,18 @@ pub(super) enum EvidenceFixture {
         last_seen_block: u64,
         signed_heartbeat_count: u64,
     },
-    EvidenceNodeHeartbeatFromFile {
+    NodeHeartbeatFromFile {
         role: PublicNodeRole,
         address: Address,
         operator_id: Hash,
         heartbeat_file: String,
     },
-    EvidenceOperatorAttestation {
+    OperatorAttestation {
         role: PublicNodeRole,
         address: Address,
         operator_id: Hash,
         identity_uri: String,
         observed_at_unix_seconds: u64,
-    },
-    TestnetPreflight {
-        manifest: String,
     },
 }
 
@@ -238,12 +232,7 @@ fn public_evidence_command(command: EvidenceCommand) -> super::TvmdCommand {
 impl EvidenceFixture {
     fn into_cli_command(self) -> super::TvmdCommand {
         match self {
-            Self::EvidenceValidate { manifest } => super::TvmdCommand::Public(
-                PublicCommand::Evidence(EvidenceCommand::Validate(PublicEvidenceManifestArgs {
-                    manifest: path_arg(manifest),
-                })),
-            ),
-            Self::EvidenceServiceHealth {
+            Self::ServiceHealth {
                 kind,
                 endpoint_id,
                 public_url,
@@ -264,7 +253,7 @@ impl EvidenceFixture {
                     signed_health_check_count,
                 },
             ))),
-            Self::EvidenceServiceHealthFromFile {
+            Self::ServiceHealthFromFile {
                 kind,
                 endpoint_id,
                 public_url,
@@ -279,7 +268,7 @@ impl EvidenceFixture {
                     observation_file: path_arg(observation_file),
                 }),
             )),
-            Self::EvidenceServiceContent {
+            Self::ServiceContent {
                 kind,
                 endpoint_id,
                 public_url,
@@ -298,7 +287,7 @@ impl EvidenceFixture {
                     min_content_bytes,
                 }),
             )),
-            Self::EvidenceServiceContentFromBytes {
+            Self::ServiceContentFromBytes {
                 kind,
                 endpoint_id,
                 public_url,
@@ -315,7 +304,7 @@ impl EvidenceFixture {
                     content: HexBytesArg::new(content_bytes),
                 }),
             )),
-            Self::EvidenceServiceContentFromFile {
+            Self::ServiceContentFromFile {
                 kind,
                 endpoint_id,
                 public_url,
@@ -332,7 +321,7 @@ impl EvidenceFixture {
                     content_file: path_arg(content_file),
                 }),
             )),
-            Self::EvidenceRecordSummary {
+            Self::RecordSummary {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -347,7 +336,7 @@ impl EvidenceFixture {
                     record_count,
                 },
             ))),
-            Self::EvidenceRecordArtifact {
+            Self::RecordArtifact {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -364,7 +353,7 @@ impl EvidenceFixture {
                     record_count,
                 },
             ))),
-            Self::EvidenceRecordArtifactFromRoots {
+            Self::RecordArtifactFromRoots {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -379,7 +368,7 @@ impl EvidenceFixture {
                     record_roots: hash_args(record_roots),
                 }),
             )),
-            Self::EvidenceRecordArtifactFromFile {
+            Self::RecordArtifactFromFile {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -394,7 +383,7 @@ impl EvidenceFixture {
                     record_file: path_arg(record_file),
                 }),
             )),
-            Self::EvidenceRecordSummaryFromRoots {
+            Self::RecordSummaryFromRoots {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -407,7 +396,7 @@ impl EvidenceFixture {
                     record_roots: hash_args(record_roots),
                 }),
             )),
-            Self::EvidenceRecordSummaryFromFile {
+            Self::RecordSummaryFromFile {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -420,7 +409,7 @@ impl EvidenceFixture {
                     record_file: path_arg(record_file),
                 }),
             )),
-            Self::EvidenceNetworkObservation {
+            Self::NetworkObservation {
                 operator_id,
                 peer_id,
                 listen_address,
@@ -447,7 +436,7 @@ impl EvidenceFixture {
                     idle_timeout_seconds: idle_connection_timeout_seconds,
                 }),
             )),
-            Self::EvidenceNetworkObservationFromServiceLog {
+            Self::NetworkObservationFromServiceLog {
                 operator_id,
                 listen_address,
                 observed_at_unix_seconds,
@@ -460,7 +449,7 @@ impl EvidenceFixture {
                     service_log: path_arg(service_log),
                 }),
             )),
-            Self::EvidencePublication {
+            Self::Publication {
                 bundle_id,
                 public_uri,
                 manifest_signer,
@@ -473,7 +462,7 @@ impl EvidenceFixture {
                 manifest_signature_count,
                 independent_auditor_count,
             })),
-            Self::EvidenceAuditorRecord {
+            Self::AuditorRecord {
                 bundle_id,
                 public_uri,
                 auditor_id,
@@ -486,7 +475,7 @@ impl EvidenceFixture {
                 audit_uri,
                 observed_at: observed_at_unix_seconds,
             })),
-            Self::EvidenceRunWindow {
+            Self::RunWindow {
                 bundle_id,
                 manifest_signer,
                 run_started_at_unix_seconds,
@@ -501,7 +490,7 @@ impl EvidenceFixture {
                     observed_blocks,
                 },
             ))),
-            Self::EvidenceRunWindowFromFile {
+            Self::RunWindowFromFile {
                 bundle_id,
                 manifest_signer,
                 block_observation_file,
@@ -512,7 +501,7 @@ impl EvidenceFixture {
                     block_observation_file: path_arg(block_observation_file),
                 },
             ))),
-            Self::EvidenceNodeHeartbeat {
+            Self::NodeHeartbeat {
                 role,
                 address,
                 operator_id,
@@ -529,7 +518,7 @@ impl EvidenceFixture {
                     heartbeat_count: signed_heartbeat_count,
                 },
             ))),
-            Self::EvidenceNodeHeartbeatFromFile {
+            Self::NodeHeartbeatFromFile {
                 role,
                 address,
                 operator_id,
@@ -542,7 +531,7 @@ impl EvidenceFixture {
                     heartbeat_file: path_arg(heartbeat_file),
                 }),
             )),
-            Self::EvidenceOperatorAttestation {
+            Self::OperatorAttestation {
                 role,
                 address,
                 operator_id,
@@ -557,11 +546,6 @@ impl EvidenceFixture {
                     observed_at: observed_at_unix_seconds,
                 }),
             )),
-            Self::TestnetPreflight { manifest } => {
-                super::TvmdCommand::Public(PublicCommand::Preflight(PublicTestnetManifestArgs {
-                    manifest: path_arg(manifest),
-                }))
-            }
         }
     }
 }

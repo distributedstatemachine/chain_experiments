@@ -3,21 +3,20 @@ use super::*;
 #[test]
 fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
     let peer_id = PeerId::random().to_string();
-    let network_observation =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceNetworkObservation {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            peer_id: peer_id.clone(),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            gossip_topic_count: 5,
-            request_response_protocol_count: 4,
-            bootstrap_peer_count: 2,
-            max_transmit_bytes: 1_048_576,
-            request_timeout_seconds: 10,
-            max_concurrent_streams: 128,
-            idle_connection_timeout_seconds: 60,
-        })
-        .unwrap();
+    let network_observation = execute_evidence_fixture(&EvidenceFixture::NetworkObservation {
+        operator_id: hash_bytes(b"test", &[b"network-operator"]),
+        peer_id: peer_id.clone(),
+        listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
+        observed_at_unix_seconds: 1_700_000_000,
+        gossip_topic_count: 5,
+        request_response_protocol_count: 4,
+        bootstrap_peer_count: 2,
+        max_transmit_bytes: 1_048_576,
+        request_timeout_seconds: 10,
+        max_concurrent_streams: 128,
+        idle_connection_timeout_seconds: 60,
+    })
+    .unwrap();
     let observation_input = NetworkObservationEvidenceLine {
         operator_id: hash_bytes(b"test", &[b"network-operator"]),
         peer_id: &peer_id,
@@ -90,7 +89,7 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
         let root = hex(&record_root);
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let manifest_signer = address(b"public-evidence-publisher");
-        let line = execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummary {
+        let line = execute_evidence_fixture(&EvidenceFixture::RecordSummary {
             kind,
             bundle_id,
             manifest_signer,
@@ -118,7 +117,7 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
             &record_root,
             count,
         );
-        let artifact_line = execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifact {
+        let artifact_line = execute_evidence_fixture(&EvidenceFixture::RecordArtifact {
             kind,
             bundle_id,
             manifest_signer,
@@ -153,14 +152,13 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
         &aggregate_root,
         roots.len() as u64,
     );
-    let aggregate_line =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromRoots {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            record_roots: roots.clone(),
-        })
-        .unwrap();
+    let aggregate_line = execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromRoots {
+        kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        manifest_signer: address(b"public-evidence-publisher"),
+        record_roots: roots.clone(),
+    })
+    .unwrap();
     assert_eq!(
         aggregate_line,
         format!(
@@ -179,7 +177,7 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
         roots.len() as u64,
     );
     let aggregate_artifact_line =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifactFromRoots {
+        execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -225,14 +223,13 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
     )
     .unwrap();
     assert_eq!(record_file_roots_from_disk, record_file_roots);
-    let record_file_summary =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromFile {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            record_file: record_file_path.clone(),
-        })
-        .unwrap();
+    let record_file_summary = execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromFile {
+        kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        manifest_signer: address(b"public-evidence-publisher"),
+        record_file: record_file_path.clone(),
+    })
+    .unwrap();
     let record_file_signature = sign_public_evidence_record(
         &address(b"public-evidence-publisher"),
         &hash_bytes(b"test", &[b"public-evidence-bundle"]),
@@ -248,15 +245,14 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
             hex(&record_file_signature)
         )
     );
-    let record_file_artifact =
-        execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifactFromFile {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            artifact_uri: aggregate_artifact_uri.to_owned(),
-            record_file: record_file_path.clone(),
-        })
-        .unwrap();
+    let record_file_artifact = execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromFile {
+        kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        manifest_signer: address(b"public-evidence-publisher"),
+        artifact_uri: aggregate_artifact_uri.to_owned(),
+        record_file: record_file_path.clone(),
+    })
+    .unwrap();
     let record_file_artifact_signature = crate::testnet::sign_public_evidence_artifact(
         &address(b"public-evidence-publisher"),
         &hash_bytes(b"test", &[b"public-evidence-bundle"]),
@@ -344,7 +340,7 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
             public_evidence_record_roots_from_file(kind, &raw_record_file_path).unwrap(),
             roots
         );
-        let summary = execute_evidence_fixture(&EvidenceFixture::EvidenceRecordSummaryFromFile {
+        let summary = execute_evidence_fixture(&EvidenceFixture::RecordSummaryFromFile {
             kind,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -370,7 +366,7 @@ fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
             "https://evidence.tensorvm.net/{}.json",
             public_evidence_record_kind_tag(kind)
         );
-        let artifact = execute_evidence_fixture(&EvidenceFixture::EvidenceRecordArtifactFromFile {
+        let artifact = execute_evidence_fixture(&EvidenceFixture::RecordArtifactFromFile {
             kind,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),

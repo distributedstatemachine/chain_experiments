@@ -933,6 +933,9 @@ spaghetti around.
   variants without the redundant `Public` prefix.
 - Iteration 380 renamed the remaining public-evidence-only CLI fixture type and executor so they no
   longer read like a parallel model for every CLI command.
+- Iteration 381 moved public evidence manifest, publication, audit, and run-window parser
+  expectations from `EvidenceFixture` to direct `TvmdCommand` construction, then removed the now-dead
+  fixture variants and redundant `Evidence` prefixes from the remaining fixture variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
