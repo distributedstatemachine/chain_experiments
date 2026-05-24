@@ -519,6 +519,8 @@ spaghetti around.
   claim handlers into `rpc/mutations.rs`, isolating chain/txpool mutation paths from read routing.
 - Iteration 198 moved chain block, receipt, job, miner, validator, faucet-status, and health read
   route helpers into `rpc/read_routes.rs`, narrowing `rpc.rs` toward dispatch and shared response helpers.
+- Iteration 199 moved explorer account/latest collection routes and explorer websocket command
+  handling into `rpc/explorer_routes.rs`, keeping explorer transport responses out of the RPC facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
