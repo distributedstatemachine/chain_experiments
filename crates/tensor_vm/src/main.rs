@@ -21,9 +21,6 @@ mod runtime_loop;
 #[path = "main/runtime_commands.rs"]
 mod runtime_commands;
 
-#[path = "main/runtime_validator.rs"]
-mod runtime_validator;
-
 use runtime::serve_service;
 use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 

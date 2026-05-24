@@ -9,6 +9,7 @@ mod runtime_rpc;
 mod runtime_services;
 mod runtime_status;
 mod runtime_status_snapshot;
+mod runtime_validator;
 mod shared;
 mod status;
 mod validator_fetch;
@@ -38,6 +39,7 @@ pub use runtime_rpc::serve_rpc_once;
 pub use runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services};
 pub use runtime_status::{format_role_runtime_report, write_role_runtime_status};
 pub use runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};
+pub use runtime_validator::tick_validator_role_work_once;
 pub use shared::{local_cpu_seed_beacon, p2p_identity_report};
 pub use status::{hex_hash_list, service_status};
 pub use validator_fetch::{

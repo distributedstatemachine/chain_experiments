@@ -625,6 +625,9 @@ spaghetti around.
 - Iteration 241 moved miner role work observation, receipt submission, and miner runtime ticking into the
   library-owned `app` module, removing another binary-private role worker while keeping `tvmd` runtime-loop
   code focused on orchestration.
+- Iteration 242 moved validator runtime ticking into the library-owned `app` module, so both miner and
+  validator role workers now sit behind app APIs and the `tvmd` runtime loop no longer depends on a
+  binary-private validator worker module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

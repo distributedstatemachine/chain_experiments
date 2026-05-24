@@ -1,14 +1,13 @@
-use tensor_vm::{
-    NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
-    app::{
-        ServiceRuntimeConfig, chain_announcement_checkpoint, fetch_validator_role_missing_tensors,
-        publish_new_chain_announcements, runtime_role_wallet_registration,
-        submit_validator_role_attestation, submit_validator_role_block_vote,
-        validator_role_work_observation,
-    },
+use crate::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+
+use super::{
+    ServiceRuntimeConfig, chain_announcement_checkpoint, fetch_validator_role_missing_tensors,
+    publish_new_chain_announcements, runtime_role_wallet_registration,
+    submit_validator_role_attestation, submit_validator_role_block_vote,
+    validator_role_work_observation,
 };
 
-pub(super) fn tick_validator_role_work_once(
+pub fn tick_validator_role_work_once(
     config: &ServiceRuntimeConfig,
     store: &NodeStore,
     server: &mut RpcHttpServer,

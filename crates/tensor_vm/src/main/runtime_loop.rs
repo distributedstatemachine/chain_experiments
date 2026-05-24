@@ -1,6 +1,5 @@
 use std::{thread, time::Duration};
 
-use super::runtime_validator::tick_validator_role_work_once as tick_validator_role_worker_once;
 use tensor_vm::{
     NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
     app::{
@@ -8,7 +7,9 @@ use tensor_vm::{
         RuntimeStatusSnapshot, ServiceRuntimeConfig, format_role_runtime_report,
         ingest_network_once as ingest_runtime_network_once,
         serve_rpc_once as serve_runtime_rpc_once, start_runtime_services,
-        tick_miner_role_work_once, write_role_runtime_status,
+        tick_miner_role_work_once,
+        tick_validator_role_work_once as tick_validator_role_worker_once,
+        write_role_runtime_status,
     },
 };
 
