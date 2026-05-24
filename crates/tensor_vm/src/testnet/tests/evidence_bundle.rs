@@ -1,0 +1,809 @@
+use super::*;
+
+#[test]
+fn public_testnet_evidence_bundle_requires_publication_and_audit_records() {
+    let criteria = PublicTestnetCriteria {
+        min_miners: 2,
+        min_validators: 1,
+        duration_days: 0,
+        min_finality_rate_bps: 9_000,
+        min_data_availability_bps: 9_500,
+        min_invalid_work_rejections: 1,
+        min_reward_settlement_records: 1,
+    };
+    let mut bundle = complete_public_evidence_bundle();
+
+    let complete = bundle.evaluate(&criteria, 6);
+    assert!(complete.run_evidence.public_criterion_met);
+    assert!(complete.has_published_evidence_bundle);
+    assert!(complete.has_independent_auditor_records);
+    assert!(complete.has_signed_run_window);
+    assert!(complete.has_block_history);
+    assert!(complete.has_finality_history);
+    assert!(complete.has_operator_identity_attestations);
+    assert!(complete.has_network_runtime_observations);
+    assert!(complete.has_data_availability_measurements);
+    assert!(complete.has_invalid_work_rejection_records);
+    assert!(complete.has_reward_settlement_record_summary);
+    assert!(complete.has_public_supporting_record_artifacts);
+    assert!(complete.independently_checkable);
+    assert!(!complete.full_spec_evidence_met);
+
+    let full_spec_criteria = PublicTestnetCriteria::default();
+    let full_spec_block_time = ChainParams::default().block_time_seconds;
+    let full_spec_bundle = full_spec_public_evidence_bundle(full_spec_block_time);
+    let full_spec_report = full_spec_bundle.evaluate(&full_spec_criteria, full_spec_block_time);
+    assert!(full_spec_report.run_evidence.public_criterion_met);
+    assert!(full_spec_report.independently_checkable);
+    assert!(full_spec_report.full_spec_evidence_met);
+
+    let mut role_order_bundle = complete_public_evidence_bundle();
+    let shared_node_address = address(b"bundle-role-order-shared-address");
+    let shared_miner_operator = hash_bytes(b"test", &[b"bundle-role-order-shared-miner"]);
+    let independent_miner_address = address(b"bundle-role-order-independent-miner-address");
+    let independent_miner_operator = hash_bytes(b"test", &[b"bundle-role-order-independent-miner"]);
+    let validator_operator = hash_bytes(b"test", &[b"bundle-role-order-validator"]);
+    role_order_bundle.run.nodes = vec![
+        PublicNodeEvidence::miner(shared_node_address, shared_miner_operator, 0, 9, 10),
+        PublicNodeEvidence::miner(
+            independent_miner_address,
+            independent_miner_operator,
+            0,
+            9,
+            10,
+        ),
+        PublicNodeEvidence::validator(shared_node_address, validator_operator, 0, 9, 10),
+    ];
+    role_order_bundle.operator_identity_attestation_records = 2;
+    role_order_bundle.operator_identity_attestations = vec![
+        PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Miner,
+            independent_miner_address,
+            independent_miner_operator,
+            manifest_operator_identity_uri(&independent_miner_operator),
+            role_order_bundle.run.run_started_at_unix_seconds,
+        ),
+        PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Validator,
+            shared_node_address,
+            validator_operator,
+            manifest_operator_identity_uri(&validator_operator),
+            role_order_bundle.run.run_started_at_unix_seconds,
+        ),
+    ];
+    role_order_bundle.network_runtime_observations = vec![
+        public_network_runtime_observation(
+            independent_miner_operator,
+            0,
+            role_order_bundle.run.run_started_at_unix_seconds,
+        ),
+        public_network_runtime_observation(
+            validator_operator,
+            1,
+            role_order_bundle.run.run_started_at_unix_seconds,
+        ),
+    ];
+    let role_order_network_root = aggregate_public_evidence_record_roots(
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        &role_order_bundle
+            .network_runtime_observations
+            .iter()
+            .map(|observation| observation.record_root)
+            .collect::<Vec<_>>(),
+    )
+    .expect("role-order network observation roots should aggregate");
+    resign_record_summary_and_artifact(
+        &mut role_order_bundle,
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        role_order_network_root,
+        2,
+    );
+    let role_order_criteria = PublicTestnetCriteria {
+        min_miners: 1,
+        min_validators: 1,
+        ..criteria.clone()
+    };
+    let role_order_report = role_order_bundle.evaluate(&role_order_criteria, 6);
+    assert_eq!(role_order_report.run_evidence.miner_count, 1);
+    assert_eq!(role_order_report.run_evidence.validator_count, 1);
+    assert!(role_order_report.run_evidence.public_criterion_met);
+    assert!(role_order_report.has_operator_identity_attestations);
+    assert!(role_order_report.has_network_runtime_observations);
+    assert!(role_order_report.independently_checkable);
+    assert!(!role_order_report.full_spec_evidence_met);
+
+    let mut exact_quota_bundle = complete_public_evidence_bundle();
+    exact_quota_bundle.run.nodes = vec![
+        PublicNodeEvidence::miner([1; 32], [1; 32], 0, 9, 10),
+        PublicNodeEvidence::miner([2; 32], [2; 32], 0, 9, 10),
+        PublicNodeEvidence::miner([3; 32], [2; 32], 0, 9, 10),
+        PublicNodeEvidence::validator([1; 32], [10; 32], 0, 9, 10),
+        PublicNodeEvidence::validator([2; 32], [10; 32], 0, 9, 10),
+    ];
+    exact_quota_bundle.operator_identity_attestation_records = 3;
+    exact_quota_bundle.operator_identity_attestations = vec![
+        PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Miner,
+            [1; 32],
+            [1; 32],
+            manifest_operator_identity_uri(&[1; 32]),
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+        PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Miner,
+            [3; 32],
+            [2; 32],
+            manifest_operator_identity_uri(&[2; 32]),
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+        PublicOperatorIdentityAttestation::new(
+            PublicNodeRole::Validator,
+            [2; 32],
+            [10; 32],
+            manifest_operator_identity_uri(&[10; 32]),
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+    ];
+    exact_quota_bundle.network_runtime_observations = vec![
+        public_network_runtime_observation(
+            [1; 32],
+            0,
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+        public_network_runtime_observation(
+            [2; 32],
+            1,
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+        public_network_runtime_observation(
+            [10; 32],
+            2,
+            exact_quota_bundle.run.run_started_at_unix_seconds,
+        ),
+    ];
+    let exact_quota_network_root = aggregate_public_evidence_record_roots(
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        &exact_quota_bundle
+            .network_runtime_observations
+            .iter()
+            .map(|observation| observation.record_root)
+            .collect::<Vec<_>>(),
+    )
+    .expect("exact-quota network observation roots should aggregate");
+    resign_record_summary_and_artifact(
+        &mut exact_quota_bundle,
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        exact_quota_network_root,
+        3,
+    );
+    let exact_quota_report = exact_quota_bundle.evaluate(&criteria, 6);
+    assert_eq!(exact_quota_report.run_evidence.miner_count, 2);
+    assert_eq!(exact_quota_report.run_evidence.validator_count, 1);
+    assert!(exact_quota_report.run_evidence.public_criterion_met);
+    assert!(exact_quota_report.has_operator_identity_attestations);
+    assert!(exact_quota_report.has_network_runtime_observations);
+    assert!(exact_quota_report.independently_checkable);
+
+    bundle.publication.manifest_signature = [9; 32];
+    let tampered_manifest_signature = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_manifest_signature.has_published_evidence_bundle);
+    assert!(!tampered_manifest_signature.independently_checkable);
+    assert!(!tampered_manifest_signature.full_spec_evidence_met);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication = PublicEvidencePublication::new(
+        bundle.publication.bundle_id,
+        bundle.publication.public_uri.clone(),
+        bundle.publication.manifest_signer,
+        2,
+        bundle.publication.independent_auditor_count,
+    );
+    let overreported_manifest_signature_count = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_manifest_signature_count.has_published_evidence_bundle);
+    assert!(!overreported_manifest_signature_count.independently_checkable);
+    assert!(!overreported_manifest_signature_count.full_spec_evidence_met);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.run_window_signature = [7; 32];
+    let tampered_run_window = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_run_window.has_signed_run_window);
+    assert!(!tampered_run_window.independently_checkable);
+    assert!(!tampered_run_window.full_spec_evidence_met);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.run.run_ended_at_unix_seconds = bundle.run.run_started_at_unix_seconds - 1;
+    let invalid_run_window = bundle.evaluate(&criteria, 6);
+    assert!(!invalid_run_window.has_signed_run_window);
+    assert!(!invalid_run_window.run_evidence.has_required_run_duration);
+    assert!(!invalid_run_window.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.manifest_signer = [0; 32];
+    let missing_manifest_signer = bundle.evaluate(&criteria, 6);
+    assert!(!missing_manifest_signer.has_published_evidence_bundle);
+    assert!(!missing_manifest_signer.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("http://localhost:8545/evidence.json");
+    let local_uri = bundle.evaluate(&criteria, 6);
+    assert!(!local_uri.has_published_evidence_bundle);
+    assert!(!local_uri.independently_checkable);
+    assert!(!local_uri.full_spec_evidence_met);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("https://localhost/evidence.json");
+    let localhost_https_uri = bundle.evaluate(&criteria, 6);
+    assert!(!localhost_https_uri.has_published_evidence_bundle);
+    assert!(!localhost_https_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("https://192.168.1.2/evidence.json");
+    let private_https_uri = bundle.evaluate(&criteria, 6);
+    assert!(!private_https_uri.has_published_evidence_bundle);
+    assert!(!private_https_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication = PublicEvidencePublication::new(
+        bundle.publication.bundle_id,
+        " https://evidence.tensorvm.net/public-evidence.json".to_owned(),
+        bundle.publication.manifest_signer,
+        bundle.publication.manifest_signature_count,
+        bundle.publication.independent_auditor_count,
+    );
+    let leading_space_publication_uri = bundle.evaluate(&criteria, 6);
+    assert!(!leading_space_publication_uri.has_published_evidence_bundle);
+    assert!(!leading_space_publication_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication = PublicEvidencePublication::new(
+        bundle.publication.bundle_id,
+        "https://evidence.tensorvm.net/public-evidence.json ".to_owned(),
+        bundle.publication.manifest_signer,
+        bundle.publication.manifest_signature_count,
+        bundle.publication.independent_auditor_count,
+    );
+    let trailing_space_publication_uri = bundle.evaluate(&criteria, 6);
+    assert!(!trailing_space_publication_uri.has_published_evidence_bundle);
+    assert!(!trailing_space_publication_uri.independently_checkable);
+
+    assert!(public_evidence_uri_is_external(
+        "https://evidence.tensorvm.net:443/public-evidence.json"
+    ));
+    assert!(public_evidence_uri_is_external(
+        "https://[2001:4860:4860::8888]/public-evidence.json"
+    ));
+    assert!(public_evidence_uri_is_external(
+        "https://[2001:4860:4860::8888]:443/public-evidence.json"
+    ));
+    for uri in [
+        "https://evidence.tensorvm.net@localhost/public-evidence.json",
+        "https://localhost@evidence.tensorvm.net/public-evidence.json",
+        "https://evidence.tensorvm.net /public-evidence.json",
+        " https://evidence.tensorvm.net/public-evidence.json",
+        "https://evidence.tensorvm.net/public-evidence.json ",
+        "https://evidence.tensorvm.net/public evidence.json",
+        "https://evidence.tensorvm.net:bad/public-evidence.json",
+        "https://evidence.tensorvm.net:0/public-evidence.json",
+        "https://evidence.example.test/public-evidence.json",
+        "https://evidence.tensorvm.example/public-evidence.json",
+        "https://example.com/public-evidence.json",
+        "https://sub.example.org/public-evidence.json",
+        "https://evidence.invalid/public-evidence.json",
+        "https://[2001:db8::1]x/public-evidence.json",
+        "https://[2001:4860:4860::8888]:/public-evidence.json",
+        "https://evidence.tensorvm.net",
+        "https://evidence.tensorvm.net/",
+        "https://evidence.tensorvm.net?manifest=1",
+        "https://evidence.tensorvm.net#manifest",
+        "https://evidence.tensorvm.net/public-evidence.json?download=1",
+        "https://evidence.tensorvm.net/public-evidence.json#sha256",
+        "https:///public-evidence.json",
+    ] {
+        assert!(!public_evidence_uri_is_external(uri));
+    }
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri =
+        String::from("https://evidence.tensorvm.net@localhost/public-evidence.json");
+    let userinfo_obfuscated_uri = bundle.evaluate(&criteria, 6);
+    assert!(!userinfo_obfuscated_uri.has_published_evidence_bundle);
+    assert!(!userinfo_obfuscated_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri =
+        String::from("https://evidence.tensorvm.net/public-evidence.json?download=1");
+    let query_publication_uri = bundle.evaluate(&criteria, 6);
+    assert!(!query_publication_uri.has_published_evidence_bundle);
+    assert!(!query_publication_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("https://evidence.tensorvm.net/");
+    let root_only_publication_uri = bundle.evaluate(&criteria, 6);
+    assert!(!root_only_publication_uri.has_published_evidence_bundle);
+    assert!(!root_only_publication_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("ipfs://");
+    let empty_ipfs_uri = bundle.evaluate(&criteria, 6);
+    assert!(!empty_ipfs_uri.has_published_evidence_bundle);
+    assert!(!empty_ipfs_uri.has_independent_auditor_records);
+    assert!(!empty_ipfs_uri.independently_checkable);
+
+    assert!(public_evidence_uri_is_external(
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3g3/raw.json"
+    ));
+    assert!(public_evidence_uri_is_external(
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3g3/raw-records_2026-05.json"
+    ));
+    assert!(public_evidence_uri_is_external(
+        "ar://abc_DEF-123/raw_records.json"
+    ));
+    assert!(public_evidence_uri_is_external("ar://abc_DEF-123"));
+    for uri in [
+        "ipfs://?cid",
+        "ipfs://#cid",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3?download=1",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3#manifest",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/raw.json?download=1",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/raw.json#manifest",
+        "ipfs://../manifest.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/../manifest.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/./manifest.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/",
+        "ipfs:///manifest.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3//manifest.json",
+        " ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3 ",
+        "ipfs://white space",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad space.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3/bad%20path.json",
+        "ipfs://bafybeigdyrztxylvd7m5qkz6g2q6k7lb4w3g3g3g3g3g3g3g3g3g3g3g3\\raw.json",
+        "ar://abc_DEF-123/",
+        "ar:///",
+    ] {
+        assert!(!public_evidence_uri_is_external(uri));
+    }
+
+    bundle = complete_public_evidence_bundle();
+    bundle.publication.public_uri = String::from("ipfs://?cid");
+    let malformed_content_uri = bundle.evaluate(&criteria, 6);
+    assert!(!malformed_content_uri.has_published_evidence_bundle);
+    assert!(!malformed_content_uri.has_independent_auditor_records);
+    assert!(!malformed_content_uri.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.auditor_records.clear();
+    let missing_auditor_records = bundle.evaluate(&criteria, 6);
+    assert!(missing_auditor_records.has_published_evidence_bundle);
+    assert!(!missing_auditor_records.has_independent_auditor_records);
+    assert!(!missing_auditor_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.auditor_records[0].auditor_signature = [2; 32];
+    let tampered_auditor_record = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_auditor_record.has_independent_auditor_records);
+    assert!(!tampered_auditor_record.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.auditor_records[0].audit_uri = String::from("https://localhost/audit.json");
+    let local_auditor_record = bundle.evaluate(&criteria, 6);
+    assert!(!local_auditor_record.has_independent_auditor_records);
+    assert!(!local_auditor_record.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.auditor_records[0] = PublicEvidenceAuditorRecord::new(
+        &bundle.publication.bundle_id,
+        &bundle.publication.public_uri,
+        address(b"public-evidence-auditor-0"),
+        manifest_auditor_uri(),
+        bundle.run.run_started_at_unix_seconds,
+    );
+    let pre_run_end_auditor_record = bundle.evaluate(&criteria, 6);
+    assert!(!pre_run_end_auditor_record.has_independent_auditor_records);
+    assert!(!pre_run_end_auditor_record.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.auditor_records[0] = PublicEvidenceAuditorRecord::new(
+        &bundle.publication.bundle_id,
+        &bundle.publication.public_uri,
+        bundle.publication.manifest_signer,
+        "https://auditors.tensorvm.net/signer-audit.json",
+        1_700_000_000,
+    );
+    let signer_as_auditor = bundle.evaluate(&criteria, 6);
+    assert!(!signer_as_auditor.has_independent_auditor_records);
+    assert!(!signer_as_auditor.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle
+        .auditor_records
+        .push(PublicEvidenceAuditorRecord::new(
+            &bundle.publication.bundle_id,
+            &bundle.publication.public_uri,
+            address(b"public-evidence-auditor-extra"),
+            "https://auditors.tensorvm.net/extra-audit.json",
+            bundle.run.run_ended_at_unix_seconds,
+        ));
+    let extra_auditor_record = bundle.evaluate(&criteria, 6);
+    assert!(!extra_auditor_record.has_independent_auditor_records);
+    assert!(!extra_auditor_record.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.block_history_records = 9;
+    let missing_block_history = bundle.evaluate(&criteria, 6);
+    assert!(!missing_block_history.has_block_history);
+    assert!(!missing_block_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let block_history_root = bundle.block_history_root;
+    let overreported_block_history_count = bundle.run.observed_blocks + 1;
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::BlockHistory,
+        block_history_root,
+        overreported_block_history_count,
+    );
+    let overreported_block_history = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_block_history.has_block_history);
+    assert!(overreported_block_history.has_public_supporting_record_artifacts);
+    assert!(!overreported_block_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.block_history_signature = [6; 32];
+    let tampered_block_history = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_block_history.has_block_history);
+    assert!(!tampered_block_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.block_history_root = [0; 32];
+    let missing_block_history_root = bundle.evaluate(&criteria, 6);
+    assert!(!missing_block_history_root.has_block_history);
+    assert!(!missing_block_history_root.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.finality_history_records = 9;
+    let missing_finality_history = bundle.evaluate(&criteria, 6);
+    assert!(!missing_finality_history.has_finality_history);
+    assert!(!missing_finality_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let finality_history_root = bundle.finality_history_root;
+    let overreported_finality_history_count = bundle.run.observed_blocks + 1;
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::FinalityHistory,
+        finality_history_root,
+        overreported_finality_history_count,
+    );
+    let overreported_finality_history = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_finality_history.has_finality_history);
+    assert!(overreported_finality_history.has_public_supporting_record_artifacts);
+    assert!(!overreported_finality_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.finality_history_signature = [5; 32];
+    let tampered_finality_history = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_finality_history.has_finality_history);
+    assert!(!tampered_finality_history.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.operator_identity_attestation_records = 2;
+    let missing_operator_attestations = bundle.evaluate(&criteria, 6);
+    assert!(!missing_operator_attestations.has_operator_identity_attestations);
+    assert!(
+        !missing_operator_attestations
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(
+        !missing_operator_attestations
+            .run_evidence
+            .public_criterion_met
+    );
+    assert!(!missing_operator_attestations.independently_checkable);
+    bundle.operator_identity_attestations.truncate(2);
+    let (miner_operators, validator_operators) = bundle
+        .run
+        .matched_independent_public_operators_for_criteria(&criteria);
+    assert!(
+        !bundle.has_operator_identity_attestation_records_for_public_operators(
+            2,
+            &miner_operators,
+            &validator_operators
+        )
+    );
+
+    bundle = complete_public_evidence_bundle();
+    bundle.operator_identity_attestation_records = 4;
+    let overreported_operator_attestations = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_operator_attestations.has_operator_identity_attestations);
+    assert!(
+        !overreported_operator_attestations
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(!overreported_operator_attestations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.operator_identity_attestations[0].operator_signature = [8; 32];
+    let tampered_operator_attestation = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_operator_attestation.has_operator_identity_attestations);
+    assert!(
+        !tampered_operator_attestation
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(!tampered_operator_attestation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.operator_identity_attestations[0].identity_uri =
+        String::from("https://localhost/operator.json");
+    let local_operator_attestation = bundle.evaluate(&criteria, 6);
+    assert!(!local_operator_attestation.has_operator_identity_attestations);
+    assert!(!local_operator_attestation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let stale_operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
+    bundle.operator_identity_attestations[0] = PublicOperatorIdentityAttestation::new(
+        PublicNodeRole::Miner,
+        address(b"miner-a"),
+        stale_operator_id,
+        manifest_operator_identity_uri(&stale_operator_id),
+        bundle.run.run_started_at_unix_seconds - 1,
+    );
+    let stale_operator_attestation = bundle.evaluate(&criteria, 6);
+    assert!(!stale_operator_attestation.has_operator_identity_attestations);
+    assert!(
+        !stale_operator_attestation
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(!stale_operator_attestation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let uncounted_validator_operator_id = hash_bytes(b"test", &[b"uncounted-validator-operator"]);
+    let uncounted_validator_address = bundle.run.nodes[0].address;
+    bundle.run.nodes.push(PublicNodeEvidence::validator(
+        uncounted_validator_address,
+        uncounted_validator_operator_id,
+        0,
+        9,
+        10,
+    ));
+    bundle.operator_identity_attestations[2] = PublicOperatorIdentityAttestation::new(
+        PublicNodeRole::Validator,
+        uncounted_validator_address,
+        uncounted_validator_operator_id,
+        manifest_operator_identity_uri(&uncounted_validator_operator_id),
+        bundle.run.run_started_at_unix_seconds,
+    );
+    let uncounted_operator_attestation = bundle.evaluate(&criteria, 6);
+    assert_eq!(uncounted_operator_attestation.run_evidence.miner_count, 2);
+    assert_eq!(
+        uncounted_operator_attestation.run_evidence.validator_count,
+        1
+    );
+    assert!(!uncounted_operator_attestation.has_operator_identity_attestations);
+    assert!(
+        !uncounted_operator_attestation
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(!uncounted_operator_attestation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.operator_identity_attestations.clear();
+    let missing_signed_operator_records = bundle.evaluate(&criteria, 6);
+    assert!(!missing_signed_operator_records.has_operator_identity_attestations);
+    assert!(!missing_signed_operator_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let duplicate_operator_node = bundle.run.nodes[0].clone();
+    bundle
+        .operator_identity_attestations
+        .push(PublicOperatorIdentityAttestation::new(
+            duplicate_operator_node.role,
+            duplicate_operator_node.address,
+            duplicate_operator_node.operator_id,
+            format!(
+                "https://operators.tensorvm.net/{}/duplicate",
+                hex(&duplicate_operator_node.operator_id)
+            ),
+            bundle.run.run_started_at_unix_seconds,
+        ));
+    let extra_operator_record = bundle.evaluate(&criteria, 6);
+    assert!(!extra_operator_record.has_operator_identity_attestations);
+    assert!(
+        !extra_operator_record
+            .run_evidence
+            .external_operator_evidence
+    );
+    assert!(!extra_operator_record.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observation_records = 2;
+    let missing_network_runtime_observations = bundle.evaluate(&criteria, 6);
+    assert!(!missing_network_runtime_observations.has_network_runtime_observations);
+    assert!(!missing_network_runtime_observations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observations.pop();
+    let missing_signed_network_runtime_observation = bundle.evaluate(&criteria, 6);
+    assert!(!missing_signed_network_runtime_observation.has_network_runtime_observations);
+    assert!(!missing_signed_network_runtime_observation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observations[0].operator_id =
+        hash_bytes(b"test", &[b"unmatched-network-operator"]);
+    let unmatched_network_operator = bundle.evaluate(&criteria, 6);
+    assert!(!unmatched_network_operator.has_network_runtime_observations);
+    assert!(!unmatched_network_operator.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observations[0].listen_address = String::from("/ip4/127.0.0.1/tcp/4001");
+    let local_network_observation = bundle.evaluate(&criteria, 6);
+    assert!(!local_network_observation.has_network_runtime_observations);
+    assert!(!local_network_observation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observations[0].observed_at_unix_seconds =
+        bundle.run.run_started_at_unix_seconds - 1;
+    let stale_network_observation = bundle.evaluate(&criteria, 6);
+    assert!(!stale_network_observation.has_network_runtime_observations);
+    assert!(!stale_network_observation.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let network_runtime_root = bundle.network_runtime_observation_root;
+    let underreported_network_runtime_count = bundle
+        .operator_identity_attestation_records
+        .saturating_sub(1);
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        network_runtime_root,
+        underreported_network_runtime_count,
+    );
+    let underreported_network_runtime_observations = bundle.evaluate(&criteria, 6);
+    assert!(!underreported_network_runtime_observations.has_network_runtime_observations);
+    assert!(underreported_network_runtime_observations.has_operator_identity_attestations);
+    assert!(underreported_network_runtime_observations.has_public_supporting_record_artifacts);
+    assert!(!underreported_network_runtime_observations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let network_runtime_root = bundle.network_runtime_observation_root;
+    let overreported_network_runtime_count = bundle
+        .operator_identity_attestation_records
+        .saturating_add(1);
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::NetworkRuntimeObservations,
+        network_runtime_root,
+        overreported_network_runtime_count,
+    );
+    let overreported_network_runtime_observations = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_network_runtime_observations.has_network_runtime_observations);
+    assert!(overreported_network_runtime_observations.has_operator_identity_attestations);
+    assert!(overreported_network_runtime_observations.has_public_supporting_record_artifacts);
+    assert!(!overreported_network_runtime_observations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.network_runtime_observation_signature = [3; 32];
+    let tampered_network_runtime_observations = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_network_runtime_observations.has_network_runtime_observations);
+    assert!(!tampered_network_runtime_observations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.run.network_runtime.gossip_propagation_observed = false;
+    let no_network_runtime_observations = bundle.evaluate(&criteria, 6);
+    assert!(!no_network_runtime_observations.has_network_runtime_observations);
+    assert!(!no_network_runtime_observations.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.data_availability_measurement_records = 19;
+    let missing_data_availability_measurements = bundle.evaluate(&criteria, 6);
+    assert!(!missing_data_availability_measurements.has_data_availability_measurements);
+    assert!(!missing_data_availability_measurements.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let data_availability_root = bundle.data_availability_measurement_root;
+    let overreported_data_availability_count = bundle.run.checked_receipts + 1;
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+        data_availability_root,
+        overreported_data_availability_count,
+    );
+    let overreported_data_availability_measurements = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_data_availability_measurements.has_data_availability_measurements);
+    assert!(overreported_data_availability_measurements.has_public_supporting_record_artifacts);
+    assert!(!overreported_data_availability_measurements.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.data_availability_measurement_signature = [4; 32];
+    let tampered_data_availability_measurements = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_data_availability_measurements.has_data_availability_measurements);
+    assert!(!tampered_data_availability_measurements.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.invalid_work_rejection_signature = [2; 32];
+    let tampered_invalid_work_records = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_invalid_work_records.has_invalid_work_rejection_records);
+    assert!(!tampered_invalid_work_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.invalid_work_rejection_records = 0;
+    let missing_invalid_work_records = bundle.evaluate(&criteria, 6);
+    assert!(!missing_invalid_work_records.has_invalid_work_rejection_records);
+    assert!(!missing_invalid_work_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    let invalid_work_root = bundle.invalid_work_rejection_root;
+    let overreported_invalid_work_count = bundle.run.invalid_receipts_submitted + 1;
+    resign_record_summary_and_artifact(
+        &mut bundle,
+        PublicEvidenceRecordKind::InvalidWorkRejections,
+        invalid_work_root,
+        overreported_invalid_work_count,
+    );
+    let overreported_invalid_work_records = bundle.evaluate(&criteria, 6);
+    assert!(!overreported_invalid_work_records.has_invalid_work_rejection_records);
+    assert!(overreported_invalid_work_records.has_public_supporting_record_artifacts);
+    assert!(!overreported_invalid_work_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.reward_settlement_signature = [1; 32];
+    let tampered_reward_records = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_reward_records.has_reward_settlement_record_summary);
+    assert!(!tampered_reward_records.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.supporting_artifacts.clear();
+    let missing_supporting_artifacts = bundle.evaluate(&criteria, 6);
+    assert!(!missing_supporting_artifacts.has_public_supporting_record_artifacts);
+    assert!(!missing_supporting_artifacts.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.supporting_artifacts[0].artifact_signature = [1; 32];
+    let tampered_supporting_artifact = bundle.evaluate(&criteria, 6);
+    assert!(!tampered_supporting_artifact.has_public_supporting_record_artifacts);
+    assert!(!tampered_supporting_artifact.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.supporting_artifacts[0].artifact_uri = String::from("https://localhost/raw.json");
+    let local_supporting_artifact = bundle.evaluate(&criteria, 6);
+    assert!(!local_supporting_artifact.has_public_supporting_record_artifacts);
+    assert!(!local_supporting_artifact.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.supporting_artifacts[0].artifact_uri = String::from("https://evidence.tensorvm.net/");
+    let root_only_supporting_artifact = bundle.evaluate(&criteria, 6);
+    assert!(!root_only_supporting_artifact.has_public_supporting_record_artifacts);
+    assert!(!root_only_supporting_artifact.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle
+        .supporting_artifacts
+        .push(bundle.supporting_artifacts[0].clone());
+    let duplicate_supporting_artifact = bundle.evaluate(&criteria, 6);
+    assert!(!duplicate_supporting_artifact.has_public_supporting_record_artifacts);
+    assert!(!duplicate_supporting_artifact.independently_checkable);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.run.services.clear();
+    let missing_services = bundle.evaluate(&criteria, 6);
+    assert!(missing_services.independently_checkable);
+    assert!(!missing_services.run_evidence.public_criterion_met);
+    assert!(!missing_services.full_spec_evidence_met);
+
+    bundle = complete_public_evidence_bundle();
+    bundle.run.service_content.clear();
+    let missing_service_content = bundle.evaluate(&criteria, 6);
+    assert!(missing_service_content.independently_checkable);
+    assert!(
+        !missing_service_content
+            .run_evidence
+            .has_deployed_public_service_content
+    );
+    assert!(!missing_service_content.run_evidence.public_criterion_met);
+    assert!(!missing_service_content.full_spec_evidence_met);
+}

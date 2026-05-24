@@ -430,6 +430,9 @@ spaghetti around.
 - Iteration 167 moved the public-run deployed service and production runtime criteria test into
   `testnet/tests/run_services.rs`, keeping service-reachability rule coverage out of the shared
   fixture module.
+- Iteration 168 moved the public evidence bundle publication and auditor-record coverage into
+  `testnet/tests/evidence_bundle.rs`, separating bundle-level evidence assertions from the remaining
+  manifest and deployment-template tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
