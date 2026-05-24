@@ -569,6 +569,9 @@ spaghetti around.
   attestation, block-vote, and model/challenge tests, preserving coverage while localizing failures.
 - Iteration 223 moved public evidence and preflight manifest fixture builders into
   `cli/tests/manifest_fixtures.rs`, reducing the CLI test harness root to command fixtures and module wiring.
+- Iteration 224 moved the CLI command fixture enum, parser adapter, execution/description adapters, and
+  command conversion helpers into `cli/tests/command_fixtures.rs`, leaving `cli/tests.rs` as shared imports
+  and child-module wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
