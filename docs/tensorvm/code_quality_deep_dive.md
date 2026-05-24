@@ -585,6 +585,9 @@ spaghetti around.
 - Iteration 228 moved the `tvmd` service lifecycle integration test into
   `tests/tvmd_cli/service_lifecycle.rs`, keeping service init/peer/readiness/serve/public-surface evidence
   checks together while reducing the root `tvmd_cli.rs` integration harness to shared helpers and role flows.
+- Iteration 229 moved public-evidence service health/content invalid-argument coverage into
+  `cli/tests/public_evidence_service_rejections.rs`, separating service evidence rejection cases from the
+  remaining publication, node, network, and supporting-record rejection coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

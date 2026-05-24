@@ -18,6 +18,7 @@ mod network_observation;
 mod parser;
 mod public_evidence_record_reports;
 mod public_evidence_rejections;
+mod public_evidence_service_rejections;
 
 use command_fixtures::*;
 use manifest_fixtures::*;
