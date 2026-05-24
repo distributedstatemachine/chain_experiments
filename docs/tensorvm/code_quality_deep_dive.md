@@ -895,6 +895,8 @@ spaghetti around.
   floor into the shared topology policy script.
 - Iteration 360 moved the local CPU checker's live receipt query page limit into the shared topology
   policy script.
+- Iteration 361 moved the local CPU checker's useful-PoW block scan depth into the shared topology
+  policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
