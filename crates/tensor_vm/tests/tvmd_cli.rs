@@ -8,8 +8,11 @@ use libp2p::PeerId;
 use tensor_vm::hash::hex;
 use tensor_vm::types::address;
 
+#[path = "support/comma_records.rs"]
+mod comma_records;
 #[path = "support/report_fields.rs"]
 mod report_fields;
+use comma_records::{comma_record_fields, network_observation_root};
 use report_fields::{
     report_u64 as stdout_u64, report_value as stdout_value, report_values as stdout_values,
 };
@@ -200,31 +203,6 @@ fn stdout_hex_hash<'a>(stdout: &'a str, key: &str) -> &'a str {
 
 fn trimmed_tvmd(args: &[&str]) -> String {
     run_tvmd(args).trim_end().to_owned()
-}
-
-fn network_observation_root(line: &str) -> &str {
-    let fields = line
-        .trim()
-        .strip_prefix("network_runtime_observation=")
-        .expect("network observation line must have expected prefix")
-        .split(',')
-        .collect::<Vec<_>>();
-    assert_eq!(fields.len(), 13);
-    fields[11]
-}
-
-fn comma_record_fields<'a>(line: &'a str, prefix: &str, expected_len: usize) -> Vec<&'a str> {
-    let record = line
-        .trim()
-        .strip_prefix(prefix)
-        .unwrap_or_else(|| panic!("record missing prefix {prefix:?}: {line}"));
-    let fields = record.split(',').collect::<Vec<_>>();
-    assert_eq!(
-        fields.len(),
-        expected_len,
-        "unexpected field count for {prefix:?}: {line}"
-    );
-    fields
 }
 
 fn assert_service_health_evidence_from_response(

@@ -804,6 +804,8 @@ spaghetti around.
   deployment checker, keeping unit-test execution owned by CI instead of the shell readiness script.
 - Iteration 319 reused the shared integration report parser for the local CPU env-file fixture checks,
   removing another one-off `KEY=value` scanner from the Compose artifact test.
+- Iteration 320 added a shared integration-test comma-record parser and moved `tvmd_cli` service,
+  network, and supporting-record evidence assertions off inline `split(',')` helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
