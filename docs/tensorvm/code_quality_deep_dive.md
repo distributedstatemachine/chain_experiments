@@ -551,6 +551,8 @@ spaghetti around.
   `chain/tests/blocks.rs`, so the block-specific proof-of-work helpers now live with block tests.
 - Iteration 214 moved account, transaction, operator-root, parameter, and boundary rejection tests into
   `chain/tests/boundaries.rs`, leaving the chain facade test module focused on model/challenge edges.
+- Iteration 215 moved the chain test harness root into `chain/tests.rs`, leaving `chain.rs` with only
+  production facade code plus `#[cfg(test)] mod tests;` wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
