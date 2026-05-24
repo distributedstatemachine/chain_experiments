@@ -910,6 +910,8 @@ spaghetti around.
   policy script.
 - Iteration 369 moved the restart continuity checker's seeded-height comparisons into the shared
   topology policy script.
+- Iteration 370 moved the restart continuity checker's Docker restart command timeout into the shared
+  topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -22,6 +22,7 @@ EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT"
 EXPECTED_RESTART_CHECKER_RETRY_LIMIT="$LOCAL_CPU_RESTART_CHECKER_RETRY_LIMIT"
 EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
 EXPECTED_CHECKER_RETRY_SLEEP_SECONDS="$LOCAL_CPU_CHECKER_RETRY_SLEEP_SECONDS"
+EXPECTED_RESTART_COMMAND_TIMEOUT_SECONDS="$LOCAL_CPU_RESTART_COMMAND_TIMEOUT_SECONDS"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
@@ -193,7 +194,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
 capture_snapshot before "$TMP_DIR/before"
 
-timeout 60s docker compose -f "$COMPOSE_FILE" restart $RESTART_SERVICES
+timeout "${EXPECTED_RESTART_COMMAND_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" restart $RESTART_SERVICES
 for service in $RESTART_SERVICES; do
   wait_service_ready "$service" || fail "$service did not report local readiness after restart"
 done
