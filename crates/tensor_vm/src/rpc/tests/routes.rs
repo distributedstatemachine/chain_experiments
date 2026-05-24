@@ -619,6 +619,12 @@ fn rpc_rejects_malformed_requests_and_missing_resources() {
         .status,
         200
     );
+    let escaped_error = RpcNode::response(400, "bad \"field\"");
+    assert_eq!(escaped_error.status, 400);
+    assert_eq!(
+        response_json(&escaped_error)["error"].as_str(),
+        Some("bad \"field\"")
+    );
 
     for (path, expected_status) in [
         ("/chain/block/nope".to_owned(), 400),

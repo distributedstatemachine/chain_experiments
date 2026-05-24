@@ -832,6 +832,8 @@ spaghetti around.
   precedence while keeping request framing separate from individual header interpretation.
 - Iteration 332 moved RPC job and tensor response JSON onto `serde_json::json!`, replacing manual array
   and object string assembly while expanding tensor route field assertions.
+- Iteration 333 moved core RPC read, status, accepted, and error responses onto `serde_json::json!`, so
+  route helpers no longer hand-build those JSON objects or own escaping details.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

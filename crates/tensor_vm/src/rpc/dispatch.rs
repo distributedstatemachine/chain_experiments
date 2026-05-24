@@ -4,7 +4,6 @@ use super::explorer::{
 use super::http::{HttpRequestLineError, parse_http_request_line};
 use super::render::{faucet_page_html, telemetry_dashboard_html};
 use super::{RpcNode, RpcRequest, RpcResponse};
-use crate::hash::hex;
 use crate::telemetry::TelemetrySnapshot;
 use tensor_vm_explorer::{explorer_shell_html, jobs_json, miners_json, validators_json};
 
@@ -15,16 +14,8 @@ impl RpcNode {
         match (request.method.as_str(), request.path.as_str()) {
             ("GET", "/health") => self.health("all"),
             ("GET", "/rpc/health") => self.health("rpc"),
-            ("GET", "/chain/head") => self.ok(format!(
-                "{{\"height\":{},\"epoch\":{},\"block_count\":{},\"state_root\":\"{}\"}}",
-                self.chain.state().height(),
-                self.chain.state().epoch(),
-                self.chain.blocks.len(),
-                hex(&self.chain.state_root())
-            )),
-            ("GET", "/epoch/current") => {
-                self.ok(format!("{{\"epoch\":{}}}", self.chain.state().epoch()))
-            }
+            ("GET", "/chain/head") => self.chain_head(),
+            ("GET", "/epoch/current") => self.current_epoch(),
             ("GET", "/jobs/current") => self.jobs_current(),
             ("GET", "/explorer/health") => self.health("explorer"),
             ("GET", "/explorer") => self.ok(explorer_shell_html("/explorer/ws")),

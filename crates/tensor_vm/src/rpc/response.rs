@@ -1,4 +1,5 @@
 use super::{RpcNode, RpcResponse};
+use serde_json::json;
 
 impl RpcNode {
     pub(super) fn ok(&self, body: String) -> RpcResponse {
@@ -8,7 +9,7 @@ impl RpcNode {
     pub(super) fn accepted(&self) -> RpcResponse {
         RpcResponse {
             status: 202,
-            body: "{\"accepted\":true}".to_owned(),
+            body: json!({ "accepted": true }).to_string(),
         }
     }
 
@@ -27,7 +28,7 @@ impl RpcNode {
     pub(super) fn response(status: u16, message: &str) -> RpcResponse {
         RpcResponse {
             status,
-            body: format!("{{\"error\":\"{message}\"}}"),
+            body: json!({ "error": message }).to_string(),
         }
     }
 }
