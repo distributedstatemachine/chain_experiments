@@ -1,22 +1,19 @@
 use std::{thread, time::Duration};
 
-use tensor_vm::{
-    NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
-    app::{
-        LocalProductionSchedule, RuntimeP2pMetadata, RuntimeRole, RuntimeServices,
-        RuntimeStatusSnapshot, ServiceRuntimeConfig, format_role_runtime_report,
-        ingest_network_once as ingest_runtime_network_once,
-        serve_rpc_once as serve_runtime_rpc_once, start_runtime_services,
-        tick_miner_role_work_once,
-        tick_validator_role_work_once as tick_validator_role_worker_once,
-        write_role_runtime_status,
-    },
+use crate::{NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService};
+
+use super::{
+    LocalProductionSchedule, RuntimeP2pMetadata, RuntimeRole, RuntimeServices,
+    RuntimeStatusSnapshot, ServiceRuntimeConfig, format_role_runtime_report,
+    ingest_network_once as ingest_runtime_network_once, serve_rpc_once as serve_runtime_rpc_once,
+    start_runtime_services, tick_miner_role_work_once,
+    tick_validator_role_work_once as tick_validator_role_worker_once, write_role_runtime_status,
 };
 
-pub(super) struct RoleRuntimeLoop {
+pub struct RoleRuntimeLoop {
     config: ServiceRuntimeConfig,
     store: NodeStore,
-    pub(super) server: RpcHttpServer,
+    server: RpcHttpServer,
     p2p_service: TensorVmLibp2pService,
     local_producer: bool,
     local_production: LocalProductionSchedule,
@@ -25,7 +22,7 @@ pub(super) struct RoleRuntimeLoop {
 }
 
 impl RoleRuntimeLoop {
-    pub(super) fn start(config: ServiceRuntimeConfig) -> std::result::Result<Self, String> {
+    pub fn start(config: ServiceRuntimeConfig) -> std::result::Result<Self, String> {
         let RuntimeServices {
             store,
             server,
@@ -46,7 +43,7 @@ impl RoleRuntimeLoop {
         })
     }
 
-    pub(super) fn run_until_max_requests(&mut self) -> std::result::Result<(), String> {
+    pub fn run_until_max_requests(&mut self) -> std::result::Result<(), String> {
         self.write_status()?;
         self.server.set_nonblocking(true).map_err(|error| {
             format!("failed to configure nonblocking service listener: {error}")
@@ -69,7 +66,7 @@ impl RoleRuntimeLoop {
         max_requests != 0 && self.runtime_state.served_requests() >= max_requests
     }
 
-    pub(super) fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
+    pub fn serve_rpc_once(&mut self) -> std::result::Result<(), String> {
         if serve_runtime_rpc_once(&self.store, &mut self.server, &mut self.runtime_state)? {
             self.write_status()?;
         }
@@ -108,7 +105,7 @@ impl RoleRuntimeLoop {
         }
     }
 
-    pub(super) fn tick_validator_role_work_once(&mut self) -> std::result::Result<(), String> {
+    pub fn tick_validator_role_work_once(&mut self) -> std::result::Result<(), String> {
         if tick_validator_role_worker_once(
             &self.config,
             &self.store,
@@ -150,7 +147,11 @@ impl RoleRuntimeLoop {
         )
     }
 
-    pub(super) fn report(&self) -> String {
+    pub fn server(&self) -> &RpcHttpServer {
+        &self.server
+    }
+
+    pub fn report(&self) -> String {
         let snapshot = self.status_snapshot();
         format_role_runtime_report(&self.config, &snapshot, &self.p2p_metadata.report())
     }

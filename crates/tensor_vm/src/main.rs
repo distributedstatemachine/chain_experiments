@@ -15,9 +15,6 @@ use tensor_vm::{
 #[path = "main/runtime.rs"]
 mod runtime;
 
-#[path = "main/runtime_loop.rs"]
-mod runtime_loop;
-
 #[path = "main/runtime_commands.rs"]
 mod runtime_commands;
 

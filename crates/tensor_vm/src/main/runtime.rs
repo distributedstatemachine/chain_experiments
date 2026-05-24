@@ -1,6 +1,4 @@
-use tensor_vm::app::{RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
-
-pub(super) use super::runtime_loop::RoleRuntimeLoop;
+use tensor_vm::app::{RoleRuntimeLoop, RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
 
 pub(super) fn serve_service(
     listen: &str,

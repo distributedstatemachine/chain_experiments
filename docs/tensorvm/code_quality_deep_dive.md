@@ -628,6 +628,9 @@ spaghetti around.
 - Iteration 242 moved validator runtime ticking into the library-owned `app` module, so both miner and
   validator role workers now sit behind app APIs and the `tvmd` runtime loop no longer depends on a
   binary-private validator worker module.
+- Iteration 243 moved `RoleRuntimeLoop` into the library-owned `app` module, making the binary runtime
+  entrypoint a thin command wrapper over an app-owned loop instead of the owner of service, RPC, network,
+  production, and role-tick orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

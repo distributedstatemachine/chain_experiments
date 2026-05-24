@@ -15,7 +15,7 @@ fn role_runtime_read_only_rpc_does_not_persist_chain() {
     thread::sleep(Duration::from_millis(1_100));
 
     let mut runtime = RoleRuntimeLoop::start(config).unwrap();
-    let addr = runtime.server.local_addr().unwrap();
+    let addr = runtime.server().local_addr().unwrap();
     let client = thread::spawn(move || {
         send_http_request(
             addr,
@@ -56,7 +56,7 @@ fn role_runtime_mutating_rpc_persists_chain() {
     let user = address(b"runtime-faucet-persist-user");
 
     let mut runtime = RoleRuntimeLoop::start(config).unwrap();
-    let addr = runtime.server.local_addr().unwrap();
+    let addr = runtime.server().local_addr().unwrap();
     let request = format!(
         "POST /faucet/claim/{} HTTP/1.1\r\nhost: localhost\r\nx-tensorchain-auth: secret\r\ncontent-length: 0\r\n\r\n",
         hex(&user)

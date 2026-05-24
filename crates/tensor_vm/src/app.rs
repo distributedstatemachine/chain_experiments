@@ -3,6 +3,7 @@ mod commands;
 mod miner_role;
 mod network;
 mod runtime_config;
+mod runtime_loop;
 mod runtime_network;
 mod runtime_production;
 mod runtime_rpc;
@@ -33,6 +34,7 @@ pub use runtime_config::{
     role_wallet_address, runtime_node_config, runtime_role_wallet_address_text,
     runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
+pub use runtime_loop::RoleRuntimeLoop;
 pub use runtime_network::ingest_network_once;
 pub use runtime_production::LocalProductionSchedule;
 pub use runtime_rpc::serve_rpc_once;
