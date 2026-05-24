@@ -377,13 +377,13 @@ pub fn zero_work_liveness_study(
         chain
             .produce_block(
                 proposer,
-                height.saturating_mul(chain.params.block_time_seconds),
+                height.saturating_mul(chain.params().block_time_seconds),
             )
             .expect("registered validator should produce zero-work study block");
     }
     ZeroWorkLivenessStudy {
         blocks_requested: blocks,
-        blocks_produced: chain.blocks.len() as u64,
+        blocks_produced: chain.blocks().len() as u64,
         proposers,
     }
 }

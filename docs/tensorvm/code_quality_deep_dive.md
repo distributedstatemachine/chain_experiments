@@ -1006,6 +1006,8 @@ spaghetti around.
   `Chain.params`/`Chain.blocks` reads, leaving the module on the same accessor path.
 - Iteration 415 moved scheduler production reads onto `Chain::params()` and replaced scheduler
   test parameter mutations with explicit crate-test-only `Chain` helper methods.
+- Iteration 416 moved the zero-work liveness study off direct `Chain.params` and `Chain.blocks`
+  reads, clearing non-chain-module direct access to those fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
