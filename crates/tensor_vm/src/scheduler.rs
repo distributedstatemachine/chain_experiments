@@ -201,7 +201,28 @@ impl JobScheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chain::{ChainCommand, ChainEngine};
     use crate::types::{address, hash_bytes};
+
+    fn register_validator(chain: &mut Chain, validator: Address) {
+        let stake = chain.params().validator_min_stake;
+        chain
+            .apply_command(ChainCommand::RegisterValidator {
+                address: validator,
+                stake,
+            })
+            .unwrap();
+    }
+
+    fn register_miner(chain: &mut Chain, miner: Address) {
+        let stake = chain.params().miner_min_stake;
+        chain
+            .apply_command(ChainCommand::RegisterMiner {
+                address: miner,
+                stake,
+            })
+            .unwrap();
+    }
 
     #[test]
     fn scheduler_generates_deterministic_jobs() {
@@ -282,9 +303,7 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let mut chain = Chain::new(beacon);
         for i in 0..12 {
-            chain
-                .register_validator(address(format!("validator-{i}").as_bytes()), 10_000)
-                .unwrap();
+            register_validator(&mut chain, address(format!("validator-{i}").as_bytes()));
         }
         let scheduler = JobScheduler::default();
         let receipt = hash_bytes(b"test", &[b"receipt"]);
@@ -304,9 +323,7 @@ mod tests {
         let mut chain = Chain::new(beacon);
         chain.params.freivalds.validators_per_job = 4;
         for i in 0..32 {
-            chain
-                .register_validator(address(format!("validator-{i}").as_bytes()), 10_000)
-                .unwrap();
+            register_validator(&mut chain, address(format!("validator-{i}").as_bytes()));
         }
         let scheduler = JobScheduler::default();
         let first =
@@ -332,9 +349,7 @@ mod tests {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
         let mut chain = Chain::new(beacon);
         for i in 0..10 {
-            chain
-                .register_miner(address(format!("miner-{i}").as_bytes()), 100)
-                .unwrap();
+            register_miner(&mut chain, address(format!("miner-{i}").as_bytes()));
         }
         chain.params.replication_factor = 4;
         let scheduler = JobScheduler::default();

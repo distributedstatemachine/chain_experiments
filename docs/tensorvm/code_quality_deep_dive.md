@@ -662,6 +662,8 @@ spaghetti around.
 - Iteration 254 reused those storage command helpers in the chain-state durable fixture and added a
   `CreditReward` helper, aligning the chain-state persistence fixture with the node-store command-backed
   setup path.
+- Iteration 255 routed scheduler assignment test registration setup through local `ChainCommand` helpers,
+  removing direct miner and validator registration calls from that test surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
