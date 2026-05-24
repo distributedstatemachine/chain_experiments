@@ -20,6 +20,19 @@ use super::websocket::{
     websocket_accept_key, write_websocket_frame,
 };
 
+fn response_json(response: &RpcResponse) -> serde_json::Value {
+    serde_json::from_str(&response.body).expect("RPC response body must be JSON")
+}
+
+fn json_hex_field<'a>(json: &'a serde_json::Value, field: &str) -> &'a str {
+    let value = json[field]
+        .as_str()
+        .expect("RPC JSON field must be a string");
+    assert_eq!(value.len(), 64);
+    assert!(value.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    value
+}
+
 mod http;
 mod routes;
 mod tensors;

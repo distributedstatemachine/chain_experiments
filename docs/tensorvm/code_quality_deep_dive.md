@@ -704,6 +704,8 @@ spaghetti around.
   leaving only the intentionally HTML page responses as content checks.
 - Iteration 275 converted the RPC receipt lookup route test to parsed JSON assertions for receipt ID,
   job ID, and tensor-work units while preserving the HTTP status-text edge coverage.
+- Iteration 276 moved the RPC JSON test helpers to the shared RPC test module and converted the
+  `/tensor/latest` synthetic-round assertion to parsed tensor-count and hash-field checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

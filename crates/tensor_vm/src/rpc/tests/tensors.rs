@@ -86,5 +86,8 @@ fn rpc_node_synthetic_round_retains_live_tensors_for_rpc_fetch() {
         body: Vec::new(),
     });
     assert_eq!(latest.status, 200);
-    assert!(latest.body.contains("\"tensor_count\":9"));
+    let latest = response_json(&latest);
+    json_hex_field(&latest, "tensor_id");
+    assert_eq!(latest["tensor_count"].as_u64(), Some(9));
+    json_hex_field(&latest, "root");
 }
