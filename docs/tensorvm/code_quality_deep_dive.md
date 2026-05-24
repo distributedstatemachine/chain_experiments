@@ -1013,6 +1013,9 @@ spaghetti around.
 - Iteration 418 split the public service evidence clap command family into
   `cli/public_evidence_service_commands.rs`, keeping service-specific args and value enums beside
   their command owner while preserving the public re-export surface.
+- Iteration 419 split the public supporting-record clap command family into
+  `cli/public_evidence_record_commands.rs`, moving record args and the record-kind value enum out
+  of the mixed public evidence command module without changing external re-exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
