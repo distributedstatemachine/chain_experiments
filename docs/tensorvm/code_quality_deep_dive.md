@@ -963,6 +963,8 @@ spaghetti around.
   record fixture variants.
 - Iteration 394 moved public publication and auditor rejection tests from `EvidenceFixture` to direct
   `EvidenceCommand` execution and removed the now-dead publication fixture variants.
+- Iteration 395 moved public run-window rejection tests from `EvidenceFixture` to direct
+  `EvidenceCommand` execution and removed the now-dead run-window fixture variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

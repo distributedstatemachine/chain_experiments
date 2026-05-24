@@ -99,18 +99,6 @@ pub(super) enum EvidenceFixture {
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
     },
-    RunWindow {
-        bundle_id: Hash,
-        manifest_signer: Address,
-        run_started_at_unix_seconds: u64,
-        run_ended_at_unix_seconds: u64,
-        observed_blocks: u64,
-    },
-    RunWindowFromFile {
-        bundle_id: Hash,
-        manifest_signer: Address,
-        block_observation_file: String,
-    },
     NodeHeartbeat {
         role: PublicNodeRole,
         address: Address,
@@ -369,32 +357,6 @@ impl EvidenceFixture {
                     idle_timeout_seconds: idle_connection_timeout_seconds,
                 }),
             )),
-            Self::RunWindow {
-                bundle_id,
-                manifest_signer,
-                run_started_at_unix_seconds,
-                run_ended_at_unix_seconds,
-                observed_blocks,
-            } => public_evidence_command(EvidenceCommand::Run(EvidenceRunCommand::Window(
-                RunWindowArgs {
-                    bundle_id: hash_arg(bundle_id),
-                    manifest_signer: address_arg(manifest_signer),
-                    started_at: run_started_at_unix_seconds,
-                    ended_at: run_ended_at_unix_seconds,
-                    observed_blocks,
-                },
-            ))),
-            Self::RunWindowFromFile {
-                bundle_id,
-                manifest_signer,
-                block_observation_file,
-            } => public_evidence_command(EvidenceCommand::Run(EvidenceRunCommand::WindowFile(
-                RunWindowFromFileArgs {
-                    bundle_id: hash_arg(bundle_id),
-                    manifest_signer: address_arg(manifest_signer),
-                    block_observation_file: path_arg(block_observation_file),
-                },
-            ))),
             Self::NodeHeartbeat {
                 role,
                 address,

@@ -1,45 +1,45 @@
 use super::*;
 
 #[test]
-fn execute_evidence_fixture_rejects_invalid_run_window_evidence_args() {
+fn direct_run_window_evidence_rejects_invalid_args() {
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::RunWindow {
-            bundle_id: [0; 32],
-            manifest_signer: address(b"public-evidence-publisher"),
-            run_started_at_unix_seconds: 1_700_000_000,
-            run_ended_at_unix_seconds: 1_700_000_060,
-            observed_blocks: 10,
-        })
+        execute_run_window(
+            [0; 32],
+            address(b"public-evidence-publisher"),
+            1_700_000_000,
+            1_700_000_060,
+            10
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::RunWindow {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: [0; 32],
-            run_started_at_unix_seconds: 1_700_000_000,
-            run_ended_at_unix_seconds: 1_700_000_060,
-            observed_blocks: 10,
-        })
+        execute_run_window(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            [0; 32],
+            1_700_000_000,
+            1_700_000_060,
+            10,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::RunWindow {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            run_started_at_unix_seconds: 1_700_000_060,
-            run_ended_at_unix_seconds: 1_700_000_000,
-            observed_blocks: 10,
-        })
+        execute_run_window(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            address(b"public-evidence-publisher"),
+            1_700_000_060,
+            1_700_000_000,
+            10,
+        )
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::RunWindow {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            run_started_at_unix_seconds: 1_700_000_000,
-            run_ended_at_unix_seconds: 1_700_000_060,
-            observed_blocks: 0,
-        })
+        execute_run_window(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            address(b"public-evidence-publisher"),
+            1_700_000_000,
+            1_700_000_060,
+            0,
+        )
         .is_err()
     );
     let run_window_summary = run_window_observation_summary_from_file(
@@ -66,17 +66,40 @@ fn execute_evidence_fixture_rejects_invalid_run_window_evidence_args() {
         assert!(run_window_observation_summary_from_file(invalid_run_window_observations).is_err());
     }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::RunWindowFromFile {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            block_observation_file: std::env::temp_dir()
-                .join(format!(
-                    "missing-tensor-vm-run-window-{}.records",
-                    std::process::id()
-                ))
-                .to_string_lossy()
-                .into_owned(),
-        })
+        execute_run_window_file(std::env::temp_dir().join(format!(
+            "missing-tensor-vm-run-window-{}.records",
+            std::process::id()
+        )))
         .is_err()
     );
+}
+
+fn execute_run_window(
+    bundle_id: [u8; 32],
+    manifest_signer: [u8; 32],
+    started_at: u64,
+    ended_at: u64,
+    observed_blocks: u64,
+) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::Window(
+        RunWindowArgs {
+            bundle_id: hash_arg(bundle_id),
+            manifest_signer: address_arg(manifest_signer),
+            started_at,
+            ended_at,
+            observed_blocks,
+        },
+    )))
+}
+
+fn execute_run_window_file(
+    block_observation_file: std::path::PathBuf,
+) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::WindowFile(
+        RunWindowFromFileArgs {
+            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            block_observation_file,
+        },
+    )))
 }
