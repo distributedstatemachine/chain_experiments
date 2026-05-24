@@ -6,9 +6,6 @@ use crate::runtime::cuda_device_count;
 use crate::runtime::cuda_kernels_compiled;
 #[cfg(test)]
 use crate::testnet::sign_public_evidence_record;
-#[cfg(test)]
-use libp2p::PeerId;
-
 mod arguments;
 mod command_values;
 mod commands;
@@ -54,8 +51,8 @@ use arguments::{
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
 pub use commands::{
-    AuditorRecordArgs, DataDirArgs, HashList, LocalCpuCommand, LocalCpuVerifyArgs,
-    LocalTestnetCommand, MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
+    AuditorRecordArgs, DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand,
+    MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, ProposerCommand, PublicEvidenceCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetCommand,

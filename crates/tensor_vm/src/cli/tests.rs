@@ -11,6 +11,9 @@ use crate::testnet::{
 };
 use crate::types::{Address, Hash, address, hash_bytes};
 use clap::Parser;
+use libp2p::PeerId;
+use std::net::SocketAddr;
+use std::path::PathBuf;
 
 mod command_descriptions;
 mod execution_reports;
@@ -277,6 +280,26 @@ fn describe_command_fixture(command: &CommandFixture) -> String {
     super::describe_cli_command(&command.clone().into_cli_command())
 }
 
+fn path_arg(value: String) -> PathBuf {
+    value.into()
+}
+
+fn path_to_string(value: PathBuf) -> String {
+    value.to_string_lossy().into_owned()
+}
+
+fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
+    value.parse().expect("fixture multiaddr must parse")
+}
+
+fn socket_addr_arg(value: String) -> SocketAddr {
+    value.parse().expect("fixture socket address must parse")
+}
+
+fn peer_id_arg(value: String) -> PeerId {
+    value.parse().expect("fixture peer ID must parse")
+}
+
 impl CommandFixture {
     fn into_cli_command(self) -> super::TvmdCommand {
         match self {
@@ -289,9 +312,9 @@ impl CommandFixture {
                 node,
             } => super::TvmdCommand::Miner {
                 command: MinerCommand::Start(MinerStartArgs {
-                    wallet,
+                    wallet: path_arg(wallet),
                     device,
-                    node,
+                    node: multiaddr_arg(node),
                 }),
             },
             Self::MinerRun {
@@ -306,14 +329,14 @@ impl CommandFixture {
                 max_requests,
             } => super::TvmdCommand::Miner {
                 command: MinerCommand::Run(MinerRunArgs {
-                    wallet,
+                    wallet: path_arg(wallet),
                     device,
                     runtime: RoleRuntimeArgs {
-                        node,
+                        node: multiaddr_arg(node),
                         service: ServiceRuntimeArgs {
-                            listen,
-                            p2p_listen,
-                            data_dir,
+                            listen: socket_addr_arg(listen),
+                            p2p_listen: multiaddr_arg(p2p_listen),
+                            data_dir: path_arg(data_dir),
                             identity_seed,
                             auth_token,
                             max_requests,
@@ -328,7 +351,10 @@ impl CommandFixture {
                 command: ValidatorCommand::Register(StakeArgs { stake }),
             },
             Self::ValidatorStart { wallet, node } => super::TvmdCommand::Validator {
-                command: ValidatorCommand::Start(ValidatorStartArgs { wallet, node }),
+                command: ValidatorCommand::Start(ValidatorStartArgs {
+                    wallet: path_arg(wallet),
+                    node: multiaddr_arg(node),
+                }),
             },
             Self::ValidatorRun {
                 wallet,
@@ -341,13 +367,13 @@ impl CommandFixture {
                 max_requests,
             } => super::TvmdCommand::Validator {
                 command: ValidatorCommand::Run(ValidatorRunArgs {
-                    wallet,
+                    wallet: path_arg(wallet),
                     runtime: RoleRuntimeArgs {
-                        node,
+                        node: multiaddr_arg(node),
                         service: ServiceRuntimeArgs {
-                            listen,
-                            p2p_listen,
-                            data_dir,
+                            listen: socket_addr_arg(listen),
+                            p2p_listen: multiaddr_arg(p2p_listen),
+                            data_dir: path_arg(data_dir),
                             identity_seed,
                             auth_token,
                             max_requests,
@@ -369,13 +395,13 @@ impl CommandFixture {
                 max_requests,
             } => super::TvmdCommand::Proposer {
                 command: ProposerCommand::Run(ValidatorRunArgs {
-                    wallet,
+                    wallet: path_arg(wallet),
                     runtime: RoleRuntimeArgs {
-                        node,
+                        node: multiaddr_arg(node),
                         service: ServiceRuntimeArgs {
-                            listen,
-                            p2p_listen,
-                            data_dir,
+                            listen: socket_addr_arg(listen),
+                            p2p_listen: multiaddr_arg(p2p_listen),
+                            data_dir: path_arg(data_dir),
                             identity_seed,
                             auth_token,
                             max_requests,
@@ -384,7 +410,9 @@ impl CommandFixture {
                 }),
             },
             Self::ServiceInit { data_dir } => super::TvmdCommand::Service {
-                command: ServiceCommand::Init(DataDirArgs { data_dir }),
+                command: ServiceCommand::Init(DataDirArgs {
+                    data_dir: path_arg(data_dir),
+                }),
             },
             Self::ServicePeerAdd {
                 data_dir,
@@ -393,9 +421,9 @@ impl CommandFixture {
             } => super::TvmdCommand::Service {
                 command: ServiceCommand::Peer {
                     command: ServicePeerCommand::Add(ServicePeerAddArgs {
-                        data_dir,
-                        peer_id,
-                        address,
+                        data_dir: path_arg(data_dir),
+                        peer_id: peer_id_arg(peer_id),
+                        address: multiaddr_arg(address),
                     }),
                 },
             },
@@ -405,8 +433,8 @@ impl CommandFixture {
                 identity_seed,
             } => super::TvmdCommand::Service {
                 command: ServiceCommand::Readiness(ServiceReadinessArgs {
-                    p2p_listen,
-                    data_dir,
+                    p2p_listen: multiaddr_arg(p2p_listen),
+                    data_dir: path_arg(data_dir),
                     identity_seed,
                 }),
             },
@@ -420,9 +448,9 @@ impl CommandFixture {
             } => super::TvmdCommand::Service {
                 command: ServiceCommand::Serve(ServiceServeArgs {
                     runtime: ServiceRuntimeArgs {
-                        listen,
-                        p2p_listen,
-                        data_dir,
+                        listen: socket_addr_arg(listen),
+                        p2p_listen: multiaddr_arg(p2p_listen),
+                        data_dir: path_arg(data_dir),
                         identity_seed,
                         auth_token,
                         max_requests,
@@ -430,19 +458,31 @@ impl CommandFixture {
                 }),
             },
             Self::ServiceStatus { data_dir } => super::TvmdCommand::Service {
-                command: ServiceCommand::Status(DataDirArgs { data_dir }),
+                command: ServiceCommand::Status(DataDirArgs {
+                    data_dir: path_arg(data_dir),
+                }),
             },
             Self::ServiceBlock { data_dir, height } => super::TvmdCommand::Service {
-                command: ServiceCommand::Block(ServiceBlockArgs { data_dir, height }),
+                command: ServiceCommand::Block(ServiceBlockArgs {
+                    data_dir: path_arg(data_dir),
+                    height,
+                }),
             },
             Self::LocalTestnetSeed { data_dir } => super::TvmdCommand::LocalTestnet {
-                command: LocalTestnetCommand::Seed(DataDirArgs { data_dir }),
+                command: LocalTestnetCommand::Seed(DataDirArgs {
+                    data_dir: path_arg(data_dir),
+                }),
             },
             Self::LocalCpuVerify { data_dir, json } => super::TvmdCommand::LocalCpu {
-                command: LocalCpuCommand::Verify(LocalCpuVerifyArgs { data_dir, json }),
+                command: LocalCpuCommand::Verify(LocalCpuVerifyArgs {
+                    data_dir: path_arg(data_dir),
+                    json,
+                }),
             },
             Self::PublicEvidenceValidate { manifest } => super::TvmdCommand::PublicEvidence {
-                command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs { manifest }),
+                command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs {
+                    manifest: path_arg(manifest),
+                }),
             },
             Self::PublicEvidenceServiceHealth {
                 kind,
@@ -477,7 +517,7 @@ impl CommandFixture {
                     endpoint_id,
                     public_url,
                     health_path,
-                    observation_file,
+                    observation_file: path_arg(observation_file),
                 }),
             },
             Self::PublicEvidenceServiceContent {
@@ -533,7 +573,7 @@ impl CommandFixture {
                         public_url,
                         content_path,
                         observed_at: observed_at_unix_seconds,
-                        content_file,
+                        content_file: path_arg(content_file),
                     },
                 ),
             },
@@ -582,7 +622,7 @@ impl CommandFixture {
                         bundle_id,
                         manifest_signer,
                         artifact_uri,
-                        record_roots: HashList(record_roots),
+                        record_roots,
                     },
                 ),
             },
@@ -599,7 +639,7 @@ impl CommandFixture {
                         bundle_id,
                         manifest_signer,
                         artifact_uri,
-                        record_file,
+                        record_file: path_arg(record_file),
                     },
                 ),
             },
@@ -614,7 +654,7 @@ impl CommandFixture {
                         kind: record_kind_arg(kind),
                         bundle_id,
                         manifest_signer,
-                        record_roots: HashList(record_roots),
+                        record_roots,
                     },
                 ),
             },
@@ -628,7 +668,7 @@ impl CommandFixture {
                     kind: record_kind_arg(kind),
                     bundle_id,
                     manifest_signer,
-                    record_file,
+                    record_file: path_arg(record_file),
                 }),
             },
             Self::PublicEvidenceNetworkObservation {
@@ -646,8 +686,8 @@ impl CommandFixture {
             } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::NetworkObservation(NetworkObservationArgs {
                     operator_id,
-                    peer_id,
-                    listen_address,
+                    peer_id: peer_id_arg(peer_id),
+                    listen_address: multiaddr_arg(listen_address),
                     observed_at: observed_at_unix_seconds,
                     gossip_topics: gossip_topic_count,
                     request_response_protocols: request_response_protocol_count,
@@ -667,9 +707,9 @@ impl CommandFixture {
                 command: PublicEvidenceCommand::NetworkObservationFromServiceLog(
                     NetworkObservationFromServiceLogArgs {
                         operator_id,
-                        listen_address,
+                        listen_address: multiaddr_arg(listen_address),
                         observed_at: observed_at_unix_seconds,
-                        service_log,
+                        service_log: path_arg(service_log),
                     },
                 ),
             },
@@ -726,7 +766,7 @@ impl CommandFixture {
                 command: PublicEvidenceCommand::RunWindowFromFile(RunWindowFromFileArgs {
                     bundle_id,
                     manifest_signer,
-                    block_observation_file,
+                    block_observation_file: path_arg(block_observation_file),
                 }),
             },
             Self::PublicEvidenceNodeHeartbeat {
@@ -756,7 +796,7 @@ impl CommandFixture {
                     role: node_role_arg(role),
                     address,
                     operator_id,
-                    heartbeat_file,
+                    heartbeat_file: path_arg(heartbeat_file),
                 }),
             },
             Self::PublicEvidenceOperatorAttestation {
@@ -775,7 +815,9 @@ impl CommandFixture {
                 }),
             },
             Self::PublicTestnetPreflight { manifest } => super::TvmdCommand::PublicTestnet {
-                command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs { manifest }),
+                command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs {
+                    manifest: path_arg(manifest),
+                }),
             },
         }
     }
@@ -787,17 +829,17 @@ impl From<super::TvmdCommand> for CommandFixture {
             super::TvmdCommand::Miner { command } => match command {
                 MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
                 MinerCommand::Start(args) => Self::MinerStart {
-                    wallet: args.wallet,
+                    wallet: path_to_string(args.wallet),
                     device: args.device,
-                    node: args.node,
+                    node: args.node.to_string(),
                 },
                 MinerCommand::Run(args) => Self::MinerRun {
-                    wallet: args.wallet,
+                    wallet: path_to_string(args.wallet),
                     device: args.device,
-                    node: args.runtime.node,
-                    listen: args.runtime.service.listen,
-                    p2p_listen: args.runtime.service.p2p_listen,
-                    data_dir: args.runtime.service.data_dir,
+                    node: args.runtime.node.to_string(),
+                    listen: args.runtime.service.listen.to_string(),
+                    p2p_listen: args.runtime.service.p2p_listen.to_string(),
+                    data_dir: path_to_string(args.runtime.service.data_dir),
                     identity_seed: args.runtime.service.identity_seed,
                     auth_token: args.runtime.service.auth_token,
                     max_requests: args.runtime.service.max_requests,
@@ -807,15 +849,15 @@ impl From<super::TvmdCommand> for CommandFixture {
             super::TvmdCommand::Validator { command } => match command {
                 ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
                 ValidatorCommand::Start(args) => Self::ValidatorStart {
-                    wallet: args.wallet,
-                    node: args.node,
+                    wallet: path_to_string(args.wallet),
+                    node: args.node.to_string(),
                 },
                 ValidatorCommand::Run(args) => Self::ValidatorRun {
-                    wallet: args.wallet,
-                    node: args.runtime.node,
-                    listen: args.runtime.service.listen,
-                    p2p_listen: args.runtime.service.p2p_listen,
-                    data_dir: args.runtime.service.data_dir,
+                    wallet: path_to_string(args.wallet),
+                    node: args.runtime.node.to_string(),
+                    listen: args.runtime.service.listen.to_string(),
+                    p2p_listen: args.runtime.service.p2p_listen.to_string(),
+                    data_dir: path_to_string(args.runtime.service.data_dir),
                     identity_seed: args.runtime.service.identity_seed,
                     auth_token: args.runtime.service.auth_token,
                     max_requests: args.runtime.service.max_requests,
@@ -824,11 +866,11 @@ impl From<super::TvmdCommand> for CommandFixture {
             },
             super::TvmdCommand::Proposer { command } => match command {
                 ProposerCommand::Run(args) => Self::ProposerRun {
-                    wallet: args.wallet,
-                    node: args.runtime.node,
-                    listen: args.runtime.service.listen,
-                    p2p_listen: args.runtime.service.p2p_listen,
-                    data_dir: args.runtime.service.data_dir,
+                    wallet: path_to_string(args.wallet),
+                    node: args.runtime.node.to_string(),
+                    listen: args.runtime.service.listen.to_string(),
+                    p2p_listen: args.runtime.service.p2p_listen.to_string(),
+                    data_dir: path_to_string(args.runtime.service.data_dir),
                     identity_seed: args.runtime.service.identity_seed,
                     auth_token: args.runtime.service.auth_token,
                     max_requests: args.runtime.service.max_requests,
@@ -836,50 +878,50 @@ impl From<super::TvmdCommand> for CommandFixture {
             },
             super::TvmdCommand::Service { command } => match command {
                 ServiceCommand::Init(args) => Self::ServiceInit {
-                    data_dir: args.data_dir,
+                    data_dir: path_to_string(args.data_dir),
                 },
                 ServiceCommand::Peer {
                     command: ServicePeerCommand::Add(args),
                 } => Self::ServicePeerAdd {
-                    data_dir: args.data_dir,
-                    peer_id: args.peer_id,
-                    address: args.address,
+                    data_dir: path_to_string(args.data_dir),
+                    peer_id: args.peer_id.to_string(),
+                    address: args.address.to_string(),
                 },
                 ServiceCommand::Readiness(args) => Self::ServiceReadiness {
-                    p2p_listen: args.p2p_listen,
-                    data_dir: args.data_dir,
+                    p2p_listen: args.p2p_listen.to_string(),
+                    data_dir: path_to_string(args.data_dir),
                     identity_seed: args.identity_seed,
                 },
                 ServiceCommand::Serve(args) => Self::ServiceServe {
-                    listen: args.runtime.listen,
-                    p2p_listen: args.runtime.p2p_listen,
-                    data_dir: args.runtime.data_dir,
+                    listen: args.runtime.listen.to_string(),
+                    p2p_listen: args.runtime.p2p_listen.to_string(),
+                    data_dir: path_to_string(args.runtime.data_dir),
                     identity_seed: args.runtime.identity_seed,
                     auth_token: args.runtime.auth_token,
                     max_requests: args.runtime.max_requests,
                 },
                 ServiceCommand::Status(args) => Self::ServiceStatus {
-                    data_dir: args.data_dir,
+                    data_dir: path_to_string(args.data_dir),
                 },
                 ServiceCommand::Block(args) => Self::ServiceBlock {
-                    data_dir: args.data_dir,
+                    data_dir: path_to_string(args.data_dir),
                     height: args.height,
                 },
             },
             super::TvmdCommand::LocalTestnet { command } => match command {
                 LocalTestnetCommand::Seed(args) => Self::LocalTestnetSeed {
-                    data_dir: args.data_dir,
+                    data_dir: path_to_string(args.data_dir),
                 },
             },
             super::TvmdCommand::LocalCpu { command } => match command {
                 LocalCpuCommand::Verify(args) => Self::LocalCpuVerify {
-                    data_dir: args.data_dir,
+                    data_dir: path_to_string(args.data_dir),
                     json: args.json,
                 },
             },
             super::TvmdCommand::PublicEvidence { command } => match command {
                 PublicEvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
-                    manifest: args.manifest,
+                    manifest: path_to_string(args.manifest),
                 },
                 PublicEvidenceCommand::ServiceHealth(args) => Self::PublicEvidenceServiceHealth {
                     kind: args.kind.into(),
@@ -897,7 +939,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         endpoint_id: args.endpoint_id,
                         public_url: args.public_url,
                         health_path: args.health_path,
-                        observation_file: args.observation_file,
+                        observation_file: path_to_string(args.observation_file),
                     }
                 }
                 PublicEvidenceCommand::ServiceContent(args) => Self::PublicEvidenceServiceContent {
@@ -926,7 +968,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         public_url: args.public_url,
                         content_path: args.content_path,
                         observed_at_unix_seconds: args.observed_at,
-                        content_file: args.content_file,
+                        content_file: path_to_string(args.content_file),
                     }
                 }
                 PublicEvidenceCommand::RecordSummary(args) => Self::PublicEvidenceRecordSummary {
@@ -950,7 +992,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
                         artifact_uri: args.artifact_uri,
-                        record_roots: args.record_roots.0,
+                        record_roots: args.record_roots,
                     }
                 }
                 PublicEvidenceCommand::RecordArtifactFromFile(args) => {
@@ -959,7 +1001,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
                         artifact_uri: args.artifact_uri,
-                        record_file: args.record_file,
+                        record_file: path_to_string(args.record_file),
                     }
                 }
                 PublicEvidenceCommand::RecordSummaryFromRoots(args) => {
@@ -967,7 +1009,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         kind: args.kind.into(),
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
-                        record_roots: args.record_roots.0,
+                        record_roots: args.record_roots,
                     }
                 }
                 PublicEvidenceCommand::RecordSummaryFromFile(args) => {
@@ -975,14 +1017,14 @@ impl From<super::TvmdCommand> for CommandFixture {
                         kind: args.kind.into(),
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
-                        record_file: args.record_file,
+                        record_file: path_to_string(args.record_file),
                     }
                 }
                 PublicEvidenceCommand::NetworkObservation(args) => {
                     Self::PublicEvidenceNetworkObservation {
                         operator_id: args.operator_id,
-                        peer_id: args.peer_id,
-                        listen_address: args.listen_address,
+                        peer_id: args.peer_id.to_string(),
+                        listen_address: args.listen_address.to_string(),
                         observed_at_unix_seconds: args.observed_at,
                         gossip_topic_count: args.gossip_topics,
                         request_response_protocol_count: args.request_response_protocols,
@@ -996,9 +1038,9 @@ impl From<super::TvmdCommand> for CommandFixture {
                 PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
                     Self::PublicEvidenceNetworkObservationFromServiceLog {
                         operator_id: args.operator_id,
-                        listen_address: args.listen_address,
+                        listen_address: args.listen_address.to_string(),
                         observed_at_unix_seconds: args.observed_at,
-                        service_log: args.service_log,
+                        service_log: path_to_string(args.service_log),
                     }
                 }
                 PublicEvidenceCommand::Publication(args) => Self::PublicEvidencePublication {
@@ -1026,7 +1068,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                     Self::PublicEvidenceRunWindowFromFile {
                         bundle_id: args.bundle_id,
                         manifest_signer: args.manifest_signer,
-                        block_observation_file: args.block_observation_file,
+                        block_observation_file: path_to_string(args.block_observation_file),
                     }
                 }
                 PublicEvidenceCommand::NodeHeartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
@@ -1042,7 +1084,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                         role: args.role.into(),
                         address: args.address,
                         operator_id: args.operator_id,
-                        heartbeat_file: args.heartbeat_file,
+                        heartbeat_file: path_to_string(args.heartbeat_file),
                     }
                 }
                 PublicEvidenceCommand::OperatorAttestation(args) => {
@@ -1057,7 +1099,7 @@ impl From<super::TvmdCommand> for CommandFixture {
             },
             super::TvmdCommand::PublicTestnet { command } => match command {
                 PublicTestnetCommand::Preflight(args) => Self::PublicTestnetPreflight {
-                    manifest: args.manifest,
+                    manifest: path_to_string(args.manifest),
                 },
             },
         }

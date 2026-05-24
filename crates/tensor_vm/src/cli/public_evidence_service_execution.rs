@@ -5,6 +5,7 @@ use super::service_evidence::{
     service_content_evidence_line_from_bytes, service_health_evidence_line,
     service_health_evidence_line_from_file,
 };
+use super::validation::path_argument;
 use crate::error::{Result, TvmError};
 
 pub(super) fn execute_public_evidence_service_command(
@@ -29,7 +30,7 @@ pub(super) fn execute_public_evidence_service_command(
                 args.endpoint_id,
                 &args.public_url,
                 &args.health_path,
-                &args.observation_file,
+                &path_argument(&args.observation_file),
             ))
         }
         PublicEvidenceCommand::ServiceContent(args) => Some(service_content_evidence_line(

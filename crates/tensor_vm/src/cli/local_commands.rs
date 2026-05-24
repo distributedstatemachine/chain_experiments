@@ -1,11 +1,26 @@
-use super::command_values::{parse_hash_value, parse_multiaddr_value, parse_socket_addr_value};
+use super::command_values::parse_hash_value;
 use crate::types::Hash;
 use clap::{Args, Subcommand, ValueHint};
+use libp2p::{Multiaddr, PeerId};
+use std::net::SocketAddr;
+use std::path::PathBuf;
 
 const DEFAULT_DATA_DIR: &str = ".tensorvm";
 const DEFAULT_LISTEN_ADDR: &str = "127.0.0.1:8545";
 const DEFAULT_P2P_LISTEN_ADDR: &str = "/ip4/127.0.0.1/tcp/4001";
 const DEFAULT_MAX_REQUESTS: usize = 0;
+
+fn default_listen_addr() -> SocketAddr {
+    DEFAULT_LISTEN_ADDR
+        .parse()
+        .expect("default service listen address must be a socket address")
+}
+
+fn default_p2p_listen_addr() -> Multiaddr {
+    DEFAULT_P2P_LISTEN_ADDR
+        .parse()
+        .expect("default p2p listen address must be a multiaddr")
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
@@ -90,17 +105,17 @@ pub struct StakeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerStartArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub wallet: String,
+    pub wallet: PathBuf,
     #[arg(long, default_value = "cpu", value_name = "DEVICE")]
     pub device: String,
-    #[arg(long, default_value = DEFAULT_P2P_LISTEN_ADDR, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub node: String,
+    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    pub node: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerRunArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub wallet: String,
+    pub wallet: PathBuf,
     #[arg(long, default_value = "cpu", value_name = "DEVICE")]
     pub device: String,
     #[command(flatten)]
@@ -110,35 +125,35 @@ pub struct MinerRunArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorStartArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub wallet: String,
-    #[arg(long, default_value = DEFAULT_P2P_LISTEN_ADDR, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub node: String,
+    pub wallet: PathBuf,
+    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    pub node: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorRunArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub wallet: String,
+    pub wallet: PathBuf,
     #[command(flatten)]
     pub runtime: RoleRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RoleRuntimeArgs {
-    #[arg(long, default_value = DEFAULT_P2P_LISTEN_ADDR, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub node: String,
+    #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    pub node: Multiaddr,
     #[command(flatten)]
     pub service: ServiceRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceRuntimeArgs {
-    #[arg(long, env = "TVMD_LISTEN", default_value = DEFAULT_LISTEN_ADDR, value_name = "ADDR", value_parser = parse_socket_addr_value)]
-    pub listen: String,
-    #[arg(long, env = "TVMD_P2P_LISTEN", default_value = DEFAULT_P2P_LISTEN_ADDR, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub p2p_listen: String,
+    #[arg(long, env = "TVMD_LISTEN", default_value_t = default_listen_addr(), value_name = "ADDR")]
+    pub listen: SocketAddr,
+    #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    pub p2p_listen: Multiaddr,
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub identity_seed: Option<Hash>,
     #[arg(long, env = "TVMD_AUTH_TOKEN", value_name = "TOKEN")]
@@ -150,13 +165,13 @@ pub struct ServiceRuntimeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct DataDirArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct LocalCpuVerifyArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
     #[arg(long)]
     pub json: bool,
 }
@@ -164,19 +179,19 @@ pub struct LocalCpuVerifyArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServicePeerAddArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
     #[arg(long, value_name = "PEER_ID")]
-    pub peer_id: String,
-    #[arg(long, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub address: String,
+    pub peer_id: PeerId,
+    #[arg(long, value_name = "MULTIADDR")]
+    pub address: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceReadinessArgs {
-    #[arg(long, env = "TVMD_P2P_LISTEN", default_value = DEFAULT_P2P_LISTEN_ADDR, value_name = "MULTIADDR", value_parser = parse_multiaddr_value)]
-    pub p2p_listen: String,
+    #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
+    pub p2p_listen: Multiaddr,
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub identity_seed: Option<Hash>,
 }
@@ -190,7 +205,7 @@ pub struct ServiceServeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceBlockArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
-    pub data_dir: String,
+    pub data_dir: PathBuf,
     #[arg(long, value_name = "HEIGHT")]
     pub height: u64,
 }

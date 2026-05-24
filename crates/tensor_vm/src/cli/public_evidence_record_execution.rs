@@ -3,6 +3,7 @@ use super::record_evidence::{
     aggregate_public_evidence_record_roots, public_evidence_record_roots_from_file,
     record_artifact_evidence_line, record_summary_evidence_lines,
 };
+use super::validation::path_argument;
 use crate::error::Result;
 use crate::testnet::PublicEvidenceRecordKind;
 use crate::types::{Address, Hash};
@@ -31,26 +32,26 @@ pub(super) fn execute_public_evidence_record_command(
             args.bundle_id,
             args.manifest_signer,
             &args.artifact_uri,
-            &args.record_roots.0,
+            &args.record_roots,
         )),
         PublicEvidenceCommand::RecordArtifactFromFile(args) => Some(record_artifact_from_file(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
             &args.artifact_uri,
-            &args.record_file,
+            &path_argument(&args.record_file),
         )),
         PublicEvidenceCommand::RecordSummaryFromRoots(args) => Some(record_summary_from_roots(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
-            &args.record_roots.0,
+            &args.record_roots,
         )),
         PublicEvidenceCommand::RecordSummaryFromFile(args) => Some(record_summary_from_file(
             args.kind.into(),
             args.bundle_id,
             args.manifest_signer,
-            &args.record_file,
+            &path_argument(&args.record_file),
         )),
         _ => None,
     }

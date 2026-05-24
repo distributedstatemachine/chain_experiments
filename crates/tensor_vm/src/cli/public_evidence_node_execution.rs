@@ -3,6 +3,7 @@ use super::node_evidence::{
     node_heartbeat_evidence_line, node_heartbeat_evidence_line_from_file,
     operator_identity_attestation_evidence_line,
 };
+use super::validation::path_argument;
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_node_command(
@@ -22,7 +23,7 @@ pub(super) fn execute_public_evidence_node_command(
                 args.role.into(),
                 args.address,
                 args.operator_id,
-                &args.heartbeat_file,
+                &path_argument(&args.heartbeat_file),
             ))
         }
         PublicEvidenceCommand::OperatorAttestation(args) => {

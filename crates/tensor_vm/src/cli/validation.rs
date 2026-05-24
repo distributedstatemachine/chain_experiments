@@ -4,8 +4,7 @@ use crate::hash::hex;
 use crate::runtime::cuda_device_count;
 use crate::runtime::cuda_kernels_compiled;
 use crate::types::address;
-use libp2p::Multiaddr;
-use std::net::SocketAddr;
+use std::path::Path;
 
 pub(super) fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
     if stake < minimum {
@@ -14,9 +13,13 @@ pub(super) fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn wallet_address_hex(wallet: &str) -> Result<String> {
-    let wallet = wallet.trim();
-    if wallet.is_empty() {
+pub(super) fn path_argument(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+pub(super) fn wallet_address_hex(wallet: &Path) -> Result<String> {
+    let wallet = path_argument(wallet);
+    if wallet.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("wallet argument is empty"));
     }
     Ok(hex(&address(wallet.as_bytes())))
@@ -86,27 +89,8 @@ pub(super) fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadines
     }
 }
 
-pub(super) fn ensure_node_endpoint(node: &str) -> Result<()> {
-    ensure_libp2p_multiaddr(node)
-        .map_err(|_| TvmError::InvalidReceipt("unsupported libp2p node endpoint"))
-}
-
-pub(super) fn ensure_listen_addr(listen: &str) -> Result<()> {
-    listen
-        .parse::<SocketAddr>()
-        .map(|_| ())
-        .map_err(|_| TvmError::InvalidReceipt("invalid service listen address"))
-}
-
-pub(super) fn ensure_libp2p_multiaddr(address: &str) -> Result<()> {
-    address
-        .trim()
-        .parse::<Multiaddr>()
-        .map(|_| ())
-        .map_err(|_| TvmError::InvalidReceipt("invalid libp2p multiaddr"))
-}
-
-pub(super) fn ensure_data_dir(data_dir: &str) -> Result<()> {
+pub(super) fn ensure_data_dir(data_dir: &Path) -> Result<()> {
+    let data_dir = path_argument(data_dir);
     if data_dir.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("data dir argument is empty"));
     }

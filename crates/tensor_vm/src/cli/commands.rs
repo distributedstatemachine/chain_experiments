@@ -1,4 +1,3 @@
-pub use super::command_values::HashList;
 pub use super::local_commands::{
     DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand, MinerCommand,
     MinerRunArgs, MinerStartArgs, ProposerCommand, RoleRuntimeArgs, ServiceBlockArgs,

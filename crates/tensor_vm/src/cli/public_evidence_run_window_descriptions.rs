@@ -1,4 +1,5 @@
 use super::commands::PublicEvidenceCommand;
+use super::validation::path_argument;
 
 pub(super) fn describe_public_evidence_run_window_command(
     command: &PublicEvidenceCommand,
@@ -10,7 +11,7 @@ pub(super) fn describe_public_evidence_run_window_command(
         )),
         PublicEvidenceCommand::RunWindowFromFile(args) => Some(format!(
             "generate public evidence run window from captured block observations block_observation_file={}",
-            args.block_observation_file
+            path_argument(&args.block_observation_file)
         )),
         _ => None,
     }

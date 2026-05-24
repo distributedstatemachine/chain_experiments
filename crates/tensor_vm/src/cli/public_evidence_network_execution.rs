@@ -3,6 +3,7 @@ use super::network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line,
     network_observation_evidence_line_from_service_log,
 };
+use super::validation::path_argument;
 use crate::error::{Result, TvmError};
 use crate::types::Hash;
 
@@ -13,8 +14,8 @@ pub(super) fn execute_public_evidence_network_command(
         PublicEvidenceCommand::NetworkObservation(args) => Some(network_observation_evidence_line(
             NetworkObservationEvidenceLine {
                 operator_id: args.operator_id,
-                peer_id: &args.peer_id,
-                listen_address: &args.listen_address,
+                peer_id: &args.peer_id.to_string(),
+                listen_address: &args.listen_address.to_string(),
                 observed_at_unix_seconds: args.observed_at,
                 gossip_topic_count: args.gossip_topics,
                 request_response_protocol_count: args.request_response_protocols,
@@ -28,9 +29,9 @@ pub(super) fn execute_public_evidence_network_command(
         PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
             Some(network_observation_from_service_log(
                 args.operator_id,
-                &args.listen_address,
+                &args.listen_address.to_string(),
                 args.observed_at,
-                &args.service_log,
+                &path_argument(&args.service_log),
             ))
         }
         _ => None,

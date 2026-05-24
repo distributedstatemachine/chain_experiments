@@ -1,5 +1,6 @@
 use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand};
 use super::local_description_values::identity_description;
+use super::validation::path_argument;
 use crate::p2p::Libp2pControlPlaneConfig;
 
 pub(super) fn describe_miner_command(command: &MinerCommand) -> String {
@@ -7,7 +8,9 @@ pub(super) fn describe_miner_command(command: &MinerCommand) -> String {
         MinerCommand::Register(args) => format!("register miner with stake {}", args.stake),
         MinerCommand::Start(args) => format!(
             "start miner wallet={} device={} node={}",
-            args.wallet, args.device, args.node
+            path_argument(&args.wallet),
+            args.device,
+            args.node
         ),
         MinerCommand::Run(args) => {
             let p2p_config = Libp2pControlPlaneConfig::default();
@@ -16,12 +19,12 @@ pub(super) fn describe_miner_command(command: &MinerCommand) -> String {
             let identity = identity_description(service.identity_seed);
             format!(
                 "run miner role wallet={} device={} node={} listen={} p2p_listen={} data_dir={}{} max_requests={} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
-                args.wallet,
+                path_argument(&args.wallet),
                 args.device,
                 runtime.node,
                 service.listen,
                 service.p2p_listen,
-                service.data_dir,
+                path_argument(&service.data_dir),
                 identity,
                 service.max_requests,
                 p2p_config.max_gossipsub_transmit_bytes,
@@ -40,7 +43,11 @@ pub(super) fn describe_validator_command(command: &ValidatorCommand) -> String {
             format!("register validator with stake {}", args.stake)
         }
         ValidatorCommand::Start(args) => {
-            format!("start validator wallet={} node={}", args.wallet, args.node)
+            format!(
+                "start validator wallet={} node={}",
+                path_argument(&args.wallet),
+                args.node
+            )
         }
         ValidatorCommand::Run(args) => {
             let p2p_config = Libp2pControlPlaneConfig::default();
@@ -49,11 +56,11 @@ pub(super) fn describe_validator_command(command: &ValidatorCommand) -> String {
             let identity = identity_description(service.identity_seed);
             format!(
                 "run validator role wallet={} node={} listen={} p2p_listen={} data_dir={}{} max_requests={} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
-                args.wallet,
+                path_argument(&args.wallet),
                 runtime.node,
                 service.listen,
                 service.p2p_listen,
-                service.data_dir,
+                path_argument(&service.data_dir),
                 identity,
                 service.max_requests,
                 p2p_config.max_gossipsub_transmit_bytes,
@@ -75,11 +82,11 @@ pub(super) fn describe_proposer_command(command: &ProposerCommand) -> String {
             let identity = identity_description(service.identity_seed);
             format!(
                 "run proposer role wallet={} node={} listen={} p2p_listen={} data_dir={}{} max_requests={} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
-                args.wallet,
+                path_argument(&args.wallet),
                 runtime.node,
                 service.listen,
                 service.p2p_listen,
-                service.data_dir,
+                path_argument(&service.data_dir),
                 identity,
                 service.max_requests,
                 p2p_config.max_gossipsub_transmit_bytes,

@@ -90,26 +90,6 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
         ),
         make_network_observation(
             operator_id,
-            "not-a-peer-id".to_owned(),
-            public_listen_address.clone(),
-            1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
-        ),
-        make_network_observation(
-            operator_id,
-            peer_id.clone(),
-            "not-a-multiaddr".to_owned(),
-            1_700_000_000,
-            5,
-            3,
-            2,
-            1_048_576,
-        ),
-        make_network_observation(
-            operator_id,
             peer_id.clone(),
             "/ip4/127.0.0.1/tcp/4001".to_owned(),
             1_700_000_000,
@@ -181,6 +161,64 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     ] {
         assert!(execute_command_fixture(&invalid).is_err());
     }
+    assert!(
+        parse_test_cli(&[
+            "public-evidence",
+            "network-observation",
+            "--operator-id",
+            &manifest_hash(b"network-operator"),
+            "--peer-id",
+            "not-a-peer-id",
+            "--listen-address",
+            "/dns/node-a.tensorvm.net/tcp/4001",
+            "--observed-at",
+            "1700000000",
+            "--gossip-topics",
+            "5",
+            "--request-response-protocols",
+            "3",
+            "--bootstrap-peers",
+            "2",
+            "--max-transmit-bytes",
+            "1048576",
+            "--request-timeout-seconds",
+            "10",
+            "--max-concurrent-streams",
+            "128",
+            "--idle-timeout-seconds",
+            "60",
+        ])
+        .is_err()
+    );
+    assert!(
+        parse_test_cli(&[
+            "public-evidence",
+            "network-observation",
+            "--operator-id",
+            &manifest_hash(b"network-operator"),
+            "--peer-id",
+            &peer_id,
+            "--listen-address",
+            "not-a-multiaddr",
+            "--observed-at",
+            "1700000000",
+            "--gossip-topics",
+            "5",
+            "--request-response-protocols",
+            "3",
+            "--bootstrap-peers",
+            "2",
+            "--max-transmit-bytes",
+            "1048576",
+            "--request-timeout-seconds",
+            "10",
+            "--max-concurrent-streams",
+            "128",
+            "--idle-timeout-seconds",
+            "60",
+        ])
+        .is_err()
+    );
     assert!(parse_public_service_kind("archive").is_err());
     assert_eq!(
         parse_public_node_role("miner").unwrap(),

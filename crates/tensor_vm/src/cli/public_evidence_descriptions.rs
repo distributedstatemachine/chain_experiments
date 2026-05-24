@@ -7,13 +7,17 @@ use super::public_evidence_publication_descriptions::describe_public_evidence_pu
 use super::public_evidence_record_descriptions::describe_public_evidence_record_command;
 use super::public_evidence_run_window_descriptions::describe_public_evidence_run_window_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
+use super::validation::path_argument;
 
 pub(super) fn describe_public_evidence_command(command: &TvmdCommand) -> String {
     match command {
         TvmdCommand::PublicEvidence { command } => describe_public_evidence_subcommand(command),
         TvmdCommand::PublicTestnet {
             command: PublicTestnetCommand::Preflight(args),
-        } => format!("run public testnet preflight manifest {}", args.manifest),
+        } => format!(
+            "run public testnet preflight manifest {}",
+            path_argument(&args.manifest)
+        ),
         _ => unreachable!("local commands are handled by cli::local_descriptions"),
     }
 }
@@ -40,7 +44,10 @@ fn describe_public_evidence_subcommand(command: &PublicEvidenceCommand) -> Strin
 
     match command {
         PublicEvidenceCommand::Validate(args) => {
-            format!("validate public evidence manifest {}", args.manifest)
+            format!(
+                "validate public evidence manifest {}",
+                path_argument(&args.manifest)
+            )
         }
         _ => unreachable!("handled by public evidence family description modules"),
     }

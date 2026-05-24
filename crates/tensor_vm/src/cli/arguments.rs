@@ -94,20 +94,6 @@ pub(super) fn parse_hash_argument(value: &str) -> Result<Hash> {
     Ok(out)
 }
 
-pub(super) fn parse_hash_list_argument(value: &str) -> Result<Vec<Hash>> {
-    if value.trim().is_empty() {
-        return Err(TvmError::InvalidReceipt("empty hash list argument"));
-    }
-    let mut hashes = Vec::new();
-    for part in value.split(',') {
-        if part.is_empty() || part.trim() != part {
-            return Err(TvmError::InvalidReceipt("invalid hash list argument"));
-        }
-        hashes.push(parse_hash_argument(part)?);
-    }
-    Ok(hashes)
-}
-
 pub(super) fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
     let value = value.strip_prefix("0x").unwrap_or(value);
     if value.is_empty() || !value.len().is_multiple_of(2) {

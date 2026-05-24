@@ -84,18 +84,27 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
-            device: "cpu".to_owned(),
-            node: "http://localhost:8545".to_owned(),
-        })
+        parse_test_cli(&[
+            "miner",
+            "start",
+            "--wallet",
+            "miner.key",
+            "--device",
+            "cpu",
+            "--node",
+            "http://localhost:8545",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ValidatorStart {
-            wallet: "validator.key".to_owned(),
-            node: "localhost:8545".to_owned(),
-        })
+        parse_test_cli(&[
+            "validator",
+            "start",
+            "--wallet",
+            "validator.key",
+            "--node",
+            "localhost:8545",
+        ])
         .is_err()
     );
     assert!(
@@ -105,19 +114,31 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServicePeerAdd {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            peer_id: "not-a-peer-id".to_owned(),
-            address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
-        })
+        parse_test_cli(&[
+            "service",
+            "peer",
+            "add",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--peer-id",
+            "not-a-peer-id",
+            "--address",
+            "/dns/bootstrap.tensorvm.net/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServicePeerAdd {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            peer_id: PeerId::random().to_string(),
-            address: "not-a-multiaddr".to_owned(),
-        })
+        parse_test_cli(&[
+            "service",
+            "peer",
+            "add",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--peer-id",
+            &PeerId::random().to_string(),
+            "--address",
+            "not-a-multiaddr",
+        ])
         .is_err()
     );
     let peer_a = PeerId::random();
@@ -131,22 +152,29 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceServe {
-            listen: "localhost:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        })
+        parse_test_cli(&[
+            "service",
+            "serve",
+            "--listen",
+            "localhost:8545",
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/4001",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--auth-token",
+            "secret",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceReadiness {
-            p2p_listen: "not-a-multiaddr".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-        })
+        parse_test_cli(&[
+            "service",
+            "readiness",
+            "--p2p-listen",
+            "not-a-multiaddr",
+            "--data-dir",
+            "/var/lib/tensorvm",
+        ])
         .is_err()
     );
     assert!(
@@ -158,14 +186,18 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceServe {
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "not-a-multiaddr".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        })
+        parse_test_cli(&[
+            "service",
+            "serve",
+            "--listen",
+            "127.0.0.1:8545",
+            "--p2p-listen",
+            "not-a-multiaddr",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--auth-token",
+            "secret",
+        ])
         .is_err()
     );
     assert!(

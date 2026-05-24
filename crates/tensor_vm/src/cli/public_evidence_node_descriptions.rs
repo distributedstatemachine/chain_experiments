@@ -1,5 +1,6 @@
 use super::arguments::public_node_role_tag;
 use super::commands::PublicEvidenceCommand;
+use super::validation::path_argument;
 use crate::hash::hex;
 
 pub(super) fn describe_public_evidence_node_command(
@@ -14,7 +15,7 @@ pub(super) fn describe_public_evidence_node_command(
         PublicEvidenceCommand::NodeHeartbeatFromFile(args) => Some(format!(
             "generate {} node heartbeat evidence from captured observations heartbeat_file={} address={}",
             public_node_role_tag(args.role.into()),
-            args.heartbeat_file,
+            path_argument(&args.heartbeat_file),
             hex(&args.address)
         )),
         PublicEvidenceCommand::OperatorAttestation(args) => Some(format!(

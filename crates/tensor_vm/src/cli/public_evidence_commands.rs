@@ -1,7 +1,9 @@
-use super::command_values::{HashList, parse_hash_list_value, parse_hash_value};
+use super::command_values::parse_hash_value;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
+use libp2p::{Multiaddr, PeerId};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
@@ -60,13 +62,13 @@ pub enum PublicEvidenceCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicTestnetManifestArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub manifest: String,
+    pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceManifestArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub manifest: String,
+    pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -100,7 +102,7 @@ pub struct ServiceHealthFromFileArgs {
     #[arg(long, value_name = "PATH")]
     pub health_path: String,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub observation_file: String,
+    pub observation_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -150,7 +152,7 @@ pub struct ServiceContentFromFileArgs {
     #[arg(long, value_name = "UNIX_SECONDS")]
     pub observed_at: u64,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub content_file: String,
+    pub content_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -193,8 +195,8 @@ pub struct RecordArtifactFromRootsArgs {
     pub manifest_signer: Address,
     #[arg(long, value_name = "URI")]
     pub artifact_uri: String,
-    #[arg(long, value_name = "HEX[,HEX...]", value_parser = parse_hash_list_value)]
-    pub record_roots: HashList,
+    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1.., value_parser = parse_hash_value)]
+    pub record_roots: Vec<Hash>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -208,7 +210,7 @@ pub struct RecordArtifactFromFileArgs {
     #[arg(long, value_name = "URI")]
     pub artifact_uri: String,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub record_file: String,
+    pub record_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -219,8 +221,8 @@ pub struct RecordSummaryFromRootsArgs {
     pub bundle_id: Hash,
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub manifest_signer: Address,
-    #[arg(long, value_name = "HEX[,HEX...]", value_parser = parse_hash_list_value)]
-    pub record_roots: HashList,
+    #[arg(long, value_name = "HEX[,HEX...]", value_delimiter = ',', num_args = 1.., value_parser = parse_hash_value)]
+    pub record_roots: Vec<Hash>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -232,7 +234,7 @@ pub struct RecordSummaryFromFileArgs {
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub manifest_signer: Address,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub record_file: String,
+    pub record_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -240,9 +242,9 @@ pub struct NetworkObservationArgs {
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub operator_id: Hash,
     #[arg(long, value_name = "PEER_ID")]
-    pub peer_id: String,
+    pub peer_id: PeerId,
     #[arg(long, value_name = "MULTIADDR")]
-    pub listen_address: String,
+    pub listen_address: Multiaddr,
     #[arg(long, value_name = "UNIX_SECONDS")]
     pub observed_at: u64,
     #[arg(long, value_name = "N")]
@@ -266,11 +268,11 @@ pub struct NetworkObservationFromServiceLogArgs {
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub operator_id: Hash,
     #[arg(long, value_name = "MULTIADDR")]
-    pub listen_address: String,
+    pub listen_address: Multiaddr,
     #[arg(long, value_name = "UNIX_SECONDS")]
     pub observed_at: u64,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub service_log: String,
+    pub service_log: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -322,7 +324,7 @@ pub struct RunWindowFromFileArgs {
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub manifest_signer: Address,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub block_observation_file: String,
+    pub block_observation_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -350,7 +352,7 @@ pub struct NodeHeartbeatFromFileArgs {
     #[arg(long, value_name = "HEX", value_parser = parse_hash_value)]
     pub operator_id: Hash,
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
-    pub heartbeat_file: String,
+    pub heartbeat_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

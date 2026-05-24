@@ -1,8 +1,8 @@
 use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
 use super::local_execution_values::identity_report;
 use super::validation::{
-    ensure_auth_token, ensure_data_dir, ensure_libp2p_multiaddr, ensure_listen_addr,
-    ensure_minimum_stake, ensure_node_endpoint, miner_device_readiness, wallet_address_hex,
+    ensure_auth_token, ensure_data_dir, ensure_minimum_stake, miner_device_readiness,
+    path_argument, wallet_address_hex,
 };
 use crate::chain::ChainParams;
 use crate::error::Result;
@@ -23,10 +23,10 @@ pub(super) fn execute_miner_command(
         MinerCommand::Start(args) => {
             let address = wallet_address_hex(&args.wallet)?;
             let device_readiness = miner_device_readiness(&args.device)?;
-            ensure_node_endpoint(&args.node)?;
+            let wallet = path_argument(&args.wallet);
             Ok(format!(
                 "command=miner_start\nwallet={}\naddress={address}\ndevice={}\nnode={}\n{}\nreference_backend_ready=true",
-                args.wallet,
+                wallet,
                 args.device,
                 args.node,
                 device_readiness.report()
@@ -37,16 +37,15 @@ pub(super) fn execute_miner_command(
             let service = &runtime.service;
             let address = wallet_address_hex(&args.wallet)?;
             let device_readiness = miner_device_readiness(&args.device)?;
-            ensure_node_endpoint(&runtime.node)?;
-            ensure_listen_addr(&service.listen)?;
-            ensure_libp2p_multiaddr(&service.p2p_listen)?;
             ensure_data_dir(&service.data_dir)?;
             ensure_auth_token(&service.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
             let identity = identity_report(service.identity_seed);
+            let wallet = path_argument(&args.wallet);
+            let data_dir = path_argument(&service.data_dir);
             Ok(format!(
                 "command=miner_run\nrole=miner\nwallet={}\naddress={address}\ndevice={}\nnode={}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{}\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nauth_enabled=true\nmax_requests={}\nrole_runtime_ready=true",
-                args.wallet,
+                wallet,
                 args.device,
                 runtime.node,
                 service.listen,
@@ -56,7 +55,7 @@ pub(super) fn execute_miner_command(
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds,
-                service.data_dir,
+                data_dir,
                 service.max_requests
             ))
         }
@@ -81,10 +80,10 @@ pub(super) fn execute_validator_command(
         }
         ValidatorCommand::Start(args) => {
             let address = wallet_address_hex(&args.wallet)?;
-            ensure_node_endpoint(&args.node)?;
+            let wallet = path_argument(&args.wallet);
             Ok(format!(
                 "command=validator_start\nwallet={}\naddress={address}\nnode={}\nreference_verifier_ready=true",
-                args.wallet, args.node
+                wallet, args.node
             ))
         }
         ValidatorCommand::Run(args) => execute_validator_run("validator", args),
@@ -101,16 +100,15 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
             let runtime = &args.runtime;
             let service = &runtime.service;
             let address = wallet_address_hex(&args.wallet)?;
-            ensure_node_endpoint(&runtime.node)?;
-            ensure_listen_addr(&service.listen)?;
-            ensure_libp2p_multiaddr(&service.p2p_listen)?;
             ensure_data_dir(&service.data_dir)?;
             ensure_auth_token(&service.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
             let identity = identity_report(service.identity_seed);
+            let wallet = path_argument(&args.wallet);
+            let data_dir = path_argument(&service.data_dir);
             Ok(format!(
                 "command=proposer_run\nrole=proposer\nwallet={}\naddress={address}\nnode={}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nauth_enabled=true\nmax_requests={}\nproposer_ready=true\nrole_runtime_ready=true",
-                args.wallet,
+                wallet,
                 runtime.node,
                 service.listen,
                 service.p2p_listen,
@@ -118,7 +116,7 @@ pub(super) fn execute_proposer_command(command: &ProposerCommand) -> Result<Stri
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds,
-                service.data_dir,
+                data_dir,
                 service.max_requests
             ))
         }
@@ -129,16 +127,15 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
     let runtime = &args.runtime;
     let service = &runtime.service;
     let address = wallet_address_hex(&args.wallet)?;
-    ensure_node_endpoint(&runtime.node)?;
-    ensure_listen_addr(&service.listen)?;
-    ensure_libp2p_multiaddr(&service.p2p_listen)?;
     ensure_data_dir(&service.data_dir)?;
     ensure_auth_token(&service.auth_token)?;
     let p2p_config = Libp2pControlPlaneConfig::default();
     let identity = identity_report(service.identity_seed);
+    let wallet = path_argument(&args.wallet);
+    let data_dir = path_argument(&service.data_dir);
     Ok(format!(
         "command={role}_run\nrole={role}\nwallet={}\naddress={address}\nnode={}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nauth_enabled=true\nmax_requests={}\nreference_verifier_ready=true\nrole_runtime_ready=true",
-        args.wallet,
+        wallet,
         runtime.node,
         service.listen,
         service.p2p_listen,
@@ -146,7 +143,7 @@ fn execute_validator_run(role: &str, args: &ValidatorRunArgs) -> Result<String> 
         p2p_config.request_timeout_seconds,
         p2p_config.max_concurrent_request_streams,
         p2p_config.idle_connection_timeout_seconds,
-        service.data_dir,
+        data_dir,
         service.max_requests
     ))
 }

@@ -4,7 +4,7 @@ use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
 };
 use super::local_service_execution::execute_service_command;
-use super::validation::{ensure_data_dir, json_escape};
+use super::validation::{ensure_data_dir, json_escape, path_argument};
 use crate::chain::ChainParams;
 use crate::error::Result;
 
@@ -25,9 +25,10 @@ fn execute_local_testnet_command(command: &LocalTestnetCommand) -> Result<String
     match command {
         LocalTestnetCommand::Seed(args) => {
             ensure_data_dir(&args.data_dir)?;
+            let data_dir = path_argument(&args.data_dir);
             Ok(format!(
                 "command=local_testnet_seed\ndata_dir={}\nlocal_cpu_seed_ready=true",
-                args.data_dir
+                data_dir
             ))
         }
     }
@@ -37,15 +38,16 @@ fn execute_local_cpu_command(command: &LocalCpuCommand) -> Result<String> {
     match command {
         LocalCpuCommand::Verify(args) => {
             ensure_data_dir(&args.data_dir)?;
+            let data_dir = path_argument(&args.data_dir);
             if args.json {
                 Ok(format!(
                     "{{\"command\":\"local_cpu_verify\",\"data_dir\":\"{}\",\"structured_verifier_ready\":true}}",
-                    json_escape(&args.data_dir)
+                    json_escape(&data_dir)
                 ))
             } else {
                 Ok(format!(
                     "command=local_cpu_verify\ndata_dir={}\nstructured_verifier_ready=true",
-                    args.data_dir
+                    data_dir
                 ))
             }
         }

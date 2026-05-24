@@ -1,5 +1,6 @@
 use super::commands::PublicEvidenceCommand;
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
+use super::validation::path_argument;
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_run_window_command(
@@ -16,7 +17,7 @@ pub(super) fn execute_public_evidence_run_window_command(
         PublicEvidenceCommand::RunWindowFromFile(args) => Some(run_window_evidence_line_from_file(
             args.bundle_id,
             args.manifest_signer,
-            &args.block_observation_file,
+            &path_argument(&args.block_observation_file),
         )),
         _ => None,
     }

@@ -1,4 +1,5 @@
 use super::commands::PublicEvidenceCommand;
+use super::validation::path_argument;
 
 pub(super) fn describe_public_evidence_network_command(
     command: &PublicEvidenceCommand,
@@ -10,7 +11,8 @@ pub(super) fn describe_public_evidence_network_command(
         )),
         PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => Some(format!(
             "generate signed libp2p network observation from service log service_log={} listen_address={}",
-            args.service_log, args.listen_address
+            path_argument(&args.service_log),
+            args.listen_address
         )),
         _ => None,
     }
