@@ -938,6 +938,8 @@ spaghetti around.
   fixture variants and redundant `Evidence` prefixes from the remaining fixture variants.
 - Iteration 382 moved public node heartbeat, heartbeat-file, and operator-attestation parser
   expectations from `EvidenceFixture` to direct `TvmdCommand` construction.
+- Iteration 383 moved public service health/content parser expectations from `EvidenceFixture` to
+  direct `TvmdCommand` construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

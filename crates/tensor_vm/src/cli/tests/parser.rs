@@ -1,15 +1,17 @@
 use super::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceFixture,
-    EvidenceNodeCommand, EvidenceRunCommand, HashArg, LocalnetCommand, MinerCheckArgs,
-    MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs,
-    NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs,
-    OperatorAttestationArgs, ProposerCommand, PublicCommand, PublicEvidenceManifestArgs,
-    PublicNodeRoleArg, PublicTestnetManifestArgs, PublicationArgs, RoleRuntimeArgs, RunWindowArgs,
-    RunWindowFromFileArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand,
+    EvidenceNodeCommand, EvidenceRunCommand, EvidenceServiceCommand, HashArg, HexBytesArg,
+    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs,
+    NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
+    NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
+    PublicEvidenceManifestArgs, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetManifestArgs,
+    PublicationArgs, RoleRuntimeArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand,
     ValidatorRunArgs, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
-use crate::testnet::{PublicEvidenceRecordKind, PublicServiceKind};
+use crate::testnet::PublicEvidenceRecordKind;
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
 use std::net::SocketAddr;
@@ -524,16 +526,18 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
+            EvidenceServiceCommand::Health(ServiceHealthArgs {
+                kind: PublicServiceKindArg::Rpc,
+                endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                first_block: 0,
+                last_block: 9,
+                reachable_count: 10,
+                signed_health_check_count: 10,
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -553,13 +557,15 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-health.records",
         ])
         .unwrap(),
-        EvidenceFixture::ServiceHealthFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            observation_file: "artifacts/rpc-health.records".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
+            EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
+                kind: PublicServiceKindArg::Rpc,
+                endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+                public_url: "https://rpc.tensorvm.net/health".to_owned(),
+                health_path: "/health".to_owned(),
+                observation_file: path("artifacts/rpc-health.records"),
+            }),
+        )))
     );
     let content_root = manifest_hash(b"rpc-service-content");
     assert_eq!(
@@ -584,15 +590,17 @@ fn parses_documented_validator_commands() {
             "64",
         ])
         .unwrap(),
-        EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service-content"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
+            EvidenceServiceCommand::Content(ServiceContentArgs {
+                kind: PublicServiceKindArg::Rpc,
+                endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service-content"])),
+                observed_at: 1_700_000_000,
+                min_content_bytes: 64,
+            }),
+        )))
     );
     let content_hex = hex(&[42_u8; 64]);
     assert_eq!(
@@ -615,14 +623,16 @@ fn parses_documented_validator_commands() {
             &content_hex,
         ])
         .unwrap(),
-        EvidenceFixture::ServiceContentFromBytes {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_bytes: vec![42_u8; 64],
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
+            EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
+                kind: PublicServiceKindArg::Rpc,
+                endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at: 1_700_000_000,
+                content: HexBytesArg::new(vec![42_u8; 64]),
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -644,14 +654,16 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-chain-head.body",
         ])
         .unwrap(),
-        EvidenceFixture::ServiceContentFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_file: "artifacts/rpc-chain-head.body".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
+            EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
+                kind: PublicServiceKindArg::Rpc,
+                endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+                public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+                content_path: "/chain/head".to_owned(),
+                observed_at: 1_700_000_000,
+                content_file: path("artifacts/rpc-chain-head.body"),
+            }),
+        )))
     );
     let peer_id = PeerId::random().to_string();
     assert_eq!(
