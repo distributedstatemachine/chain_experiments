@@ -1,4 +1,6 @@
-use tensor_vm::app::{RoleRuntimeLoop, RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
+use tensor_vm::app::{
+    RuntimeRole, ServiceRuntimeConfig, run_role_runtime_loop, runtime_node_config,
+};
 
 pub(super) fn serve_service(
     listen: &str,
@@ -22,12 +24,4 @@ pub(super) fn serve_service(
             max_requests,
         )?,
     })
-}
-
-pub(super) fn run_role_runtime_loop(
-    config: ServiceRuntimeConfig,
-) -> std::result::Result<String, String> {
-    let mut runtime = RoleRuntimeLoop::start(config)?;
-    runtime.run_until_max_requests()?;
-    Ok(runtime.report())
 }

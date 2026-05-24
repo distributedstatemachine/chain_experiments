@@ -3,7 +3,8 @@ use tensor_vm::{
     TvmdCli, TvmdCommand,
     app::{
         RoleServiceConfig, add_service_peer, check_service_readiness, init_service_store,
-        seed_local_testnet, service_block_status, service_status, verify_local_cpu_store,
+        run_miner_service, run_proposer_service, run_validator_service, seed_local_testnet,
+        service_block_status, service_status, verify_local_cpu_store,
     },
     cli::{
         EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
@@ -15,11 +16,7 @@ use tensor_vm::{
 #[path = "main/runtime.rs"]
 mod runtime;
 
-#[path = "main/runtime_commands.rs"]
-mod runtime_commands;
-
 use runtime::serve_service;
-use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 
 fn path_arg(path: &std::path::Path) -> String {
     path.to_string_lossy().into_owned()

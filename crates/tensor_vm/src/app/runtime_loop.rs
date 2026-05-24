@@ -21,6 +21,12 @@ pub struct RoleRuntimeLoop {
     p2p_metadata: RuntimeP2pMetadata,
 }
 
+pub fn run_role_runtime_loop(config: ServiceRuntimeConfig) -> std::result::Result<String, String> {
+    let mut runtime = RoleRuntimeLoop::start(config)?;
+    runtime.run_until_max_requests()?;
+    Ok(runtime.report())
+}
+
 impl RoleRuntimeLoop {
     pub fn start(config: ServiceRuntimeConfig) -> std::result::Result<Self, String> {
         let RuntimeServices {

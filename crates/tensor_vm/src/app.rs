@@ -2,6 +2,7 @@ mod block_status;
 mod commands;
 mod miner_role;
 mod network;
+mod role_services;
 mod runtime_config;
 mod runtime_loop;
 mod runtime_network;
@@ -29,12 +30,15 @@ pub use network::{
     ChainAnnouncementCheckpoint, chain_announcement_checkpoint, ingest_network_events,
     produce_and_publish_synthetic_round, publish_new_chain_announcements,
 };
+pub use role_services::{
+    RoleServiceRunner, run_miner_service, run_proposer_service, run_validator_service,
+};
 pub use runtime_config::{
     RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, chain_profile_from_label,
     role_wallet_address, runtime_node_config, runtime_role_wallet_address_text,
     runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
-pub use runtime_loop::RoleRuntimeLoop;
+pub use runtime_loop::{RoleRuntimeLoop, run_role_runtime_loop};
 pub use runtime_network::ingest_network_once;
 pub use runtime_production::LocalProductionSchedule;
 pub use runtime_rpc::serve_rpc_once;

@@ -631,6 +631,9 @@ spaghetti around.
 - Iteration 243 moved `RoleRuntimeLoop` into the library-owned `app` module, making the binary runtime
   entrypoint a thin command wrapper over an app-owned loop instead of the owner of service, RPC, network,
   production, and role-tick orchestration.
+- Iteration 244 moved miner, validator, and proposer role-service runners into the library-owned `app`
+  module, replacing the binary-private `RoleRunLoop` wrapper with an app-level `RoleServiceRunner` API and
+  leaving `tvmd` to translate parsed Clap commands into app calls.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

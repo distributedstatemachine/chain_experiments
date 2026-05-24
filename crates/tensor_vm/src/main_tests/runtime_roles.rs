@@ -1,8 +1,7 @@
-use super::super::runtime_commands::RoleRunLoop;
 use super::*;
 use tensor_vm::app::{
-    RoleServiceConfig, RuntimeRole, chain_profile_from_label, runtime_role_wallet_registered,
-    runtime_role_wallet_registration,
+    RoleServiceConfig, RoleServiceRunner, RuntimeRole, chain_profile_from_label,
+    runtime_role_wallet_registered, runtime_role_wallet_registration,
 };
 
 #[test]
@@ -39,19 +38,19 @@ fn runtime_role_policy_allows_only_validator_local_production() {
 fn role_loop_configs_bind_expected_runtime_roles_and_wallets() {
     let cases = [
         (
-            RoleRunLoop::miner(),
+            RoleServiceRunner::miner(),
             "miner_run",
             RuntimeRole::Miner,
             "miner",
         ),
         (
-            RoleRunLoop::validator(),
+            RoleServiceRunner::validator(),
             "validator_run",
             RuntimeRole::Validator,
             "validator",
         ),
         (
-            RoleRunLoop::proposer(),
+            RoleServiceRunner::proposer(),
             "proposer_run",
             RuntimeRole::Proposer,
             "proposer",
@@ -102,19 +101,21 @@ fn role_loop_reports_keep_role_specific_readiness_lines() {
         max_requests: 1,
     };
 
-    let miner_report = RoleRunLoop::miner().format_report(config, "service_report=true");
+    let miner_report = RoleServiceRunner::miner().format_report(config, "service_report=true");
     assert!(miner_report.contains("command=miner_run"));
     assert!(miner_report.contains("role=miner"));
     assert!(miner_report.contains("device=cpu"));
     assert!(miner_report.contains("role_runtime_ready=true"));
 
-    let validator_report = RoleRunLoop::validator().format_report(config, "service_report=true");
+    let validator_report =
+        RoleServiceRunner::validator().format_report(config, "service_report=true");
     assert!(validator_report.contains("command=validator_run"));
     assert!(validator_report.contains("role=validator"));
     assert!(validator_report.contains("reference_verifier_ready=true"));
     assert!(validator_report.contains("role_runtime_ready=true"));
 
-    let proposer_report = RoleRunLoop::proposer().format_report(config, "service_report=true");
+    let proposer_report =
+        RoleServiceRunner::proposer().format_report(config, "service_report=true");
     assert!(proposer_report.contains("command=proposer_run"));
     assert!(proposer_report.contains("role=proposer"));
     assert!(proposer_report.contains("proposer_ready=true"));
