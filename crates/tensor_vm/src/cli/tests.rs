@@ -10,6 +10,7 @@ use libp2p::PeerId;
 mod command_descriptions;
 mod command_fixtures;
 mod execution_reports;
+mod local_execution_reports;
 mod local_validation;
 mod manifest_fixtures;
 mod manifest_reports;

@@ -572,6 +572,9 @@ spaghetti around.
 - Iteration 224 moved the CLI command fixture enum, parser adapter, execution/description adapters, and
   command conversion helpers into `cli/tests/command_fixtures.rs`, leaving `cli/tests.rs` as shared imports
   and child-module wiring.
+- Iteration 225 split local runtime/service execution-report assertions into
+  `cli/tests/local_execution_reports.rs`, leaving public-evidence output assertions in
+  `cli/tests/execution_reports.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
