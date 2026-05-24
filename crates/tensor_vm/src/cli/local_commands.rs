@@ -5,8 +5,9 @@ pub use super::local_role_commands::{
     MinerCheckArgs, MinerCommand, MinerRunArgs, ProposerCommand, RoleRuntimeArgs, StakeArgs,
     ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,
 };
+pub use super::localnet_commands::{LocalCpuVerifyArgs, LocalnetCommand};
 use super::value_types::HashArg;
-use clap::{Args, Subcommand, ValueHint};
+use clap::{Args, ValueHint};
 use libp2p::Multiaddr;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -26,15 +27,6 @@ pub(super) fn default_p2p_listen_addr() -> Multiaddr {
     DEFAULT_P2P_LISTEN_ADDR
         .parse()
         .expect("default p2p listen address must be a multiaddr")
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum LocalnetCommand {
-    #[command(about = "Seed local CPU testnet data.")]
-    Seed(DataDirArgs),
-    #[command(about = "Verify local CPU testnet state.")]
-    Verify(LocalCpuVerifyArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -99,19 +91,4 @@ pub struct DataDirArgs {
         help = "Node store directory."
     )]
     pub data_dir: PathBuf,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct LocalCpuVerifyArgs {
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
-    #[arg(long, help = "Emit the verification report as JSON.")]
-    pub json: bool,
 }

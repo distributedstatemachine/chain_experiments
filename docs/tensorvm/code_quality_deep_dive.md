@@ -1032,6 +1032,8 @@ spaghetti around.
   localnet argument groups.
 - Iteration 425 split node and peer clap command types into `cli/local_node_commands.rs`, leaving
   `cli/local_commands.rs` focused on shared runtime, data-dir, and localnet argument groups.
+- Iteration 426 split the localnet clap command and local CPU verify arguments into
+  `cli/localnet_commands.rs`, leaving `cli/local_commands.rs` as the shared local argument module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

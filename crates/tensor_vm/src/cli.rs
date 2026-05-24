@@ -19,6 +19,7 @@ mod local_role_commands;
 mod local_role_execution;
 #[cfg(test)]
 mod local_service_execution;
+mod localnet_commands;
 mod network_evidence;
 mod node_evidence;
 mod public_evidence_commands;
