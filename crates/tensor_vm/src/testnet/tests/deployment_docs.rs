@@ -107,25 +107,24 @@ fn public_deployment_runbook_records_required_evidence_flow() {
         "runbook evidence command list",
     );
 
-    for required in [
-        "The collected records must cover the full 7-day window, not only a final snapshot.",
-        "node heartbeats for every active miner and validator",
-        "exactly one service-health record for each public RPC, explorer, faucet, and telemetry service",
-        "exactly one service-content record for each public RPC, explorer, faucet, and telemetry service",
-        "libp2p network-observation records from independent observers, one per counted public operator",
-        "Do not backfill",
-        "public_evidence_full_spec=true",
-        "independently_checkable=true",
-        "supporting_record_artifacts=true",
-        "exactly one signed artifact locator line for each required raw supporting-record kind",
-        "After validation returns `public_evidence_full_spec=true`, link the published bundle from",
-        "It does not contain a real external 7-day public run or a published independently checkable",
-    ] {
-        assert!(
-            runbook.contains(required),
-            "runbook should record external evidence requirement {required}"
-        );
-    }
+    assert_trimmed_lines(
+        runbook,
+        &[
+            "The collected records must cover the full 7-day window, not only a final snapshot. The block observation",
+            "- node heartbeats for every active miner and validator",
+            "- exactly one service-health record for each public RPC, explorer, faucet, and telemetry service",
+            "- exactly one service-content record for each public RPC, explorer, faucet, and telemetry service",
+            "- libp2p network-observation records from independent observers, one per counted public operator",
+            "Any outage or operator replacement must be reflected in the final evidence bundle. Do not backfill",
+            "public_evidence_full_spec=true",
+            "independently_checkable=true",
+            "supporting_record_artifacts=true",
+            "- exactly one signed artifact locator line for each required raw supporting-record kind",
+            "After validation returns `public_evidence_full_spec=true`, link the published bundle from",
+            "validators. It does not contain a real external 7-day public run or a published independently checkable",
+        ],
+        "runbook external evidence requirements",
+    );
 }
 
 #[test]
@@ -161,26 +160,24 @@ fn public_deployment_readme_records_scaffold_boundary_and_operator_flow() {
         "deployment README public route list",
     );
 
-    for required in [
-        "signed service-health records",
-        "signed service-content records",
-        "one signed `network_runtime_observation=...` record per counted public operator",
-        "evidence record summary-file",
-        "evidence record artifact-file",
-        "exactly one artifact locator for each of those six supporting",
-        "cargo build -p tensor_vm --release --features cuda-kernels",
-        "target/release/tvmd miner start --wallet miner.key --device cuda:0 --node",
-        "tvmd service peer add",
-        "tvmd service readiness",
-        "cuda_ready_miner_count",
-        "libp2p_ready_node_count",
-        "independently_checkable=false",
-        "public_evidence_full_spec=false",
-        "real 7-day public run",
-    ] {
-        assert!(
-            readme.contains(required),
-            "deployment README should record operator-flow requirement {required}"
-        );
-    }
+    assert_trimmed_lines(
+        readme,
+        &[
+            "hostname to the local service. Public evidence still has to include signed service-health records for each",
+            "external URL, signed service-content records for the deployed content paths using the same HTTPS authority",
+            "one signed `network_runtime_observation=...` record per counted public operator proving libp2p discovery,",
+            "can be aggregated from the saved raw-record file with `evidence record summary-file` and",
+            "`evidence record artifact-file`. Each signed block, finality, libp2p,",
+            "the raw records behind that root; publish exactly one artifact locator for each of those six supporting",
+            "cargo build -p tensor_vm --release --features cuda-kernels",
+            "target/release/tvmd miner start --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001",
+            "sudo -u tensorvm /usr/local/bin/tvmd service peer add --data-dir /var/lib/tensorvm --peer-id \"$BOOTSTRAP_PEER_ID\" --address /dns/bootstrap.tensorvm.net/tcp/4001",
+            "sudo -u tensorvm /usr/local/bin/tvmd service readiness --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm",
+            "it is not public GPU-miner evidence. Set `cuda_ready_miner_count` in the preflight manifest to the number",
+            "`miner_count`. Set `libp2p_ready_node_count` to the number of planned miner and validator nodes where",
+            "The checked example reports `independently_checkable=false` and `public_evidence_full_spec=false` because",
+            "validator. The full-spec gate remains closed until a real 7-day public run publishes the evidence bundle documented in",
+        ],
+        "deployment README operator-flow requirements",
+    );
 }

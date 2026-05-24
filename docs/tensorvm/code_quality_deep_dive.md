@@ -752,6 +752,8 @@ spaghetti around.
 - Iteration 298 removed the test-only hand-written CLI description mirror, added direct Clap help
   coverage for the `tvmd` command tree and retired top-level families, and made the binary execute through
   the parsed Clap command object instead of extracting a command for a separate call.
+- Iteration 299 converted the remaining public deployment runbook and README prose inventories to exact
+  trimmed-line assertions, removing the final document-wide substring loops from deployment docs coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
