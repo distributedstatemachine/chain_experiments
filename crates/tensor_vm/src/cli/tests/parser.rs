@@ -1,5 +1,5 @@
 use super::{
-    ExpectedCommand, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
+    CommandFixture, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
@@ -10,7 +10,7 @@ use libp2p::PeerId;
 fn parses_documented_miner_commands() {
     assert_eq!(
         parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
-        ExpectedCommand::MinerRegister { stake: 100 }
+        CommandFixture::MinerRegister { stake: 100 }
     );
     assert_eq!(
         parse_test_cli(&[
@@ -24,7 +24,7 @@ fn parses_documented_miner_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        ExpectedCommand::MinerStart {
+        CommandFixture::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -32,7 +32,7 @@ fn parses_documented_miner_commands() {
     );
     assert_eq!(
         parse_test_cli(&["miner", "status"]).unwrap(),
-        ExpectedCommand::MinerStatus
+        CommandFixture::MinerStatus
     );
     assert_eq!(
         parse_test_cli(&[
@@ -56,7 +56,7 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::MinerRun {
+        CommandFixture::MinerRun {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -93,7 +93,7 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::MinerRun {
+        CommandFixture::MinerRun {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -111,7 +111,7 @@ fn parses_documented_miner_commands() {
 fn parses_documented_validator_commands() {
     assert_eq!(
         parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
-        ExpectedCommand::ValidatorRegister { stake: 10_000 }
+        CommandFixture::ValidatorRegister { stake: 10_000 }
     );
     assert_eq!(
         parse_test_cli(&[
@@ -123,14 +123,14 @@ fn parses_documented_validator_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        ExpectedCommand::ValidatorStart {
+        CommandFixture::ValidatorStart {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         }
     );
     assert_eq!(
         parse_test_cli(&["validator", "status"]).unwrap(),
-        ExpectedCommand::ValidatorStatus
+        CommandFixture::ValidatorStatus
     );
     assert_eq!(
         parse_test_cli(&[
@@ -152,7 +152,7 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::ValidatorRun {
+        CommandFixture::ValidatorRun {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -186,7 +186,7 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::ValidatorRun {
+        CommandFixture::ValidatorRun {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -199,7 +199,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        ExpectedCommand::LocalTestnetSeed {
+        CommandFixture::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -211,7 +211,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.evidence"
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceValidate {
+        CommandFixture::PublicEvidenceValidate {
             manifest: "docs/tensorvm/public-testnet.evidence".to_owned(),
         }
     );
@@ -223,7 +223,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.preflight"
         ])
         .unwrap(),
-        ExpectedCommand::PublicTestnetPreflight {
+        CommandFixture::PublicTestnetPreflight {
             manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
         }
     );
@@ -245,7 +245,7 @@ fn parses_documented_validator_commands() {
             "1",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidencePublication {
+        CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -269,7 +269,7 @@ fn parses_documented_validator_commands() {
             "1700000060",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceAuditorRecord {
+        CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -293,7 +293,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRunWindow {
+        CommandFixture::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -313,7 +313,7 @@ fn parses_documented_validator_commands() {
             "artifacts/block-observations.records",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRunWindowFromFile {
+        CommandFixture::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: "artifacts/block-observations.records".to_owned(),
@@ -337,7 +337,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        CommandFixture::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -360,7 +360,7 @@ fn parses_documented_validator_commands() {
             "artifacts/miner-a-heartbeats.records",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
+        CommandFixture::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -383,7 +383,7 @@ fn parses_documented_validator_commands() {
             "1700000000",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceOperatorAttestation {
+        CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -414,7 +414,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceServiceHealth {
+        CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -441,7 +441,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-health.records",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceServiceHealthFromFile {
+        CommandFixture::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -470,7 +470,7 @@ fn parses_documented_validator_commands() {
             "64",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceServiceContent {
+        CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -499,7 +499,7 @@ fn parses_documented_validator_commands() {
             &content_hex,
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -526,7 +526,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-chain-head.body",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceServiceContentFromFile {
+        CommandFixture::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -564,7 +564,7 @@ fn parses_documented_validator_commands() {
             "60",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceNetworkObservation {
+        CommandFixture::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -592,7 +592,7 @@ fn parses_documented_validator_commands() {
             "artifacts/node-a-service.log",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
+        CommandFixture::PublicEvidenceNetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -616,7 +616,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordSummary {
+        CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -642,7 +642,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordArtifact {
+        CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -670,7 +670,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -696,7 +696,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
+        CommandFixture::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -721,7 +721,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
+        CommandFixture::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -744,7 +744,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
+        CommandFixture::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -754,7 +754,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        ExpectedCommand::ServiceInit {
+        CommandFixture::ServiceInit {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -772,7 +772,7 @@ fn parses_documented_validator_commands() {
             "/dns/bootstrap.tensorvm.net/tcp/4001",
         ])
         .unwrap(),
-        ExpectedCommand::ServicePeerAdd {
+        CommandFixture::ServicePeerAdd {
             data_dir: "/var/lib/tensorvm".to_owned(),
             peer_id: bootstrap_peer.clone(),
             address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -788,7 +788,7 @@ fn parses_documented_validator_commands() {
             "/var/lib/tensorvm",
         ])
         .unwrap(),
-        ExpectedCommand::ServiceReadiness {
+        CommandFixture::ServiceReadiness {
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             identity_seed: None,
@@ -807,7 +807,7 @@ fn parses_documented_validator_commands() {
             &identity_seed,
         ])
         .unwrap(),
-        ExpectedCommand::ServiceReadiness {
+        CommandFixture::ServiceReadiness {
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             identity_seed: Some([0x11; 32]),
@@ -829,7 +829,7 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        ExpectedCommand::ServiceServe {
+        CommandFixture::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -856,7 +856,7 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        ExpectedCommand::ServiceServe {
+        CommandFixture::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -867,7 +867,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        ExpectedCommand::ServiceStatus {
+        CommandFixture::ServiceStatus {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -881,7 +881,7 @@ fn parses_documented_validator_commands() {
             "3"
         ])
         .unwrap(),
-        ExpectedCommand::ServiceBlock {
+        CommandFixture::ServiceBlock {
             data_dir: "/var/lib/tensorvm".to_owned(),
             height: 3,
         }
@@ -910,7 +910,7 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::ProposerRun {
+        CommandFixture::ProposerRun {
             wallet: "proposer.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -944,7 +944,7 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        ExpectedCommand::ProposerRun {
+        CommandFixture::ProposerRun {
             wallet: "proposer.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -991,7 +991,7 @@ fn rejects_invalid_cli() {
 fn clap_cli_defaults_runtime_arguments() {
     assert_eq!(
         parse_test_cli(&["miner", "start", "--wallet", "miner.key"]).unwrap(),
-        ExpectedCommand::MinerStart {
+        CommandFixture::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1007,7 +1007,7 @@ fn clap_cli_defaults_runtime_arguments() {
             "secret"
         ])
         .unwrap(),
-        ExpectedCommand::MinerRun {
+        CommandFixture::MinerRun {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1021,7 +1021,7 @@ fn clap_cli_defaults_runtime_arguments() {
     );
     assert_eq!(
         parse_test_cli(&["service", "serve", "--auth-token", "secret"]).unwrap(),
-        ExpectedCommand::ServiceServe {
+        CommandFixture::ServiceServe {
             listen: "127.0.0.1:8545".to_owned(),
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             data_dir: ".tensorvm".to_owned(),
@@ -1032,7 +1032,7 @@ fn clap_cli_defaults_runtime_arguments() {
     );
     assert_eq!(
         parse_test_cli(&["service", "init"]).unwrap(),
-        ExpectedCommand::ServiceInit {
+        CommandFixture::ServiceInit {
             data_dir: ".tensorvm".to_owned(),
         }
     );

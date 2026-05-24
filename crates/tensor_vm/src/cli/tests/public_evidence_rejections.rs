@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
+fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     let peer_id = PeerId::random().to_string();
     let make_network_observation = |operator_id,
                                     peer_id: String,
@@ -11,7 +11,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
                                     request_response_protocol_count,
                                     bootstrap_peer_count,
                                     max_transmit_bytes| {
-        ExpectedCommand::PublicEvidenceNetworkObservation {
+        CommandFixture::PublicEvidenceNetworkObservation {
             operator_id,
             peer_id,
             listen_address,
@@ -179,7 +179,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
             1_048_576,
         ),
     ] {
-        assert!(execute_reference_cli_command(&invalid).is_err());
+        assert!(execute_command_fixture(&invalid).is_err());
     }
     assert!(parse_public_service_kind("archive").is_err());
     assert_eq!(
@@ -219,7 +219,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
     assert!(parse_hash_argument("12").is_err());
     assert!(parse_hash_argument(&"g".repeat(64)).is_err());
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "http://127.0.0.1/health".to_owned(),
@@ -232,7 +232,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.example.test/health".to_owned(),
@@ -245,7 +245,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -258,7 +258,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -271,7 +271,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health?probe=1".to_owned(),
@@ -284,7 +284,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health#probe".to_owned(),
@@ -297,7 +297,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -310,7 +310,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -323,7 +323,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: [0; 32],
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -336,7 +336,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -368,7 +368,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -384,7 +384,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://localhost/chain/head".to_owned(),
@@ -396,7 +396,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -408,7 +408,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -420,7 +420,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head?height=1".to_owned(),
@@ -432,7 +432,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head#latest".to_owned(),
@@ -444,7 +444,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -456,7 +456,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -468,7 +468,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -480,7 +480,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -492,7 +492,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -504,7 +504,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -515,7 +515,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -526,7 +526,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -537,7 +537,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -551,7 +551,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://evidence.tensorvm.example/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -561,7 +561,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "http://127.0.0.1/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -571,7 +571,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: " https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -581,7 +581,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json ".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -591,7 +591,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json?download=1".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -601,7 +601,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -611,7 +611,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: [0; 32],
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -621,7 +621,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: [0; 32],
@@ -631,7 +631,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -641,7 +641,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -651,7 +651,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+        execute_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -661,7 +661,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: [0; 32],
@@ -671,7 +671,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://localhost/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -681,7 +681,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -691,7 +691,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -701,7 +701,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -711,7 +711,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -721,7 +721,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -731,7 +731,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
             run_started_at_unix_seconds: 1_700_000_000,
@@ -741,7 +741,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_060,
@@ -751,7 +751,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -783,7 +783,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         assert!(run_window_observation_summary_from_file(invalid_run_window_observations).is_err());
     }
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: std::env::temp_dir()
@@ -797,7 +797,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -808,7 +808,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -819,7 +819,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -830,7 +830,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -884,7 +884,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         );
     }
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -899,7 +899,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -909,7 +909,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -919,7 +919,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -929,7 +929,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -939,7 +939,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -1035,15 +1035,15 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         ])
         .is_err()
     );
-    let valid_record_summary = ExpectedCommand::PublicEvidenceRecordSummary {
+    let valid_record_summary = CommandFixture::PublicEvidenceRecordSummary {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
         record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
         record_count: 4,
     };
-    assert!(execute_reference_cli_command(&valid_record_summary).is_ok());
-    let valid_record_artifact = ExpectedCommand::PublicEvidenceRecordArtifact {
+    assert!(execute_command_fixture(&valid_record_summary).is_ok());
+    let valid_record_artifact = CommandFixture::PublicEvidenceRecordArtifact {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -1051,9 +1051,9 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
         record_count: 4,
     };
-    assert!(execute_reference_cli_command(&valid_record_artifact).is_ok());
+    assert!(execute_command_fixture(&valid_record_artifact).is_ok());
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1063,7 +1063,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -1073,7 +1073,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1083,7 +1083,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1093,7 +1093,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1104,7 +1104,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -1115,7 +1115,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1126,7 +1126,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1137,7 +1137,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1148,7 +1148,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1159,7 +1159,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1168,7 +1168,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1178,7 +1178,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
     );
     let duplicate_record_root = hash_bytes(b"test", &[b"network-runtime-root"]);
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1187,7 +1187,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1197,7 +1197,7 @@ fn execute_reference_cli_command_rejects_invalid_public_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),

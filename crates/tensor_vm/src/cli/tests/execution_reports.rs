@@ -1,14 +1,14 @@
 use super::*;
 
 #[test]
-fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
+fn execute_command_fixture_reports_miner_and_validator_readiness() {
     let miner_register =
-        execute_reference_cli_command(&ExpectedCommand::MinerRegister { stake: 100 }).unwrap();
+        execute_command_fixture(&CommandFixture::MinerRegister { stake: 100 }).unwrap();
     assert!(miner_register.contains("command=miner_register"));
     assert!(miner_register.contains("min_stake=100"));
     assert!(miner_register.contains("stake_sufficient=true"));
 
-    let miner_start = execute_reference_cli_command(&ExpectedCommand::MinerStart {
+    let miner_start = execute_command_fixture(&CommandFixture::MinerStart {
         wallet: "miner.key".to_owned(),
         device: "cpu".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -26,7 +26,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
     assert!(miner_start.contains("reference_backend_ready=true"));
 
-    let miner_run = execute_reference_cli_command(&ExpectedCommand::MinerRun {
+    let miner_run = execute_command_fixture(&CommandFixture::MinerRun {
         wallet: "miner.key".to_owned(),
         device: "cpu".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -46,12 +46,11 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(miner_run.contains("role_runtime_ready=true"));
 
     let validator_register =
-        execute_reference_cli_command(&ExpectedCommand::ValidatorRegister { stake: 10_000 })
-            .unwrap();
+        execute_command_fixture(&CommandFixture::ValidatorRegister { stake: 10_000 }).unwrap();
     assert!(validator_register.contains("command=validator_register"));
     assert!(validator_register.contains("min_stake=10000"));
 
-    let validator_start = execute_reference_cli_command(&ExpectedCommand::ValidatorStart {
+    let validator_start = execute_command_fixture(&CommandFixture::ValidatorStart {
         wallet: "validator.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
     })
@@ -59,7 +58,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(validator_start.contains("command=validator_start"));
     assert!(validator_start.contains("reference_verifier_ready=true"));
 
-    let validator_run = execute_reference_cli_command(&ExpectedCommand::ValidatorRun {
+    let validator_run = execute_command_fixture(&CommandFixture::ValidatorRun {
         wallet: "validator.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         listen: "127.0.0.1:8545".to_owned(),
@@ -77,7 +76,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(validator_run.contains("p2p_identity_seeded=false"));
     assert!(validator_run.contains("role_runtime_ready=true"));
 
-    let proposer_run = execute_reference_cli_command(&ExpectedCommand::ProposerRun {
+    let proposer_run = execute_command_fixture(&CommandFixture::ProposerRun {
         wallet: "proposer.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         listen: "127.0.0.1:8545".to_owned(),
@@ -95,16 +94,15 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(proposer_run.contains("p2p_identity_seeded=true"));
     assert!(proposer_run.contains("role_runtime_ready=true"));
 
-    let miner_status = execute_reference_cli_command(&ExpectedCommand::MinerStatus).unwrap();
+    let miner_status = execute_command_fixture(&CommandFixture::MinerStatus).unwrap();
     assert!(miner_status.contains("command=miner_status"));
     assert!(miner_status.contains("status_source=rpc_or_node_store_required"));
 
-    let validator_status =
-        execute_reference_cli_command(&ExpectedCommand::ValidatorStatus).unwrap();
+    let validator_status = execute_command_fixture(&CommandFixture::ValidatorStatus).unwrap();
     assert!(validator_status.contains("command=validator_status"));
     assert!(validator_status.contains("status_source=rpc_or_node_store_required"));
 
-    let service_init = execute_reference_cli_command(&ExpectedCommand::ServiceInit {
+    let service_init = execute_command_fixture(&CommandFixture::ServiceInit {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -112,7 +110,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_init.contains("node_store_ready=true"));
 
     let bootstrap_peer = PeerId::random().to_string();
-    let service_peer_add = execute_reference_cli_command(&ExpectedCommand::ServicePeerAdd {
+    let service_peer_add = execute_command_fixture(&CommandFixture::ServicePeerAdd {
         data_dir: "/var/lib/tensorvm".to_owned(),
         peer_id: bootstrap_peer.clone(),
         address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -122,7 +120,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_peer_add.contains(&format!("peer_id={bootstrap_peer}")));
     assert!(service_peer_add.contains("peer_book_ready=true"));
 
-    let service_readiness = execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
+    let service_readiness = execute_command_fixture(&CommandFixture::ServiceReadiness {
         p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
         data_dir: "/var/lib/tensorvm".to_owned(),
         identity_seed: Some([0x11; 32]),
@@ -143,16 +141,15 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_readiness.contains("node_store_required=true"));
     assert!(service_readiness.contains("libp2p_ready=true"));
 
-    let unseeded_service_readiness =
-        execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
-            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-        })
-        .unwrap();
+    let unseeded_service_readiness = execute_command_fixture(&CommandFixture::ServiceReadiness {
+        p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+        data_dir: "/var/lib/tensorvm".to_owned(),
+        identity_seed: None,
+    })
+    .unwrap();
     assert!(unseeded_service_readiness.contains("p2p_identity_seeded=false"));
 
-    let service_serve = execute_reference_cli_command(&ExpectedCommand::ServiceServe {
+    let service_serve = execute_command_fixture(&CommandFixture::ServiceServe {
         listen: "0.0.0.0:8545".to_owned(),
         p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
         data_dir: "/var/lib/tensorvm".to_owned(),
@@ -180,7 +177,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_serve.contains("telemetry_routes=enabled"));
     assert!(service_serve.contains("node_store_required=true"));
 
-    let service_status = execute_reference_cli_command(&ExpectedCommand::ServiceStatus {
+    let service_status = execute_command_fixture(&CommandFixture::ServiceStatus {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -188,7 +185,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_status.contains("data_dir=/var/lib/tensorvm"));
     assert!(service_status.contains("status_source=node_store"));
 
-    let service_block = execute_reference_cli_command(&ExpectedCommand::ServiceBlock {
+    let service_block = execute_command_fixture(&CommandFixture::ServiceBlock {
         data_dir: "/var/lib/tensorvm".to_owned(),
         height: 3,
     })
@@ -198,7 +195,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_block.contains("height=3"));
     assert!(service_block.contains("status_source=node_store"));
 
-    let local_seed = execute_reference_cli_command(&ExpectedCommand::LocalTestnetSeed {
+    let local_seed = execute_command_fixture(&CommandFixture::LocalTestnetSeed {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -206,15 +203,15 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(local_seed.contains("data_dir=/var/lib/tensorvm"));
     assert!(local_seed.contains("local_cpu_seed_ready=true"));
 
-    let public_command = ExpectedCommand::PublicEvidenceValidate {
+    let public_command = CommandFixture::PublicEvidenceValidate {
         manifest: "evidence.txt".to_owned(),
     };
     assert_eq!(
-        execute_reference_cli_command(&public_command).unwrap(),
-        describe_command(&public_command)
+        execute_command_fixture(&public_command).unwrap(),
+        describe_command_fixture(&public_command)
     );
 
-    let publication = execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
+    let publication = execute_command_fixture(&CommandFixture::PublicEvidencePublication {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -238,15 +235,14 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(publication.contains("manifest_signature_count=1"));
     assert!(publication.contains("independent_auditor_count=1"));
 
-    let auditor_record =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
-            auditor_id: address(b"public-evidence-auditor-0"),
-            audit_uri: manifest_auditor_uri(),
-            observed_at_unix_seconds: 1_700_000_060,
-        })
-        .unwrap();
+    let auditor_record = execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
+        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+        auditor_id: address(b"public-evidence-auditor-0"),
+        audit_uri: manifest_auditor_uri(),
+        observed_at_unix_seconds: 1_700_000_060,
+    })
+    .unwrap();
     assert_eq!(
         auditor_record,
         format!(
@@ -257,7 +253,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         )
     );
 
-    let run_window = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
+    let run_window = execute_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
         run_started_at_unix_seconds: 1_700_000_000,
@@ -289,7 +285,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         .join("\n");
     std::fs::write(&run_window_observation_file, run_window_observations).unwrap();
     let run_window_from_file =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
@@ -313,7 +309,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         ),
     ];
     for (role, address_label, operator_label, tag) in node_cases {
-        let node = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+        let node = execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
             role,
             address: address(address_label),
             operator_id: hash_bytes(b"test", &[operator_label]),
@@ -350,7 +346,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
             .join("\n");
         std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
         let node_from_file =
-            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
+            execute_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeatFromFile {
                 role,
                 address: address(address_label),
                 operator_id: hash_bytes(b"test", &[operator_label]),
@@ -364,7 +360,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
     let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
     let operator_attestation =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id,
@@ -382,18 +378,17 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         )
     );
 
-    let service_health =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .unwrap();
+    let service_health = execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        kind: PublicServiceKind::Rpc,
+        endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+        public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        health_path: "/health".to_owned(),
+        first_seen_block: 0,
+        last_seen_block: 9,
+        reachable_observation_count: 10,
+        signed_health_check_count: 10,
+    })
+    .unwrap();
     assert!(service_health.starts_with("service=rpc,"));
     assert!(service_health.contains("https://rpc.tensorvm.net/health,/health,0,9,10,10"));
     assert!(service_health.ends_with(&manifest_service_signature(
@@ -411,7 +406,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         .join("\n");
     std::fs::write(&health_observation_file, health_observations).unwrap();
     let service_health_from_file =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -431,7 +426,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         ),
     ];
     for (kind, label, tag) in additional_service_cases {
-        let line = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        let line = execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind,
             endpoint_id: hash_bytes(b"test", &[label]),
             public_url: public_service_url(kind).to_owned(),
@@ -447,17 +442,16 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         assert!(line.ends_with(&manifest_service_signature(kind, label)));
     }
 
-    let service_content =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
-            content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .unwrap();
+    let service_content = execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        kind: PublicServiceKind::Rpc,
+        endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+        public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
+        content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+        content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+        observed_at_unix_seconds: 1_700_000_000,
+        min_content_bytes: 64,
+    })
+    .unwrap();
     assert!(service_content.starts_with("service_content=rpc,"));
     assert!(service_content.contains("https://rpc.tensorvm.net/chain/head,/chain/head"));
     assert_eq!(
@@ -467,7 +461,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     let observed_content = vec![7_u8; 80];
     let observed_content_root = public_service_content_root(&observed_content);
     let service_content_from_bytes =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -488,7 +482,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     ));
     std::fs::write(&content_file, &observed_content).unwrap();
     let service_content_from_file =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -502,7 +496,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
 
     let peer_id = PeerId::random().to_string();
     let network_observation =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNetworkObservation {
+        execute_command_fixture(&CommandFixture::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -682,8 +676,8 @@ p2p_idle_timeout_seconds=60
         observation_root[0]
     ));
     std::fs::write(&service_log_file, &service_log).unwrap();
-    let network_observation_from_file = execute_reference_cli_command(
-        &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
+    let network_observation_from_file = execute_command_fixture(
+        &CommandFixture::PublicEvidenceNetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -695,8 +689,8 @@ p2p_idle_timeout_seconds=60
     assert_eq!(network_observation_from_file, network_observation);
 
     assert_eq!(
-        execute_reference_cli_command(
-            &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
+        execute_command_fixture(
+            &CommandFixture::PublicEvidenceNetworkObservationFromServiceLog {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -801,7 +795,7 @@ p2p_idle_timeout_seconds=60
         let root = hex(&record_root);
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let manifest_signer = address(b"public-evidence-publisher");
-        let line = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        let line = execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind,
             bundle_id,
             manifest_signer,
@@ -830,7 +824,7 @@ p2p_idle_timeout_seconds=60
             count,
         );
         let artifact_line =
-            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+            execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -866,7 +860,7 @@ p2p_idle_timeout_seconds=60
         roots.len() as u64,
     );
     let aggregate_line =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -891,7 +885,7 @@ p2p_idle_timeout_seconds=60
         roots.len() as u64,
     );
     let aggregate_artifact_line =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -938,7 +932,7 @@ p2p_idle_timeout_seconds=60
     .unwrap();
     assert_eq!(record_file_roots_from_disk, record_file_roots);
     let record_file_summary =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -961,7 +955,7 @@ p2p_idle_timeout_seconds=60
         )
     );
     let record_file_artifact =
-        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
+        execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1057,7 +1051,7 @@ p2p_idle_timeout_seconds=60
             roots
         );
         let summary =
-            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
+            execute_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromFile {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -1084,7 +1078,7 @@ p2p_idle_timeout_seconds=60
             public_evidence_record_kind_tag(kind)
         );
         let artifact =
-            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
+            execute_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromFile {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),

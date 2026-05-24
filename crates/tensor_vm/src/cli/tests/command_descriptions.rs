@@ -1,5 +1,6 @@
 use super::{
-    ExpectedCommand, describe_command, manifest_address, manifest_auditor_uri, parse_test_cli,
+    CommandFixture, describe_command_fixture, manifest_address, manifest_auditor_uri,
+    parse_test_cli,
 };
 use crate::hash::hex;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
@@ -9,16 +10,16 @@ use libp2p::PeerId;
 #[test]
 fn clap_cli_parses_and_describes_commands() {
     let command = parse_test_cli(&["miner", "register", "--stake", "250"]).unwrap();
-    assert_eq!(command, ExpectedCommand::MinerRegister { stake: 250 });
+    assert_eq!(command, CommandFixture::MinerRegister { stake: 250 });
     let bootstrap_peer = PeerId::random().to_string();
 
     let commands = [
         (
-            ExpectedCommand::MinerRegister { stake: 1 },
+            CommandFixture::MinerRegister { stake: 1 },
             "register miner with stake 1",
         ),
         (
-            ExpectedCommand::MinerStart {
+            CommandFixture::MinerStart {
                 wallet: "miner.key".to_owned(),
                 device: "cpu".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -26,7 +27,7 @@ fn clap_cli_parses_and_describes_commands() {
             "start miner wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001",
         ),
         (
-            ExpectedCommand::MinerRun {
+            CommandFixture::MinerRun {
                 wallet: "miner.key".to_owned(),
                 device: "cpu".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -39,20 +40,20 @@ fn clap_cli_parses_and_describes_commands() {
             },
             "run miner role wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
-        (ExpectedCommand::MinerStatus, "show miner status"),
+        (CommandFixture::MinerStatus, "show miner status"),
         (
-            ExpectedCommand::ValidatorRegister { stake: 10 },
+            CommandFixture::ValidatorRegister { stake: 10 },
             "register validator with stake 10",
         ),
         (
-            ExpectedCommand::ValidatorStart {
+            CommandFixture::ValidatorStart {
                 wallet: "validator.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             },
             "start validator wallet=validator.key node=/ip4/127.0.0.1/tcp/4001",
         ),
         (
-            ExpectedCommand::ValidatorRun {
+            CommandFixture::ValidatorRun {
                 wallet: "validator.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 listen: "127.0.0.1:8545".to_owned(),
@@ -64,9 +65,9 @@ fn clap_cli_parses_and_describes_commands() {
             },
             "run validator role wallet=validator.key node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
-        (ExpectedCommand::ValidatorStatus, "show validator status"),
+        (CommandFixture::ValidatorStatus, "show validator status"),
         (
-            ExpectedCommand::ProposerRun {
+            CommandFixture::ProposerRun {
                 wallet: "proposer.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 listen: "127.0.0.1:8545".to_owned(),
@@ -79,13 +80,13 @@ fn clap_cli_parses_and_describes_commands() {
             "run proposer role wallet=proposer.key node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            ExpectedCommand::ServiceInit {
+            CommandFixture::ServiceInit {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "initialize service node store data_dir=/var/lib/tensorvm",
         ),
         (
-            ExpectedCommand::ServicePeerAdd {
+            CommandFixture::ServicePeerAdd {
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 peer_id: bootstrap_peer.clone(),
                 address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -93,7 +94,7 @@ fn clap_cli_parses_and_describes_commands() {
             "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id=",
         ),
         (
-            ExpectedCommand::ServiceReadiness {
+            CommandFixture::ServiceReadiness {
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 identity_seed: None,
@@ -101,7 +102,7 @@ fn clap_cli_parses_and_describes_commands() {
             "check mandatory libp2p service readiness p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            ExpectedCommand::ServiceServe {
+            CommandFixture::ServiceServe {
                 listen: "0.0.0.0:8545".to_owned(),
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
@@ -112,40 +113,40 @@ fn clap_cli_parses_and_describes_commands() {
             "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            ExpectedCommand::ServiceStatus {
+            CommandFixture::ServiceStatus {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "show service node store status data_dir=/var/lib/tensorvm",
         ),
         (
-            ExpectedCommand::ServiceBlock {
+            CommandFixture::ServiceBlock {
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 height: 3,
             },
             "show service node store block data_dir=/var/lib/tensorvm height=3",
         ),
         (
-            ExpectedCommand::LocalTestnetSeed {
+            CommandFixture::LocalTestnetSeed {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "seed local CPU testnet data_dir=/var/lib/tensorvm",
         ),
         (
-            ExpectedCommand::PublicEvidenceValidate {
+            CommandFixture::PublicEvidenceValidate {
                 manifest: "evidence.txt".to_owned(),
             },
             "validate public evidence manifest evidence.txt",
         ),
         (
-            ExpectedCommand::PublicTestnetPreflight {
+            CommandFixture::PublicTestnetPreflight {
                 manifest: "preflight.txt".to_owned(),
             },
             "run public testnet preflight manifest preflight.txt",
         ),
     ];
     for (command, description) in commands {
-        let actual = describe_command(&command);
-        if matches!(command, ExpectedCommand::ServicePeerAdd { .. }) {
+        let actual = describe_command_fixture(&command);
+        if matches!(command, CommandFixture::ServicePeerAdd { .. }) {
             assert!(actual.starts_with(description));
             assert!(actual.contains("address=/dns/bootstrap.tensorvm.net/tcp/4001"));
         } else {
@@ -154,7 +155,7 @@ fn clap_cli_parses_and_describes_commands() {
     }
 
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+        describe_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -167,7 +168,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate rpc service health evidence public_url=https://rpc.tensorvm.net/health health_path=/health"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -177,7 +178,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate rpc service health evidence from captured observations observation_file=artifacts/rpc-health.records public_url=https://rpc.tensorvm.net/health health_path=/health"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceServiceContent {
+        describe_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Explorer,
             endpoint_id: hash_bytes(b"test", &[b"explorer-service"]),
             public_url: "https://explorer.tensorvm.net/explorer".to_owned(),
@@ -189,7 +190,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate explorer service content evidence public_url=https://explorer.tensorvm.net/explorer content_path=/explorer"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
+        describe_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Faucet,
             endpoint_id: hash_bytes(b"test", &[b"faucet-service"]),
             public_url: "https://faucet.tensorvm.net/faucet/page".to_owned(),
@@ -200,7 +201,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate faucet service content evidence from observed bytes public_url=https://faucet.tensorvm.net/faucet/page content_path=/faucet/page"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Telemetry,
             endpoint_id: hash_bytes(b"test", &[b"telemetry-service"]),
             public_url: "https://telemetry.tensorvm.net/telemetry/dashboard".to_owned(),
@@ -211,7 +212,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate telemetry service content evidence from captured file content_file=artifacts/telemetry-dashboard.body public_url=https://telemetry.tensorvm.net/telemetry/dashboard content_path=/telemetry/dashboard"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidencePublication {
+        describe_command_fixture(&CommandFixture::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -221,7 +222,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence publication signature public_uri=https://tensorvm.net/tensorvm/public-evidence.json"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRunWindow {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -231,7 +232,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: "artifacts/block-observations.records".to_owned(),
@@ -239,7 +240,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence run window from captured block observations block_observation_file=artifacts/block-observations.records"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+        describe_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -253,7 +254,7 @@ fn clap_cli_parses_and_describes_commands() {
         )
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -265,7 +266,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence record summary from 2 roots"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::InvalidWorkRejections,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -275,7 +276,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate invalid-work public evidence record summary records=1"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::RewardSettlements,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -285,7 +286,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate reward-settlement public evidence record summary records=1"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -296,7 +297,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -309,7 +310,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence artifact locator from 2 roots artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -318,7 +319,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence record summary from record file record_file=artifacts/network-runtime.records"
     );
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -329,7 +330,7 @@ fn clap_cli_parses_and_describes_commands() {
     );
     let peer_id = PeerId::random().to_string();
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceNetworkObservation {
+        describe_command_fixture(&CommandFixture::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -347,8 +348,8 @@ fn clap_cli_parses_and_describes_commands() {
         )
     );
     assert_eq!(
-        describe_command(
-            &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
+        describe_command_fixture(
+            &CommandFixture::PublicEvidenceNetworkObservationFromServiceLog {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -372,7 +373,7 @@ fn clap_cli_parses_and_describes_commands() {
     ];
     for (role, node_address, prefix) in node_roles {
         assert_eq!(
-            describe_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
+            describe_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeat {
                 role,
                 address: node_address,
                 operator_id: hash_bytes(b"test", &[b"operator"]),
@@ -384,7 +385,7 @@ fn clap_cli_parses_and_describes_commands() {
         );
     }
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
+        describe_command_fixture(&CommandFixture::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"operator"]),
@@ -397,7 +398,7 @@ fn clap_cli_parses_and_describes_commands() {
     );
 
     assert_eq!(
-        describe_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
+        describe_command_fixture(&CommandFixture::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -430,7 +431,7 @@ fn clap_cli_parses_and_describes_commands() {
     ];
     for (kind, expected) in record_kinds {
         assert_eq!(
-            describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
+            describe_command_fixture(&CommandFixture::PublicEvidenceRecordSummary {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),

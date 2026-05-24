@@ -1,18 +1,18 @@
-use super::CliCommand;
+use super::TvmdCommand;
 use super::local_parser::{LocalCpuCommand, LocalTestnetCommand};
 use super::local_role_descriptions::{
     describe_miner_command, describe_proposer_command, describe_validator_command,
 };
 use super::local_service_descriptions::describe_service_command;
 
-pub(super) fn describe_local_command(command: &CliCommand) -> String {
+pub(super) fn describe_local_command(command: &TvmdCommand) -> String {
     match command {
-        CliCommand::Miner { command } => describe_miner_command(command),
-        CliCommand::Validator { command } => describe_validator_command(command),
-        CliCommand::Proposer { command } => describe_proposer_command(command),
-        CliCommand::Service { command } => describe_service_command(command),
-        CliCommand::LocalTestnet { command } => describe_local_testnet_command(command),
-        CliCommand::LocalCpu { command } => describe_local_cpu_command(command),
+        TvmdCommand::Miner { command } => describe_miner_command(command),
+        TvmdCommand::Validator { command } => describe_validator_command(command),
+        TvmdCommand::Proposer { command } => describe_proposer_command(command),
+        TvmdCommand::Service { command } => describe_service_command(command),
+        TvmdCommand::LocalTestnet { command } => describe_local_testnet_command(command),
+        TvmdCommand::LocalCpu { command } => describe_local_cpu_command(command),
         _ => unreachable!(
             "public evidence commands are handled by cli::public_evidence_descriptions"
         ),

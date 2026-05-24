@@ -1,4 +1,4 @@
-use super::CliCommand;
+use super::TvmdCommand;
 use super::local_parser::{LocalCpuCommand, LocalTestnetCommand};
 use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
@@ -8,15 +8,15 @@ use super::validation::{ensure_data_dir, json_escape};
 use crate::chain::ChainParams;
 use crate::error::Result;
 
-pub(super) fn execute_local_cli_command(command: &CliCommand) -> Result<String> {
+pub(super) fn execute_local_cli_command(command: &TvmdCommand) -> Result<String> {
     let params = ChainParams::default();
     match command {
-        CliCommand::Miner { command } => execute_miner_command(command, &params),
-        CliCommand::Validator { command } => execute_validator_command(command, &params),
-        CliCommand::Proposer { command } => execute_proposer_command(command),
-        CliCommand::Service { command } => execute_service_command(command),
-        CliCommand::LocalTestnet { command } => execute_local_testnet_command(command),
-        CliCommand::LocalCpu { command } => execute_local_cpu_command(command),
+        TvmdCommand::Miner { command } => execute_miner_command(command, &params),
+        TvmdCommand::Validator { command } => execute_validator_command(command, &params),
+        TvmdCommand::Proposer { command } => execute_proposer_command(command),
+        TvmdCommand::Service { command } => execute_service_command(command),
+        TvmdCommand::LocalTestnet { command } => execute_local_testnet_command(command),
+        TvmdCommand::LocalCpu { command } => execute_local_cpu_command(command),
         _ => unreachable!("public evidence commands are handled by cli::execution"),
     }
 }

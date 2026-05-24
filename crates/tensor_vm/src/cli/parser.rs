@@ -1,4 +1,4 @@
-use super::CliCommand;
+use super::TvmdCommand;
 use clap::Parser;
 
 #[derive(Clone, Debug, Eq, PartialEq, Parser)]
@@ -9,7 +9,7 @@ use clap::Parser;
     propagate_version = true,
     arg_required_else_help = true
 )]
-pub struct Cli {
+pub struct TvmdCli {
     #[command(subcommand)]
-    pub command: CliCommand,
+    pub command: TvmdCommand,
 }

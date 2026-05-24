@@ -294,14 +294,14 @@ spaghetti around.
   supporting-record parsing helpers into `cli/record_evidence.rs`, leaving the parent CLI module
   focused on dispatch.
 - Iteration 122 extracted CLI command description rendering into `cli/descriptions.rs`, preserving
-  the public `describe_command` export while reducing the parent CLI module to parser and dispatch
+  the public `describe_cli_command` export while reducing the parent CLI module to parser and dispatch
   orchestration.
-- Iteration 123 extracted reference CLI command execution into `cli/execution.rs`, moving status and
+- Iteration 123 extracted CLI command execution into `cli/execution.rs`, moving status and
   public-evidence output dispatch out of the parser module while preserving the public execution API.
 - Iteration 124 replaced the hand-rolled CLI parser with a typed `clap` command tree in
-  `cli/parser.rs`, making the binary parse directly through `Cli::parse()` instead of preserving the
+  `cli/parser.rs`, making the binary parse directly through `TvmdCli::parse()` instead of preserving the
   old string-slice parser API.
-- Iteration 125 extracted the `CliCommand` data model into `cli/commands.rs`, leaving `cli.rs` as a
+- Iteration 125 extracted the `TvmdCommand` data model into `cli/commands.rs`, leaving `cli.rs` as a
   small facade over command definitions, clap parsing, descriptions, execution, and evidence helpers.
 - Iteration 126 split the clap public-evidence command tree into `cli/public_evidence_parser.rs` and
   moved shared clap value parsers into `cli/parser_values.rs`, leaving `cli/parser.rs` focused on the
@@ -358,7 +358,7 @@ spaghetti around.
 - Iteration 144 moved public-evidence record summary/artifact descriptions into
   `cli/public_evidence_record_descriptions.rs`, continuing the public-evidence description split along
   command-family boundaries already used by parser and execution modules.
-- Iteration 145 replaced the legacy flat `CliCommand` adapter with the `clap` command tree itself,
+- Iteration 145 replaced the legacy flat command adapter with the `clap` command tree itself,
   making parsed commands the execution and description model instead of preserving a parallel CLI
   representation.
 - Iteration 146 moved public-evidence network-observation descriptions into
@@ -445,6 +445,9 @@ spaghetti around.
 - Iteration 172 moved the remaining unsigned and short-lived public run evidence filter test into
   `testnet/tests/run_evidence.rs`, leaving `testnet.rs` with shared test fixtures and child-module
   wiring instead of inline test cases.
+- Iteration 173 renamed the clap command surface to `TvmdCli`/`TvmdCommand`, replaced the
+  legacy `execute_reference_cli_command` export with `execute_cli_command`, and renamed CLI test
+  adapters to explicit command fixtures instead of preserving the old reference-command terminology.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -701,7 +704,7 @@ Fix:
 
 There are multiple overlapping status emitters:
 
-- reference CLI output in `cli.rs`
+- CLI readiness output in `cli.rs`
 - real service handlers in `main.rs`
 - `role-runtime.status`
 - `local-cpu-ready`
@@ -1022,7 +1025,7 @@ Prefer dry-run validation or a journal.
 
 ### Avoid Massive Match Functions
 
-`execute_reference_cli_command`, CLI parsing, and RPC route dispatch should be split into typed command
+`execute_cli_command`, CLI parsing, and RPC route dispatch should be split into typed command
 handlers.
 
 ## Tests Review

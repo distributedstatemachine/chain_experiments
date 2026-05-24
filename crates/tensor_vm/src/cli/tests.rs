@@ -20,15 +20,15 @@ mod network_observation;
 mod parser;
 mod public_evidence_rejections;
 
-fn parse_test_cli(args: &[&str]) -> std::result::Result<ExpectedCommand, clap::Error> {
+fn parse_test_cli(args: &[&str]) -> std::result::Result<CommandFixture, clap::Error> {
     let mut argv = Vec::with_capacity(args.len() + 1);
     argv.push("tvmd");
     argv.extend_from_slice(args);
-    Cli::try_parse_from(argv).map(|cli| ExpectedCommand::from(cli.command))
+    TvmdCli::try_parse_from(argv).map(|cli| CommandFixture::from(cli.command))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum ExpectedCommand {
+enum CommandFixture {
     MinerRegister {
         stake: u64,
     },
@@ -269,25 +269,25 @@ enum ExpectedCommand {
     },
 }
 
-fn execute_reference_cli_command(command: &ExpectedCommand) -> crate::error::Result<String> {
-    super::execute_reference_cli_command(&command.clone().into_cli_command())
+fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
+    super::execute_cli_command(&command.clone().into_cli_command())
 }
 
-fn describe_command(command: &ExpectedCommand) -> String {
-    super::describe_command(&command.clone().into_cli_command())
+fn describe_command_fixture(command: &CommandFixture) -> String {
+    super::describe_cli_command(&command.clone().into_cli_command())
 }
 
-impl ExpectedCommand {
-    fn into_cli_command(self) -> super::CliCommand {
+impl CommandFixture {
+    fn into_cli_command(self) -> super::TvmdCommand {
         match self {
-            Self::MinerRegister { stake } => super::CliCommand::Miner {
+            Self::MinerRegister { stake } => super::TvmdCommand::Miner {
                 command: MinerCommand::Register(StakeArgs { stake }),
             },
             Self::MinerStart {
                 wallet,
                 device,
                 node,
-            } => super::CliCommand::Miner {
+            } => super::TvmdCommand::Miner {
                 command: MinerCommand::Start(MinerStartArgs {
                     wallet,
                     device,
@@ -304,7 +304,7 @@ impl ExpectedCommand {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::CliCommand::Miner {
+            } => super::TvmdCommand::Miner {
                 command: MinerCommand::Run(MinerRunArgs {
                     wallet,
                     device,
@@ -321,13 +321,13 @@ impl ExpectedCommand {
                     },
                 }),
             },
-            Self::MinerStatus => super::CliCommand::Miner {
+            Self::MinerStatus => super::TvmdCommand::Miner {
                 command: MinerCommand::Status,
             },
-            Self::ValidatorRegister { stake } => super::CliCommand::Validator {
+            Self::ValidatorRegister { stake } => super::TvmdCommand::Validator {
                 command: ValidatorCommand::Register(StakeArgs { stake }),
             },
-            Self::ValidatorStart { wallet, node } => super::CliCommand::Validator {
+            Self::ValidatorStart { wallet, node } => super::TvmdCommand::Validator {
                 command: ValidatorCommand::Start(ValidatorStartArgs { wallet, node }),
             },
             Self::ValidatorRun {
@@ -339,7 +339,7 @@ impl ExpectedCommand {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::CliCommand::Validator {
+            } => super::TvmdCommand::Validator {
                 command: ValidatorCommand::Run(ValidatorRunArgs {
                     wallet,
                     runtime: RoleRuntimeArgs {
@@ -355,7 +355,7 @@ impl ExpectedCommand {
                     },
                 }),
             },
-            Self::ValidatorStatus => super::CliCommand::Validator {
+            Self::ValidatorStatus => super::TvmdCommand::Validator {
                 command: ValidatorCommand::Status,
             },
             Self::ProposerRun {
@@ -367,7 +367,7 @@ impl ExpectedCommand {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::CliCommand::Proposer {
+            } => super::TvmdCommand::Proposer {
                 command: ProposerCommand::Run(ValidatorRunArgs {
                     wallet,
                     runtime: RoleRuntimeArgs {
@@ -383,14 +383,14 @@ impl ExpectedCommand {
                     },
                 }),
             },
-            Self::ServiceInit { data_dir } => super::CliCommand::Service {
+            Self::ServiceInit { data_dir } => super::TvmdCommand::Service {
                 command: ServiceCommand::Init(DataDirArgs { data_dir }),
             },
             Self::ServicePeerAdd {
                 data_dir,
                 peer_id,
                 address,
-            } => super::CliCommand::Service {
+            } => super::TvmdCommand::Service {
                 command: ServiceCommand::Peer {
                     command: ServicePeerCommand::Add(ServicePeerAddArgs {
                         data_dir,
@@ -403,7 +403,7 @@ impl ExpectedCommand {
                 p2p_listen,
                 data_dir,
                 identity_seed,
-            } => super::CliCommand::Service {
+            } => super::TvmdCommand::Service {
                 command: ServiceCommand::Readiness(ServiceReadinessArgs {
                     p2p_listen,
                     data_dir,
@@ -417,7 +417,7 @@ impl ExpectedCommand {
                 identity_seed,
                 auth_token,
                 max_requests,
-            } => super::CliCommand::Service {
+            } => super::TvmdCommand::Service {
                 command: ServiceCommand::Serve(ServiceServeArgs {
                     runtime: ServiceRuntimeArgs {
                         listen,
@@ -429,19 +429,19 @@ impl ExpectedCommand {
                     },
                 }),
             },
-            Self::ServiceStatus { data_dir } => super::CliCommand::Service {
+            Self::ServiceStatus { data_dir } => super::TvmdCommand::Service {
                 command: ServiceCommand::Status(DataDirArgs { data_dir }),
             },
-            Self::ServiceBlock { data_dir, height } => super::CliCommand::Service {
+            Self::ServiceBlock { data_dir, height } => super::TvmdCommand::Service {
                 command: ServiceCommand::Block(ServiceBlockArgs { data_dir, height }),
             },
-            Self::LocalTestnetSeed { data_dir } => super::CliCommand::LocalTestnet {
+            Self::LocalTestnetSeed { data_dir } => super::TvmdCommand::LocalTestnet {
                 command: LocalTestnetCommand::Seed(DataDirArgs { data_dir }),
             },
-            Self::LocalCpuVerify { data_dir, json } => super::CliCommand::LocalCpu {
+            Self::LocalCpuVerify { data_dir, json } => super::TvmdCommand::LocalCpu {
                 command: LocalCpuCommand::Verify(LocalCpuVerifyArgs { data_dir, json }),
             },
-            Self::PublicEvidenceValidate { manifest } => super::CliCommand::PublicEvidence {
+            Self::PublicEvidenceValidate { manifest } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs { manifest }),
             },
             Self::PublicEvidenceServiceHealth {
@@ -453,7 +453,7 @@ impl ExpectedCommand {
                 last_seen_block,
                 reachable_observation_count,
                 signed_health_check_count,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::ServiceHealth(ServiceHealthArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
@@ -471,7 +471,7 @@ impl ExpectedCommand {
                 public_url,
                 health_path,
                 observation_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::ServiceHealthFromFile(ServiceHealthFromFileArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
@@ -488,7 +488,7 @@ impl ExpectedCommand {
                 content_root,
                 observed_at_unix_seconds,
                 min_content_bytes,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::ServiceContent(ServiceContentArgs {
                     kind: service_kind_arg(kind),
                     endpoint_id,
@@ -506,7 +506,7 @@ impl ExpectedCommand {
                 content_path,
                 observed_at_unix_seconds,
                 content_hex,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::ServiceContentFromBytes(
                     ServiceContentFromBytesArgs {
                         kind: service_kind_arg(kind),
@@ -525,7 +525,7 @@ impl ExpectedCommand {
                 content_path,
                 observed_at_unix_seconds,
                 content_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::ServiceContentFromFile(
                     ServiceContentFromFileArgs {
                         kind: service_kind_arg(kind),
@@ -543,7 +543,7 @@ impl ExpectedCommand {
                 manifest_signer,
                 record_root,
                 record_count,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordSummary(RecordSummaryArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
@@ -559,7 +559,7 @@ impl ExpectedCommand {
                 artifact_uri,
                 record_root,
                 record_count,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordArtifact(RecordArtifactArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
@@ -575,7 +575,7 @@ impl ExpectedCommand {
                 manifest_signer,
                 artifact_uri,
                 record_roots,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordArtifactFromRoots(
                     RecordArtifactFromRootsArgs {
                         kind: record_kind_arg(kind),
@@ -592,7 +592,7 @@ impl ExpectedCommand {
                 manifest_signer,
                 artifact_uri,
                 record_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordArtifactFromFile(
                     RecordArtifactFromFileArgs {
                         kind: record_kind_arg(kind),
@@ -608,7 +608,7 @@ impl ExpectedCommand {
                 bundle_id,
                 manifest_signer,
                 record_roots,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordSummaryFromRoots(
                     RecordSummaryFromRootsArgs {
                         kind: record_kind_arg(kind),
@@ -623,7 +623,7 @@ impl ExpectedCommand {
                 bundle_id,
                 manifest_signer,
                 record_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RecordSummaryFromFile(RecordSummaryFromFileArgs {
                     kind: record_kind_arg(kind),
                     bundle_id,
@@ -643,7 +643,7 @@ impl ExpectedCommand {
                 request_timeout_seconds,
                 max_concurrent_streams,
                 idle_connection_timeout_seconds,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::NetworkObservation(NetworkObservationArgs {
                     operator_id,
                     peer_id,
@@ -663,7 +663,7 @@ impl ExpectedCommand {
                 listen_address,
                 observed_at_unix_seconds,
                 service_log,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::NetworkObservationFromServiceLog(
                     NetworkObservationFromServiceLogArgs {
                         operator_id,
@@ -679,7 +679,7 @@ impl ExpectedCommand {
                 manifest_signer,
                 manifest_signature_count,
                 independent_auditor_count,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::Publication(PublicationArgs {
                     bundle_id,
                     public_uri,
@@ -694,7 +694,7 @@ impl ExpectedCommand {
                 auditor_id,
                 audit_uri,
                 observed_at_unix_seconds,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::AuditorRecord(AuditorRecordArgs {
                     bundle_id,
                     public_uri,
@@ -709,7 +709,7 @@ impl ExpectedCommand {
                 run_started_at_unix_seconds,
                 run_ended_at_unix_seconds,
                 observed_blocks,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RunWindow(RunWindowArgs {
                     bundle_id,
                     manifest_signer,
@@ -722,7 +722,7 @@ impl ExpectedCommand {
                 bundle_id,
                 manifest_signer,
                 block_observation_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::RunWindowFromFile(RunWindowFromFileArgs {
                     bundle_id,
                     manifest_signer,
@@ -736,7 +736,7 @@ impl ExpectedCommand {
                 first_seen_block,
                 last_seen_block,
                 signed_heartbeat_count,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::NodeHeartbeat(NodeHeartbeatArgs {
                     role: node_role_arg(role),
                     address,
@@ -751,7 +751,7 @@ impl ExpectedCommand {
                 address,
                 operator_id,
                 heartbeat_file,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::NodeHeartbeatFromFile(NodeHeartbeatFromFileArgs {
                     role: node_role_arg(role),
                     address,
@@ -765,7 +765,7 @@ impl ExpectedCommand {
                 operator_id,
                 identity_uri,
                 observed_at_unix_seconds,
-            } => super::CliCommand::PublicEvidence {
+            } => super::TvmdCommand::PublicEvidence {
                 command: PublicEvidenceCommand::OperatorAttestation(OperatorAttestationArgs {
                     role: node_role_arg(role),
                     address,
@@ -774,17 +774,17 @@ impl ExpectedCommand {
                     observed_at: observed_at_unix_seconds,
                 }),
             },
-            Self::PublicTestnetPreflight { manifest } => super::CliCommand::PublicTestnet {
+            Self::PublicTestnetPreflight { manifest } => super::TvmdCommand::PublicTestnet {
                 command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs { manifest }),
             },
         }
     }
 }
 
-impl From<super::CliCommand> for ExpectedCommand {
-    fn from(command: super::CliCommand) -> Self {
+impl From<super::TvmdCommand> for CommandFixture {
+    fn from(command: super::TvmdCommand) -> Self {
         match command {
-            super::CliCommand::Miner { command } => match command {
+            super::TvmdCommand::Miner { command } => match command {
                 MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
                 MinerCommand::Start(args) => Self::MinerStart {
                     wallet: args.wallet,
@@ -804,7 +804,7 @@ impl From<super::CliCommand> for ExpectedCommand {
                 },
                 MinerCommand::Status => Self::MinerStatus,
             },
-            super::CliCommand::Validator { command } => match command {
+            super::TvmdCommand::Validator { command } => match command {
                 ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
                 ValidatorCommand::Start(args) => Self::ValidatorStart {
                     wallet: args.wallet,
@@ -822,7 +822,7 @@ impl From<super::CliCommand> for ExpectedCommand {
                 },
                 ValidatorCommand::Status => Self::ValidatorStatus,
             },
-            super::CliCommand::Proposer { command } => match command {
+            super::TvmdCommand::Proposer { command } => match command {
                 ProposerCommand::Run(args) => Self::ProposerRun {
                     wallet: args.wallet,
                     node: args.runtime.node,
@@ -834,7 +834,7 @@ impl From<super::CliCommand> for ExpectedCommand {
                     max_requests: args.runtime.service.max_requests,
                 },
             },
-            super::CliCommand::Service { command } => match command {
+            super::TvmdCommand::Service { command } => match command {
                 ServiceCommand::Init(args) => Self::ServiceInit {
                     data_dir: args.data_dir,
                 },
@@ -866,18 +866,18 @@ impl From<super::CliCommand> for ExpectedCommand {
                     height: args.height,
                 },
             },
-            super::CliCommand::LocalTestnet { command } => match command {
+            super::TvmdCommand::LocalTestnet { command } => match command {
                 LocalTestnetCommand::Seed(args) => Self::LocalTestnetSeed {
                     data_dir: args.data_dir,
                 },
             },
-            super::CliCommand::LocalCpu { command } => match command {
+            super::TvmdCommand::LocalCpu { command } => match command {
                 LocalCpuCommand::Verify(args) => Self::LocalCpuVerify {
                     data_dir: args.data_dir,
                     json: args.json,
                 },
             },
-            super::CliCommand::PublicEvidence { command } => match command {
+            super::TvmdCommand::PublicEvidence { command } => match command {
                 PublicEvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
                     manifest: args.manifest,
                 },
@@ -1055,7 +1055,7 @@ impl From<super::CliCommand> for ExpectedCommand {
                     }
                 }
             },
-            super::CliCommand::PublicTestnet { command } => match command {
+            super::TvmdCommand::PublicTestnet { command } => match command {
                 PublicTestnetCommand::Preflight(args) => Self::PublicTestnetPreflight {
                     manifest: args.manifest,
                 },

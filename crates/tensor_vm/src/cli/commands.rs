@@ -6,7 +6,7 @@ use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum CliCommand {
+pub enum TvmdCommand {
     Miner {
         #[command(subcommand)]
         command: MinerCommand,

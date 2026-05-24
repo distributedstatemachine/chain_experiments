@@ -62,9 +62,9 @@ use arguments::{
     parse_hash_argument, parse_public_evidence_record_kind, parse_public_node_role,
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
-pub use commands::{CliCommand, ManifestArgs as PublicTestnetManifestArgs, PublicTestnetCommand};
-pub use descriptions::describe_command;
-pub use execution::execute_reference_cli_command;
+pub use commands::{ManifestArgs as PublicTestnetManifestArgs, PublicTestnetCommand, TvmdCommand};
+pub use descriptions::describe_cli_command;
+pub use execution::execute_cli_command;
 pub use local_parser::{DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand};
 pub use local_role_parser::{
     MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand, RoleRuntimeArgs,
@@ -85,7 +85,7 @@ use network_observation::network_observation_multiaddr_is_public;
 use network_observation::{public_dns_host, public_dns_host_is_well_formed};
 #[cfg(test)]
 use node_evidence::node_heartbeat_observation_summary_from_file;
-pub use parser::Cli;
+pub use parser::TvmdCli;
 pub use parser_values::{
     HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
 };

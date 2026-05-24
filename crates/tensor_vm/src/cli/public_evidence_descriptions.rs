@@ -1,4 +1,4 @@
-use super::CliCommand;
+use super::TvmdCommand;
 use super::commands::PublicTestnetCommand;
 use super::public_evidence_network_descriptions::describe_public_evidence_network_command;
 use super::public_evidence_node_descriptions::describe_public_evidence_node_command;
@@ -8,10 +8,10 @@ use super::public_evidence_record_descriptions::describe_public_evidence_record_
 use super::public_evidence_run_window_descriptions::describe_public_evidence_run_window_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
 
-pub(super) fn describe_public_evidence_command(command: &CliCommand) -> String {
+pub(super) fn describe_public_evidence_command(command: &TvmdCommand) -> String {
     match command {
-        CliCommand::PublicEvidence { command } => describe_public_evidence_subcommand(command),
-        CliCommand::PublicTestnet {
+        TvmdCommand::PublicEvidence { command } => describe_public_evidence_subcommand(command),
+        TvmdCommand::PublicTestnet {
             command: PublicTestnetCommand::Preflight(args),
         } => format!("run public testnet preflight manifest {}", args.manifest),
         _ => unreachable!("local commands are handled by cli::local_descriptions"),
