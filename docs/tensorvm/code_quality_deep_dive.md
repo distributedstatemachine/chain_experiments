@@ -303,6 +303,9 @@ spaghetti around.
   old string-slice parser API.
 - Iteration 125 extracted the `CliCommand` data model into `cli/commands.rs`, leaving `cli.rs` as a
   small facade over command definitions, clap parsing, descriptions, execution, and evidence helpers.
+- Iteration 126 split the clap public-evidence command tree into `cli/public_evidence_parser.rs` and
+  moved shared clap value parsers into `cli/parser_values.rs`, leaving `cli/parser.rs` focused on the
+  top-level local node, service, and public-testnet command structure.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
