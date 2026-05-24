@@ -26,6 +26,7 @@ mod public_evidence_node_execution;
 mod public_evidence_publication_execution;
 mod public_evidence_record_execution;
 mod public_evidence_run_window_execution;
+mod public_evidence_service_commands;
 mod public_evidence_service_execution;
 mod publication_evidence;
 mod record_evidence;

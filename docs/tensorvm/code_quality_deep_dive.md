@@ -1010,6 +1010,9 @@ spaghetti around.
   reads, clearing non-chain-module direct access to those fields.
 - Iteration 417 tightened the rewritten clap CLI surface with root examples, argument help text,
   URL/file completion hints, hidden auth-token env values, and a command-model debug assertion.
+- Iteration 418 split the public service evidence clap command family into
+  `cli/public_evidence_service_commands.rs`, keeping service-specific args and value enums beside
+  their command owner while preserving the public re-export surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
