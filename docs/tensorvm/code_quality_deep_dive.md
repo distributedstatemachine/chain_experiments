@@ -972,6 +972,8 @@ spaghetti around.
   `EvidenceCommand` execution and removed the now-dead network fixture variant.
 - Iteration 398 moved public record and service rejection tests from `EvidenceFixture` to
   direct `EvidenceCommand` execution and removed the obsolete fixture enum entirely.
+- Iteration 399 removed the test-only public kind parser shims and covered invalid service
+  and record kind inputs through clap parsing instead.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

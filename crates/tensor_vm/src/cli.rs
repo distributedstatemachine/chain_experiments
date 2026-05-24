@@ -36,10 +36,7 @@ mod validation;
 mod value_types;
 
 #[cfg(test)]
-use arguments::{
-    parse_hash_argument, parse_public_evidence_record_kind, parse_public_node_role,
-    parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
-};
+use arguments::{public_evidence_record_kind_tag, public_service_kind_tag};
 pub use commands::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
     EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,

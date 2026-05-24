@@ -17,17 +17,6 @@ pub(super) fn parse_u64(value: &str) -> Result<u64> {
         .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
 }
 
-#[cfg(test)]
-pub(super) fn parse_public_service_kind(value: &str) -> Result<PublicServiceKind> {
-    match value {
-        "rpc" => Ok(PublicServiceKind::Rpc),
-        "explorer" => Ok(PublicServiceKind::Explorer),
-        "faucet" => Ok(PublicServiceKind::Faucet),
-        "telemetry" => Ok(PublicServiceKind::Telemetry),
-        _ => Err(TvmError::InvalidReceipt("invalid public service kind")),
-    }
-}
-
 pub(super) fn public_service_kind_tag(kind: PublicServiceKind) -> &'static str {
     match kind {
         PublicServiceKind::Rpc => "rpc",
@@ -49,21 +38,6 @@ pub(super) fn public_node_role_tag(role: PublicNodeRole) -> &'static str {
     match role {
         PublicNodeRole::Miner => "miner",
         PublicNodeRole::Validator => "validator",
-    }
-}
-
-#[cfg(test)]
-pub(super) fn parse_public_evidence_record_kind(value: &str) -> Result<PublicEvidenceRecordKind> {
-    match value {
-        "block-history" => Ok(PublicEvidenceRecordKind::BlockHistory),
-        "finality-history" => Ok(PublicEvidenceRecordKind::FinalityHistory),
-        "network-runtime" => Ok(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-        "data-availability" => Ok(PublicEvidenceRecordKind::DataAvailabilityMeasurements),
-        "invalid-work" => Ok(PublicEvidenceRecordKind::InvalidWorkRejections),
-        "reward-settlement" => Ok(PublicEvidenceRecordKind::RewardSettlements),
-        _ => Err(TvmError::InvalidReceipt(
-            "invalid public evidence record kind",
-        )),
     }
 }
 

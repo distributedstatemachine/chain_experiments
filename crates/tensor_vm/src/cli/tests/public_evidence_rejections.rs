@@ -148,43 +148,99 @@ fn execute_public_evidence_rejects_invalid_args() {
         ])
         .is_err()
     );
-    assert!(parse_public_service_kind("archive").is_err());
-    assert_eq!(
-        parse_public_node_role("miner").unwrap(),
-        PublicNodeRole::Miner
+    let service_endpoint_id = manifest_hash(b"rpc-service");
+    assert!(
+        parse_test_cli(&[
+            "public",
+            "evidence",
+            "service",
+            "health",
+            "--kind",
+            "archive",
+            "--endpoint-id",
+            &service_endpoint_id,
+            "--public-url",
+            "https://rpc.tensorvm.net/health",
+            "--health-path",
+            "/health",
+            "--first-block",
+            "0",
+            "--last-block",
+            "9",
+            "--reachable-count",
+            "10",
+            "--signed-health-check-count",
+            "10",
+        ])
+        .is_err()
     );
-    assert_eq!(
-        parse_public_node_role("validator").unwrap(),
-        PublicNodeRole::Validator
+    assert!(
+        parse_test_cli(&[
+            "public",
+            "evidence",
+            "service",
+            "health",
+            "--kind",
+            "rpc",
+            "--endpoint-id",
+            "12",
+            "--public-url",
+            "https://rpc.tensorvm.net/health",
+            "--health-path",
+            "/health",
+            "--first-block",
+            "0",
+            "--last-block",
+            "9",
+            "--reachable-count",
+            "10",
+            "--signed-health-check-count",
+            "10",
+        ])
+        .is_err()
     );
-    assert!(parse_public_node_role("observer").is_err());
-    assert_eq!(
-        parse_public_evidence_record_kind("block-history").unwrap(),
-        PublicEvidenceRecordKind::BlockHistory
+    let bundle_id = manifest_hash(b"public-evidence-bundle");
+    let manifest_signer = manifest_address(b"public-evidence-publisher");
+    let record_root = manifest_hash(b"network-runtime-root");
+    assert!(
+        parse_test_cli(&[
+            "public",
+            "evidence",
+            "record",
+            "summary",
+            "--kind",
+            "operator-identity",
+            "--bundle-id",
+            &bundle_id,
+            "--manifest-signer",
+            &manifest_signer,
+            "--record-root",
+            &record_root,
+            "--record-count",
+            "4",
+        ])
+        .is_err()
     );
-    assert_eq!(
-        parse_public_evidence_record_kind("finality-history").unwrap(),
-        PublicEvidenceRecordKind::FinalityHistory
+    let invalid_hash = "g".repeat(64);
+    assert!(
+        parse_test_cli(&[
+            "public",
+            "evidence",
+            "record",
+            "summary",
+            "--kind",
+            "network-runtime",
+            "--bundle-id",
+            &invalid_hash,
+            "--manifest-signer",
+            &manifest_signer,
+            "--record-root",
+            &record_root,
+            "--record-count",
+            "4",
+        ])
+        .is_err()
     );
-    assert_eq!(
-        parse_public_evidence_record_kind("network-runtime").unwrap(),
-        PublicEvidenceRecordKind::NetworkRuntimeObservations
-    );
-    assert_eq!(
-        parse_public_evidence_record_kind("data-availability").unwrap(),
-        PublicEvidenceRecordKind::DataAvailabilityMeasurements
-    );
-    assert_eq!(
-        parse_public_evidence_record_kind("invalid-work").unwrap(),
-        PublicEvidenceRecordKind::InvalidWorkRejections
-    );
-    assert_eq!(
-        parse_public_evidence_record_kind("reward-settlement").unwrap(),
-        PublicEvidenceRecordKind::RewardSettlements
-    );
-    assert!(parse_public_evidence_record_kind("operator-identity").is_err());
-    assert!(parse_hash_argument("12").is_err());
-    assert!(parse_hash_argument(&"g".repeat(64)).is_err());
     assert!(
         execute_node_heartbeat(
             [0; 32],
@@ -242,6 +298,7 @@ fn execute_public_evidence_rejects_invalid_args() {
         format!(
             "node_heartbeat_observation=validator,{miner_address_hex},{miner_operator_hex},0\n"
         ),
+        format!("node_heartbeat_observation=observer,{miner_address_hex},{miner_operator_hex},0\n"),
         format!(
             "node_heartbeat_observation=miner,{},{} ,0\n",
             miner_address_hex, miner_operator_hex
