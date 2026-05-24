@@ -1,36 +1,24 @@
-use super::CliCommand;
+use super::public_evidence_parser::PublicEvidenceCommand;
 use super::publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_publication_command(
-    command: &CliCommand,
+    command: &PublicEvidenceCommand,
 ) -> Option<Result<String>> {
     match command {
-        CliCommand::PublicEvidencePublication {
-            bundle_id,
-            public_uri,
-            manifest_signer,
-            manifest_signature_count,
-            independent_auditor_count,
-        } => Some(publication_evidence_lines(
-            *bundle_id,
-            public_uri,
-            *manifest_signer,
-            *manifest_signature_count,
-            *independent_auditor_count,
+        PublicEvidenceCommand::Publication(args) => Some(publication_evidence_lines(
+            args.bundle_id,
+            &args.public_uri,
+            args.manifest_signer,
+            args.manifest_signature_count,
+            args.independent_auditor_count,
         )),
-        CliCommand::PublicEvidenceAuditorRecord {
-            bundle_id,
-            public_uri,
-            auditor_id,
-            audit_uri,
-            observed_at_unix_seconds,
-        } => Some(auditor_record_evidence_line(
-            *bundle_id,
-            public_uri,
-            *auditor_id,
-            audit_uri,
-            *observed_at_unix_seconds,
+        PublicEvidenceCommand::AuditorRecord(args) => Some(auditor_record_evidence_line(
+            args.bundle_id,
+            &args.public_uri,
+            args.auditor_id,
+            &args.audit_uri,
+            args.observed_at,
         )),
         _ => None,
     }

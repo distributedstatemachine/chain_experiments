@@ -358,6 +358,9 @@ spaghetti around.
 - Iteration 144 moved public-evidence record summary/artifact descriptions into
   `cli/public_evidence_record_descriptions.rs`, continuing the public-evidence description split along
   command-family boundaries already used by parser and execution modules.
+- Iteration 145 replaced the legacy flat `CliCommand` adapter with the `clap` command tree itself,
+  making parsed commands the execution and description model instead of preserving a parallel CLI
+  representation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

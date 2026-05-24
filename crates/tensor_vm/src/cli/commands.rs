@@ -1,244 +1,55 @@
-use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
-use crate::types::{Address, Hash};
+use super::local_parser::{
+    LocalCpuCommand, LocalTestnetCommand, MinerCommand, ProposerCommand, ServiceCommand,
+    ValidatorCommand,
+};
+use super::public_evidence_parser::PublicEvidenceCommand;
+use clap::{Args, Subcommand};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
 pub enum CliCommand {
-    MinerRegister {
-        stake: u64,
+    Miner {
+        #[command(subcommand)]
+        command: MinerCommand,
     },
-    MinerStart {
-        wallet: String,
-        device: String,
-        node: String,
+    Validator {
+        #[command(subcommand)]
+        command: ValidatorCommand,
     },
-    MinerRun {
-        wallet: String,
-        device: String,
-        node: String,
-        listen: String,
-        p2p_listen: String,
-        data_dir: String,
-        identity_seed: Option<Hash>,
-        auth_token: String,
-        max_requests: usize,
+    Proposer {
+        #[command(subcommand)]
+        command: ProposerCommand,
     },
-    MinerStatus,
-    ValidatorRegister {
-        stake: u64,
+    Service {
+        #[command(subcommand)]
+        command: ServiceCommand,
     },
-    ValidatorStart {
-        wallet: String,
-        node: String,
+    LocalTestnet {
+        #[command(subcommand)]
+        command: LocalTestnetCommand,
     },
-    ValidatorRun {
-        wallet: String,
-        node: String,
-        listen: String,
-        p2p_listen: String,
-        data_dir: String,
-        identity_seed: Option<Hash>,
-        auth_token: String,
-        max_requests: usize,
+    LocalCpu {
+        #[command(subcommand)]
+        command: LocalCpuCommand,
     },
-    ValidatorStatus,
-    ProposerRun {
-        wallet: String,
-        node: String,
-        listen: String,
-        p2p_listen: String,
-        data_dir: String,
-        identity_seed: Option<Hash>,
-        auth_token: String,
-        max_requests: usize,
+    PublicEvidence {
+        #[command(subcommand)]
+        command: PublicEvidenceCommand,
     },
-    ServiceInit {
-        data_dir: String,
+    PublicTestnet {
+        #[command(subcommand)]
+        command: PublicTestnetCommand,
     },
-    ServicePeerAdd {
-        data_dir: String,
-        peer_id: String,
-        address: String,
-    },
-    ServiceReadiness {
-        p2p_listen: String,
-        data_dir: String,
-        identity_seed: Option<Hash>,
-    },
-    ServiceServe {
-        listen: String,
-        p2p_listen: String,
-        data_dir: String,
-        identity_seed: Option<Hash>,
-        auth_token: String,
-        max_requests: usize,
-    },
-    ServiceStatus {
-        data_dir: String,
-    },
-    ServiceBlock {
-        data_dir: String,
-        height: u64,
-    },
-    LocalTestnetSeed {
-        data_dir: String,
-    },
-    LocalCpuVerify {
-        data_dir: String,
-        json: bool,
-    },
-    PublicEvidenceValidate {
-        manifest: String,
-    },
-    PublicEvidenceServiceHealth {
-        kind: PublicServiceKind,
-        endpoint_id: Hash,
-        public_url: String,
-        health_path: String,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        reachable_observation_count: u64,
-        signed_health_check_count: u64,
-    },
-    PublicEvidenceServiceHealthFromFile {
-        kind: PublicServiceKind,
-        endpoint_id: Hash,
-        public_url: String,
-        health_path: String,
-        observation_file: String,
-    },
-    PublicEvidenceServiceContent {
-        kind: PublicServiceKind,
-        endpoint_id: Hash,
-        public_url: String,
-        content_path: String,
-        content_root: Hash,
-        observed_at_unix_seconds: u64,
-        min_content_bytes: u64,
-    },
-    PublicEvidenceServiceContentFromBytes {
-        kind: PublicServiceKind,
-        endpoint_id: Hash,
-        public_url: String,
-        content_path: String,
-        observed_at_unix_seconds: u64,
-        content_hex: String,
-    },
-    PublicEvidenceServiceContentFromFile {
-        kind: PublicServiceKind,
-        endpoint_id: Hash,
-        public_url: String,
-        content_path: String,
-        observed_at_unix_seconds: u64,
-        content_file: String,
-    },
-    PublicEvidenceRecordSummary {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        record_root: Hash,
-        record_count: u64,
-    },
-    PublicEvidenceRecordArtifact {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        artifact_uri: String,
-        record_root: Hash,
-        record_count: u64,
-    },
-    PublicEvidenceRecordArtifactFromRoots {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        artifact_uri: String,
-        record_roots: Vec<Hash>,
-    },
-    PublicEvidenceRecordArtifactFromFile {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        artifact_uri: String,
-        record_file: String,
-    },
-    PublicEvidenceRecordSummaryFromRoots {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        record_roots: Vec<Hash>,
-    },
-    PublicEvidenceRecordSummaryFromFile {
-        kind: PublicEvidenceRecordKind,
-        bundle_id: Hash,
-        manifest_signer: Address,
-        record_file: String,
-    },
-    PublicEvidenceNetworkObservation {
-        operator_id: Hash,
-        peer_id: String,
-        listen_address: String,
-        observed_at_unix_seconds: u64,
-        gossip_topic_count: u64,
-        request_response_protocol_count: u64,
-        bootstrap_peer_count: u64,
-        max_transmit_bytes: u64,
-        request_timeout_seconds: u64,
-        max_concurrent_streams: u64,
-        idle_connection_timeout_seconds: u64,
-    },
-    PublicEvidenceNetworkObservationFromServiceLog {
-        operator_id: Hash,
-        listen_address: String,
-        observed_at_unix_seconds: u64,
-        service_log: String,
-    },
-    PublicEvidencePublication {
-        bundle_id: Hash,
-        public_uri: String,
-        manifest_signer: Address,
-        manifest_signature_count: u64,
-        independent_auditor_count: u64,
-    },
-    PublicEvidenceAuditorRecord {
-        bundle_id: Hash,
-        public_uri: String,
-        auditor_id: Address,
-        audit_uri: String,
-        observed_at_unix_seconds: u64,
-    },
-    PublicEvidenceRunWindow {
-        bundle_id: Hash,
-        manifest_signer: Address,
-        run_started_at_unix_seconds: u64,
-        run_ended_at_unix_seconds: u64,
-        observed_blocks: u64,
-    },
-    PublicEvidenceRunWindowFromFile {
-        bundle_id: Hash,
-        manifest_signer: Address,
-        block_observation_file: String,
-    },
-    PublicEvidenceNodeHeartbeat {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        signed_heartbeat_count: u64,
-    },
-    PublicEvidenceNodeHeartbeatFromFile {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        heartbeat_file: String,
-    },
-    PublicEvidenceOperatorAttestation {
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        identity_uri: String,
-        observed_at_unix_seconds: u64,
-    },
-    PublicTestnetPreflight {
-        manifest: String,
-    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
+pub enum PublicTestnetCommand {
+    Preflight(ManifestArgs),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct ManifestArgs {
+    #[arg(long)]
+    pub manifest: String,
 }

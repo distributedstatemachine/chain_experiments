@@ -1,4 +1,5 @@
 use super::*;
+use tensor_vm::cli::{PublicEvidenceManifestArgs, PublicTestnetManifestArgs};
 
 fn workspace_manifest_path(relative_path: &str) -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -10,8 +11,10 @@ fn workspace_manifest_path(relative_path: &str) -> String {
 
 #[test]
 fn docs_public_testnet_preflight_command_reports_pending_status() {
-    let report = execute_command(&CliCommand::PublicTestnetPreflight {
-        manifest: workspace_manifest_path("docs/tensorvm/public-testnet.preflight"),
+    let report = execute_command(&CliCommand::PublicTestnet {
+        command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs {
+            manifest: workspace_manifest_path("docs/tensorvm/public-testnet.preflight"),
+        }),
     })
     .unwrap();
 
@@ -26,8 +29,10 @@ fn docs_public_testnet_preflight_command_reports_pending_status() {
 
 #[test]
 fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
-    let report = execute_command(&CliCommand::PublicEvidenceValidate {
-        manifest: workspace_manifest_path("docs/tensorvm/public-testnet.evidence"),
+    let report = execute_command(&CliCommand::PublicEvidence {
+        command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs {
+            manifest: workspace_manifest_path("docs/tensorvm/public-testnet.evidence"),
+        }),
     })
     .unwrap();
 

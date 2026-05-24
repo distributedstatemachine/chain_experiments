@@ -4,7 +4,7 @@ use crate::types::Hash;
 use clap::ValueEnum;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-pub(super) enum PublicServiceKindArg {
+pub enum PublicServiceKindArg {
     Rpc,
     Explorer,
     Faucet,
@@ -23,7 +23,7 @@ impl From<PublicServiceKindArg> for PublicServiceKind {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-pub(super) enum PublicNodeRoleArg {
+pub enum PublicNodeRoleArg {
     Miner,
     Validator,
 }
@@ -38,7 +38,7 @@ impl From<PublicNodeRoleArg> for PublicNodeRole {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-pub(super) enum PublicEvidenceRecordKindArg {
+pub enum PublicEvidenceRecordKindArg {
     BlockHistory,
     FinalityHistory,
     NetworkRuntime,
@@ -61,7 +61,7 @@ impl From<PublicEvidenceRecordKindArg> for PublicEvidenceRecordKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct HashList(pub(super) Vec<Hash>);
+pub struct HashList(pub Vec<Hash>);
 
 pub(super) fn parse_hash_value(value: &str) -> std::result::Result<Hash, String> {
     parse_hash_argument(value).map_err(|error| error.to_string())

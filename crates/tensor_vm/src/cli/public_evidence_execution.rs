@@ -1,7 +1,9 @@
 use super::CliCommand;
+use super::commands::PublicTestnetCommand;
 use super::descriptions::describe_command;
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_node_execution::execute_public_evidence_node_command;
+use super::public_evidence_parser::PublicEvidenceCommand;
 use super::public_evidence_publication_execution::execute_public_evidence_publication_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_run_window_execution::execute_public_evidence_run_window_command;
@@ -9,29 +11,39 @@ use super::public_evidence_service_execution::execute_public_evidence_service_co
 use crate::error::Result;
 
 pub(super) fn execute_public_evidence_cli_command(command: &CliCommand) -> Result<String> {
-    if let Some(output) = execute_public_evidence_service_command(command) {
+    let CliCommand::PublicEvidence {
+        command: public_command,
+    } = command
+    else {
+        return match command {
+            CliCommand::PublicTestnet {
+                command: PublicTestnetCommand::Preflight(_),
+            } => Ok(describe_command(command)),
+            _ => unreachable!("local commands are handled by cli::local_execution"),
+        };
+    };
+
+    if let Some(output) = execute_public_evidence_service_command(public_command) {
         return output;
     }
-    if let Some(output) = execute_public_evidence_record_command(command) {
+    if let Some(output) = execute_public_evidence_record_command(public_command) {
         return output;
     }
-    if let Some(output) = execute_public_evidence_network_command(command) {
+    if let Some(output) = execute_public_evidence_network_command(public_command) {
         return output;
     }
-    if let Some(output) = execute_public_evidence_publication_command(command) {
+    if let Some(output) = execute_public_evidence_publication_command(public_command) {
         return output;
     }
-    if let Some(output) = execute_public_evidence_run_window_command(command) {
+    if let Some(output) = execute_public_evidence_run_window_command(public_command) {
         return output;
     }
-    if let Some(output) = execute_public_evidence_node_command(command) {
+    if let Some(output) = execute_public_evidence_node_command(public_command) {
         return output;
     }
 
-    match command {
-        CliCommand::PublicEvidenceValidate { .. } | CliCommand::PublicTestnetPreflight { .. } => {
-            Ok(describe_command(command))
-        }
-        _ => unreachable!("local commands are handled by cli::local_execution"),
+    match public_command {
+        PublicEvidenceCommand::Validate(_) => Ok(describe_command(command)),
+        _ => unreachable!("public evidence subcommands are handled by family executors"),
     }
 }

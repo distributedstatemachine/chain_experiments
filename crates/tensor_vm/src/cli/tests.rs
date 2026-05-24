@@ -9,14 +9,1070 @@ use crate::testnet::{
     PublicTestnetRunEvidence, aggregate_public_evidence_record_roots,
     public_network_runtime_observations_for_run,
 };
-use crate::types::{Hash, address, hash_bytes};
+use crate::types::{Address, Hash, address, hash_bytes};
 use clap::Parser;
 
-fn parse_test_cli(args: &[&str]) -> std::result::Result<CliCommand, clap::Error> {
+fn parse_test_cli(args: &[&str]) -> std::result::Result<ExpectedCommand, clap::Error> {
     let mut argv = Vec::with_capacity(args.len() + 1);
     argv.push("tvmd");
     argv.extend_from_slice(args);
-    Cli::try_parse_from(argv).map(Cli::into_command)
+    Cli::try_parse_from(argv).map(|cli| ExpectedCommand::from(cli.command))
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ExpectedCommand {
+    MinerRegister {
+        stake: u64,
+    },
+    MinerStart {
+        wallet: String,
+        device: String,
+        node: String,
+    },
+    MinerRun {
+        wallet: String,
+        device: String,
+        node: String,
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
+    },
+    MinerStatus,
+    ValidatorRegister {
+        stake: u64,
+    },
+    ValidatorStart {
+        wallet: String,
+        node: String,
+    },
+    ValidatorRun {
+        wallet: String,
+        node: String,
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
+    },
+    ValidatorStatus,
+    ProposerRun {
+        wallet: String,
+        node: String,
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
+    },
+    ServiceInit {
+        data_dir: String,
+    },
+    ServicePeerAdd {
+        data_dir: String,
+        peer_id: String,
+        address: String,
+    },
+    ServiceReadiness {
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+    },
+    ServiceServe {
+        listen: String,
+        p2p_listen: String,
+        data_dir: String,
+        identity_seed: Option<Hash>,
+        auth_token: String,
+        max_requests: usize,
+    },
+    ServiceStatus {
+        data_dir: String,
+    },
+    ServiceBlock {
+        data_dir: String,
+        height: u64,
+    },
+    LocalTestnetSeed {
+        data_dir: String,
+    },
+    LocalCpuVerify {
+        data_dir: String,
+        json: bool,
+    },
+    PublicEvidenceValidate {
+        manifest: String,
+    },
+    PublicEvidenceServiceHealth {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        health_path: String,
+        first_seen_block: u64,
+        last_seen_block: u64,
+        reachable_observation_count: u64,
+        signed_health_check_count: u64,
+    },
+    PublicEvidenceServiceHealthFromFile {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        health_path: String,
+        observation_file: String,
+    },
+    PublicEvidenceServiceContent {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        content_root: Hash,
+        observed_at_unix_seconds: u64,
+        min_content_bytes: u64,
+    },
+    PublicEvidenceServiceContentFromBytes {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        observed_at_unix_seconds: u64,
+        content_hex: String,
+    },
+    PublicEvidenceServiceContentFromFile {
+        kind: PublicServiceKind,
+        endpoint_id: Hash,
+        public_url: String,
+        content_path: String,
+        observed_at_unix_seconds: u64,
+        content_file: String,
+    },
+    PublicEvidenceRecordSummary {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_root: Hash,
+        record_count: u64,
+    },
+    PublicEvidenceRecordArtifact {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
+        record_root: Hash,
+        record_count: u64,
+    },
+    PublicEvidenceRecordArtifactFromRoots {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
+        record_roots: Vec<Hash>,
+    },
+    PublicEvidenceRecordArtifactFromFile {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        artifact_uri: String,
+        record_file: String,
+    },
+    PublicEvidenceRecordSummaryFromRoots {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_roots: Vec<Hash>,
+    },
+    PublicEvidenceRecordSummaryFromFile {
+        kind: PublicEvidenceRecordKind,
+        bundle_id: Hash,
+        manifest_signer: Address,
+        record_file: String,
+    },
+    PublicEvidenceNetworkObservation {
+        operator_id: Hash,
+        peer_id: String,
+        listen_address: String,
+        observed_at_unix_seconds: u64,
+        gossip_topic_count: u64,
+        request_response_protocol_count: u64,
+        bootstrap_peer_count: u64,
+        max_transmit_bytes: u64,
+        request_timeout_seconds: u64,
+        max_concurrent_streams: u64,
+        idle_connection_timeout_seconds: u64,
+    },
+    PublicEvidenceNetworkObservationFromServiceLog {
+        operator_id: Hash,
+        listen_address: String,
+        observed_at_unix_seconds: u64,
+        service_log: String,
+    },
+    PublicEvidencePublication {
+        bundle_id: Hash,
+        public_uri: String,
+        manifest_signer: Address,
+        manifest_signature_count: u64,
+        independent_auditor_count: u64,
+    },
+    PublicEvidenceAuditorRecord {
+        bundle_id: Hash,
+        public_uri: String,
+        auditor_id: Address,
+        audit_uri: String,
+        observed_at_unix_seconds: u64,
+    },
+    PublicEvidenceRunWindow {
+        bundle_id: Hash,
+        manifest_signer: Address,
+        run_started_at_unix_seconds: u64,
+        run_ended_at_unix_seconds: u64,
+        observed_blocks: u64,
+    },
+    PublicEvidenceRunWindowFromFile {
+        bundle_id: Hash,
+        manifest_signer: Address,
+        block_observation_file: String,
+    },
+    PublicEvidenceNodeHeartbeat {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        first_seen_block: u64,
+        last_seen_block: u64,
+        signed_heartbeat_count: u64,
+    },
+    PublicEvidenceNodeHeartbeatFromFile {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        heartbeat_file: String,
+    },
+    PublicEvidenceOperatorAttestation {
+        role: PublicNodeRole,
+        address: Address,
+        operator_id: Hash,
+        identity_uri: String,
+        observed_at_unix_seconds: u64,
+    },
+    PublicTestnetPreflight {
+        manifest: String,
+    },
+}
+
+fn execute_reference_cli_command(command: &ExpectedCommand) -> crate::error::Result<String> {
+    super::execute_reference_cli_command(&command.clone().into_cli_command())
+}
+
+fn describe_command(command: &ExpectedCommand) -> String {
+    super::describe_command(&command.clone().into_cli_command())
+}
+
+impl ExpectedCommand {
+    fn into_cli_command(self) -> super::CliCommand {
+        match self {
+            Self::MinerRegister { stake } => super::CliCommand::Miner {
+                command: MinerCommand::Register(StakeArgs { stake }),
+            },
+            Self::MinerStart {
+                wallet,
+                device,
+                node,
+            } => super::CliCommand::Miner {
+                command: MinerCommand::Start(MinerStartArgs {
+                    wallet,
+                    device,
+                    node,
+                }),
+            },
+            Self::MinerRun {
+                wallet,
+                device,
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed,
+                auth_token,
+                max_requests,
+            } => super::CliCommand::Miner {
+                command: MinerCommand::Run(MinerRunArgs {
+                    wallet,
+                    device,
+                    node,
+                    listen,
+                    p2p_listen,
+                    data_dir,
+                    identity_seed,
+                    auth_token,
+                    max_requests,
+                }),
+            },
+            Self::MinerStatus => super::CliCommand::Miner {
+                command: MinerCommand::Status,
+            },
+            Self::ValidatorRegister { stake } => super::CliCommand::Validator {
+                command: ValidatorCommand::Register(StakeArgs { stake }),
+            },
+            Self::ValidatorStart { wallet, node } => super::CliCommand::Validator {
+                command: ValidatorCommand::Start(ValidatorStartArgs { wallet, node }),
+            },
+            Self::ValidatorRun {
+                wallet,
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed,
+                auth_token,
+                max_requests,
+            } => super::CliCommand::Validator {
+                command: ValidatorCommand::Run(ValidatorRunArgs {
+                    wallet,
+                    node,
+                    listen,
+                    p2p_listen,
+                    data_dir,
+                    identity_seed,
+                    auth_token,
+                    max_requests,
+                }),
+            },
+            Self::ValidatorStatus => super::CliCommand::Validator {
+                command: ValidatorCommand::Status,
+            },
+            Self::ProposerRun {
+                wallet,
+                node,
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed,
+                auth_token,
+                max_requests,
+            } => super::CliCommand::Proposer {
+                command: ProposerCommand::Run(ValidatorRunArgs {
+                    wallet,
+                    node,
+                    listen,
+                    p2p_listen,
+                    data_dir,
+                    identity_seed,
+                    auth_token,
+                    max_requests,
+                }),
+            },
+            Self::ServiceInit { data_dir } => super::CliCommand::Service {
+                command: ServiceCommand::Init(DataDirArgs { data_dir }),
+            },
+            Self::ServicePeerAdd {
+                data_dir,
+                peer_id,
+                address,
+            } => super::CliCommand::Service {
+                command: ServiceCommand::Peer {
+                    command: ServicePeerCommand::Add(ServicePeerAddArgs {
+                        data_dir,
+                        peer_id,
+                        address,
+                    }),
+                },
+            },
+            Self::ServiceReadiness {
+                p2p_listen,
+                data_dir,
+                identity_seed,
+            } => super::CliCommand::Service {
+                command: ServiceCommand::Readiness(ServiceReadinessArgs {
+                    p2p_listen,
+                    data_dir,
+                    identity_seed,
+                }),
+            },
+            Self::ServiceServe {
+                listen,
+                p2p_listen,
+                data_dir,
+                identity_seed,
+                auth_token,
+                max_requests,
+            } => super::CliCommand::Service {
+                command: ServiceCommand::Serve(ServiceServeArgs {
+                    listen,
+                    p2p_listen,
+                    data_dir,
+                    identity_seed,
+                    auth_token,
+                    max_requests,
+                }),
+            },
+            Self::ServiceStatus { data_dir } => super::CliCommand::Service {
+                command: ServiceCommand::Status(DataDirArgs { data_dir }),
+            },
+            Self::ServiceBlock { data_dir, height } => super::CliCommand::Service {
+                command: ServiceCommand::Block(ServiceBlockArgs { data_dir, height }),
+            },
+            Self::LocalTestnetSeed { data_dir } => super::CliCommand::LocalTestnet {
+                command: LocalTestnetCommand::Seed(DataDirArgs { data_dir }),
+            },
+            Self::LocalCpuVerify { data_dir, json } => super::CliCommand::LocalCpu {
+                command: LocalCpuCommand::Verify(LocalCpuVerifyArgs { data_dir, json }),
+            },
+            Self::PublicEvidenceValidate { manifest } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::Validate(PublicEvidenceManifestArgs { manifest }),
+            },
+            Self::PublicEvidenceServiceHealth {
+                kind,
+                endpoint_id,
+                public_url,
+                health_path,
+                first_seen_block,
+                last_seen_block,
+                reachable_observation_count,
+                signed_health_check_count,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::ServiceHealth(ServiceHealthArgs {
+                    kind: service_kind_arg(kind),
+                    endpoint_id,
+                    public_url,
+                    health_path,
+                    first_block: first_seen_block,
+                    last_block: last_seen_block,
+                    reachable_count: reachable_observation_count,
+                    signed_health_check_count,
+                }),
+            },
+            Self::PublicEvidenceServiceHealthFromFile {
+                kind,
+                endpoint_id,
+                public_url,
+                health_path,
+                observation_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::ServiceHealthFromFile(ServiceHealthFromFileArgs {
+                    kind: service_kind_arg(kind),
+                    endpoint_id,
+                    public_url,
+                    health_path,
+                    observation_file,
+                }),
+            },
+            Self::PublicEvidenceServiceContent {
+                kind,
+                endpoint_id,
+                public_url,
+                content_path,
+                content_root,
+                observed_at_unix_seconds,
+                min_content_bytes,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::ServiceContent(ServiceContentArgs {
+                    kind: service_kind_arg(kind),
+                    endpoint_id,
+                    public_url,
+                    content_path,
+                    content_root,
+                    observed_at: observed_at_unix_seconds,
+                    min_content_bytes,
+                }),
+            },
+            Self::PublicEvidenceServiceContentFromBytes {
+                kind,
+                endpoint_id,
+                public_url,
+                content_path,
+                observed_at_unix_seconds,
+                content_hex,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::ServiceContentFromBytes(
+                    ServiceContentFromBytesArgs {
+                        kind: service_kind_arg(kind),
+                        endpoint_id,
+                        public_url,
+                        content_path,
+                        observed_at: observed_at_unix_seconds,
+                        content_hex,
+                    },
+                ),
+            },
+            Self::PublicEvidenceServiceContentFromFile {
+                kind,
+                endpoint_id,
+                public_url,
+                content_path,
+                observed_at_unix_seconds,
+                content_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::ServiceContentFromFile(
+                    ServiceContentFromFileArgs {
+                        kind: service_kind_arg(kind),
+                        endpoint_id,
+                        public_url,
+                        content_path,
+                        observed_at: observed_at_unix_seconds,
+                        content_file,
+                    },
+                ),
+            },
+            Self::PublicEvidenceRecordSummary {
+                kind,
+                bundle_id,
+                manifest_signer,
+                record_root,
+                record_count,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordSummary(RecordSummaryArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    record_root,
+                    record_count,
+                }),
+            },
+            Self::PublicEvidenceRecordArtifact {
+                kind,
+                bundle_id,
+                manifest_signer,
+                artifact_uri,
+                record_root,
+                record_count,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordArtifact(RecordArtifactArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    artifact_uri,
+                    record_root,
+                    record_count,
+                }),
+            },
+            Self::PublicEvidenceRecordArtifactFromRoots {
+                kind,
+                bundle_id,
+                manifest_signer,
+                artifact_uri,
+                record_roots,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordArtifactFromRoots(
+                    RecordArtifactFromRootsArgs {
+                        kind: record_kind_arg(kind),
+                        bundle_id,
+                        manifest_signer,
+                        artifact_uri,
+                        record_roots: HashList(record_roots),
+                    },
+                ),
+            },
+            Self::PublicEvidenceRecordArtifactFromFile {
+                kind,
+                bundle_id,
+                manifest_signer,
+                artifact_uri,
+                record_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordArtifactFromFile(
+                    RecordArtifactFromFileArgs {
+                        kind: record_kind_arg(kind),
+                        bundle_id,
+                        manifest_signer,
+                        artifact_uri,
+                        record_file,
+                    },
+                ),
+            },
+            Self::PublicEvidenceRecordSummaryFromRoots {
+                kind,
+                bundle_id,
+                manifest_signer,
+                record_roots,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordSummaryFromRoots(
+                    RecordSummaryFromRootsArgs {
+                        kind: record_kind_arg(kind),
+                        bundle_id,
+                        manifest_signer,
+                        record_roots: HashList(record_roots),
+                    },
+                ),
+            },
+            Self::PublicEvidenceRecordSummaryFromFile {
+                kind,
+                bundle_id,
+                manifest_signer,
+                record_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RecordSummaryFromFile(RecordSummaryFromFileArgs {
+                    kind: record_kind_arg(kind),
+                    bundle_id,
+                    manifest_signer,
+                    record_file,
+                }),
+            },
+            Self::PublicEvidenceNetworkObservation {
+                operator_id,
+                peer_id,
+                listen_address,
+                observed_at_unix_seconds,
+                gossip_topic_count,
+                request_response_protocol_count,
+                bootstrap_peer_count,
+                max_transmit_bytes,
+                request_timeout_seconds,
+                max_concurrent_streams,
+                idle_connection_timeout_seconds,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::NetworkObservation(NetworkObservationArgs {
+                    operator_id,
+                    peer_id,
+                    listen_address,
+                    observed_at: observed_at_unix_seconds,
+                    gossip_topics: gossip_topic_count,
+                    request_response_protocols: request_response_protocol_count,
+                    bootstrap_peers: bootstrap_peer_count,
+                    max_transmit_bytes,
+                    request_timeout_seconds,
+                    max_concurrent_streams,
+                    idle_timeout_seconds: idle_connection_timeout_seconds,
+                }),
+            },
+            Self::PublicEvidenceNetworkObservationFromServiceLog {
+                operator_id,
+                listen_address,
+                observed_at_unix_seconds,
+                service_log,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::NetworkObservationFromServiceLog(
+                    NetworkObservationFromServiceLogArgs {
+                        operator_id,
+                        listen_address,
+                        observed_at: observed_at_unix_seconds,
+                        service_log,
+                    },
+                ),
+            },
+            Self::PublicEvidencePublication {
+                bundle_id,
+                public_uri,
+                manifest_signer,
+                manifest_signature_count,
+                independent_auditor_count,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::Publication(PublicationArgs {
+                    bundle_id,
+                    public_uri,
+                    manifest_signer,
+                    manifest_signature_count,
+                    independent_auditor_count,
+                }),
+            },
+            Self::PublicEvidenceAuditorRecord {
+                bundle_id,
+                public_uri,
+                auditor_id,
+                audit_uri,
+                observed_at_unix_seconds,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::AuditorRecord(AuditorRecordArgs {
+                    bundle_id,
+                    public_uri,
+                    auditor_id,
+                    audit_uri,
+                    observed_at: observed_at_unix_seconds,
+                }),
+            },
+            Self::PublicEvidenceRunWindow {
+                bundle_id,
+                manifest_signer,
+                run_started_at_unix_seconds,
+                run_ended_at_unix_seconds,
+                observed_blocks,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RunWindow(RunWindowArgs {
+                    bundle_id,
+                    manifest_signer,
+                    started_at: run_started_at_unix_seconds,
+                    ended_at: run_ended_at_unix_seconds,
+                    observed_blocks,
+                }),
+            },
+            Self::PublicEvidenceRunWindowFromFile {
+                bundle_id,
+                manifest_signer,
+                block_observation_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::RunWindowFromFile(RunWindowFromFileArgs {
+                    bundle_id,
+                    manifest_signer,
+                    block_observation_file,
+                }),
+            },
+            Self::PublicEvidenceNodeHeartbeat {
+                role,
+                address,
+                operator_id,
+                first_seen_block,
+                last_seen_block,
+                signed_heartbeat_count,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::NodeHeartbeat(NodeHeartbeatArgs {
+                    role: node_role_arg(role),
+                    address,
+                    operator_id,
+                    first_block: first_seen_block,
+                    last_block: last_seen_block,
+                    heartbeat_count: signed_heartbeat_count,
+                }),
+            },
+            Self::PublicEvidenceNodeHeartbeatFromFile {
+                role,
+                address,
+                operator_id,
+                heartbeat_file,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::NodeHeartbeatFromFile(NodeHeartbeatFromFileArgs {
+                    role: node_role_arg(role),
+                    address,
+                    operator_id,
+                    heartbeat_file,
+                }),
+            },
+            Self::PublicEvidenceOperatorAttestation {
+                role,
+                address,
+                operator_id,
+                identity_uri,
+                observed_at_unix_seconds,
+            } => super::CliCommand::PublicEvidence {
+                command: PublicEvidenceCommand::OperatorAttestation(OperatorAttestationArgs {
+                    role: node_role_arg(role),
+                    address,
+                    operator_id,
+                    identity_uri,
+                    observed_at: observed_at_unix_seconds,
+                }),
+            },
+            Self::PublicTestnetPreflight { manifest } => super::CliCommand::PublicTestnet {
+                command: PublicTestnetCommand::Preflight(PublicTestnetManifestArgs { manifest }),
+            },
+        }
+    }
+}
+
+impl From<super::CliCommand> for ExpectedCommand {
+    fn from(command: super::CliCommand) -> Self {
+        match command {
+            super::CliCommand::Miner { command } => match command {
+                MinerCommand::Register(args) => Self::MinerRegister { stake: args.stake },
+                MinerCommand::Start(args) => Self::MinerStart {
+                    wallet: args.wallet,
+                    device: args.device,
+                    node: args.node,
+                },
+                MinerCommand::Run(args) => Self::MinerRun {
+                    wallet: args.wallet,
+                    device: args.device,
+                    node: args.node,
+                    listen: args.listen,
+                    p2p_listen: args.p2p_listen,
+                    data_dir: args.data_dir,
+                    identity_seed: args.identity_seed,
+                    auth_token: args.auth_token,
+                    max_requests: args.max_requests,
+                },
+                MinerCommand::Status => Self::MinerStatus,
+            },
+            super::CliCommand::Validator { command } => match command {
+                ValidatorCommand::Register(args) => Self::ValidatorRegister { stake: args.stake },
+                ValidatorCommand::Start(args) => Self::ValidatorStart {
+                    wallet: args.wallet,
+                    node: args.node,
+                },
+                ValidatorCommand::Run(args) => Self::ValidatorRun {
+                    wallet: args.wallet,
+                    node: args.node,
+                    listen: args.listen,
+                    p2p_listen: args.p2p_listen,
+                    data_dir: args.data_dir,
+                    identity_seed: args.identity_seed,
+                    auth_token: args.auth_token,
+                    max_requests: args.max_requests,
+                },
+                ValidatorCommand::Status => Self::ValidatorStatus,
+            },
+            super::CliCommand::Proposer { command } => match command {
+                ProposerCommand::Run(args) => Self::ProposerRun {
+                    wallet: args.wallet,
+                    node: args.node,
+                    listen: args.listen,
+                    p2p_listen: args.p2p_listen,
+                    data_dir: args.data_dir,
+                    identity_seed: args.identity_seed,
+                    auth_token: args.auth_token,
+                    max_requests: args.max_requests,
+                },
+            },
+            super::CliCommand::Service { command } => match command {
+                ServiceCommand::Init(args) => Self::ServiceInit {
+                    data_dir: args.data_dir,
+                },
+                ServiceCommand::Peer {
+                    command: ServicePeerCommand::Add(args),
+                } => Self::ServicePeerAdd {
+                    data_dir: args.data_dir,
+                    peer_id: args.peer_id,
+                    address: args.address,
+                },
+                ServiceCommand::Readiness(args) => Self::ServiceReadiness {
+                    p2p_listen: args.p2p_listen,
+                    data_dir: args.data_dir,
+                    identity_seed: args.identity_seed,
+                },
+                ServiceCommand::Serve(args) => Self::ServiceServe {
+                    listen: args.listen,
+                    p2p_listen: args.p2p_listen,
+                    data_dir: args.data_dir,
+                    identity_seed: args.identity_seed,
+                    auth_token: args.auth_token,
+                    max_requests: args.max_requests,
+                },
+                ServiceCommand::Status(args) => Self::ServiceStatus {
+                    data_dir: args.data_dir,
+                },
+                ServiceCommand::Block(args) => Self::ServiceBlock {
+                    data_dir: args.data_dir,
+                    height: args.height,
+                },
+            },
+            super::CliCommand::LocalTestnet { command } => match command {
+                LocalTestnetCommand::Seed(args) => Self::LocalTestnetSeed {
+                    data_dir: args.data_dir,
+                },
+            },
+            super::CliCommand::LocalCpu { command } => match command {
+                LocalCpuCommand::Verify(args) => Self::LocalCpuVerify {
+                    data_dir: args.data_dir,
+                    json: args.json,
+                },
+            },
+            super::CliCommand::PublicEvidence { command } => match command {
+                PublicEvidenceCommand::Validate(args) => Self::PublicEvidenceValidate {
+                    manifest: args.manifest,
+                },
+                PublicEvidenceCommand::ServiceHealth(args) => Self::PublicEvidenceServiceHealth {
+                    kind: args.kind.into(),
+                    endpoint_id: args.endpoint_id,
+                    public_url: args.public_url,
+                    health_path: args.health_path,
+                    first_seen_block: args.first_block,
+                    last_seen_block: args.last_block,
+                    reachable_observation_count: args.reachable_count,
+                    signed_health_check_count: args.signed_health_check_count,
+                },
+                PublicEvidenceCommand::ServiceHealthFromFile(args) => {
+                    Self::PublicEvidenceServiceHealthFromFile {
+                        kind: args.kind.into(),
+                        endpoint_id: args.endpoint_id,
+                        public_url: args.public_url,
+                        health_path: args.health_path,
+                        observation_file: args.observation_file,
+                    }
+                }
+                PublicEvidenceCommand::ServiceContent(args) => Self::PublicEvidenceServiceContent {
+                    kind: args.kind.into(),
+                    endpoint_id: args.endpoint_id,
+                    public_url: args.public_url,
+                    content_path: args.content_path,
+                    content_root: args.content_root,
+                    observed_at_unix_seconds: args.observed_at,
+                    min_content_bytes: args.min_content_bytes,
+                },
+                PublicEvidenceCommand::ServiceContentFromBytes(args) => {
+                    Self::PublicEvidenceServiceContentFromBytes {
+                        kind: args.kind.into(),
+                        endpoint_id: args.endpoint_id,
+                        public_url: args.public_url,
+                        content_path: args.content_path,
+                        observed_at_unix_seconds: args.observed_at,
+                        content_hex: args.content_hex,
+                    }
+                }
+                PublicEvidenceCommand::ServiceContentFromFile(args) => {
+                    Self::PublicEvidenceServiceContentFromFile {
+                        kind: args.kind.into(),
+                        endpoint_id: args.endpoint_id,
+                        public_url: args.public_url,
+                        content_path: args.content_path,
+                        observed_at_unix_seconds: args.observed_at,
+                        content_file: args.content_file,
+                    }
+                }
+                PublicEvidenceCommand::RecordSummary(args) => Self::PublicEvidenceRecordSummary {
+                    kind: args.kind.into(),
+                    bundle_id: args.bundle_id,
+                    manifest_signer: args.manifest_signer,
+                    record_root: args.record_root,
+                    record_count: args.record_count,
+                },
+                PublicEvidenceCommand::RecordArtifact(args) => Self::PublicEvidenceRecordArtifact {
+                    kind: args.kind.into(),
+                    bundle_id: args.bundle_id,
+                    manifest_signer: args.manifest_signer,
+                    artifact_uri: args.artifact_uri,
+                    record_root: args.record_root,
+                    record_count: args.record_count,
+                },
+                PublicEvidenceCommand::RecordArtifactFromRoots(args) => {
+                    Self::PublicEvidenceRecordArtifactFromRoots {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        artifact_uri: args.artifact_uri,
+                        record_roots: args.record_roots.0,
+                    }
+                }
+                PublicEvidenceCommand::RecordArtifactFromFile(args) => {
+                    Self::PublicEvidenceRecordArtifactFromFile {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        artifact_uri: args.artifact_uri,
+                        record_file: args.record_file,
+                    }
+                }
+                PublicEvidenceCommand::RecordSummaryFromRoots(args) => {
+                    Self::PublicEvidenceRecordSummaryFromRoots {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        record_roots: args.record_roots.0,
+                    }
+                }
+                PublicEvidenceCommand::RecordSummaryFromFile(args) => {
+                    Self::PublicEvidenceRecordSummaryFromFile {
+                        kind: args.kind.into(),
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        record_file: args.record_file,
+                    }
+                }
+                PublicEvidenceCommand::NetworkObservation(args) => {
+                    Self::PublicEvidenceNetworkObservation {
+                        operator_id: args.operator_id,
+                        peer_id: args.peer_id,
+                        listen_address: args.listen_address,
+                        observed_at_unix_seconds: args.observed_at,
+                        gossip_topic_count: args.gossip_topics,
+                        request_response_protocol_count: args.request_response_protocols,
+                        bootstrap_peer_count: args.bootstrap_peers,
+                        max_transmit_bytes: args.max_transmit_bytes,
+                        request_timeout_seconds: args.request_timeout_seconds,
+                        max_concurrent_streams: args.max_concurrent_streams,
+                        idle_connection_timeout_seconds: args.idle_timeout_seconds,
+                    }
+                }
+                PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
+                    Self::PublicEvidenceNetworkObservationFromServiceLog {
+                        operator_id: args.operator_id,
+                        listen_address: args.listen_address,
+                        observed_at_unix_seconds: args.observed_at,
+                        service_log: args.service_log,
+                    }
+                }
+                PublicEvidenceCommand::Publication(args) => Self::PublicEvidencePublication {
+                    bundle_id: args.bundle_id,
+                    public_uri: args.public_uri,
+                    manifest_signer: args.manifest_signer,
+                    manifest_signature_count: args.manifest_signature_count,
+                    independent_auditor_count: args.independent_auditor_count,
+                },
+                PublicEvidenceCommand::AuditorRecord(args) => Self::PublicEvidenceAuditorRecord {
+                    bundle_id: args.bundle_id,
+                    public_uri: args.public_uri,
+                    auditor_id: args.auditor_id,
+                    audit_uri: args.audit_uri,
+                    observed_at_unix_seconds: args.observed_at,
+                },
+                PublicEvidenceCommand::RunWindow(args) => Self::PublicEvidenceRunWindow {
+                    bundle_id: args.bundle_id,
+                    manifest_signer: args.manifest_signer,
+                    run_started_at_unix_seconds: args.started_at,
+                    run_ended_at_unix_seconds: args.ended_at,
+                    observed_blocks: args.observed_blocks,
+                },
+                PublicEvidenceCommand::RunWindowFromFile(args) => {
+                    Self::PublicEvidenceRunWindowFromFile {
+                        bundle_id: args.bundle_id,
+                        manifest_signer: args.manifest_signer,
+                        block_observation_file: args.block_observation_file,
+                    }
+                }
+                PublicEvidenceCommand::NodeHeartbeat(args) => Self::PublicEvidenceNodeHeartbeat {
+                    role: args.role.into(),
+                    address: args.address,
+                    operator_id: args.operator_id,
+                    first_seen_block: args.first_block,
+                    last_seen_block: args.last_block,
+                    signed_heartbeat_count: args.heartbeat_count,
+                },
+                PublicEvidenceCommand::NodeHeartbeatFromFile(args) => {
+                    Self::PublicEvidenceNodeHeartbeatFromFile {
+                        role: args.role.into(),
+                        address: args.address,
+                        operator_id: args.operator_id,
+                        heartbeat_file: args.heartbeat_file,
+                    }
+                }
+                PublicEvidenceCommand::OperatorAttestation(args) => {
+                    Self::PublicEvidenceOperatorAttestation {
+                        role: args.role.into(),
+                        address: args.address,
+                        operator_id: args.operator_id,
+                        identity_uri: args.identity_uri,
+                        observed_at_unix_seconds: args.observed_at,
+                    }
+                }
+            },
+            super::CliCommand::PublicTestnet { command } => match command {
+                PublicTestnetCommand::Preflight(args) => Self::PublicTestnetPreflight {
+                    manifest: args.manifest,
+                },
+            },
+        }
+    }
+}
+
+fn service_kind_arg(kind: PublicServiceKind) -> PublicServiceKindArg {
+    match kind {
+        PublicServiceKind::Rpc => PublicServiceKindArg::Rpc,
+        PublicServiceKind::Explorer => PublicServiceKindArg::Explorer,
+        PublicServiceKind::Faucet => PublicServiceKindArg::Faucet,
+        PublicServiceKind::Telemetry => PublicServiceKindArg::Telemetry,
+    }
+}
+
+fn node_role_arg(role: PublicNodeRole) -> PublicNodeRoleArg {
+    match role {
+        PublicNodeRole::Miner => PublicNodeRoleArg::Miner,
+        PublicNodeRole::Validator => PublicNodeRoleArg::Validator,
+    }
+}
+
+fn record_kind_arg(kind: PublicEvidenceRecordKind) -> PublicEvidenceRecordKindArg {
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => PublicEvidenceRecordKindArg::BlockHistory,
+        PublicEvidenceRecordKind::FinalityHistory => PublicEvidenceRecordKindArg::FinalityHistory,
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => {
+            PublicEvidenceRecordKindArg::NetworkRuntime
+        }
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+            PublicEvidenceRecordKindArg::DataAvailability
+        }
+        PublicEvidenceRecordKind::InvalidWorkRejections => PublicEvidenceRecordKindArg::InvalidWork,
+        PublicEvidenceRecordKind::RewardSettlements => {
+            PublicEvidenceRecordKindArg::RewardSettlement
+        }
+    }
 }
 
 fn manifest_hash(label: &[u8]) -> String {
@@ -561,7 +1617,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,https://telem
 fn parses_documented_miner_commands() {
     assert_eq!(
         parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
-        CliCommand::MinerRegister { stake: 100 }
+        ExpectedCommand::MinerRegister { stake: 100 }
     );
     assert_eq!(
         parse_test_cli(&[
@@ -575,7 +1631,7 @@ fn parses_documented_miner_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        CliCommand::MinerStart {
+        ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -583,7 +1639,7 @@ fn parses_documented_miner_commands() {
     );
     assert_eq!(
         parse_test_cli(&["miner", "status"]).unwrap(),
-        CliCommand::MinerStatus
+        ExpectedCommand::MinerStatus
     );
     assert_eq!(
         parse_test_cli(&[
@@ -607,7 +1663,7 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::MinerRun {
+        ExpectedCommand::MinerRun {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -644,7 +1700,7 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::MinerRun {
+        ExpectedCommand::MinerRun {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -662,7 +1718,7 @@ fn parses_documented_miner_commands() {
 fn parses_documented_validator_commands() {
     assert_eq!(
         parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
-        CliCommand::ValidatorRegister { stake: 10_000 }
+        ExpectedCommand::ValidatorRegister { stake: 10_000 }
     );
     assert_eq!(
         parse_test_cli(&[
@@ -674,14 +1730,14 @@ fn parses_documented_validator_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        CliCommand::ValidatorStart {
+        ExpectedCommand::ValidatorStart {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         }
     );
     assert_eq!(
         parse_test_cli(&["validator", "status"]).unwrap(),
-        CliCommand::ValidatorStatus
+        ExpectedCommand::ValidatorStatus
     );
     assert_eq!(
         parse_test_cli(&[
@@ -703,7 +1759,7 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::ValidatorRun {
+        ExpectedCommand::ValidatorRun {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -737,7 +1793,7 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::ValidatorRun {
+        ExpectedCommand::ValidatorRun {
             wallet: "validator.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -750,7 +1806,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CliCommand::LocalTestnetSeed {
+        ExpectedCommand::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -762,7 +1818,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.evidence"
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceValidate {
+        ExpectedCommand::PublicEvidenceValidate {
             manifest: "docs/tensorvm/public-testnet.evidence".to_owned(),
         }
     );
@@ -774,7 +1830,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.preflight"
         ])
         .unwrap(),
-        CliCommand::PublicTestnetPreflight {
+        ExpectedCommand::PublicTestnetPreflight {
             manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
         }
     );
@@ -796,7 +1852,7 @@ fn parses_documented_validator_commands() {
             "1",
         ])
         .unwrap(),
-        CliCommand::PublicEvidencePublication {
+        ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -820,7 +1876,7 @@ fn parses_documented_validator_commands() {
             "1700000060",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceAuditorRecord {
+        ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -844,7 +1900,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRunWindow {
+        ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -864,7 +1920,7 @@ fn parses_documented_validator_commands() {
             "artifacts/block-observations.records",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRunWindowFromFile {
+        ExpectedCommand::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: "artifacts/block-observations.records".to_owned(),
@@ -888,7 +1944,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceNodeHeartbeat {
+        ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -911,7 +1967,7 @@ fn parses_documented_validator_commands() {
             "artifacts/miner-a-heartbeats.records",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+        ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -934,7 +1990,7 @@ fn parses_documented_validator_commands() {
             "1700000000",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceOperatorAttestation {
+        ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -965,7 +2021,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceServiceHealth {
+        ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -992,7 +2048,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-health.records",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceServiceHealthFromFile {
+        ExpectedCommand::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -1021,7 +2077,7 @@ fn parses_documented_validator_commands() {
             "64",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceServiceContent {
+        ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -1050,7 +2106,7 @@ fn parses_documented_validator_commands() {
             &content_hex,
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceServiceContentFromBytes {
+        ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -1077,7 +2133,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-chain-head.body",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceServiceContentFromFile {
+        ExpectedCommand::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -1115,7 +2171,7 @@ fn parses_documented_validator_commands() {
             "60",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceNetworkObservation {
+        ExpectedCommand::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -1143,7 +2199,7 @@ fn parses_documented_validator_commands() {
             "artifacts/node-a-service.log",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+        ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -1167,7 +2223,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordSummary {
+        ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1193,7 +2249,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordArtifact {
+        ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1221,7 +2277,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1247,7 +2303,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordArtifactFromRoots {
+        ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1272,7 +2328,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordSummaryFromFile {
+        ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1295,7 +2351,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        CliCommand::PublicEvidenceRecordArtifactFromFile {
+        ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1305,7 +2361,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CliCommand::ServiceInit {
+        ExpectedCommand::ServiceInit {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -1323,7 +2379,7 @@ fn parses_documented_validator_commands() {
             "/dns/bootstrap.tensorvm.net/tcp/4001",
         ])
         .unwrap(),
-        CliCommand::ServicePeerAdd {
+        ExpectedCommand::ServicePeerAdd {
             data_dir: "/var/lib/tensorvm".to_owned(),
             peer_id: bootstrap_peer.clone(),
             address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -1339,7 +2395,7 @@ fn parses_documented_validator_commands() {
             "/var/lib/tensorvm",
         ])
         .unwrap(),
-        CliCommand::ServiceReadiness {
+        ExpectedCommand::ServiceReadiness {
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             identity_seed: None,
@@ -1358,7 +2414,7 @@ fn parses_documented_validator_commands() {
             &identity_seed,
         ])
         .unwrap(),
-        CliCommand::ServiceReadiness {
+        ExpectedCommand::ServiceReadiness {
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             identity_seed: Some([0x11; 32]),
@@ -1380,7 +2436,7 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        CliCommand::ServiceServe {
+        ExpectedCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -1407,7 +2463,7 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        CliCommand::ServiceServe {
+        ExpectedCommand::ServiceServe {
             listen: "0.0.0.0:8545".to_owned(),
             p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -1418,7 +2474,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CliCommand::ServiceStatus {
+        ExpectedCommand::ServiceStatus {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
@@ -1432,7 +2488,7 @@ fn parses_documented_validator_commands() {
             "3"
         ])
         .unwrap(),
-        CliCommand::ServiceBlock {
+        ExpectedCommand::ServiceBlock {
             data_dir: "/var/lib/tensorvm".to_owned(),
             height: 3,
         }
@@ -1461,7 +2517,7 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::ProposerRun {
+        ExpectedCommand::ProposerRun {
             wallet: "proposer.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -1495,7 +2551,7 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        CliCommand::ProposerRun {
+        ExpectedCommand::ProposerRun {
             wallet: "proposer.key".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             listen: "127.0.0.1:8545".to_owned(),
@@ -1517,16 +2573,16 @@ fn rejects_invalid_cli() {
 #[test]
 fn clap_cli_parses_and_describes_commands() {
     let command = parse_test_cli(&["miner", "register", "--stake", "250"]).unwrap();
-    assert_eq!(command, CliCommand::MinerRegister { stake: 250 });
+    assert_eq!(command, ExpectedCommand::MinerRegister { stake: 250 });
     let bootstrap_peer = PeerId::random().to_string();
 
     let commands = [
         (
-            CliCommand::MinerRegister { stake: 1 },
+            ExpectedCommand::MinerRegister { stake: 1 },
             "register miner with stake 1",
         ),
         (
-            CliCommand::MinerStart {
+            ExpectedCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
                 device: "cpu".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1534,7 +2590,7 @@ fn clap_cli_parses_and_describes_commands() {
             "start miner wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001",
         ),
         (
-            CliCommand::MinerRun {
+            ExpectedCommand::MinerRun {
                 wallet: "miner.key".to_owned(),
                 device: "cpu".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1547,20 +2603,20 @@ fn clap_cli_parses_and_describes_commands() {
             },
             "run miner role wallet=miner.key device=cpu node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
-        (CliCommand::MinerStatus, "show miner status"),
+        (ExpectedCommand::MinerStatus, "show miner status"),
         (
-            CliCommand::ValidatorRegister { stake: 10 },
+            ExpectedCommand::ValidatorRegister { stake: 10 },
             "register validator with stake 10",
         ),
         (
-            CliCommand::ValidatorStart {
+            ExpectedCommand::ValidatorStart {
                 wallet: "validator.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             },
             "start validator wallet=validator.key node=/ip4/127.0.0.1/tcp/4001",
         ),
         (
-            CliCommand::ValidatorRun {
+            ExpectedCommand::ValidatorRun {
                 wallet: "validator.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 listen: "127.0.0.1:8545".to_owned(),
@@ -1572,9 +2628,9 @@ fn clap_cli_parses_and_describes_commands() {
             },
             "run validator role wallet=validator.key node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
-        (CliCommand::ValidatorStatus, "show validator status"),
+        (ExpectedCommand::ValidatorStatus, "show validator status"),
         (
-            CliCommand::ProposerRun {
+            ExpectedCommand::ProposerRun {
                 wallet: "proposer.key".to_owned(),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
                 listen: "127.0.0.1:8545".to_owned(),
@@ -1587,13 +2643,13 @@ fn clap_cli_parses_and_describes_commands() {
             "run proposer role wallet=proposer.key node=/ip4/127.0.0.1/tcp/4001 listen=127.0.0.1:8545 p2p_listen=/ip4/127.0.0.1/tcp/0 data_dir=/var/lib/tensorvm max_requests=7 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            CliCommand::ServiceInit {
+            ExpectedCommand::ServiceInit {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "initialize service node store data_dir=/var/lib/tensorvm",
         ),
         (
-            CliCommand::ServicePeerAdd {
+            ExpectedCommand::ServicePeerAdd {
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 peer_id: bootstrap_peer.clone(),
                 address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -1601,7 +2657,7 @@ fn clap_cli_parses_and_describes_commands() {
             "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id=",
         ),
         (
-            CliCommand::ServiceReadiness {
+            ExpectedCommand::ServiceReadiness {
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 identity_seed: None,
@@ -1609,7 +2665,7 @@ fn clap_cli_parses_and_describes_commands() {
             "check mandatory libp2p service readiness p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            CliCommand::ServiceServe {
+            ExpectedCommand::ServiceServe {
                 listen: "0.0.0.0:8545".to_owned(),
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
@@ -1620,32 +2676,32 @@ fn clap_cli_parses_and_describes_commands() {
             "serve RPC explorer faucet telemetry over mandatory libp2p listen=0.0.0.0:8545 p2p_listen=/ip4/0.0.0.0/tcp/4001 data_dir=/var/lib/tensorvm max_requests=0 max_transmit_bytes=1048576 request_timeout_seconds=10 max_concurrent_streams=128 idle_timeout_seconds=60",
         ),
         (
-            CliCommand::ServiceStatus {
+            ExpectedCommand::ServiceStatus {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "show service node store status data_dir=/var/lib/tensorvm",
         ),
         (
-            CliCommand::ServiceBlock {
+            ExpectedCommand::ServiceBlock {
                 data_dir: "/var/lib/tensorvm".to_owned(),
                 height: 3,
             },
             "show service node store block data_dir=/var/lib/tensorvm height=3",
         ),
         (
-            CliCommand::LocalTestnetSeed {
+            ExpectedCommand::LocalTestnetSeed {
                 data_dir: "/var/lib/tensorvm".to_owned(),
             },
             "seed local CPU testnet data_dir=/var/lib/tensorvm",
         ),
         (
-            CliCommand::PublicEvidenceValidate {
+            ExpectedCommand::PublicEvidenceValidate {
                 manifest: "evidence.txt".to_owned(),
             },
             "validate public evidence manifest evidence.txt",
         ),
         (
-            CliCommand::PublicTestnetPreflight {
+            ExpectedCommand::PublicTestnetPreflight {
                 manifest: "preflight.txt".to_owned(),
             },
             "run public testnet preflight manifest preflight.txt",
@@ -1653,7 +2709,7 @@ fn clap_cli_parses_and_describes_commands() {
     ];
     for (command, description) in commands {
         let actual = describe_command(&command);
-        if matches!(command, CliCommand::ServicePeerAdd { .. }) {
+        if matches!(command, ExpectedCommand::ServicePeerAdd { .. }) {
             assert!(actual.starts_with(description));
             assert!(actual.contains("address=/dns/bootstrap.tensorvm.net/tcp/4001"));
         } else {
@@ -1662,7 +2718,7 @@ fn clap_cli_parses_and_describes_commands() {
     }
 
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceServiceHealth {
+        describe_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -1675,7 +2731,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate rpc service health evidence public_url=https://rpc.tensorvm.net/health health_path=/health"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -1685,7 +2741,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate rpc service health evidence from captured observations observation_file=artifacts/rpc-health.records public_url=https://rpc.tensorvm.net/health health_path=/health"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceServiceContent {
+        describe_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Explorer,
             endpoint_id: hash_bytes(b"test", &[b"explorer-service"]),
             public_url: "https://explorer.tensorvm.net/explorer".to_owned(),
@@ -1697,7 +2753,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate explorer service content evidence public_url=https://explorer.tensorvm.net/explorer content_path=/explorer"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+        describe_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Faucet,
             endpoint_id: hash_bytes(b"test", &[b"faucet-service"]),
             public_url: "https://faucet.tensorvm.net/faucet/page".to_owned(),
@@ -1708,7 +2764,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate faucet service content evidence from observed bytes public_url=https://faucet.tensorvm.net/faucet/page content_path=/faucet/page"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Telemetry,
             endpoint_id: hash_bytes(b"test", &[b"telemetry-service"]),
             public_url: "https://telemetry.tensorvm.net/telemetry/dashboard".to_owned(),
@@ -1719,7 +2775,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate telemetry service content evidence from captured file content_file=artifacts/telemetry-dashboard.body public_url=https://telemetry.tensorvm.net/telemetry/dashboard content_path=/telemetry/dashboard"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidencePublication {
+        describe_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1729,7 +2785,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence publication signature public_uri=https://tensorvm.net/tensorvm/public-evidence.json"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRunWindow {
+        describe_command(&ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -1739,7 +2795,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence run window started=1700000000 ended=1700000060 observed_blocks=10"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: "artifacts/block-observations.records".to_owned(),
@@ -1747,7 +2803,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate public evidence run window from captured block observations block_observation_file=artifacts/block-observations.records"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceAuditorRecord {
+        describe_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -1761,7 +2817,7 @@ fn clap_cli_parses_and_describes_commands() {
         )
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1773,7 +2829,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence record summary from 2 roots"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordSummary {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::InvalidWorkRejections,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1783,7 +2839,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate invalid-work public evidence record summary records=1"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordSummary {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::RewardSettlements,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1793,7 +2849,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate reward-settlement public evidence record summary records=1"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordArtifact {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1804,7 +2860,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence artifact locator artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1817,7 +2873,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence artifact locator from 2 roots artifact_uri=https://evidence.tensorvm.net/network-runtime.json"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1826,7 +2882,7 @@ fn clap_cli_parses_and_describes_commands() {
         "generate network-runtime public evidence record summary from record file record_file=artifacts/network-runtime.records"
     );
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -1837,7 +2893,7 @@ fn clap_cli_parses_and_describes_commands() {
     );
     let peer_id = PeerId::random().to_string();
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceNetworkObservation {
+        describe_command(&ExpectedCommand::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -1856,7 +2912,7 @@ fn clap_cli_parses_and_describes_commands() {
     );
     assert_eq!(
         describe_command(
-            &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+            &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -1880,7 +2936,7 @@ fn clap_cli_parses_and_describes_commands() {
     ];
     for (role, node_address, prefix) in node_roles {
         assert_eq!(
-            describe_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+            describe_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
                 role,
                 address: node_address,
                 operator_id: hash_bytes(b"test", &[b"operator"]),
@@ -1892,7 +2948,7 @@ fn clap_cli_parses_and_describes_commands() {
         );
     }
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+        describe_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"operator"]),
@@ -1905,7 +2961,7 @@ fn clap_cli_parses_and_describes_commands() {
     );
 
     assert_eq!(
-        describe_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        describe_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -1938,7 +2994,7 @@ fn clap_cli_parses_and_describes_commands() {
     ];
     for (kind, expected) in record_kinds {
         assert_eq!(
-            describe_command(&CliCommand::PublicEvidenceRecordSummary {
+            describe_command(&ExpectedCommand::PublicEvidenceRecordSummary {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -1953,12 +3009,12 @@ fn clap_cli_parses_and_describes_commands() {
 #[test]
 fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     let miner_register =
-        execute_reference_cli_command(&CliCommand::MinerRegister { stake: 100 }).unwrap();
+        execute_reference_cli_command(&ExpectedCommand::MinerRegister { stake: 100 }).unwrap();
     assert!(miner_register.contains("command=miner_register"));
     assert!(miner_register.contains("min_stake=100"));
     assert!(miner_register.contains("stake_sufficient=true"));
 
-    let miner_start = execute_reference_cli_command(&CliCommand::MinerStart {
+    let miner_start = execute_reference_cli_command(&ExpectedCommand::MinerStart {
         wallet: "miner.key".to_owned(),
         device: "cpu".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1976,7 +3032,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(miner_start.contains(&format!("address={}", hex(&address(b"miner.key")))));
     assert!(miner_start.contains("reference_backend_ready=true"));
 
-    let miner_run = execute_reference_cli_command(&CliCommand::MinerRun {
+    let miner_run = execute_reference_cli_command(&ExpectedCommand::MinerRun {
         wallet: "miner.key".to_owned(),
         device: "cpu".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1996,11 +3052,12 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(miner_run.contains("role_runtime_ready=true"));
 
     let validator_register =
-        execute_reference_cli_command(&CliCommand::ValidatorRegister { stake: 10_000 }).unwrap();
+        execute_reference_cli_command(&ExpectedCommand::ValidatorRegister { stake: 10_000 })
+            .unwrap();
     assert!(validator_register.contains("command=validator_register"));
     assert!(validator_register.contains("min_stake=10000"));
 
-    let validator_start = execute_reference_cli_command(&CliCommand::ValidatorStart {
+    let validator_start = execute_reference_cli_command(&ExpectedCommand::ValidatorStart {
         wallet: "validator.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
     })
@@ -2008,7 +3065,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(validator_start.contains("command=validator_start"));
     assert!(validator_start.contains("reference_verifier_ready=true"));
 
-    let validator_run = execute_reference_cli_command(&CliCommand::ValidatorRun {
+    let validator_run = execute_reference_cli_command(&ExpectedCommand::ValidatorRun {
         wallet: "validator.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         listen: "127.0.0.1:8545".to_owned(),
@@ -2026,7 +3083,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(validator_run.contains("p2p_identity_seeded=false"));
     assert!(validator_run.contains("role_runtime_ready=true"));
 
-    let proposer_run = execute_reference_cli_command(&CliCommand::ProposerRun {
+    let proposer_run = execute_reference_cli_command(&ExpectedCommand::ProposerRun {
         wallet: "proposer.key".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
         listen: "127.0.0.1:8545".to_owned(),
@@ -2044,15 +3101,16 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(proposer_run.contains("p2p_identity_seeded=true"));
     assert!(proposer_run.contains("role_runtime_ready=true"));
 
-    let miner_status = execute_reference_cli_command(&CliCommand::MinerStatus).unwrap();
+    let miner_status = execute_reference_cli_command(&ExpectedCommand::MinerStatus).unwrap();
     assert!(miner_status.contains("command=miner_status"));
     assert!(miner_status.contains("status_source=rpc_or_node_store_required"));
 
-    let validator_status = execute_reference_cli_command(&CliCommand::ValidatorStatus).unwrap();
+    let validator_status =
+        execute_reference_cli_command(&ExpectedCommand::ValidatorStatus).unwrap();
     assert!(validator_status.contains("command=validator_status"));
     assert!(validator_status.contains("status_source=rpc_or_node_store_required"));
 
-    let service_init = execute_reference_cli_command(&CliCommand::ServiceInit {
+    let service_init = execute_reference_cli_command(&ExpectedCommand::ServiceInit {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -2060,7 +3118,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_init.contains("node_store_ready=true"));
 
     let bootstrap_peer = PeerId::random().to_string();
-    let service_peer_add = execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+    let service_peer_add = execute_reference_cli_command(&ExpectedCommand::ServicePeerAdd {
         data_dir: "/var/lib/tensorvm".to_owned(),
         peer_id: bootstrap_peer.clone(),
         address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -2070,7 +3128,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_peer_add.contains(&format!("peer_id={bootstrap_peer}")));
     assert!(service_peer_add.contains("peer_book_ready=true"));
 
-    let service_readiness = execute_reference_cli_command(&CliCommand::ServiceReadiness {
+    let service_readiness = execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
         p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
         data_dir: "/var/lib/tensorvm".to_owned(),
         identity_seed: Some([0x11; 32]),
@@ -2091,15 +3149,16 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_readiness.contains("node_store_required=true"));
     assert!(service_readiness.contains("libp2p_ready=true"));
 
-    let unseeded_service_readiness = execute_reference_cli_command(&CliCommand::ServiceReadiness {
-        p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: None,
-    })
-    .unwrap();
+    let unseeded_service_readiness =
+        execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
+            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            identity_seed: None,
+        })
+        .unwrap();
     assert!(unseeded_service_readiness.contains("p2p_identity_seeded=false"));
 
-    let service_serve = execute_reference_cli_command(&CliCommand::ServiceServe {
+    let service_serve = execute_reference_cli_command(&ExpectedCommand::ServiceServe {
         listen: "0.0.0.0:8545".to_owned(),
         p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
         data_dir: "/var/lib/tensorvm".to_owned(),
@@ -2127,7 +3186,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_serve.contains("telemetry_routes=enabled"));
     assert!(service_serve.contains("node_store_required=true"));
 
-    let service_status = execute_reference_cli_command(&CliCommand::ServiceStatus {
+    let service_status = execute_reference_cli_command(&ExpectedCommand::ServiceStatus {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -2135,7 +3194,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_status.contains("data_dir=/var/lib/tensorvm"));
     assert!(service_status.contains("status_source=node_store"));
 
-    let service_block = execute_reference_cli_command(&CliCommand::ServiceBlock {
+    let service_block = execute_reference_cli_command(&ExpectedCommand::ServiceBlock {
         data_dir: "/var/lib/tensorvm".to_owned(),
         height: 3,
     })
@@ -2145,7 +3204,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(service_block.contains("height=3"));
     assert!(service_block.contains("status_source=node_store"));
 
-    let local_seed = execute_reference_cli_command(&CliCommand::LocalTestnetSeed {
+    let local_seed = execute_reference_cli_command(&ExpectedCommand::LocalTestnetSeed {
         data_dir: "/var/lib/tensorvm".to_owned(),
     })
     .unwrap();
@@ -2153,7 +3212,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(local_seed.contains("data_dir=/var/lib/tensorvm"));
     assert!(local_seed.contains("local_cpu_seed_ready=true"));
 
-    let public_command = CliCommand::PublicEvidenceValidate {
+    let public_command = ExpectedCommand::PublicEvidenceValidate {
         manifest: "evidence.txt".to_owned(),
     };
     assert_eq!(
@@ -2161,7 +3220,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         describe_command(&public_command)
     );
 
-    let publication = execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+    let publication = execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -2185,14 +3244,15 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     assert!(publication.contains("manifest_signature_count=1"));
     assert!(publication.contains("independent_auditor_count=1"));
 
-    let auditor_record = execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
-        bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
-        auditor_id: address(b"public-evidence-auditor-0"),
-        audit_uri: manifest_auditor_uri(),
-        observed_at_unix_seconds: 1_700_000_060,
-    })
-    .unwrap();
+    let auditor_record =
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
+            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+            auditor_id: address(b"public-evidence-auditor-0"),
+            audit_uri: manifest_auditor_uri(),
+            observed_at_unix_seconds: 1_700_000_060,
+        })
+        .unwrap();
     assert_eq!(
         auditor_record,
         format!(
@@ -2203,7 +3263,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         )
     );
 
-    let run_window = execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+    let run_window = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
         run_started_at_unix_seconds: 1_700_000_000,
@@ -2235,7 +3295,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         .join("\n");
     std::fs::write(&run_window_observation_file, run_window_observations).unwrap();
     let run_window_from_file =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: run_window_observation_file.to_string_lossy().into_owned(),
@@ -2259,7 +3319,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         ),
     ];
     for (role, address_label, operator_label, tag) in node_cases {
-        let node = execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+        let node = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role,
             address: address(address_label),
             operator_id: hash_bytes(b"test", &[operator_label]),
@@ -2296,7 +3356,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
             .join("\n");
         std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
         let node_from_file =
-            execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
                 role,
                 address: address(address_label),
                 operator_id: hash_bytes(b"test", &[operator_label]),
@@ -2310,7 +3370,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
     let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
     let operator_attestation =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id,
@@ -2328,17 +3388,18 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         )
     );
 
-    let service_health = execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
-        kind: PublicServiceKind::Rpc,
-        endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-        public_url: "https://rpc.tensorvm.net/health".to_owned(),
-        health_path: "/health".to_owned(),
-        first_seen_block: 0,
-        last_seen_block: 9,
-        reachable_observation_count: 10,
-        signed_health_check_count: 10,
-    })
-    .unwrap();
+    let service_health =
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
+            kind: PublicServiceKind::Rpc,
+            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+            public_url: "https://rpc.tensorvm.net/health".to_owned(),
+            health_path: "/health".to_owned(),
+            first_seen_block: 0,
+            last_seen_block: 9,
+            reachable_observation_count: 10,
+            signed_health_check_count: 10,
+        })
+        .unwrap();
     assert!(service_health.starts_with("service=rpc,"));
     assert!(service_health.contains("https://rpc.tensorvm.net/health,/health,0,9,10,10"));
     assert!(service_health.ends_with(&manifest_service_signature(
@@ -2356,7 +3417,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         .join("\n");
     std::fs::write(&health_observation_file, health_observations).unwrap();
     let service_health_from_file =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -2376,7 +3437,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
         ),
     ];
     for (kind, label, tag) in additional_service_cases {
-        let line = execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        let line = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind,
             endpoint_id: hash_bytes(b"test", &[label]),
             public_url: public_service_url(kind).to_owned(),
@@ -2393,7 +3454,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     }
 
     let service_content =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -2412,7 +3473,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     let observed_content = vec![7_u8; 80];
     let observed_content_root = public_service_content_root(&observed_content);
     let service_content_from_bytes =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -2433,7 +3494,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
     ));
     std::fs::write(&content_file, &observed_content).unwrap();
     let service_content_from_file =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
@@ -2447,7 +3508,7 @@ fn execute_reference_cli_command_reports_miner_and_validator_readiness() {
 
     let peer_id = PeerId::random().to_string();
     let network_observation =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNetworkObservation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -2628,7 +3689,7 @@ p2p_idle_timeout_seconds=60
     ));
     std::fs::write(&service_log_file, &service_log).unwrap();
     let network_observation_from_file = execute_reference_cli_command(
-        &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+        &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -2641,7 +3702,7 @@ p2p_idle_timeout_seconds=60
 
     assert_eq!(
         execute_reference_cli_command(
-            &CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
+            &ExpectedCommand::PublicEvidenceNetworkObservationFromServiceLog {
                 operator_id: hash_bytes(b"test", &[b"network-operator"]),
                 listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
                 observed_at_unix_seconds: 1_700_000_000,
@@ -2746,7 +3807,7 @@ p2p_idle_timeout_seconds=60
         let root = hex(&record_root);
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let manifest_signer = address(b"public-evidence-publisher");
-        let line = execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+        let line = execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind,
             bundle_id,
             manifest_signer,
@@ -2775,7 +3836,7 @@ p2p_idle_timeout_seconds=60
             count,
         );
         let artifact_line =
-            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
                 kind,
                 bundle_id,
                 manifest_signer,
@@ -2811,7 +3872,7 @@ p2p_idle_timeout_seconds=60
         roots.len() as u64,
     );
     let aggregate_line =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -2836,7 +3897,7 @@ p2p_idle_timeout_seconds=60
         roots.len() as u64,
     );
     let aggregate_artifact_line =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -2883,7 +3944,7 @@ p2p_idle_timeout_seconds=60
     .unwrap();
     assert_eq!(record_file_roots_from_disk, record_file_roots);
     let record_file_summary =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -2906,7 +3967,7 @@ p2p_idle_timeout_seconds=60
         )
     );
     let record_file_artifact =
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -3002,7 +4063,7 @@ p2p_idle_timeout_seconds=60
             roots
         );
         let summary =
-            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromFile {
+            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromFile {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -3029,7 +4090,7 @@ p2p_idle_timeout_seconds=60
             public_evidence_record_kind_tag(kind)
         );
         let artifact =
-            execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromFile {
+            execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromFile {
                 kind,
                 bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 manifest_signer: address(b"public-evidence-publisher"),
@@ -3198,7 +4259,7 @@ p2p_idle_timeout_seconds=60
 
 #[test]
 fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
-    let cuda_start = CliCommand::MinerStart {
+    let cuda_start = ExpectedCommand::MinerStart {
         wallet: "miner.key".to_owned(),
         device: "cuda:0".to_owned(),
         node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3224,7 +4285,7 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
             assert!(report.contains(&format!("cuda_device_count={device_count}")));
         }
         assert!(
-            execute_reference_cli_command(&CliCommand::MinerStart {
+            execute_reference_cli_command(&ExpectedCommand::MinerStart {
                 wallet: "miner.key".to_owned(),
                 device: format!("cuda:{device_count}"),
                 node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3236,12 +4297,13 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
 
 #[test]
 fn execute_reference_cli_command_rejects_invalid_local_args() {
-    assert!(execute_reference_cli_command(&CliCommand::MinerRegister { stake: 99 }).is_err());
+    assert!(execute_reference_cli_command(&ExpectedCommand::MinerRegister { stake: 99 }).is_err());
     assert!(
-        execute_reference_cli_command(&CliCommand::ValidatorRegister { stake: 9_999 }).is_err()
+        execute_reference_cli_command(&ExpectedCommand::ValidatorRegister { stake: 9_999 })
+            .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: " ".to_owned(),
             device: "cpu".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3249,7 +4311,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "gpu0".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3257,7 +4319,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cuda:abc".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3265,7 +4327,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cuda:".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3273,7 +4335,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: " ".to_owned(),
             node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -3281,7 +4343,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::MinerStart {
+        execute_reference_cli_command(&ExpectedCommand::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
             node: "http://localhost:8545".to_owned(),
@@ -3289,20 +4351,20 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ValidatorStart {
+        execute_reference_cli_command(&ExpectedCommand::ValidatorStart {
             wallet: "validator.key".to_owned(),
             node: "localhost:8545".to_owned(),
         })
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceInit {
+        execute_reference_cli_command(&ExpectedCommand::ServiceInit {
             data_dir: " ".to_owned(),
         })
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+        execute_reference_cli_command(&ExpectedCommand::ServicePeerAdd {
             data_dir: "/var/lib/tensorvm".to_owned(),
             peer_id: "not-a-peer-id".to_owned(),
             address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
@@ -3310,7 +4372,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+        execute_reference_cli_command(&ExpectedCommand::ServicePeerAdd {
             data_dir: "/var/lib/tensorvm".to_owned(),
             peer_id: PeerId::random().to_string(),
             address: "not-a-multiaddr".to_owned(),
@@ -3320,7 +4382,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     let peer_a = PeerId::random();
     let peer_b = PeerId::random();
     assert!(
-        execute_reference_cli_command(&CliCommand::ServicePeerAdd {
+        execute_reference_cli_command(&ExpectedCommand::ServicePeerAdd {
             data_dir: "/var/lib/tensorvm".to_owned(),
             peer_id: peer_a.to_string(),
             address: format!("/dns/bootstrap.tensorvm.net/tcp/4001/p2p/{peer_b}"),
@@ -3328,7 +4390,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceServe {
+        execute_reference_cli_command(&ExpectedCommand::ServiceServe {
             listen: "localhost:8545".to_owned(),
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -3339,7 +4401,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceReadiness {
+        execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
             p2p_listen: "not-a-multiaddr".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
             identity_seed: None,
@@ -3347,7 +4409,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceReadiness {
+        execute_reference_cli_command(&ExpectedCommand::ServiceReadiness {
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             data_dir: " ".to_owned(),
             identity_seed: None,
@@ -3355,7 +4417,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceServe {
+        execute_reference_cli_command(&ExpectedCommand::ServiceServe {
             listen: "127.0.0.1:8545".to_owned(),
             p2p_listen: "not-a-multiaddr".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -3366,7 +4428,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceServe {
+        execute_reference_cli_command(&ExpectedCommand::ServiceServe {
             listen: "127.0.0.1:8545".to_owned(),
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             data_dir: " ".to_owned(),
@@ -3377,7 +4439,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::ServiceServe {
+        execute_reference_cli_command(&ExpectedCommand::ServiceServe {
             listen: "127.0.0.1:8545".to_owned(),
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
             data_dir: "/var/lib/tensorvm".to_owned(),
@@ -3413,7 +4475,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
                                     request_response_protocol_count,
                                     bootstrap_peer_count,
                                     max_transmit_bytes| {
-        CliCommand::PublicEvidenceNetworkObservation {
+        ExpectedCommand::PublicEvidenceNetworkObservation {
             operator_id,
             peer_id,
             listen_address,
@@ -3621,7 +4683,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     assert!(parse_hash_argument("12").is_err());
     assert!(parse_hash_argument(&"g".repeat(64)).is_err());
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "http://127.0.0.1/health".to_owned(),
@@ -3634,7 +4696,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.example.test/health".to_owned(),
@@ -3647,7 +4709,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -3660,7 +4722,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -3673,7 +4735,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health?probe=1".to_owned(),
@@ -3686,7 +4748,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health#probe".to_owned(),
@@ -3699,7 +4761,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -3712,7 +4774,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -3725,7 +4787,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: [0; 32],
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -3738,7 +4800,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealth {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -3770,7 +4832,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceHealthFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -3786,7 +4848,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://localhost/chain/head".to_owned(),
@@ -3798,7 +4860,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3810,7 +4872,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -3822,7 +4884,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head?height=1".to_owned(),
@@ -3834,7 +4896,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head#latest".to_owned(),
@@ -3846,7 +4908,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -3858,7 +4920,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -3870,7 +4932,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3882,7 +4944,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3894,7 +4956,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContent {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3906,7 +4968,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3917,7 +4979,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3928,7 +4990,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromBytes {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3939,7 +5001,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceServiceContentFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -3953,7 +5015,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://evidence.tensorvm.example/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -3963,7 +5025,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "http://127.0.0.1/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -3973,7 +5035,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: " https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -3983,7 +5045,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json ".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -3993,7 +5055,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json?download=1".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4003,7 +5065,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4013,7 +5075,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: [0; 32],
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4023,7 +5085,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: [0; 32],
@@ -4033,7 +5095,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4043,7 +5105,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4053,7 +5115,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidencePublication {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4063,7 +5125,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: [0; 32],
@@ -4073,7 +5135,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://localhost/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -4083,7 +5145,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -4093,7 +5155,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -4103,7 +5165,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -4113,7 +5175,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceAuditorRecord {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -4123,7 +5185,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -4133,7 +5195,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
             run_started_at_unix_seconds: 1_700_000_000,
@@ -4143,7 +5205,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_060,
@@ -4153,7 +5215,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindow {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -4185,7 +5247,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         assert!(run_window_observation_summary_from_file(invalid_run_window_observations).is_err());
     }
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRunWindowFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: std::env::temp_dir()
@@ -4199,7 +5261,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4210,7 +5272,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -4221,7 +5283,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4232,7 +5294,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeat {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4286,7 +5348,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         );
     }
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceNodeHeartbeatFromFile {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4301,7 +5363,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: [0; 32],
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4311,7 +5373,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: [0; 32],
@@ -4321,7 +5383,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4331,7 +5393,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4341,7 +5403,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceOperatorAttestation {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -4437,7 +5499,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         ])
         .is_err()
     );
-    let valid_record_summary = CliCommand::PublicEvidenceRecordSummary {
+    let valid_record_summary = ExpectedCommand::PublicEvidenceRecordSummary {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -4445,7 +5507,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         record_count: 4,
     };
     assert!(execute_reference_cli_command(&valid_record_summary).is_ok());
-    let valid_record_artifact = CliCommand::PublicEvidenceRecordArtifact {
+    let valid_record_artifact = ExpectedCommand::PublicEvidenceRecordArtifact {
         kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
         manifest_signer: address(b"public-evidence-publisher"),
@@ -4455,7 +5517,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     };
     assert!(execute_reference_cli_command(&valid_record_artifact).is_ok());
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4465,7 +5527,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -4475,7 +5537,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4485,7 +5547,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummary {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4495,7 +5557,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: [0; 32],
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4506,7 +5568,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: [0; 32],
@@ -4517,7 +5579,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4528,7 +5590,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4539,7 +5601,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4550,7 +5612,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifact {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4561,7 +5623,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4570,7 +5632,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4580,7 +5642,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
     );
     let duplicate_record_root = hash_bytes(b"test", &[b"network-runtime-root"]);
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordSummaryFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4589,7 +5651,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -4599,7 +5661,7 @@ fn execute_reference_cli_command_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_reference_cli_command(&CliCommand::PublicEvidenceRecordArtifactFromRoots {
+        execute_reference_cli_command(&ExpectedCommand::PublicEvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),

@@ -1,53 +1,38 @@
-use super::CliCommand;
 use super::network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line,
     network_observation_evidence_line_from_service_log,
 };
+use super::public_evidence_parser::PublicEvidenceCommand;
 use crate::error::{Result, TvmError};
 use crate::types::Hash;
 
 pub(super) fn execute_public_evidence_network_command(
-    command: &CliCommand,
+    command: &PublicEvidenceCommand,
 ) -> Option<Result<String>> {
     match command {
-        CliCommand::PublicEvidenceNetworkObservation {
-            operator_id,
-            peer_id,
-            listen_address,
-            observed_at_unix_seconds,
-            gossip_topic_count,
-            request_response_protocol_count,
-            bootstrap_peer_count,
-            max_transmit_bytes,
-            request_timeout_seconds,
-            max_concurrent_streams,
-            idle_connection_timeout_seconds,
-        } => Some(network_observation_evidence_line(
+        PublicEvidenceCommand::NetworkObservation(args) => Some(network_observation_evidence_line(
             NetworkObservationEvidenceLine {
-                operator_id: *operator_id,
-                peer_id,
-                listen_address,
-                observed_at_unix_seconds: *observed_at_unix_seconds,
-                gossip_topic_count: *gossip_topic_count,
-                request_response_protocol_count: *request_response_protocol_count,
-                bootstrap_peer_count: *bootstrap_peer_count,
-                max_transmit_bytes: *max_transmit_bytes,
-                request_timeout_seconds: *request_timeout_seconds,
-                max_concurrent_streams: *max_concurrent_streams,
-                idle_connection_timeout_seconds: *idle_connection_timeout_seconds,
+                operator_id: args.operator_id,
+                peer_id: &args.peer_id,
+                listen_address: &args.listen_address,
+                observed_at_unix_seconds: args.observed_at,
+                gossip_topic_count: args.gossip_topics,
+                request_response_protocol_count: args.request_response_protocols,
+                bootstrap_peer_count: args.bootstrap_peers,
+                max_transmit_bytes: args.max_transmit_bytes,
+                request_timeout_seconds: args.request_timeout_seconds,
+                max_concurrent_streams: args.max_concurrent_streams,
+                idle_connection_timeout_seconds: args.idle_timeout_seconds,
             },
         )),
-        CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
-            operator_id,
-            listen_address,
-            observed_at_unix_seconds,
-            service_log,
-        } => Some(network_observation_from_service_log(
-            *operator_id,
-            listen_address,
-            *observed_at_unix_seconds,
-            service_log,
-        )),
+        PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
+            Some(network_observation_from_service_log(
+                args.operator_id,
+                &args.listen_address,
+                args.observed_at,
+                &args.service_log,
+            ))
+        }
         _ => None,
     }
 }

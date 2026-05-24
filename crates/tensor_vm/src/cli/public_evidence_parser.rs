@@ -1,4 +1,3 @@
-use super::CliCommand;
 use super::public_evidence_network_parser::{
     NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
 };
@@ -18,7 +17,8 @@ use super::public_evidence_service_parser::{
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-pub(super) enum PublicEvidenceCommand {
+#[command(rename_all = "kebab-case")]
+pub enum PublicEvidenceCommand {
     Validate(ManifestArgs),
     ServiceHealth(ServiceHealthArgs),
     ServiceHealthFromFile(ServiceHealthFromFileArgs),
@@ -42,38 +42,8 @@ pub(super) enum PublicEvidenceCommand {
     OperatorAttestation(OperatorAttestationArgs),
 }
 
-impl PublicEvidenceCommand {
-    pub(super) fn into_command(self) -> CliCommand {
-        match self {
-            PublicEvidenceCommand::Validate(args) => CliCommand::PublicEvidenceValidate {
-                manifest: args.manifest,
-            },
-            PublicEvidenceCommand::ServiceHealth(args) => args.into_command(),
-            PublicEvidenceCommand::ServiceHealthFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::ServiceContent(args) => args.into_command(),
-            PublicEvidenceCommand::ServiceContentFromBytes(args) => args.into_command(),
-            PublicEvidenceCommand::ServiceContentFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::RecordSummary(args) => args.into_command(),
-            PublicEvidenceCommand::RecordArtifact(args) => args.into_command(),
-            PublicEvidenceCommand::RecordArtifactFromRoots(args) => args.into_command(),
-            PublicEvidenceCommand::RecordArtifactFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::RecordSummaryFromRoots(args) => args.into_command(),
-            PublicEvidenceCommand::RecordSummaryFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::NetworkObservation(args) => args.into_command(),
-            PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => args.into_command(),
-            PublicEvidenceCommand::Publication(args) => args.into_command(),
-            PublicEvidenceCommand::AuditorRecord(args) => args.into_command(),
-            PublicEvidenceCommand::RunWindow(args) => args.into_command(),
-            PublicEvidenceCommand::RunWindowFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::NodeHeartbeat(args) => args.into_command(),
-            PublicEvidenceCommand::NodeHeartbeatFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::OperatorAttestation(args) => args.into_command(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ManifestArgs {
+pub struct ManifestArgs {
     #[arg(long)]
-    manifest: String,
+    pub manifest: String,
 }

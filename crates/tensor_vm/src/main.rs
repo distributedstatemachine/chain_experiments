@@ -2,6 +2,8 @@ use clap::Parser;
 use tensor_vm::{
     Cli, CliCommand,
     cli::{
+        LocalCpuCommand, LocalTestnetCommand, MinerCommand, ProposerCommand, PublicEvidenceCommand,
+        PublicTestnetCommand, ServiceCommand, ServicePeerCommand, ValidatorCommand,
         execute_reference_cli_command, validate_public_evidence_manifest,
         validate_public_testnet_preflight_manifest,
     },
@@ -75,7 +77,7 @@ use runtime_config::RoleServiceConfig;
 use status::service_status;
 
 fn main() {
-    let command = Cli::parse().into_command();
+    let command = Cli::parse().command;
     match execute_command(&command) {
         Ok(output) => println!("{output}"),
         Err(error) => {
@@ -87,140 +89,133 @@ fn main() {
 
 fn execute_command(command: &CliCommand) -> std::result::Result<String, String> {
     match command {
-        CliCommand::PublicEvidenceValidate { manifest } => {
-            let contents = std::fs::read_to_string(manifest)
-                .map_err(|error| format!("failed to read evidence manifest {manifest}: {error}"))?;
+        CliCommand::PublicEvidence {
+            command: PublicEvidenceCommand::Validate(args),
+        } => {
+            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
+                format!(
+                    "failed to read evidence manifest {}: {error}",
+                    args.manifest
+                )
+            })?;
             validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
         }
-        CliCommand::PublicTestnetPreflight { manifest } => {
-            let contents = std::fs::read_to_string(manifest).map_err(|error| {
-                format!("failed to read preflight manifest {manifest}: {error}")
+        CliCommand::PublicTestnet {
+            command: PublicTestnetCommand::Preflight(args),
+        } => {
+            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
+                format!(
+                    "failed to read preflight manifest {}: {error}",
+                    args.manifest
+                )
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        CliCommand::MinerRun {
-            wallet,
-            device,
-            node,
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
+        CliCommand::Miner {
+            command: MinerCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             run_miner_service(RoleServiceConfig {
-                wallet,
-                device: Some(device),
-                node,
-                listen,
-                p2p_listen,
-                data_dir,
-                identity_seed: *identity_seed,
-                auth_token,
-                max_requests: *max_requests,
+                wallet: &args.wallet,
+                device: Some(&args.device),
+                node: &args.node,
+                listen: &args.listen,
+                p2p_listen: &args.p2p_listen,
+                data_dir: &args.data_dir,
+                identity_seed: args.identity_seed,
+                auth_token: &args.auth_token,
+                max_requests: args.max_requests,
             })
         }
-        CliCommand::ValidatorRun {
-            wallet,
-            node,
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
+        CliCommand::Validator {
+            command: ValidatorCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             run_validator_service(RoleServiceConfig {
-                wallet,
+                wallet: &args.wallet,
                 device: None,
-                node,
-                listen,
-                p2p_listen,
-                data_dir,
-                identity_seed: *identity_seed,
-                auth_token,
-                max_requests: *max_requests,
+                node: &args.node,
+                listen: &args.listen,
+                p2p_listen: &args.p2p_listen,
+                data_dir: &args.data_dir,
+                identity_seed: args.identity_seed,
+                auth_token: &args.auth_token,
+                max_requests: args.max_requests,
             })
         }
-        CliCommand::ProposerRun {
-            wallet,
-            node,
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
+        CliCommand::Proposer {
+            command: ProposerCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             run_proposer_service(RoleServiceConfig {
-                wallet,
+                wallet: &args.wallet,
                 device: None,
-                node,
-                listen,
-                p2p_listen,
-                data_dir,
-                identity_seed: *identity_seed,
-                auth_token,
-                max_requests: *max_requests,
+                node: &args.node,
+                listen: &args.listen,
+                p2p_listen: &args.p2p_listen,
+                data_dir: &args.data_dir,
+                identity_seed: args.identity_seed,
+                auth_token: &args.auth_token,
+                max_requests: args.max_requests,
             })
         }
-        CliCommand::ServiceInit { data_dir } => {
-            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            init_service_store(data_dir)
-        }
-        CliCommand::ServicePeerAdd {
-            data_dir,
-            peer_id,
-            address,
+        CliCommand::Service {
+            command: ServiceCommand::Init(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            add_service_peer(data_dir, peer_id, address)
+            init_service_store(&args.data_dir)
         }
-        CliCommand::ServiceReadiness {
-            p2p_listen,
-            data_dir,
-            identity_seed,
+        CliCommand::Service {
+            command:
+                ServiceCommand::Peer {
+                    command: ServicePeerCommand::Add(args),
+                },
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            check_service_readiness(p2p_listen, data_dir, *identity_seed)
+            add_service_peer(&args.data_dir, &args.peer_id, &args.address)
         }
-        CliCommand::ServiceServe {
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
+        CliCommand::Service {
+            command: ServiceCommand::Readiness(args),
+        } => {
+            execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            check_service_readiness(&args.p2p_listen, &args.data_dir, args.identity_seed)
+        }
+        CliCommand::Service {
+            command: ServiceCommand::Serve(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
             serve_service(
-                listen,
-                p2p_listen,
-                data_dir,
-                *identity_seed,
-                auth_token,
-                *max_requests,
+                &args.listen,
+                &args.p2p_listen,
+                &args.data_dir,
+                args.identity_seed,
+                &args.auth_token,
+                args.max_requests,
             )
         }
-        CliCommand::ServiceStatus { data_dir } => {
+        CliCommand::Service {
+            command: ServiceCommand::Status(args),
+        } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            service_status(data_dir)
+            service_status(&args.data_dir)
         }
-        CliCommand::ServiceBlock { data_dir, height } => {
+        CliCommand::Service {
+            command: ServiceCommand::Block(args),
+        } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            service_block_status(data_dir, *height)
+            service_block_status(&args.data_dir, args.height)
         }
-        CliCommand::LocalTestnetSeed { data_dir } => {
+        CliCommand::LocalTestnet {
+            command: LocalTestnetCommand::Seed(args),
+        } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            seed_local_testnet(data_dir)
+            seed_local_testnet(&args.data_dir)
         }
-        CliCommand::LocalCpuVerify { data_dir, json } => {
+        CliCommand::LocalCpu {
+            command: LocalCpuCommand::Verify(args),
+        } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
-            verify_local_cpu_store(data_dir, *json)
+            verify_local_cpu_store(&args.data_dir, args.json)
         }
         _ => execute_reference_cli_command(command).map_err(|error| error.to_string()),
     }

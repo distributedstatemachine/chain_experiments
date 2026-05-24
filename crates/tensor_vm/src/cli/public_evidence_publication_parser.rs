@@ -1,56 +1,31 @@
-use super::CliCommand;
 use super::parser_values::parse_hash_value;
 use crate::types::{Address, Hash};
 use clap::Args;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct PublicationArgs {
+pub struct PublicationArgs {
     #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
+    pub bundle_id: Hash,
     #[arg(long)]
-    public_uri: String,
+    pub public_uri: String,
     #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
+    pub manifest_signer: Address,
     #[arg(long)]
-    manifest_signature_count: u64,
+    pub manifest_signature_count: u64,
     #[arg(long)]
-    independent_auditor_count: u64,
-}
-
-impl PublicationArgs {
-    pub(super) fn into_command(self) -> CliCommand {
-        CliCommand::PublicEvidencePublication {
-            bundle_id: self.bundle_id,
-            public_uri: self.public_uri,
-            manifest_signer: self.manifest_signer,
-            manifest_signature_count: self.manifest_signature_count,
-            independent_auditor_count: self.independent_auditor_count,
-        }
-    }
+    pub independent_auditor_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct AuditorRecordArgs {
+pub struct AuditorRecordArgs {
     #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
+    pub bundle_id: Hash,
     #[arg(long)]
-    public_uri: String,
+    pub public_uri: String,
     #[arg(long, value_parser = parse_hash_value)]
-    auditor_id: Hash,
+    pub auditor_id: Hash,
     #[arg(long)]
-    audit_uri: String,
+    pub audit_uri: String,
     #[arg(long)]
-    observed_at: u64,
-}
-
-impl AuditorRecordArgs {
-    pub(super) fn into_command(self) -> CliCommand {
-        CliCommand::PublicEvidenceAuditorRecord {
-            bundle_id: self.bundle_id,
-            public_uri: self.public_uri,
-            auditor_id: self.auditor_id,
-            audit_uri: self.audit_uri,
-            observed_at_unix_seconds: self.observed_at,
-        }
-    }
+    pub observed_at: u64,
 }

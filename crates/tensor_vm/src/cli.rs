@@ -50,9 +50,15 @@ use arguments::{
     parse_hash_argument, parse_public_evidence_record_kind, parse_public_node_role,
     parse_public_service_kind, public_evidence_record_kind_tag, public_service_kind_tag,
 };
-pub use commands::CliCommand;
+pub use commands::{CliCommand, ManifestArgs as PublicTestnetManifestArgs, PublicTestnetCommand};
 pub use descriptions::describe_command;
 pub use execution::execute_reference_cli_command;
+pub use local_parser::{
+    DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand, MinerCommand,
+    MinerRunArgs, MinerStartArgs, ProposerCommand, ServiceBlockArgs, ServiceCommand,
+    ServicePeerAddArgs, ServicePeerCommand, ServiceReadinessArgs, ServiceServeArgs, StakeArgs,
+    ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+};
 #[cfg(test)]
 use network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,
@@ -65,6 +71,28 @@ use network_observation::{public_dns_host, public_dns_host_is_well_formed};
 #[cfg(test)]
 use node_evidence::node_heartbeat_observation_summary_from_file;
 pub use parser::Cli;
+pub use parser_values::{
+    HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
+};
+pub use public_evidence_network_parser::{
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+};
+pub use public_evidence_node_parser::{
+    NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
+};
+pub use public_evidence_parser::{
+    ManifestArgs as PublicEvidenceManifestArgs, PublicEvidenceCommand,
+};
+pub use public_evidence_publication_parser::{AuditorRecordArgs, PublicationArgs};
+pub use public_evidence_record_parser::{
+    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
+};
+pub use public_evidence_run_window_parser::{RunWindowArgs, RunWindowFromFileArgs};
+pub use public_evidence_service_parser::{
+    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs,
+};
 #[cfg(test)]
 use record_evidence::{
     public_evidence_record_root_from_line, public_evidence_record_roots_from_file,
