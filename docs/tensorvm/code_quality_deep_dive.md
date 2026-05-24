@@ -1103,6 +1103,9 @@ spaghetti around.
 - Iteration 451 split direct public record line and record-file rejection coverage into
   `cli/tests/public_evidence_record_line_rejections.rs`, leaving the remaining record report suite
   focused on successful supporting-record file summaries and artifacts.
+- Iteration 452 split direct public record execution argument rejection coverage into
+  `cli/tests/public_evidence_record_execution_rejections.rs`, leaving the original record rejection
+  suite focused on Clap parse-time invalid argument shapes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
