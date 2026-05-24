@@ -48,10 +48,19 @@ unique_count() {
   sort -u "$1" | wc -l | tr -d ' '
 }
 
-read_seed_report() {
+read_service_file() {
   service="$1"
-  output=$(compose exec -T "$service" sed -n 'p' /var/lib/tensorvm/local-testnet-seed.out) || return 1
+  path="$2"
+  output=$(compose exec -T "$service" sed -n 'p' "$path") || return 1
   printf '%s\n' "$output" | tr -d '\r'
+}
+
+read_ready_report() {
+  read_service_file "$1" /var/lib/tensorvm/local-cpu-ready
+}
+
+read_seed_report() {
+  read_service_file "$1" /var/lib/tensorvm/local-testnet-seed.out
 }
 
 status_value() {
@@ -256,46 +265,49 @@ trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 ZERO_HASH="0000000000000000000000000000000000000000000000000000000000000000"
 
 for service in $EXPECTED_SERVICES; do
-  compose exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready \
+  READY_REPORT=$(read_ready_report "$service") \
     || fail "$service has not written /var/lib/tensorvm/local-cpu-ready"
-  compose exec -T "$service" grep -q "operator_name=$service" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value operator_name "$READY_REPORT")" = "$service" ] \
     || fail "$service readiness file does not name its operator"
-  compose exec -T "$service" grep -q "p2p_runtime=libp2p" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value p2p_runtime "$READY_REPORT")" = "libp2p" ] \
     || fail "$service is missing libp2p runtime readiness"
-  compose exec -T "$service" grep -q "node_store_ready=true" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value node_store_ready "$READY_REPORT")" = "true" ] \
     || fail "$service is missing node store readiness"
-  compose exec -T "$service" grep -q "libp2p_ready=true" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value libp2p_ready "$READY_REPORT")" = "true" ] \
     || fail "$service is missing libp2p readiness"
-  compose exec -T "$service" grep -q "p2p_identity_seeded=true" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value p2p_identity_seeded "$READY_REPORT")" = "true" ] \
     || fail "$service is missing stable libp2p identity readiness"
   operator_id=$(compose exec -T "$service" printenv TENSORVM_OPERATOR_ID)
-  compose exec -T "$service" grep -q "p2p_identity_seed=$operator_id" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value p2p_identity_seed "$READY_REPORT")" = "$operator_id" ] \
     || fail "$service libp2p identity seed does not match its operator ID"
-  compose exec -T "$service" grep -q "^local_cpu_role_producer=" /var/lib/tensorvm/local-cpu-ready \
+  READY_LOCAL_CPU_ROLE_PRODUCER=$(status_value local_cpu_role_producer "$READY_REPORT")
+  [ -n "$READY_LOCAL_CPU_ROLE_PRODUCER" ] \
     || fail "$service readiness file does not report local CPU producer mode"
-  compose exec -T "$service" grep -q "^chain_profile=local_cpu" /var/lib/tensorvm/local-cpu-ready \
+  [ "$(status_value chain_profile "$READY_REPORT")" = "local_cpu" ] \
     || fail "$service readiness file does not report the local CPU chain profile"
-  compose exec -T "$service" grep "^p2p_peer_id=" /var/lib/tensorvm/local-cpu-ready >> "$TMP_DIR/p2p_peer_ids"
-  compose exec -T "$service" printenv TENSORVM_OPERATOR_ID >> "$TMP_DIR/operator_ids"
+  READY_P2P_PEER_ID=$(status_value p2p_peer_id "$READY_REPORT")
+  [ -n "$READY_P2P_PEER_ID" ] || fail "$service readiness file does not report a libp2p peer ID"
+  READY_ROLE=$(status_value role "$READY_REPORT")
+  READY_RUNTIME_COMMAND=$(status_value runtime_command "$READY_REPORT")
+  case "$service" in
+    miner-*)
+      [ "$READY_ROLE" = "miner" ] || fail "$service is not marked as a miner"
+      [ "$READY_RUNTIME_COMMAND" = "miner_run" ] || fail "$service is not running the miner role command"
+      [ "$(status_value device "$READY_REPORT")" = "cpu" ] || fail "$service is not using the CPU backend"
+      ;;
+    validator-*)
+      [ "$READY_ROLE" = "validator" ] || fail "$service is not marked as a validator"
+      [ "$READY_RUNTIME_COMMAND" = "validator_run" ] || fail "$service is not running the validator role command"
+      [ "$(status_value reference_verifier_ready "$READY_REPORT")" = "true" ] \
+        || fail "$service validator readiness is missing"
+      ;;
+    *)
+      fail "unexpected local CPU service role: $service"
+      ;;
+  esac
+  printf '%s\n' "$READY_P2P_PEER_ID" >> "$TMP_DIR/p2p_peer_ids"
+  printf '%s\n' "$operator_id" >> "$TMP_DIR/operator_ids"
   compose exec -T "$service" printenv TENSORVM_NODE_MULTIADDR >> "$TMP_DIR/node_multiaddrs"
-done
-
-for service in $MINERS; do
-  compose exec -T "$service" grep -q "role=miner" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not marked as a miner"
-  compose exec -T "$service" grep -q "runtime_command=miner_run" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not running the miner role command"
-  compose exec -T "$service" grep -q "device=cpu" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not using the CPU backend"
-done
-
-for service in $VALIDATORS; do
-  compose exec -T "$service" grep -q "role=validator" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not marked as a validator"
-  compose exec -T "$service" grep -q "runtime_command=validator_run" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service is not running the validator role command"
-  compose exec -T "$service" grep -q "reference_verifier_ready=true" /var/lib/tensorvm/local-cpu-ready \
-    || fail "$service validator readiness is missing"
 done
 
 [ "$(unique_count "$TMP_DIR/operator_ids")" = "15" ] || fail "operator IDs are not distinct"
