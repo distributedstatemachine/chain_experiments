@@ -111,6 +111,7 @@ fn rpc_http_parser_rejects_bad_headers_and_waits_for_complete_bodies() {
     let uppercase_hash = hex(&hash_bytes(b"test", &[b"rpc-uppercase"])).to_uppercase();
     assert!(parse_hash(&uppercase_hash).is_ok());
     assert!(parse_hash(&"g".repeat(64)).is_err());
+    assert!(parse_hash(&format!("0x{uppercase_hash}")).is_err());
 
     assert!(matches!(
         try_parse_http_request(b"GET /chain/head HTTP/1.1\r\n\r\n", 16),

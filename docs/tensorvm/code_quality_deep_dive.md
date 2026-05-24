@@ -817,6 +817,8 @@ spaghetti around.
   parsing local while eliminating the last separate hex digit lookup table.
 - Iteration 325 routed transaction-envelope hash token decoding through the shared fixed-hash parser while
   preserving the txpool wire format's exact 64-character token requirement.
+- Iteration 326 routed RPC path hash decoding through the shared fixed-hash parser, preserving the route
+  parser's exact 64-character segment requirement while removing its local hex loop.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
