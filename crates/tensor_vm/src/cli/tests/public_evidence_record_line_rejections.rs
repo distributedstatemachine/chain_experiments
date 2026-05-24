@@ -1,0 +1,117 @@
+use super::*;
+
+#[test]
+fn direct_public_record_line_rejections_report_invalid_receipts() {
+    let malformed_supporting_record_cases = [
+        (
+            PublicEvidenceRecordKind::BlockHistory,
+            "block_history_record=0",
+        ),
+        (
+            PublicEvidenceRecordKind::BlockHistory,
+            "block_history_record=0,not-a-root",
+        ),
+        (
+            PublicEvidenceRecordKind::FinalityHistory,
+            "finality_history_record=0,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,pending",
+        ),
+        (
+            PublicEvidenceRecordKind::DataAvailabilityMeasurements,
+            "data_availability_measurement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,missing,0",
+        ),
+        (
+            PublicEvidenceRecordKind::InvalidWorkRejections,
+            "invalid_work_rejection=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,accepted,0",
+        ),
+        (
+            PublicEvidenceRecordKind::RewardSettlements,
+            "reward_settlement=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,miner,,0",
+        ),
+        (
+            PublicEvidenceRecordKind::RewardSettlements,
+            concat!(
+                "reward_settlement=",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,",
+                "miner,",
+                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,0"
+            ),
+        ),
+        (
+            PublicEvidenceRecordKind::RewardSettlements,
+            concat!(
+                "reward_settlement=",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,",
+                "validator,0"
+            ),
+        ),
+    ];
+    for (kind, raw_line) in malformed_supporting_record_cases {
+        assert!(matches!(
+            public_evidence_record_root_from_line(kind, raw_line),
+            Err(TvmError::InvalidReceipt(_))
+        ));
+    }
+    assert!(matches!(
+        validate_supporting_record_payload(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ),
+        Err(TvmError::InvalidReceipt(_))
+    ));
+    assert_eq!(
+        public_evidence_record_root_from_line(
+            PublicEvidenceRecordKind::FinalityHistory,
+            "network_runtime_observation=bad",
+        )
+        .unwrap_err()
+        .to_string(),
+        "invalid receipt: unsupported public evidence record line"
+    );
+    assert_eq!(
+        public_evidence_record_root_from_line(
+            PublicEvidenceRecordKind::BlockHistory,
+            &format!(
+                "record_root= {}",
+                hex(&hash_bytes(b"test", &[b"bad-whitespace"]))
+            ),
+        )
+        .unwrap_err()
+        .to_string(),
+        "invalid receipt: invalid record root file line"
+    );
+    assert_eq!(
+        public_evidence_record_root_from_line(
+            PublicEvidenceRecordKind::NetworkRuntimeObservations,
+            "network_runtime_observation=bad",
+        )
+        .unwrap_err()
+        .to_string(),
+        "invalid receipt: invalid network observation record line"
+    );
+    assert_eq!(
+        public_evidence_record_root_from_line(
+            PublicEvidenceRecordKind::BlockHistory,
+            "block_history_record= ",
+        )
+        .unwrap_err()
+        .to_string(),
+        "invalid receipt: invalid public evidence supporting record line"
+    );
+    let whitespace_record_file = std::env::temp_dir().join(format!(
+        "tensor-vm-whitespace-record-{}.records",
+        std::process::id()
+    ));
+    std::fs::write(&whitespace_record_file, " block_history_record=0\n").unwrap();
+    let whitespace_record_path = whitespace_record_file.to_string_lossy().into_owned();
+    assert_eq!(
+        public_evidence_record_roots_from_file(
+            PublicEvidenceRecordKind::BlockHistory,
+            &whitespace_record_path,
+        )
+        .unwrap_err()
+        .to_string(),
+        "invalid receipt: public evidence record line has leading or trailing whitespace"
+    );
+    std::fs::remove_file(&whitespace_record_file).unwrap();
+}

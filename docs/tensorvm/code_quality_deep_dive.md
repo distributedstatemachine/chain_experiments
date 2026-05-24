@@ -1100,6 +1100,9 @@ spaghetti around.
 - Iteration 450 split network-runtime record-file summary/artifact report coverage into
   `cli/tests/public_evidence_record_file_reports.rs`, leaving the remaining record report suite focused
   on supporting-record file behavior and direct line-rejection edges.
+- Iteration 451 split direct public record line and record-file rejection coverage into
+  `cli/tests/public_evidence_record_line_rejections.rs`, leaving the remaining record report suite
+  focused on successful supporting-record file summaries and artifacts.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
