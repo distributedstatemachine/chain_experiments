@@ -22,7 +22,7 @@ fn default_p2p_listen_addr() -> Multiaddr {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum RoleCommand {
     #[command(about = "Register, check, run, or inspect a miner role.")]
     #[command(subcommand)]
@@ -36,7 +36,7 @@ pub enum RoleCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum MinerCommand {
     #[command(about = "Check miner registration stake requirements.")]
     Register(StakeArgs),
@@ -49,7 +49,7 @@ pub enum MinerCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum ValidatorCommand {
     #[command(about = "Check validator registration stake requirements.")]
     Register(StakeArgs),
@@ -62,14 +62,14 @@ pub enum ValidatorCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum ProposerCommand {
     #[command(about = "Run a proposer service.")]
     Run(ValidatorRunArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum NodeCommand {
     #[command(about = "Initialize the service node store.")]
     Init(DataDirArgs),
@@ -87,14 +87,14 @@ pub enum NodeCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum NodePeerCommand {
     #[command(about = "Add a libp2p bootstrap peer to the node store.")]
     Add(NodePeerAddArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum LocalnetCommand {
     #[command(about = "Seed local CPU testnet data.")]
     Seed(DataDirArgs),

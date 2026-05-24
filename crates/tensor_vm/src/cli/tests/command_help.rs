@@ -56,6 +56,52 @@ fn clap_help_exposes_the_tvmd_command_tree() {
 }
 
 #[test]
+fn clap_incomplete_command_groups_show_group_help() {
+    for (args, commands) in [
+        (&["role"][..], &["miner", "validator", "proposer"][..]),
+        (
+            &["role", "miner"][..],
+            &["register", "check", "run", "status"][..],
+        ),
+        (
+            &["node"][..],
+            &["init", "peer", "check", "serve", "status", "block"][..],
+        ),
+        (&["node", "peer"][..], &["add"][..]),
+        (&["localnet"][..], &["seed", "verify"][..]),
+        (&["public"][..], &["preflight", "evidence"][..]),
+        (
+            &["public", "evidence"][..],
+            &[
+                "validate", "publish", "audit", "run", "node", "service", "network", "record",
+            ][..],
+        ),
+        (
+            &["public", "evidence", "service"][..],
+            &[
+                "health",
+                "health-file",
+                "content",
+                "content-bytes",
+                "content-file",
+            ][..],
+        ),
+    ] {
+        let help = clap_help(args);
+        assert!(
+            help.contains("Usage: tvmd"),
+            "incomplete command group {args:?} should show help"
+        );
+        for command in commands {
+            assert!(
+                help.contains(command),
+                "incomplete command group {args:?} should list {command}"
+            );
+        }
+    }
+}
+
+#[test]
 fn clap_rejects_retired_top_level_command_families() {
     for command in [
         "miner",

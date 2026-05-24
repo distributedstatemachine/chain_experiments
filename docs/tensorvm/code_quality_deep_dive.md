@@ -840,6 +840,9 @@ spaghetti around.
   reports onto it, starting to consolidate status rendering without changing the larger service-status shape.
 - Iteration 336 moved local CPU verify key-value output, including the CLI fixture path, onto the shared
   report writer so typed verify structs no longer hand-format their text status form.
+- Iteration 337 tightened the Clap command tree so incomplete nested command groups show their scoped help
+  directly, keeping the ergonomic `tvmd node ...`, `tvmd role ...`, `tvmd localnet ...`, and
+  `tvmd public ...` surfaces without reintroducing legacy aliases.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

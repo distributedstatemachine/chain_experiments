@@ -5,7 +5,7 @@ use libp2p::{Multiaddr, PeerId};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum PublicCommand {
     #[command(about = "Validate a public-testnet preflight manifest.")]
     Preflight(PublicTestnetManifestArgs),
@@ -15,7 +15,7 @@ pub enum PublicCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceCommand {
     #[command(about = "Validate a public-testnet evidence manifest.")]
     Validate(PublicEvidenceManifestArgs),
@@ -41,7 +41,7 @@ pub enum EvidenceCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceServiceCommand {
     #[command(about = "Generate service health evidence.")]
     Health(ServiceHealthArgs),
@@ -56,7 +56,7 @@ pub enum EvidenceServiceCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceRecordCommand {
     #[command(about = "Generate a supporting-record summary.")]
     Summary(RecordSummaryArgs),
@@ -73,7 +73,7 @@ pub enum EvidenceRecordCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceNetworkCommand {
     #[command(about = "Generate public libp2p network runtime evidence.")]
     Observation(NetworkObservationArgs),
@@ -82,7 +82,7 @@ pub enum EvidenceNetworkCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceRunCommand {
     #[command(about = "Generate signed run-window evidence.")]
     Window(RunWindowArgs),
@@ -91,7 +91,7 @@ pub enum EvidenceRunCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
-#[command(rename_all = "kebab-case")]
+#[command(rename_all = "kebab-case", arg_required_else_help = true)]
 pub enum EvidenceNodeCommand {
     #[command(about = "Generate public node heartbeat evidence.")]
     Heartbeat(NodeHeartbeatArgs),
