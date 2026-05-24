@@ -680,6 +680,8 @@ spaghetti around.
   so command execution receives validated bytes and retired top-level command families stay rejected.
 - Iteration 263 converted public node heartbeat evidence tests from prefix/suffix checks to parsed
   comma-record field assertions, matching the service evidence coverage style.
+- Iteration 264 reused parsed integration-test stdout fields for the local testnet seed report, replacing
+  broad substring checks with keyed numeric and boolean assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

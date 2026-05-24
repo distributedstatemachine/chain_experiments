@@ -165,6 +165,12 @@ fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
         .expect("expected service stdout field")
 }
 
+fn stdout_u64(stdout: &str, key: &str) -> u64 {
+    stdout_value(stdout, key)
+        .parse()
+        .expect("expected numeric service stdout field")
+}
+
 fn trimmed_tvmd(args: &[&str]) -> String {
     run_tvmd(args).trim_end().to_owned()
 }
@@ -286,21 +292,21 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
     let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
-    assert!(seed.contains("command=local_testnet_seed"));
-    assert!(seed.contains("miners=10"));
-    assert!(seed.contains("validators=5"));
-    assert!(seed.contains("height=2"));
-    assert!(seed.contains("blocks=2"));
-    assert!(seed.contains("matmul_settled=true"));
-    assert!(seed.contains("linear_training_settled=true"));
-    assert!(seed.contains("rewarded_miners="));
-    assert!(seed.contains("total_reward_balance="));
-    assert!(seed.contains("attestation_count="));
-    assert!(seed.contains("data_availability_bps=10000"));
-    assert!(seed.contains("node_store_ready=true"));
-    assert!(seed.contains("persisted_block_count=2"));
-    assert!(seed.contains("public_evidence_full_spec=false"));
-    assert!(seed.contains("independently_checkable=false"));
+    assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
+    assert_eq!(stdout_u64(&seed, "miners"), 10);
+    assert_eq!(stdout_u64(&seed, "validators"), 5);
+    assert_eq!(stdout_u64(&seed, "height"), 2);
+    assert_eq!(stdout_u64(&seed, "blocks"), 2);
+    assert_eq!(stdout_value(&seed, "matmul_settled"), "true");
+    assert_eq!(stdout_value(&seed, "linear_training_settled"), "true");
+    assert!(stdout_u64(&seed, "rewarded_miners") > 0);
+    assert!(stdout_u64(&seed, "total_reward_balance") > 0);
+    assert!(stdout_u64(&seed, "attestation_count") > 0);
+    assert_eq!(stdout_u64(&seed, "data_availability_bps"), 10_000);
+    assert_eq!(stdout_value(&seed, "node_store_ready"), "true");
+    assert_eq!(stdout_u64(&seed, "persisted_block_count"), 2);
+    assert_eq!(stdout_value(&seed, "public_evidence_full_spec"), "false");
+    assert_eq!(stdout_value(&seed, "independently_checkable"), "false");
 
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
