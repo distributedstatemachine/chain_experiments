@@ -2,7 +2,7 @@ use super::super::arguments::exact_comma_fields;
 use super::*;
 
 #[test]
-fn execute_evidence_fixture_reports_public_evidence_outputs() {
+fn execute_public_evidence_reports_outputs() {
     let publication = execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
         bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
         public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),

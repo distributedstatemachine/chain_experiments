@@ -970,6 +970,8 @@ spaghetti around.
   variants.
 - Iteration 397 moved public network observation rejection tests from `EvidenceFixture` to direct
   `EvidenceCommand` execution and removed the now-dead network fixture variant.
+- Iteration 398 moved public record and service rejection tests from `EvidenceFixture` to
+  direct `EvidenceCommand` execution and removed the obsolete fixture enum entirely.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

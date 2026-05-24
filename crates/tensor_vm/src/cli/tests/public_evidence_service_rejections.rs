@@ -1,137 +1,52 @@
 use super::*;
 
 #[test]
-fn execute_evidence_fixture_rejects_invalid_public_service_evidence_args() {
+fn execute_public_service_evidence_rejects_invalid_args() {
+    for public_url in [
+        "http://127.0.0.1/health",
+        "https://rpc.example.test/health",
+        "https://rpc.tensorvm.net/",
+        "https://rpc.tensorvm.net/health?probe=1",
+        "https://rpc.tensorvm.net/health#probe",
+        "https://rpc.tensorvm.net/wrong",
+    ] {
+        assert!(
+            execute_service_health(ServiceHealthArgs {
+                public_url: public_url.to_owned(),
+                ..valid_service_health_args()
+            })
+            .is_err()
+        );
+    }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "http://127.0.0.1/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.example.test/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        execute_service_health(ServiceHealthArgs {
             health_path: "health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
+            ..valid_service_health_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
+        execute_service_health(ServiceHealthArgs {
+            first_block: 10,
+            ..valid_service_health_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health?probe=1".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
+        execute_service_health(ServiceHealthArgs {
+            endpoint_id: hash_arg([0; 32]),
+            ..valid_service_health_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health#probe".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
+        execute_service_health(ServiceHealthArgs {
+            reachable_count: 0,
+            ..valid_service_health_args()
         })
         .is_err()
     );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 10,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: [0; 32],
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 0,
-            signed_health_check_count: 10,
-        })
-        .is_err()
-    );
+
     let partial_health = service_health_observation_summary_from_file(
         "service_health_observation=0,reachable\nservice_health_observation=1,unreachable\n",
     )
@@ -153,141 +68,65 @@ fn execute_evidence_fixture_rejects_invalid_public_service_evidence_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealthFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
-            health_path: "/health".to_owned(),
-            observation_file: std::env::temp_dir()
-                .join(format!(
-                    "missing-tensor-vm-service-health-{}.records",
-                    std::process::id()
-                ))
-                .to_string_lossy()
-                .into_owned(),
+        execute_service_health_file(ServiceHealthFromFileArgs {
+            observation_file: missing_temp_file("service-health", "records"),
+            ..valid_service_health_file_args()
         })
         .is_err()
     );
+
+    for public_url in [
+        "https://localhost/chain/head",
+        "https://rpc.tensorvm.net/",
+        "https://rpc.tensorvm.net/chain/head?height=1",
+        "https://rpc.tensorvm.net/chain/head#latest",
+        "https://rpc.tensorvm.net/wrong",
+    ] {
+        assert!(
+            execute_service_content(ServiceContentArgs {
+                public_url: public_url.to_owned(),
+                ..valid_service_content_args()
+            })
+            .is_err()
+        );
+    }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://localhost/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+        execute_service_content(ServiceContentArgs {
             content_path: "chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
+            ..valid_service_content_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head?height=1".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head#latest".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
-        })
-        .is_err()
-    );
-    assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+        execute_service_content(ServiceContentArgs {
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
             content_path: "/wrong".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
+            ..valid_service_content_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: [0; 32],
-            observed_at_unix_seconds: 1_700_000_000,
-            min_content_bytes: 64,
+        execute_service_content(ServiceContentArgs {
+            content_root: hash_arg([0; 32]),
+            ..valid_service_content_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 0,
-            min_content_bytes: 64,
+        execute_service_content(ServiceContentArgs {
+            observed_at: 0,
+            ..valid_service_content_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-            observed_at_unix_seconds: 1_700_000_000,
+        execute_service_content(ServiceContentArgs {
             min_content_bytes: 63,
+            ..valid_service_content_args()
         })
         .is_err()
     );
+
     let endpoint_id = hex(&hash_bytes(b"test", &[b"rpc-service"]));
     for content_hex in ["zz", "abc"] {
         assert!(
@@ -313,28 +152,107 @@ fn execute_evidence_fixture_rejects_invalid_public_service_evidence_args() {
         );
     }
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromBytes {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_bytes: vec![1_u8; 63],
+        execute_service_content_bytes(ServiceContentFromBytesArgs {
+            content: HexBytesArg::new(vec![1_u8; 63]),
+            ..valid_service_content_bytes_args()
         })
         .is_err()
     );
     assert!(
-        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_file: std::env::temp_dir()
-                .join("tensor-vm-missing-service-content-file.body")
-                .to_string_lossy()
-                .into_owned(),
+        execute_service_content_file(ServiceContentFromFileArgs {
+            content_file: missing_temp_file("service-content", "body"),
+            ..valid_service_content_file_args()
         })
         .is_err()
     );
+}
+
+fn valid_service_health_args() -> ServiceHealthArgs {
+    ServiceHealthArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        health_path: "/health".to_owned(),
+        first_block: 0,
+        last_block: 9,
+        reachable_count: 10,
+        signed_health_check_count: 10,
+    }
+}
+
+fn valid_service_health_file_args() -> ServiceHealthFromFileArgs {
+    ServiceHealthFromFileArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        health_path: "/health".to_owned(),
+        observation_file: missing_temp_file("unused-service-health", "records"),
+    }
+}
+
+fn valid_service_content_args() -> ServiceContentArgs {
+    ServiceContentArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+        content_path: "/chain/head".to_owned(),
+        content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service", b"content-root"])),
+        observed_at: 1_700_000_000,
+        min_content_bytes: 64,
+    }
+}
+
+fn valid_service_content_bytes_args() -> ServiceContentFromBytesArgs {
+    ServiceContentFromBytesArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+        content_path: "/chain/head".to_owned(),
+        observed_at: 1_700_000_000,
+        content: HexBytesArg::new(vec![1_u8; 64]),
+    }
+}
+
+fn valid_service_content_file_args() -> ServiceContentFromFileArgs {
+    ServiceContentFromFileArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
+        content_path: "/chain/head".to_owned(),
+        observed_at: 1_700_000_000,
+        content_file: missing_temp_file("unused-service-content", "body"),
+    }
+}
+
+fn execute_service_health(args: ServiceHealthArgs) -> crate::error::Result<String> {
+    execute_service_command(EvidenceServiceCommand::Health(args))
+}
+
+fn execute_service_health_file(args: ServiceHealthFromFileArgs) -> crate::error::Result<String> {
+    execute_service_command(EvidenceServiceCommand::HealthFile(args))
+}
+
+fn execute_service_content(args: ServiceContentArgs) -> crate::error::Result<String> {
+    execute_service_command(EvidenceServiceCommand::Content(args))
+}
+
+fn execute_service_content_bytes(
+    args: ServiceContentFromBytesArgs,
+) -> crate::error::Result<String> {
+    execute_service_command(EvidenceServiceCommand::ContentBytes(args))
+}
+
+fn execute_service_content_file(args: ServiceContentFromFileArgs) -> crate::error::Result<String> {
+    execute_service_command(EvidenceServiceCommand::ContentFile(args))
+}
+
+fn execute_service_command(command: EvidenceServiceCommand) -> crate::error::Result<String> {
+    execute_public_evidence_command(&EvidenceCommand::Service(command))
+}
+
+fn missing_temp_file(stem: &str, extension: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!(
+        "missing-tensor-vm-{stem}-{}.{extension}",
+        std::process::id()
+    ))
 }
