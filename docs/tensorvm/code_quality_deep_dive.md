@@ -1109,6 +1109,8 @@ spaghetti around.
 - Iteration 453 split miner, validator, and proposer Clap parser coverage into
   `cli/tests/local_role_parser.rs`, leaving the local parser suite focused on node, localnet,
   defaulting, and local invalid-argument parsing.
+- Iteration 454 split miner Clap parser coverage into `cli/tests/local_miner_parser.rs`,
+  leaving the local role parser suite focused on validator and proposer command shapes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
