@@ -1021,6 +1021,9 @@ spaghetti around.
   the mixed public evidence command module.
 - Iteration 421 split the public run-window evidence clap command family into
   `cli/public_evidence_run_window_commands.rs`, moving run-window args beside their subcommand owner.
+- Iteration 422 split the public node/operator evidence clap command family into
+  `cli/public_evidence_node_commands.rs`, moving heartbeat, operator-attestation, and node-role
+  value types out of the mixed public evidence command module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
