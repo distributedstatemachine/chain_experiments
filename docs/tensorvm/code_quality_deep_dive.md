@@ -637,6 +637,9 @@ spaghetti around.
 - Iteration 245 moved the service runtime wrapper into the library-owned `app` module, removing the last
   production module from the `src/main/*` tree so `tvmd` now owns Clap parsing and dispatch while app APIs
   own service startup and runtime execution.
+- Iteration 246 moved the `tvmd` command-dispatch match into the library-owned `app` module as
+  `execute_tvmd_command`, leaving `main.rs` as a minimal Clap parse/execute/print entrypoint instead of the
+  owner of command-family routing and manifest-file handling.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
