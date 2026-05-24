@@ -3,8 +3,8 @@ use super::public_evidence_crypto::{
 };
 use super::public_manifest_fields::{
     exact_manifest_record_fields, exact_manifest_scalar, parse_hash_hex, parse_manifest_bool,
-    parse_manifest_u64, parse_service_kind, reject_manifest_key_whitespace, required_bool,
-    required_hash, required_string, required_u64,
+    parse_manifest_entries, parse_manifest_u64, parse_service_kind, required_bool, required_hash,
+    required_string, required_u64,
 };
 use super::{
     PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PublicEvidenceAuditorRecord,
@@ -15,29 +15,16 @@ use super::{
 };
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash, Signature};
-use std::collections::BTreeSet;
 
 pub fn parse_public_testnet_evidence_manifest(input: &str) -> Result<PublicTestnetEvidenceBundle> {
     let mut builder = PublicEvidenceManifestBuilder::default();
-    let mut scalar_fields = BTreeSet::new();
-    for raw_line in input.lines() {
-        let line = raw_line.trim_start();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (key, value) = raw_line
-            .split_once('=')
-            .ok_or(TvmError::InvalidReceipt("malformed evidence manifest line"))?;
-        reject_manifest_key_whitespace(key)?;
-        let key = key.trim();
-        if !public_evidence_manifest_field_allows_repeated(key)
-            && !scalar_fields.insert(key.to_owned())
-        {
-            return Err(TvmError::InvalidReceipt(
-                "duplicate evidence manifest field",
-            ));
-        }
-        builder.set(key, value)?;
+    for entry in parse_manifest_entries(
+        input,
+        public_evidence_manifest_field_allows_repeated,
+        "malformed evidence manifest line",
+        "duplicate evidence manifest field",
+    )? {
+        builder.set(entry.key, entry.value)?;
     }
     builder.finish()
 }

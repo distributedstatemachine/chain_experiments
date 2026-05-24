@@ -1,6 +1,38 @@
 use super::PublicServiceKind;
 use crate::error::{Result, TvmError};
 use crate::types::Hash;
+use std::collections::BTreeSet;
+
+pub(super) struct ManifestEntry<'a> {
+    pub(super) key: &'a str,
+    pub(super) value: &'a str,
+}
+
+pub(super) fn parse_manifest_entries<'a>(
+    input: &'a str,
+    allows_repeated: impl Fn(&str) -> bool,
+    malformed_line_error: &'static str,
+    duplicate_field_error: &'static str,
+) -> Result<Vec<ManifestEntry<'a>>> {
+    let mut scalar_fields = BTreeSet::new();
+    let mut entries = Vec::new();
+    for raw_line in input.lines() {
+        let line = raw_line.trim_start();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (key, value) = raw_line
+            .split_once('=')
+            .ok_or(TvmError::InvalidReceipt(malformed_line_error))?;
+        reject_manifest_key_whitespace(key)?;
+        let key = key.trim();
+        if !allows_repeated(key) && !scalar_fields.insert(key.to_owned()) {
+            return Err(TvmError::InvalidReceipt(duplicate_field_error));
+        }
+        entries.push(ManifestEntry { key, value });
+    }
+    Ok(entries)
+}
 
 pub(super) fn reject_manifest_key_whitespace(key: &str) -> Result<()> {
     if key.trim() != key {

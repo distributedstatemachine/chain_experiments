@@ -1,6 +1,6 @@
 use super::public_manifest_fields::{
     exact_manifest_record_fields, exact_manifest_scalar, parse_hash_hex, parse_manifest_bool,
-    parse_manifest_u64, parse_manifest_usize, parse_service_kind, reject_manifest_key_whitespace,
+    parse_manifest_entries, parse_manifest_u64, parse_manifest_usize, parse_service_kind,
     required_bool, required_u64, required_usize,
 };
 use super::{
@@ -8,27 +8,16 @@ use super::{
     PublicNetworkRuntimeEvidence, PublicTestnetCriteria, PublicTestnetPreflightPlan, TestnetConfig,
 };
 use crate::error::{Result, TvmError};
-use std::collections::BTreeSet;
 
 pub fn parse_public_testnet_preflight_manifest(input: &str) -> Result<PublicTestnetPreflightPlan> {
     let mut builder = PublicTestnetPreflightManifestBuilder::default();
-    let mut scalar_fields = BTreeSet::new();
-    for raw_line in input.lines() {
-        let line = raw_line.trim_start();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (key, value) = raw_line.split_once('=').ok_or(TvmError::InvalidReceipt(
-            "malformed preflight manifest line",
-        ))?;
-        reject_manifest_key_whitespace(key)?;
-        let key = key.trim();
-        if key != "service" && !scalar_fields.insert(key.to_owned()) {
-            return Err(TvmError::InvalidReceipt(
-                "duplicate preflight manifest field",
-            ));
-        }
-        builder.set(key, value)?;
+    for entry in parse_manifest_entries(
+        input,
+        |key| key == "service",
+        "malformed preflight manifest line",
+        "duplicate preflight manifest field",
+    )? {
+        builder.set(entry.key, entry.value)?;
     }
     builder.finish()
 }

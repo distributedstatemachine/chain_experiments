@@ -770,6 +770,9 @@ spaghetti around.
 - Iteration 306 reused the shared exact comma-field parser for public supporting-record payloads, removed
   the local split/count helper, and made empty/whitespace field rejection consistent across CLI evidence
   record parsers.
+- Iteration 307 centralized public-testnet manifest line scanning, comment skipping, key whitespace
+  rejection, and duplicate scalar-field checks so evidence and preflight manifests no longer maintain
+  parallel `key=value` parser loops.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
