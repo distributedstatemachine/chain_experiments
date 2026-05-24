@@ -436,6 +436,9 @@ spaghetti around.
 - Iteration 169 moved the public evidence manifest parse, docs-example, deployed-example, and
   malformed-input tests into `testnet/tests/evidence_manifest.rs`, leaving preflight and deployment
   template coverage as the remaining inline testnet groups.
+- Iteration 170 moved the public deployment scaffold, runbook, and README assertions into
+  `testnet/tests/deployment_docs.rs`, separating deployment artifact documentation checks from the
+  preflight manifest parser coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
