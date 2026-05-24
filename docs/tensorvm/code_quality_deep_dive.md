@@ -591,6 +591,9 @@ spaghetti around.
 - Iteration 230 moved public-evidence publication and auditor-record invalid-argument coverage into
   `cli/tests/public_evidence_publication_rejections.rs`, keeping publication-bound URI/signature/auditor
   edge cases beside that command family and shrinking the remaining mixed rejection module.
+- Iteration 231 moved public-evidence run-window invalid-argument and observation-file parser coverage into
+  `cli/tests/public_evidence_run_window_rejections.rs`, leaving node/operator, network, parser, and
+  supporting-record rejection coverage in the mixed module for subsequent splits.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
