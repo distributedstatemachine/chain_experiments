@@ -292,6 +292,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
     for content_hex in ["zz", "abc"] {
         assert!(
             parse_test_cli(&[
+                "public",
                 "evidence",
                 "service",
                 "content-bytes",

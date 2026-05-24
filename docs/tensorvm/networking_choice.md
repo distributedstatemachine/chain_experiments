@@ -15,9 +15,9 @@ That maps directly to libp2p's Gossipsub, Identify, Kademlia, bootstrap dialing,
 model. The current reference crate therefore uses rust-libp2p as a non-optional P2P runtime dependency:
 it builds a TCP/TLS/Yamux swarm, subscribes to TensorVM Gossipsub topics, installs Identify and Kademlia,
 exposes JSON request-response protocols for tensor/program fetches, and persists libp2p bootstrap peer
-records through `tvmd service peer add`. `tvmd service serve` must start that rust-libp2p control plane
+records through `tvmd node peer add`. `tvmd node serve` must start that rust-libp2p control plane
 through a required `--p2p-listen` multiaddr and load stored bootstrap peers as `/p2p/<peer-id>` dial
-multiaddrs. `tvmd service readiness` performs the same node-store, peer-book, and rust-libp2p startup
+multiaddrs. `tvmd node check` performs the same node-store, peer-book, and rust-libp2p startup
 check without serving HTTP, so public preflight counts can be based on real mandatory-libp2p startup
 instead of copied booleans. The disabled upstream `default-features` setting in `Cargo.toml` only narrows
 rust-libp2p to the explicit protocols TensorVM uses; it is not a TensorVM feature gate.

@@ -9,13 +9,14 @@ use libp2p::PeerId;
 #[test]
 fn parses_documented_miner_commands() {
     assert_eq!(
-        parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
+        parse_test_cli(&["role", "miner", "register", "--stake", "100"]).unwrap(),
         CommandFixture::MinerRegister { stake: 100 }
     );
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "miner",
-            "start",
+            "check",
             "--wallet",
             "miner.key",
             "--device",
@@ -31,11 +32,12 @@ fn parses_documented_miner_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["miner", "status"]).unwrap(),
+        parse_test_cli(&["role", "miner", "status"]).unwrap(),
         CommandFixture::MinerStatus
     );
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "miner",
             "run",
             "--wallet",
@@ -71,6 +73,7 @@ fn parses_documented_miner_commands() {
     let identity_seed = "11".repeat(32);
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "miner",
             "run",
             "--wallet",
@@ -110,13 +113,14 @@ fn parses_documented_miner_commands() {
 #[test]
 fn parses_documented_validator_commands() {
     assert_eq!(
-        parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
+        parse_test_cli(&["role", "validator", "register", "--stake", "10000"]).unwrap(),
         CommandFixture::ValidatorRegister { stake: 10_000 }
     );
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "validator",
-            "start",
+            "check",
             "--wallet",
             "validator.key",
             "--node",
@@ -129,11 +133,12 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["validator", "status"]).unwrap(),
+        parse_test_cli(&["role", "validator", "status"]).unwrap(),
         CommandFixture::ValidatorStatus
     );
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "validator",
             "run",
             "--wallet",
@@ -166,6 +171,7 @@ fn parses_documented_validator_commands() {
     let identity_seed = "22".repeat(32);
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "validator",
             "run",
             "--wallet",
@@ -198,13 +204,14 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["localnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CommandFixture::LocalTestnetSeed {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "validate",
             "docs/tensorvm/public-testnet.evidence"
@@ -216,7 +223,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "testnet",
+            "public",
             "preflight",
             "docs/tensorvm/public-testnet.preflight"
         ])
@@ -229,6 +236,7 @@ fn parses_documented_validator_commands() {
     let manifest_signer = manifest_address(b"public-evidence-publisher");
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "publish",
             "--bundle-id",
@@ -253,6 +261,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "audit",
             "--bundle-id",
@@ -277,6 +286,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "run",
             "window",
@@ -302,6 +312,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "run",
             "window-file",
@@ -321,6 +332,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "node",
             "heartbeat",
@@ -349,6 +361,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "node",
             "heartbeat-file",
@@ -371,6 +384,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "node",
             "operator-attestation",
@@ -397,6 +411,7 @@ fn parses_documented_validator_commands() {
     let endpoint_id = manifest_hash(b"rpc-service");
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "service",
             "health",
@@ -431,6 +446,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "service",
             "health-file",
@@ -457,6 +473,7 @@ fn parses_documented_validator_commands() {
     let content_root = manifest_hash(b"rpc-service-content");
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "service",
             "content",
@@ -489,6 +506,7 @@ fn parses_documented_validator_commands() {
     let content_hex = hex(&[42_u8; 64]);
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "service",
             "content-bytes",
@@ -517,6 +535,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "service",
             "content-file",
@@ -546,6 +565,7 @@ fn parses_documented_validator_commands() {
     let peer_id = PeerId::random().to_string();
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "network",
             "observation",
@@ -589,6 +609,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "network",
             "from-service-log",
@@ -612,6 +633,7 @@ fn parses_documented_validator_commands() {
     let record_root = manifest_hash(b"network-runtime-root");
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary",
@@ -637,6 +659,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "artifact",
@@ -670,6 +693,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary-roots",
@@ -695,6 +719,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "artifact-roots",
@@ -723,6 +748,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary-file",
@@ -745,6 +771,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "artifact-file",
@@ -769,7 +796,7 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["service", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["node", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CommandFixture::ServiceInit {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
@@ -777,7 +804,7 @@ fn parses_documented_validator_commands() {
     let bootstrap_peer = PeerId::random().to_string();
     assert_eq!(
         parse_test_cli(&[
-            "service",
+            "node",
             "peer",
             "add",
             "--data-dir",
@@ -796,8 +823,8 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "service",
-            "readiness",
+            "node",
+            "check",
             "--p2p-listen",
             "/ip4/0.0.0.0/tcp/4001",
             "--data-dir",
@@ -813,8 +840,8 @@ fn parses_documented_validator_commands() {
     let identity_seed = "11".repeat(32);
     assert_eq!(
         parse_test_cli(&[
-            "service",
-            "readiness",
+            "node",
+            "check",
             "--p2p-listen",
             "/ip4/0.0.0.0/tcp/4001",
             "--data-dir",
@@ -831,7 +858,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "0.0.0.0:8545",
@@ -856,7 +883,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "0.0.0.0:8545",
@@ -882,14 +909,14 @@ fn parses_documented_validator_commands() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["service", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
+        parse_test_cli(&["node", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         CommandFixture::ServiceStatus {
             data_dir: "/var/lib/tensorvm".to_owned(),
         }
     );
     assert_eq!(
         parse_test_cli(&[
-            "service",
+            "node",
             "block",
             "--data-dir",
             "/var/lib/tensorvm",
@@ -908,6 +935,7 @@ fn parses_documented_validator_commands() {
 fn parses_documented_proposer_commands() {
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "proposer",
             "run",
             "--wallet",
@@ -940,6 +968,7 @@ fn parses_documented_proposer_commands() {
     let identity_seed = "33".repeat(32);
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "proposer",
             "run",
             "--wallet",
@@ -975,11 +1004,11 @@ fn parses_documented_proposer_commands() {
 
 #[test]
 fn rejects_invalid_cli() {
-    assert!(parse_test_cli(&["miner", "register"]).is_err());
-    assert!(parse_test_cli(&["validator", "register", "--stake", "abc"]).is_err());
+    assert!(parse_test_cli(&["role", "miner", "register"]).is_err());
+    assert!(parse_test_cli(&["role", "validator", "register", "--stake", "abc"]).is_err());
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "not-a-socket",
@@ -990,6 +1019,7 @@ fn rejects_invalid_cli() {
     );
     assert!(
         parse_test_cli(&[
+            "role",
             "miner",
             "run",
             "--wallet",
@@ -1028,7 +1058,7 @@ fn rejects_retired_top_level_command_families() {
 #[test]
 fn clap_cli_defaults_runtime_arguments() {
     assert_eq!(
-        parse_test_cli(&["miner", "start", "--wallet", "miner.key"]).unwrap(),
+        parse_test_cli(&["role", "miner", "check", "--wallet", "miner.key"]).unwrap(),
         CommandFixture::MinerStart {
             wallet: "miner.key".to_owned(),
             device: "cpu".to_owned(),
@@ -1037,6 +1067,7 @@ fn clap_cli_defaults_runtime_arguments() {
     );
     assert_eq!(
         parse_test_cli(&[
+            "role",
             "miner",
             "run",
             "--wallet",
@@ -1058,7 +1089,7 @@ fn clap_cli_defaults_runtime_arguments() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["service", "serve", "--auth-token", "secret"]).unwrap(),
+        parse_test_cli(&["node", "serve", "--auth-token", "secret"]).unwrap(),
         CommandFixture::ServiceServe {
             listen: "127.0.0.1:8545".to_owned(),
             p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
@@ -1069,7 +1100,7 @@ fn clap_cli_defaults_runtime_arguments() {
         }
     );
     assert_eq!(
-        parse_test_cli(&["service", "init"]).unwrap(),
+        parse_test_cli(&["node", "init"]).unwrap(),
         CommandFixture::ServiceInit {
             data_dir: ".tensorvm".to_owned(),
         }

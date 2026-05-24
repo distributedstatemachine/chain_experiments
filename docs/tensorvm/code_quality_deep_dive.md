@@ -595,7 +595,7 @@ spaghetti around.
   `cli/tests/public_evidence_run_window_rejections.rs`, leaving node/operator, network, parser, and
   supporting-record rejection coverage in the mixed module for subsequent splits.
 - Iteration 232 replaced the Clap wrapper around the old CLI surface with an ergonomic command tree:
-  `tvmd evidence ...` now owns public evidence generation, `tvmd testnet ...` owns preflight/local checks,
+  `tvmd public ...` now owns preflight and evidence generation, `tvmd localnet ...` owns local CPU checks,
   manifest paths are positional arguments, and deployment docs/scripts/tests no longer invoke the retired
   `public-evidence`, `public-testnet`, `local-testnet`, or `local-cpu` top-level commands.
 - Iteration 233 moved service/testnet command helpers and shared local CPU identity/seed helpers out of the
@@ -779,6 +779,9 @@ spaghetti around.
 - Iteration 309 centralized RPC HTTP request-line parsing so the socket HTTP parser and in-memory
   `handle_http_text` test/dispatch path share one method/path extraction boundary instead of maintaining
   parallel whitespace scanners.
+- Iteration 310 replaced the retained top-level `tvmd` command families with a breaking Clap tree:
+  `node`, `role`, `localnet`, and `public`, updating binary dispatch, deployment scripts, docs, and
+  parser/help tests so old command names are rejected instead of carried as aliases.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -1026,7 +1029,7 @@ types that produce the state.
 
 Fix:
 
-- Move verification policy into Rust, for example `tvmd testnet verify-local-cpu --json`.
+- Move verification policy into Rust, for example `tvmd localnet verify --json`.
 - Let shell orchestrate Docker only.
 - Make the checker consume typed JSON, not scattered `key=value` strings.
 - Remove cargo test execution from deployment scripts; CI should own unit tests.

@@ -241,41 +241,41 @@ service_content=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/telem
 The CLI reads a manifest file and reports the default full-spec evidence status:
 
 ```bash
-tvmd evidence validate docs/tensorvm/public-testnet.evidence
-tvmd evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
+tvmd public evidence validate docs/tensorvm/public-testnet.evidence
+tvmd public evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
 Operators can generate the signed publication, run-window, node-heartbeat, and operator-attestation
 manifest fields:
 
 ```bash
-tvmd evidence publish \
+tvmd public evidence publish \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --manifest-signer <manifest-signer-address-hex> \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
-tvmd evidence audit \
+tvmd public evidence audit \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --auditor-id <auditor-address-hex> \
   --audit-uri https://auditor.tensorvm.net/tensorvm/audit.json \
   --observed-at <unix-seconds>
 
-tvmd evidence run window \
+tvmd public evidence run window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --started-at <unix-seconds> \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
-tvmd evidence run window-file \
+tvmd public evidence run window-file \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --block-observation-file artifacts/block-observations.records
 
-tvmd evidence node heartbeat \
+tvmd public evidence node heartbeat \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -283,13 +283,13 @@ tvmd evidence node heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
-tvmd evidence node heartbeat-file \
+tvmd public evidence node heartbeat-file \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --heartbeat-file artifacts/miner-a-heartbeats.records
 
-tvmd evidence node operator-attestation \
+tvmd public evidence node operator-attestation \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -331,7 +331,7 @@ Operators can generate signed service-health and service-content manifest lines 
 or telemetry evidence:
 
 ```bash
-tvmd evidence service health \
+tvmd public evidence service health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
@@ -341,14 +341,14 @@ tvmd evidence service health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
-tvmd evidence service health-file \
+tvmd public evidence service health-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
   --health-path /health \
   --observation-file artifacts/rpc-health.records
 
-tvmd evidence service content \
+tvmd public evidence service content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -357,7 +357,7 @@ tvmd evidence service content \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
 
-tvmd evidence service content-bytes \
+tvmd public evidence service content-bytes \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -365,7 +365,7 @@ tvmd evidence service content-bytes \
   --observed-at <unix-seconds> \
   --content-hex <captured-response-body-hex>
 
-tvmd evidence service content-file \
+tvmd public evidence service content-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -403,7 +403,7 @@ Operators can also generate signed production libp2p runtime observation records
 the required network-runtime summary root:
 
 ```bash
-tvmd evidence network observation \
+tvmd public evidence network observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
@@ -416,7 +416,7 @@ tvmd evidence network observation \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
 
-tvmd evidence network from-service-log \
+tvmd public evidence network from-service-log \
   --operator-id <operator-id-hex> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
@@ -432,7 +432,7 @@ output is a signed `network_runtime_observation=...` line. Full-spec evidence mu
 per counted public miner or validator operator and must derive the `network-runtime` summary with
 `evidence record summary-roots` over those observation roots.
 The `evidence network from-service-log` form derives the peer ID, protocol counts, bootstrap-peer count,
-and DoS-control limits from an exact captured `tvmd service serve` log, while still requiring the supplied
+and DoS-control limits from an exact captured `tvmd node serve` log, while still requiring the supplied
 listen multiaddr to be public. It rejects logs that do not show `command=service_serve` and
 `p2p_runtime=libp2p`, duplicate log fields, and missing runtime fields.
 
@@ -440,14 +440,14 @@ Operators can also generate signed supporting-record summary lines, including th
 network-observation summary required by full-spec evidence:
 
 ```bash
-tvmd evidence record summary \
+tvmd public evidence record summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd evidence record artifact \
+tvmd public evidence record artifact \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -455,27 +455,27 @@ tvmd evidence record artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd evidence record artifact-roots \
+tvmd public evidence record artifact-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
-tvmd evidence record artifact-file \
+tvmd public evidence record artifact-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-file artifacts/network-runtime.records
 
-tvmd evidence record summary-roots \
+tvmd public evidence record summary-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
 
-tvmd evidence record summary-file \
+tvmd public evidence record summary-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \

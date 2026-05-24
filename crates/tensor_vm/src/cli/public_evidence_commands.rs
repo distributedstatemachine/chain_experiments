@@ -8,6 +8,16 @@ use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
+pub enum PublicCommand {
+    #[command(about = "Validate a public-testnet preflight manifest.")]
+    Preflight(PublicTestnetManifestArgs),
+    #[command(about = "Generate or validate public-testnet evidence.")]
+    #[command(subcommand)]
+    Evidence(EvidenceCommand),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
 pub enum EvidenceCommand {
     #[command(about = "Validate a public-testnet evidence manifest.")]
     Validate(PublicEvidenceManifestArgs),

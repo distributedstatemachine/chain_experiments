@@ -1,12 +1,12 @@
-use super::commands::{ServiceCommand, ServicePeerCommand};
+use super::commands::{NodeCommand, NodePeerCommand};
 use super::local_execution_values::identity_report;
 use super::validation::{ensure_auth_token, ensure_data_dir, path_argument};
 use crate::error::Result;
 use crate::p2p::{Libp2pControlPlaneConfig, PeerRecord};
 
-pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String> {
+pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
     match command {
-        ServiceCommand::Init(args) => {
+        NodeCommand::Init(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(
@@ -14,7 +14,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 data_dir
             ))
         }
-        ServiceCommand::Peer(ServicePeerCommand::Add(args)) => {
+        NodeCommand::Peer(NodePeerCommand::Add(args)) => {
             ensure_data_dir(&args.data_dir)?;
             let peer_id = args.peer_id.to_string();
             let address = args.address.to_string();
@@ -26,7 +26,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 data_dir, args.address
             ))
         }
-        ServiceCommand::Readiness(args) => {
+        NodeCommand::Check(args) => {
             ensure_data_dir(&args.data_dir)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
             let identity = identity_report(args.identity_seed);
@@ -41,7 +41,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 data_dir
             ))
         }
-        ServiceCommand::Serve(args) => {
+        NodeCommand::Serve(args) => {
             let runtime = &args.runtime;
             ensure_data_dir(&runtime.data_dir)?;
             ensure_auth_token(&runtime.auth_token)?;
@@ -60,7 +60,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 runtime.max_requests
             ))
         }
-        ServiceCommand::Status(args) => {
+        NodeCommand::Status(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(
@@ -68,7 +68,7 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
                 data_dir
             ))
         }
-        ServiceCommand::Block(args) => {
+        NodeCommand::Block(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(

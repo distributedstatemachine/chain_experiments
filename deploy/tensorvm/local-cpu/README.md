@@ -24,8 +24,8 @@ explorer
 
 Every operator container initializes a durable node store, starts with a stable local operator ID, uses a
 distinct data volume, derives a stable libp2p identity seed from that operator ID, runs the mandatory
-libp2p readiness path, and then execs its role command: all miners run `tvmd miner run`, all validators
-run `tvmd validator run`, and `validator-00` carries the single local timed producer flag.
+libp2p readiness path, and then execs its role command: all miners run `tvmd role miner run`, all validators
+run `tvmd role validator run`, and `validator-00` carries the single local timed producer flag.
 Miner containers also run the CPU miner readiness command with `--device cpu`; validators run the validator
 readiness command. Every operator seeds the same deterministic local CPU chain and keeps producing live
 synthetic CPU jobs from that shared base, while `miner-00` exposes the host-facing gateway routes.
@@ -39,14 +39,14 @@ The check script waits for `/chain/head` and `/explorer/overview` to move past t
 snapshot, including new jobs, receipts, settled receipts, model-count advancement, validator-attestation
 growth, per-receipt validator-attestation details, named post-seed TensorOp and LinearTrainingStep
 receipts, live tensor descriptor/row/chunk/opening fetches, and reward growth from live synthetic work. It
-also runs `tvmd service status` in every operator container and
+also runs `tvmd node status` in every operator container and
 fails unless all 15 node stores advance past the seed, report role-specific status and the expected
 role-runtime command, expose live role-loop counters, the single local producer flag, non-producer
 network-applied block counters, decoded network-event ingestion counters, decoded job, receipt, and
 attestation payload application through the chain engine, real libp2p connected-peer counts, observed job,
 receipt, attestation, and block gossip counters, latest observed block heights and hashes, the bounded
 observed block-hash set, and chain counters, report the same first live finalized block hash, and return
-the same finalized common-head block hash through `tvmd service block`.
+the same finalized common-head block hash through `tvmd node block`.
 It also selects miner-00's latest finalized p2p-observed head from the block-gossip set, then fails unless
 every operator can return that finalized block hash and state root, has observed that network head through
 libp2p block gossip, and reports a nonempty block-log root.
@@ -85,6 +85,6 @@ unless the restarted service keeps its libp2p peer ID, height, block count, stat
 advance, the pre-restart finalized common head and state root are still present on every operator, and new
 finalized blocks are observed. Pass explicit service names to run a smaller smoke subset.
 
-On restart, `tvmd service init` validates the complete node store. If a previous write left the snapshot and
+On restart, `tvmd node init` validates the complete node store. If a previous write left the snapshot and
 block log out of sync, the service rewrites them from the persisted `chain.state` file before reporting
 local readiness.

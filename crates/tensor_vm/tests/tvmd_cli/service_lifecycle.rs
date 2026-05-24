@@ -5,7 +5,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let data_dir = unique_test_dir("service-cli-lifecycle");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
-    let init = run_tvmd(&["service", "init", "--data-dir", &data_dir_text]);
+    let init = run_tvmd(&["node", "init", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&init, "command"), "service_init");
     assert_eq!(stdout_value(&init, "data_dir"), data_dir_text);
     assert_eq!(stdout_value(&init, "existing_store"), "false");
@@ -15,7 +15,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
 
     let peer_id = PeerId::random().to_string();
     let peer_add = run_tvmd(&[
-        "service",
+        "node",
         "peer",
         "add",
         "--data-dir",
@@ -39,8 +39,8 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert_eq!(stdout_u64(&peer_add, "bootstrap_peers"), 1);
 
     let readiness = run_tvmd(&[
-        "service",
-        "readiness",
+        "node",
+        "check",
         "--p2p-listen",
         "/ip4/127.0.0.1/tcp/0",
         "--data-dir",
@@ -67,7 +67,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
         .args([
-            "service",
+            "node",
             "serve",
             "--listen",
             &listen,
@@ -84,7 +84,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("tvmd service serve must spawn");
+        .expect("tvmd node serve must spawn");
 
     let unauthenticated_health = unauthenticated_get_request(rpc_port, "/health");
     let unauthenticated_health =
@@ -300,6 +300,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     std::fs::write(&service_log, stdout.as_bytes()).expect("service log fixture must be written");
     let service_log_text = service_log.to_string_lossy().into_owned();
     let public_observation = run_tvmd(&[
+        "public",
         "evidence",
         "network",
         "observation",
@@ -345,6 +346,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert_eq!(public_observation_fields[11].len(), 64);
     assert_eq!(public_observation_fields[12].len(), 64);
     let public_observation_from_service_log = run_tvmd(&[
+        "public",
         "evidence",
         "network",
         "from-service-log",
@@ -362,6 +364,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     let bundle_id = "aa".repeat(32);
     let manifest_signer = "bb".repeat(32);
     let summary_from_root = run_tvmd(&[
+        "public",
         "evidence",
         "record",
         "summary-roots",
@@ -386,6 +389,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert_eq!(summary_signature.len(), 64);
     assert_ne!(summary_signature, "0".repeat(64));
     let artifact_from_root = run_tvmd(&[
+        "public",
         "evidence",
         "record",
         "artifact-roots",
@@ -411,6 +415,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     assert_eq!(artifact_fields[4].len(), 64);
     assert_ne!(artifact_fields[4], "0".repeat(64));
     let (status, public_observation_stdout, public_observation_stderr) = run_tvmd_failure(&[
+        "public",
         "evidence",
         "network",
         "observation",
@@ -444,6 +449,7 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "invalid receipt: network observation address is not public"
     );
     let (status, log_observation_stdout, log_observation_stderr) = run_tvmd_failure(&[
+        "public",
         "evidence",
         "network",
         "from-service-log",

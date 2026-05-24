@@ -2,7 +2,7 @@ use super::*;
 use tensor_vm::{
     app::{execute_tvmd_command, init_service_store},
     cli::{
-        EvidenceCommand, PublicEvidenceManifestArgs, PublicTestnetManifestArgs, TestnetCommand,
+        EvidenceCommand, PublicCommand, PublicEvidenceManifestArgs, PublicTestnetManifestArgs,
         TvmdCommand,
     },
 };
@@ -17,7 +17,7 @@ fn workspace_manifest_path(relative_path: &str) -> String {
 
 #[test]
 fn docs_public_testnet_preflight_command_reports_pending_status() {
-    let report = execute_tvmd_command(&TvmdCommand::Testnet(TestnetCommand::Preflight(
+    let report = execute_tvmd_command(&TvmdCommand::Public(PublicCommand::Preflight(
         PublicTestnetManifestArgs {
             manifest: workspace_manifest_path("docs/tensorvm/public-testnet.preflight").into(),
         },
@@ -38,10 +38,10 @@ fn docs_public_testnet_preflight_command_reports_pending_status() {
 
 #[test]
 fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
-    let report = execute_tvmd_command(&TvmdCommand::Evidence(EvidenceCommand::Validate(
-        PublicEvidenceManifestArgs {
+    let report = execute_tvmd_command(&TvmdCommand::Public(PublicCommand::Evidence(
+        EvidenceCommand::Validate(PublicEvidenceManifestArgs {
             manifest: workspace_manifest_path("docs/tensorvm/public-testnet.evidence").into(),
-        },
+        }),
     )))
     .unwrap();
 

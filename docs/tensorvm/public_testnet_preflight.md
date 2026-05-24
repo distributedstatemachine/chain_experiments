@@ -65,12 +65,12 @@ service=telemetry,<endpoint-id-hex>,https://telemetry.tensorvm.net/health,/healt
 ```
 
 `cuda_ready_miner_count` must match `miner_count` and should be derived from successful
-`tvmd miner start --device cuda:N` readiness checks on each planned public miner host, not from a copied
+`tvmd role miner check --device cuda:N` readiness checks on each planned public miner host, not from a copied
 boolean.
 `libp2p_ready_node_count` must match `miner_count + validator_count` and should be derived from successful
-`tvmd service readiness --p2p-listen <multiaddr> --data-dir <path>` checks on every planned public miner
+`tvmd node check --p2p-listen <multiaddr> --data-dir <path>` checks on every planned public miner
 and validator. The readiness command loads the initialized node store and durable peer book, starts the
-same mandatory rust-libp2p control plane used by `tvmd service serve`, reports `libp2p_ready=true`, and
+same mandatory rust-libp2p control plane used by `tvmd node serve`, reports `libp2p_ready=true`, and
 exits.
 
 Each `service=...` line records the service kind, endpoint ID, public health URL, health path, public
@@ -87,7 +87,7 @@ plan gate.
 The CLI reads a manifest file and reports launch readiness:
 
 ```bash
-tvmd testnet preflight docs/tensorvm/public-testnet.preflight
+tvmd public preflight docs/tensorvm/public-testnet.preflight
 ```
 
 [`public-testnet.preflight`](public-testnet.preflight) is checked into docs at the spec-referenced
@@ -116,10 +116,10 @@ authorities.
 The reference service process can be prepared and launched with:
 
 ```bash
-tvmd service init --data-dir /var/lib/tensorvm
-tvmd service peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
-tvmd service readiness --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm
-tvmd service serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
+tvmd node init --data-dir /var/lib/tensorvm
+tvmd node peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
+tvmd node check --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm
+tvmd node serve --listen 0.0.0.0:8545 --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm --auth-token service-token --max-requests 0
 ```
 
 The service exposes `GET /health` plus scoped `GET /rpc/health`, `GET /explorer/health`,

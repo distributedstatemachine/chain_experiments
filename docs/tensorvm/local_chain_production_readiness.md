@@ -95,10 +95,10 @@ The local bundle is useful and should remain the first operational target:
 - `check-local-testnet.sh` now fails if live jobs, receipts, settled receipts, height, and block count do
   not advance.
 - Every operator now starts from the same deterministic local CPU seed and exposes durable node-store status
-  through `tvmd service status`.
+  through `tvmd node status`.
 - The checker fails unless all 15 operator node stores advance past the seed, report role-specific status
   and live chain counters, report the same first live finalized block hash, and return the same finalized
-  common-head block hash through `tvmd service block` before and after restart checks. It also selects
+  common-head block hash through `tvmd node block` before and after restart checks. It also selects
   a non-producer's latest finalized p2p-observed head from the block-payload gossip set, then fails unless
   every operator catches up to that same finalized block hash and state root, with a nonempty block-log root reported from
   every node store.
@@ -112,21 +112,21 @@ The local bundle is useful and should remain the first operational target:
 - `check-rolling-restart-continuity.sh` runs that continuity gate one service at a time across every
   counted miner and validator by default, turning the selected restart checks into a rolling all-operator
   matrix.
-- `tvmd service init` validates the complete node store on restart and repairs torn snapshot/block-log
+- `tvmd node init` validates the complete node store on restart and repairs torn snapshot/block-log
   state from `chain.state` before readiness is allowed.
-- Compose now execs role-specific runtime commands for counted operators: all miners run `tvmd miner run`,
-  all validators run `tvmd validator run`, `validator-00` carries the single local producer flag,
-  `tvmd service status` reports `runtime_command`, and the checker fails unless all 15 operators report the
+- Compose now execs role-specific runtime commands for counted operators: all miners run `tvmd role miner run`,
+  all validators run `tvmd role validator run`, `validator-00` carries the single local producer flag,
+  `tvmd node status` reports `runtime_command`, and the checker fails unless all 15 operators report the
   role command expected for their Compose service.
 - Counted role runtimes now derive a chain address from their configured wallet label, persist
   `role_wallet_address`, `role_wallet_registration`, and `role_wallet_registered` in role runtime status,
-  and expose those fields through `tvmd service status`. Compose wallet labels now match the deterministic
+  and expose those fields through `tvmd node status`. Compose wallet labels now match the deterministic
   seeded `LocalTestnet` miner and validator addresses, and the checker fails unless every counted operator
   reports a registered role wallet for its service class.
 - Miner role loops now scan the loaded chain state for jobs assigned to their registered miner wallet,
   persist `role_miner_work_ready`, `role_miner_assigned_jobs_seen`, and
   `role_miner_unreceipted_jobs` in role runtime status, and expose those fields through
-  `tvmd service status`. Miner role loops can now submit receipts for assigned unreceipted jobs through
+  `tvmd node status`. Miner role loops can now submit receipts for assigned unreceipted jobs through
   `ChainCommand::SubmitReceipt`, insert served tensor artifacts into their local node, publish receipt
   announcements through the existing p2p announcement path, and report `role_miner_receipts_submitted` plus
   `role_miner_tensors_inserted`. Service-owned timed production can still create already-receipted
@@ -155,7 +155,7 @@ The local bundle is useful and should remain the first operational target:
   disabled. `NodeConfig` now carries typed network listen/auth/identity/max-request settings and storage
   paths for the runtime.
 - Each long-running role command now writes live role-loop counters to the node data directory, and
-  `tvmd service status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
+  `tvmd node status` exposes `role_runtime_command`, `role_loop_ready`, `role_loop_role`,
   `role_chain_profile`, `role_can_produce_blocks`, `role_local_producer`, `role_produced_blocks`, `role_network_applied_blocks`,
   decoded `role_network_*_ingested` event counters, block/job/receipt/attestation payload apply counters,
   `role_network_invalid_events`,
@@ -176,7 +176,7 @@ The local bundle is useful and should remain the first operational target:
 - The checker now requires `/explorer/receipts/latest/500` to name more than the seeded count of both
   `tensor_op` and `linear_training_step` receipts, so live post-startup primitive evidence is visible by
   receipt type instead of only by aggregate model-count growth.
-- `tvmd service block` now exposes per-height receipt IDs, settled receipt IDs, and TensorOp versus
+- `tvmd node block` now exposes per-height receipt IDs, settled receipt IDs, and TensorOp versus
   LinearTrainingStep receipt counts, and the checker fails unless finalized live blocks expose both
   primitive types through that block view.
 
@@ -215,7 +215,7 @@ The first chain-core cleanup slices are already in the tree:
   address is registered as a miner or validator in the loaded chain state. Local CPU Compose uses seeded
   wallet labels for counted miner and validator operators, and the checker requires those registrations
   before accepting operator readiness.
-- `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` now construct explicit role-run loop
+- `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` now construct explicit role-run loop
   wrappers before entering the shared runtime. The runtime loop has named steps for status writes, RPC
   serving, network ingestion, role-owned miner receipt submission, role-owned validator attestation
   submission, and optional local production, preserving current consensus behavior while narrowing the
@@ -251,14 +251,14 @@ Required fix:
 
 ### 2. Miner And Validator Containers Still Delegate Internals To The Service Runtime
 
-`tvmd miner start` and `tvmd validator start` prove local readiness. Containers now exec the matching
-long-running `tvmd miner run`, `tvmd validator run`, or `tvmd proposer run` surface. Those role commands
+`tvmd role miner check` and `tvmd role validator check` prove local readiness. Containers now exec the matching
+long-running `tvmd role miner run`, `tvmd role validator run`, or `tvmd role proposer run` surface. Those role commands
 still delegate their inner serving path to the shared service runtime, so they prove the command surface
 and Compose contract but not independent role ownership yet.
 
 Required fix:
 
-- Keep `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` as counted operator entrypoints.
+- Keep `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` as counted operator entrypoints.
 - Move miner, validator, and proposer internals out of the generic service loop so each role loop owns
   only its role responsibilities.
 - Keep readiness commands as preflight checks, not the runtime.
@@ -288,20 +288,20 @@ The checker validates that all operators are running and libp2p-ready, and now c
 role status, live chain counters, the same first live finalized block hash, the same finalized common-head
 block hash, non-producer network-applied block counters, decoded job/receipt/attestation payload
 application counters, and a finalized local-head checkpoint/state root that has also been observed through
-p2p block-payload gossip via `tvmd service block`. It still does not prove every block is assembled from
+p2p block-payload gossip via `tvmd node block`. It still does not prove every block is assembled from
 network-derived role-owned miner and validator work instead of service-owned timed production, or that every
 operator is executing a distinct fully independent production loop.
 
 Required fix:
 
-- Extend `tvmd service status` or the local node API to include real connected peer count and role-specific
+- Extend `tvmd node status` or the local node API to include real connected peer count and role-specific
   work counters sourced from role loops.
 - Move the convergence assertion from deterministic same-seed first-live/common-head equality to the
   shared network event path.
 - The checker must eventually fail unless all 15 operators converge on the same network-derived latest
   finalized head within a bounded time.
 
-Status: started for role-loop and network counters. `tvmd service status` now exposes role-runtime
+Status: started for role-loop and network counters. `tvmd node status` now exposes role-runtime
 command, role-loop readiness, role, local-producer mode, produced-block, network-applied block,
 decoded network-event ingestion counters, decoded job/receipt/attestation payload application counters,
 role wallet address and registration status, miner-assigned work readiness counters, miner receipt
@@ -622,7 +622,7 @@ through the shared chain engine on every non-producer, validator-owned block-vot
 non-producer block-vote ingestion/application, pending receipt/attestation/block-vote retry for out-of-order
 p2p payloads, the same first live finalized block hash, the same finalized common-head block hash, and a
 finalized local-head checkpoint/state root that was also observed through p2p block gossip via
-`tvmd service block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
+`tvmd node block`, plus named post-seed TensorOp and LinearTrainingStep receipt evidence, real libp2p
 connected-peer counts, job/receipt/attestation/block/block-vote gossip observations from every role runtime, and
 nonempty block-log roots from every node store. The restart-continuity script also captures
 pre/post peer IDs, heights, block counts, state roots, block-log roots, and finalized common heads for
@@ -658,10 +658,10 @@ smaller chain modules and the existing test module.
 - Initially run them against the existing RPC endpoints.
 - Then move gossip/request-response ingestion into the node runtime.
 
-Status: started. `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` are long-running
-role-specific command surfaces. Compose uses `tvmd miner run` for all counted miners and
-`tvmd validator run` for all validators, with `validator-00` carrying the single local timed producer flag;
-the local checker verifies those runtime commands through ready files and `tvmd service status`. The status path also
+Status: started. `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` are long-running
+role-specific command surfaces. Compose uses `tvmd role miner run` for all counted miners and
+`tvmd role validator run` for all validators, with `validator-00` carrying the single local timed producer flag;
+the local checker verifies those runtime commands through ready files and `tvmd node status`. The status path also
 exposes live role-loop counters, local-producer mode, network-applied block counters, real libp2p
 connected-peer counts, job/receipt/attestation/block/block-payload/block-vote gossip observations, and target-head block-payload gossip
 observations for every counted operator. The service runtime now keeps served-request counts,

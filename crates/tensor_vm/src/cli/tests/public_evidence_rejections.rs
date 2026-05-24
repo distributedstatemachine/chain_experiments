@@ -163,6 +163,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     }
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "network",
             "observation",
@@ -193,6 +194,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "network",
             "observation",
@@ -412,6 +414,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary",
@@ -430,6 +433,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "artifact",
@@ -450,6 +454,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     );
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary-roots",
@@ -469,6 +474,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     let padded_roots = format!("{root_a}, {root_b}");
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "summary-roots",
@@ -486,6 +492,7 @@ fn execute_command_fixture_rejects_invalid_public_evidence_args() {
     let empty_root_entry = format!("{root_a},,{root_b}");
     assert!(
         parse_test_cli(&[
+            "public",
             "evidence",
             "record",
             "artifact-roots",

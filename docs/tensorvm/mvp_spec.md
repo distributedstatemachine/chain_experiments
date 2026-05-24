@@ -1929,11 +1929,11 @@ done by separate miner and validator processes.
 `tvmd` commands must respect this boundary:
 
 ```text
-tvmd miner run      starts exactly one miner node role
-tvmd validator run  starts exactly one validator node role, including useful-verification PoW eligibility
-tvmd service serve  starts exactly one node service surface for the configured role/profile
-tvmd service init   initializes one node data directory
-tvmd service peer   edits one node's peer book
+tvmd role miner run      starts exactly one miner node role
+tvmd role validator run  starts exactly one validator node role, including useful-verification PoW eligibility
+tvmd node serve  starts exactly one node service surface for the configured role/profile
+tvmd node init   initializes one node data directory
+tvmd node peer   edits one node's peer book
 ```
 
 No `tvmd` command may satisfy production-readiness by internally simulating multiple counted operators,
@@ -1944,14 +1944,14 @@ CPU mode.
 ### 31.1 Miner CLI
 
 ```bash
-tvmd miner register --stake 100
+tvmd role miner register --stake 100
 
-tvmd miner start \
+tvmd role miner check \
   --wallet miner.key \
   --device cuda:0 \
   --node /ip4/127.0.0.1/tcp/4001
 
-tvmd miner run \
+tvmd role miner run \
   --wallet miner.key \
   --device cpu \
   --node /ip4/127.0.0.1/tcp/4001 \
@@ -1962,7 +1962,7 @@ tvmd miner run \
   --auth-token service-token \
   --max-requests 0
 
-tvmd miner status
+tvmd role miner status
 ```
 
 `--device cpu` selects the deterministic CPU reference backend used by Gate 0. `--device cuda:N` is a
@@ -1973,13 +1973,13 @@ readiness surface; `miner run` is the long-running role entrypoint used by the l
 ### 31.2 Validator CLI
 
 ```bash
-tvmd validator register --stake 10000
+tvmd role validator register --stake 10000
 
-tvmd validator start \
+tvmd role validator check \
   --wallet validator.key \
   --node /ip4/127.0.0.1/tcp/4001
 
-tvmd validator run \
+tvmd role validator run \
   --wallet validator.key \
   --node /ip4/127.0.0.1/tcp/4001 \
   --listen 0.0.0.0:8545 \
@@ -1989,7 +1989,7 @@ tvmd validator run \
   --auth-token service-token \
   --max-requests 0
 
-tvmd validator status
+tvmd role validator status
 ```
 
 `validator start` is the preflight readiness surface; `validator run` is the long-running role entrypoint
@@ -1998,15 +1998,15 @@ used by the local CPU Compose gate.
 ### 31.3 Service CLI
 
 ```bash
-tvmd service init \
+tvmd node init \
   --data-dir /var/lib/tensorvm
 
-tvmd service peer add \
+tvmd node peer add \
   --data-dir /var/lib/tensorvm \
   --peer-id "$BOOTSTRAP_PEER_ID" \
   --address /dns/bootstrap.tensorvm.net/tcp/4001
 
-tvmd service serve \
+tvmd node serve \
   --listen 0.0.0.0:8545 \
   --p2p-listen /ip4/0.0.0.0/tcp/4001 \
   --data-dir /var/lib/tensorvm \
@@ -2015,9 +2015,9 @@ tvmd service serve \
 ```
 
 Miner and validator `--node` values are libp2p multiaddrs. The RPC listener remains HTTP for
-operator APIs, but `tvmd service serve` must start the mandatory rust-libp2p control plane for node
+operator APIs, but `tvmd node serve` must start the mandatory rust-libp2p control plane for node
 discovery, Gossipsub propagation, and tensor/program request-response protocols.
-`tvmd service peer add` persists durable bootstrap peer records under the node data directory; service
+`tvmd node peer add` persists durable bootstrap peer records under the node data directory; service
 startup must load those records, preserve the peer IDs in `/p2p/<peer-id>` dial multiaddrs, and pass them
 to the mandatory libp2p Kademlia/bootstrap path. Non-bootstrap public nodes must seed at least one
 reachable TCP bootstrap peer before starting the public run.
@@ -2028,19 +2028,19 @@ upstream `libp2p` crate is only allowed to narrow the explicit protocol surface 
 rollout checks.
 
 The `tvmd` executable must be an explicit Cargo binary target. Public deployment templates live under
-`deploy/tensorvm/` and must use `tvmd service serve` with a required libp2p listen multiaddr, external TLS
+`deploy/tensorvm/` and must use `tvmd node serve` with a required libp2p listen multiaddr, external TLS
 termination, plus the health and content endpoints required by the public preflight and post-run evidence
 validators.
 Those templates include checked preflight and non-full-spec post-run evidence example manifests; the
 post-run example is only a signature-domain and parser shape check and cannot substitute for the required
 7-day external public-run evidence.
 The preflight manifest must include a `cuda_ready_miner_count` equal to the planned `miner_count`, derived
-from successful `tvmd miner start --device cuda:N` readiness checks on the planned public miner hosts.
+from successful `tvmd role miner check --device cuda:N` readiness checks on the planned public miner hosts.
 It must also include a `libp2p_ready_node_count` equal to `miner_count + validator_count`, derived from
 successful mandatory-libp2p node readiness checks on the planned public miners and validators.
-The `tvmd service readiness --p2p-listen <multiaddr> --data-dir <path>` command loads the initialized
+The `tvmd node check --p2p-listen <multiaddr> --data-dir <path>` command loads the initialized
 node store and durable peer book, starts the real rust-libp2p control plane with the same bounded runtime
-configuration used by `tvmd service serve`, reports `libp2p_ready=true`, and exits; this command is the
+configuration used by `tvmd node serve`, reports `libp2p_ready=true`, and exits; this command is the
 intended per-node preflight source for `libp2p_ready_node_count`.
 Each repeated preflight `service=...` plan must contain exactly eight comma-separated, nonempty,
 untrimmed values; leading or trailing whitespace in any service value is a manifest parse error.
@@ -2059,46 +2059,46 @@ run; they must not be counted as full public-testnet evidence while they contain
 run data.
 
 ```bash
-tvmd testnet preflight \
+tvmd public preflight \
   docs/tensorvm/public-testnet.preflight
 
-tvmd evidence validate \
+tvmd public evidence validate \
   docs/tensorvm/public-testnet.evidence
 
-tvmd evidence validate \
+tvmd public evidence validate \
   deploy/tensorvm/manifests/public-testnet.evidence.example
 
-tvmd service readiness \
+tvmd node check \
   --p2p-listen /ip4/0.0.0.0/tcp/4001 \
   --data-dir /var/lib/tensorvm
 
-tvmd evidence publish \
+tvmd public evidence publish \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --manifest-signer <manifest-signer-address-hex> \
   --manifest-signature-count 1 \
   --independent-auditor-count 1
 
-tvmd evidence audit \
+tvmd public evidence audit \
   --bundle-id <bundle-id-hex> \
   --public-uri https://tensorvm.net/tensorvm/public-evidence.json \
   --auditor-id <auditor-address-hex> \
   --audit-uri https://auditor.tensorvm.net/tensorvm/audit.json \
   --observed-at <unix-seconds>
 
-tvmd evidence run window \
+tvmd public evidence run window \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --started-at <unix-seconds> \
   --ended-at <unix-seconds-plus-at-least-604800> \
   --observed-blocks 100800
 
-tvmd evidence run window-file \
+tvmd public evidence run window-file \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --block-observation-file artifacts/block-observations.records
 
-tvmd evidence node heartbeat \
+tvmd public evidence node heartbeat \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
@@ -2106,20 +2106,20 @@ tvmd evidence node heartbeat \
   --last-block 100799 \
   --heartbeat-count 100800
 
-tvmd evidence node heartbeat-file \
+tvmd public evidence node heartbeat-file \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --heartbeat-file artifacts/miner-a-heartbeats.records
 
-tvmd evidence node operator-attestation \
+tvmd public evidence node operator-attestation \
   --role miner \
   --address <node-address-hex> \
   --operator-id <operator-id-hex> \
   --identity-uri https://operator-a.tensorvm.net/tensorvm.json \
   --observed-at <unix-seconds>
 
-tvmd evidence service health \
+tvmd public evidence service health \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
@@ -2129,14 +2129,14 @@ tvmd evidence service health \
   --reachable-count 100800 \
   --signed-health-check-count 100800
 
-tvmd evidence service health-file \
+tvmd public evidence service health-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/health \
   --health-path /health \
   --observation-file artifacts/rpc-health.records
 
-tvmd evidence service content \
+tvmd public evidence service content \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2145,7 +2145,7 @@ tvmd evidence service content \
   --observed-at <unix-seconds> \
   --min-content-bytes 64
 
-tvmd evidence service content-bytes \
+tvmd public evidence service content-bytes \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2153,7 +2153,7 @@ tvmd evidence service content-bytes \
   --observed-at <unix-seconds> \
   --content-hex <captured-response-body-hex>
 
-tvmd evidence service content-file \
+tvmd public evidence service content-file \
   --kind rpc \
   --endpoint-id <endpoint-id-hex> \
   --public-url https://rpc.tensorvm.net/chain/head \
@@ -2161,7 +2161,7 @@ tvmd evidence service content-file \
   --observed-at <unix-seconds> \
   --content-file artifacts/rpc-chain-head.body
 
-tvmd evidence network observation \
+tvmd public evidence network observation \
   --operator-id <operator-id-hex> \
   --peer-id <libp2p-peer-id> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
@@ -2174,20 +2174,20 @@ tvmd evidence network observation \
   --max-concurrent-streams 128 \
   --idle-timeout-seconds 60
 
-tvmd evidence network from-service-log \
+tvmd public evidence network from-service-log \
   --operator-id <operator-id-hex> \
   --listen-address /dns/node-a.tensorvm.net/tcp/4001 \
   --observed-at <unix-seconds> \
   --service-log artifacts/node-a-tvmd-service.log
 
-tvmd evidence record summary \
+tvmd public evidence record summary \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd evidence record artifact \
+tvmd public evidence record artifact \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -2195,27 +2195,27 @@ tvmd evidence record artifact \
   --record-root <network-runtime-root-hex> \
   --record-count <operator-count>
 
-tvmd evidence record artifact-roots \
+tvmd public evidence record artifact-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-roots <comma-separated-record-roots>
 
-tvmd evidence record artifact-file \
+tvmd public evidence record artifact-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --artifact-uri https://evidence.tensorvm.net/tensorvm/network-runtime.json \
   --record-file artifacts/network-runtime.records
 
-tvmd evidence record summary-roots \
+tvmd public evidence record summary-roots \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
   --record-roots <comma-separated-record-roots>
 
-tvmd evidence record summary-file \
+tvmd public evidence record summary-file \
   --kind network-runtime \
   --bundle-id <bundle-id-hex> \
   --manifest-signer <manifest-signer-address-hex> \
@@ -2315,7 +2315,7 @@ matching observation signature. The `network-runtime` summary root must aggregat
 roots; a signed summary root without the corresponding per-operator `network_runtime_observation` manifest
 lines does not satisfy the public evidence gate.
 The `evidence network from-service-log` command derives the peer ID, protocol counts, bootstrap-peer
-count, and DoS-control settings from an exact captured `tvmd service serve` log. It must reject logs that
+count, and DoS-control settings from an exact captured `tvmd node serve` log. It must reject logs that
 do not show `command=service_serve` and `p2p_runtime=libp2p`, and it still requires the observer-supplied
 public listen multiaddr above; a loopback or private service log cannot be promoted into public evidence.
 The `evidence record summary` command emits the exact `<record>_records`, `<record>_root`, and

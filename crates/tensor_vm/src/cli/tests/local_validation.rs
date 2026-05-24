@@ -93,8 +93,9 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
+            "role",
             "miner",
-            "start",
+            "check",
             "--wallet",
             "miner.key",
             "--device",
@@ -106,8 +107,9 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
+            "role",
             "validator",
-            "start",
+            "check",
             "--wallet",
             "validator.key",
             "--node",
@@ -123,7 +125,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "peer",
             "add",
             "--data-dir",
@@ -137,7 +139,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "peer",
             "add",
             "--data-dir",
@@ -161,7 +163,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "localhost:8545",
@@ -176,8 +178,8 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
-            "readiness",
+            "node",
+            "check",
             "--p2p-listen",
             "not-a-multiaddr",
             "--data-dir",
@@ -195,7 +197,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "127.0.0.1:8545",
@@ -232,7 +234,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     assert!(
         parse_test_cli(&[
-            "service",
+            "node",
             "serve",
             "--listen",
             "127.0.0.1:8545",

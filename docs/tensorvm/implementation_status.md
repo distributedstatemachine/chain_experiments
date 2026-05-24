@@ -111,14 +111,14 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 - End-to-end local LinearTrainingStep round: register model, mine, verify, attest, settle, update model state, and produce block
 - Library-owned local CPU synthetic round producer that schedules matmul and LinearTrainingStep jobs,
   executes CPU miner work, verifies, settles, advances model state for training jobs, and appends blocks
-  without synthesizing finality votes in the runtime path; `tvmd service serve` now calls this shared
+  without synthesizing finality votes in the runtime path; `tvmd node serve` now calls this shared
   protocol path
 - P2P message enum, deterministic byte codec, rust-libp2p runtime dependency, TCP/TLS/Yamux swarm
   construction, Gossipsub topic subscriptions for block/job/receipt/attestation/peer announcements,
   Identify protocol wiring, Kademlia discovery/address registration, JSON request-response protocols for
   tensor chunks, tensor rows, root-addressed full tensor payloads, and program fetches,
-  `tvmd service peer add` bootstrap seeding, `tvmd service readiness` short startup checks for the
-  mandatory libp2p control-plane runtime, `tvmd service serve` long-running startup of the same runtime,
+  `tvmd node peer add` bootstrap seeding, `tvmd node check` short startup checks for the
+  mandatory libp2p control-plane runtime, `tvmd node serve` long-running startup of the same runtime,
   DNS/TCP bootstrap dialing with redial after disconnect, service-level bounded request-response calls,
   local tensor registration for request serving, local job/receipt/attestation/block/block-vote payload
   announcements and height-bearing block-header announcement publishing over Gossipsub, decoded inbound message queues
@@ -141,13 +141,13 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   health endpoints, explorer data RPC endpoints, `/explorer/ws` WebSocket polling for browser explorers,
   telemetry/faucet RPC endpoints, browser-facing explorer/telemetry/faucet HTML pages, mutable
   transaction submission, job lookup, HTTP response formatting, generic HTTP request reading, socketed
-  stdlib HTTP serving, `tvmd service init/peer add/readiness/serve` launch
+  stdlib HTTP serving, `tvmd node init/peer add/check/serve` launch
   configuration for a `NodeStore`-backed service process with mandatory rust-libp2p listen configuration,
   and gateway auth/body-size/rate-limit enforcement
 - CLI parser and `tvmd` binary entrypoint for documented miner/validator/proposer commands, with local
   stake, wallet, device where relevant, mandatory libp2p node-endpoint validation, and structured readiness
   reports
-- Role-specific long-running `tvmd miner run`, `tvmd validator run`, and `tvmd proposer run` command
+- Role-specific long-running `tvmd role miner run`, `tvmd role validator run`, and `tvmd role proposer run` command
   surfaces that validate the role config, start the mandatory libp2p-backed service runtime, write live
   role-loop counters from a reusable node runtime state object, delegate decoded network message ordering,
   invalid event accounting, block/job/receipt/attestation/block-vote payload application, pending payload
@@ -155,7 +155,7 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   submit validator-owned block votes for unvoted valid local blocks, and report role runtime readiness plus
   local-producer mode, network-applied block counters, validator block-vote submissions,
   ingested/applied network block-vote counters, and observed job/receipt/attestation/block/block-payload/
-  block-vote gossip counters through `tvmd service status`
+  block-vote gossip counters through `tvmd node status`
 - CPU reference backend for portable default builds, plus a CUDA-only `GpuMinerBackend` that reports
   the selected device and rejects execution unless native CUDA kernels are compiled
 - Miner CLI readiness now treats `--device cpu` as the portable reference backend and requires
@@ -209,23 +209,23 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   report flag also requires the default 7-day, 10-miner, 5-validator public-testnet criteria or stricter
   criteria, so relaxed local harness criteria cannot mark an evidence bundle full-spec
 - Dependency-free public-testnet preflight manifest parsing plus a CLI launch-readiness surface for
-  `tvmd testnet preflight <path>`, with public service endpoint checks rejecting local,
+  `tvmd public preflight <path>`, with public service endpoint checks rejecting local,
   private, link-local, special-use DNS, single-label DNS, documentation, shared-address, benchmarking,
   multicast, reserved, and malformed HTTPS authorities, rejecting service URL query strings/fragments, and
   requiring exact untrimmed service URL/path manifest fields and exact comma-separated `service=...`
   values, a `cuda_ready_miner_count` that matches the planned public miner count, a
   `libp2p_ready_node_count` that matches the planned miner plus validator count and can be derived from
-  process-level `tvmd service readiness` checks that load the initialized node store, load the durable peer
+  process-level `tvmd node check` checks that load the initialized node store, load the durable peer
   book, start the real rust-libp2p control plane, report `libp2p_ready=true`, and exit, plus distinct
   endpoint IDs for exactly one ready RPC, explorer, faucet, and telemetry service plan on the planned
   public content paths used by post-run evidence, with missing, duplicate, or extra preflight service plans
   rejected by the public service plan gate
 - `tvmd` binary tests for the documented spec-path pending manifest commands, proving
-  `tvmd testnet preflight docs/tensorvm/public-testnet.preflight` reads the checked
+  `tvmd public preflight docs/tensorvm/public-testnet.preflight` reads the checked
   manifest and reports `public_testnet_preflight_ready=false`, while
   a process-level generated external-addressed preflight manifest reports
   `public_testnet_preflight_ready=true`, and
-  `tvmd evidence validate docs/tensorvm/public-testnet.evidence` reads the checked
+  `tvmd public evidence validate docs/tensorvm/public-testnet.evidence` reads the checked
   manifest and reports `public_evidence_full_spec=false`
 - Public deployment scaffold under `deploy/tensorvm/` with an environment template, systemd unit for the
   explicit `tvmd` binary target, nginx HTTPS reverse-proxy template for RPC/explorer/faucet/telemetry
@@ -242,52 +242,52 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   a checked post-run evidence manifest example that validates structurally while still reporting
   `public_evidence_full_spec=false`
 - Dependency-free public evidence manifest parsing plus a CLI validation surface for
-  `tvmd evidence validate <path>`, plus
-  `tvmd evidence publish ...`, `tvmd evidence audit ...`,
-  `tvmd evidence run window ...`, and
-  `tvmd evidence node heartbeat ...` generation for signed publication, independent-auditor,
+  `tvmd public evidence validate <path>`, plus
+  `tvmd public evidence publish ...`, `tvmd public evidence audit ...`,
+  `tvmd public evidence run window ...`, and
+  `tvmd public evidence node heartbeat ...` generation for signed publication, independent-auditor,
   wall-clock run-window, and external-operator heartbeat fields, plus
-  `tvmd evidence run window-file ...` generation that derives the signed run-window manifest
+  `tvmd public evidence run window-file ...` generation that derives the signed run-window manifest
   fields from saved contiguous per-block `run_window_observation=...` files with
   duplicate-block, gap, zero-timestamp, decreasing-timestamp, unsupported-line, and
   whitespace-padded-record rejection,
-  `tvmd evidence node heartbeat-file ...` generation that derives signed `node=...` lines
+  `tvmd public evidence node heartbeat-file ...` generation that derives signed `node=...` lines
   from saved contiguous per-block `node_heartbeat_observation=...` files with duplicate-block, gap,
   identity-mismatch, unsupported-line, and whitespace-padded-record rejection,
-  `tvmd evidence node operator-attestation ...` generation for signed operator identity records bound to
+  `tvmd public evidence node operator-attestation ...` generation for signed operator identity records bound to
   external identity URIs,
-  `tvmd evidence service health ...` generation for exact signed RPC/explorer/faucet/telemetry
+  `tvmd public evidence service health ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service=...` manifest records bound to external HTTPS health URLs and observation counts, with
   root-only, query-string, fragment, and non-exact health URL rejection, plus
-  `tvmd evidence service health-file ...` generation that derives the same signed
+  `tvmd public evidence service health-file ...` generation that derives the same signed
   `service=...` line from saved contiguous per-block `service_health_observation=...` files with
   duplicate-block, gap, unsupported-line, and whitespace-padded-record rejection,
-  `tvmd evidence service content ...` generation for exact signed RPC/explorer/faucet/telemetry
+  `tvmd public evidence service content ...` generation for exact signed RPC/explorer/faucet/telemetry
   `service_content=...` manifest records bound to external HTTPS content URLs, required content paths,
   matching service endpoint IDs, matching service-health HTTPS authorities, exact query-free URL paths,
   root-only, query-string, fragment, and non-exact content URL rejection, distinct content roots, and at
   least 64 observed bytes, plus
-  `tvmd evidence service content-bytes ...` generation that derives those content roots from
-  exact captured response-body bytes and `tvmd evidence service content-file ...` generation
+  `tvmd public evidence service content-bytes ...` generation that derives those content roots from
+  exact captured response-body bytes and `tvmd public evidence service content-file ...` generation
   that derives them directly from captured response-body files,
-  `tvmd evidence network observation ...` generation for signed public libp2p runtime observation
+  `tvmd public evidence network observation ...` generation for signed public libp2p runtime observation
   records with missing TCP listen port, zero TCP port, non-public multiaddr, malformed DNS-label, and
-  single-label DNS rejection, plus `tvmd evidence network from-service-log ...`
+  single-label DNS rejection, plus `tvmd public evidence network from-service-log ...`
   generation that derives the peer ID, protocol counts, bootstrap-peer count, and DoS-control settings
-  from captured `tvmd service serve` logs while still requiring a public listen multiaddr, plus manifest
+  from captured `tvmd node serve` logs while still requiring a public listen multiaddr, plus manifest
   validation that binds one such signed raw record to every counted public operator and to the aggregate
   network-runtime root; the process-level `tvmd` service smoke test now derives a public-address
   observation root from the live libp2p peer/protocol/control stdout and feeds that root through
   `evidence record summary-roots`, `evidence record artifact-roots`, and the matching file-derived commands,
-  `tvmd evidence record summary ...` generation for signed
+  `tvmd public evidence record summary ...` generation for signed
   block/finality/network-runtime/data-availability/invalid-work/reward-settlement summary fields including
   production libp2p network-observation roots,
-  `tvmd evidence record artifact ...` generation for signed external raw-record artifact locators,
-  `tvmd evidence record artifact-roots ...` generation that signs artifact locators from the
-  same derived aggregate root and count as summary generation, `tvmd evidence record
+  `tvmd public evidence record artifact ...` generation for signed external raw-record artifact locators,
+  `tvmd public evidence record artifact-roots ...` generation that signs artifact locators from the
+  same derived aggregate root and count as summary generation, `tvmd public evidence record
   summary-roots ...` deterministic root aggregation for post-run supporting records with
-  duplicate-root and whitespace-padded root-list rejection, plus `tvmd evidence record summary-file ...` and
-  `tvmd evidence record artifact-file ...` generation from saved raw-record files containing
+  duplicate-root and whitespace-padded root-list rejection, plus `tvmd public evidence record summary-file ...` and
+  `tvmd public evidence record artifact-file ...` generation from saved raw-record files containing
   `record_root=...` lines, fully verified signed `network_runtime_observation=...` lines, or typed
   `block_history_record=...`, `finality_history_record=...`, `data_availability_measurement=...`,
   `invalid_work_rejection=...`, and `reward_settlement=...` supporting-record lines with kind-specific
@@ -300,10 +300,10 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 - Local CPU Docker Compose deployment bundle under `deploy/tensorvm/local-cpu/`, with a CPU-only
   Dockerfile, explicit 10-miner/5-validator Compose topology, one durable volume per operator, mandatory
   libp2p readiness checks for all 15 operators, stable operator-ID-derived libp2p identities, CPU miner
-  readiness, role-specific `tvmd miner run` and `tvmd validator run` Compose entrypoints checked through
+  readiness, role-specific `tvmd role miner run` and `tvmd role validator run` Compose entrypoints checked through
   `runtime_command` status, explicit role-run loop wrappers feeding a shared runtime loop
   boundary, registered role wallet address and role registration status persisted through
-  `role-runtime.status` and checked through `tvmd service status`, runtime policy that prevents service,
+  `role-runtime.status` and checked through `tvmd node status`, runtime policy that prevents service,
   miner, and legacy proposer roles from becoming local block producers while allowing validator runtimes
   only with the explicit producer flag and interval, authenticated host gateway route
   checks, a seeded local CPU chain exposed through the gateway with settled matmul and LinearTrainingStep
@@ -322,7 +322,7 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
   WebSocket endpoint, a rolling
   all-operator restart-continuity gate with node-store recovery from torn local writes, all-operator
   durable status checks, an all-operator finalized common-head checkpoint queried through
-  `tvmd service block`, a local-only evidence boundary, and
+  `tvmd node block`, a local-only evidence boundary, and
   `local_cpu_compose::local_cpu_compose_bundle_matches_spec_artifact_shape` guarding the artifact shape
 
 ## Implemented In `crates/tensor_vm_explorer`
@@ -387,11 +387,11 @@ preflight, public evidence, or deployment-gated work can count:
   `/chain/head` and explorer counters advance past the seeded two-block baseline, at least one live
   LinearTrainingStep advances model state after startup, validators add attestations, `/explorer/receipts`
   exposes per-receipt validator attestation details plus named post-seed TensorOp and LinearTrainingStep
-  primitive receipts for live work, and `tvmd service block` exposes finalized live block-height receipt
+  primitive receipts for live work, and `tvmd node block` exposes finalized live block-height receipt
   IDs and primitive counts for both TensorOp and LinearTrainingStep work,
   `/tensor/latest` returns a live tensor ID whose descriptor, row, chunk, and opening are fetchable, and
-  settled live work credits new rewards; the gate also runs `tvmd service status` and
-  `tvmd service block` inside all 15 operator containers and requires
+  settled live work credits new rewards; the gate also runs `tvmd node status` and
+  `tvmd node block` inside all 15 operator containers and requires
   `all_operator_live_block_convergence=true` plus `all_operator_common_head_convergence=true`, proving
   every durable node store advanced past the shared seed, reports the same first live finalized block
   hash, can return the same finalized common-head block hash at the bounded convergence height, and can
@@ -432,7 +432,7 @@ preflight, public evidence, or deployment-gated work can count:
   check one service at a time across every counted operator, proving each
   restarted service keeps a stable libp2p peer ID, preserves the pre-restart finalized common head and state
   root on every operator, advances height, block count, state-root, and block-log-root evidence, and
-  continues finalizing blocks; `tvmd service init` repairs torn snapshot/block-log state from valid
+  continues finalizing blocks; `tvmd node init` repairs torn snapshot/block-log state from valid
   `chain.state` before a restarted service reports readiness
 
 The workspace currently has 262 passing tests under Tarpaulin:
@@ -445,12 +445,12 @@ The workspace currently has 262 passing tests under Tarpaulin:
 test, and 7 `tvmd` CLI integration tests for the documented spec-path pending manifest commands, a
 generated launch-ready preflight manifest round trip, a generated short-run evidence manifest round trip
 that reports `independently_checkable=true` and `public_evidence_full_spec=false`, a local CPU seed command
-that persists a settled two-block local chain, a role-run command test that proves `tvmd miner run`,
-`tvmd validator run`, and `tvmd proposer run` serve through role-specific loop wrappers and runtime
+that persists a settled two-block local chain, a role-run command test that proves `tvmd role miner run`,
+`tvmd role validator run`, and `tvmd role proposer run` serve through role-specific loop wrappers and runtime
 surfaces with mandatory libp2p startup, then proves registered local-testnet role wallet addresses are
-exposed through role-run stdout and `tvmd service status`, bounded service startup can generate live
+exposed through role-run stdout and `tvmd node status`, bounded service startup can generate live
 synthetic CPU jobs and append unfinalized live blocks when no validator role loop has voted, plus a supervised
-`tvmd service init` / `tvmd service peer add` / `tvmd service readiness` / bounded `tvmd service serve`
+`tvmd node init` / `tvmd node peer add` / `tvmd node check` / bounded `tvmd node serve`
 lifecycle smoke test that starts the mandatory libp2p service path and serves authenticated `/health`, `/rpc/health`,
 `/explorer/health`, `/faucet/health`, `/telemetry/health`, `/chain/head`, `/epoch/current`,
 `/jobs/current`, the empty-chain `/chain/block/0` route response, `/explorer`, `/faucet/page`, and
@@ -458,11 +458,11 @@ lifecycle smoke test that starts the mandatory libp2p service path and serves au
 `/attestation` submissions with reference payloads, read-back of registered miner/validator state, and
 unauthenticated request rejection. The same process-level smoke test now captures the served
 `/chain/head`, `/explorer`, `/faucet/page`, and `/telemetry/dashboard` response bodies and verifies that
-`tvmd evidence service content-bytes` and
-`tvmd evidence service content-file` emit identical signed service-content evidence for the
-captured bodies, while generating signed `tvmd evidence service health` lines from reached
+`tvmd public evidence service content-bytes` and
+`tvmd public evidence service content-file` emit identical signed service-content evidence for the
+captured bodies, while generating signed `tvmd public evidence service health` lines from reached
 RPC/explorer/faucet/telemetry health responses. It also derives the local libp2p peer ID and protocol
-counts from service stdout and verifies that `tvmd evidence network observation` rejects the
+counts from service stdout and verifies that `tvmd public evidence network observation` rejects the
 loopback listen address instead of counting local service startup as public network evidence.
 
 The current instrumented Tarpaulin line coverage is documented in
@@ -507,7 +507,7 @@ These spec items require real deployment or non-reference infrastructure and are
   bootstrap peer-book persistence loaded as peer-ID-preserving dial multiaddrs, and the public evidence validator now requires signed
   network-observation records, but no independently checkable public-run network evidence is available yet
 - production HTTP deployment and full durable database; current implementation has a stdlib socketed HTTP
-  wrapper, `tvmd service init/peer add/readiness/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
+  wrapper, `tvmd node init/peer add/check/serve` launch wiring, in-process auth/body-size/rate-limit enforcement, and a
   restartable reference `NodeStore` data directory with consistency-checked snapshot, append-only
   block-log, full-chain state, and peer-book persistence, plus tested deployable systemd/env/nginx templates, while
   public evidence validation now rejects local, private, special-use DNS, single-label DNS, documentation,

@@ -1,14 +1,14 @@
 pub use super::local_commands::{
-    DataDirArgs, LocalCpuVerifyArgs, MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand,
-    RoleRuntimeArgs, ServiceBlockArgs, ServiceCommand, ServicePeerAddArgs, ServicePeerCommand,
-    ServiceReadinessArgs, ServiceRuntimeArgs, ServiceServeArgs, StakeArgs, TestnetCommand,
-    ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+    DataDirArgs, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
+    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs,
+    NodeServeArgs, ProposerCommand, RoleCommand, RoleRuntimeArgs, StakeArgs, ValidatorCheckArgs,
+    ValidatorCommand, ValidatorRunArgs,
 };
 pub use super::public_evidence_commands::{
     AuditorRecordArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
     EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
     NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs,
-    NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicEvidenceManifestArgs,
+    NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
     PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
@@ -34,22 +34,16 @@ pub struct TvmdCli {
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum TvmdCommand {
-    #[command(about = "Register, start, run, or inspect a miner node.")]
+    #[command(about = "Manage a TensorVM node store, RPC service, and libp2p peers.")]
     #[command(subcommand)]
-    Miner(MinerCommand),
-    #[command(about = "Register, start, run, or inspect a validator node.")]
+    Node(NodeCommand),
+    #[command(about = "Register, check, run, or inspect miner, validator, and proposer roles.")]
     #[command(subcommand)]
-    Validator(ValidatorCommand),
-    #[command(about = "Run a proposer service role.")]
+    Role(RoleCommand),
+    #[command(about = "Seed and verify a local TensorVM testnet.")]
     #[command(subcommand)]
-    Proposer(ProposerCommand),
-    #[command(about = "Manage the local service process and its node store.")]
+    Localnet(LocalnetCommand),
+    #[command(about = "Validate public-testnet preflight and evidence artifacts.")]
     #[command(subcommand)]
-    Service(ServiceCommand),
-    #[command(about = "Seed, verify, and preflight TensorVM testnets.")]
-    #[command(subcommand)]
-    Testnet(TestnetCommand),
-    #[command(about = "Generate or validate public-testnet evidence records.")]
-    #[command(subcommand)]
-    Evidence(EvidenceCommand),
+    Public(PublicCommand),
 }

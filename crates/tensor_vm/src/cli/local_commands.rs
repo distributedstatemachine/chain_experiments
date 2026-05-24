@@ -1,5 +1,4 @@
 use super::command_values::parse_hash_value;
-use super::public_evidence_commands::PublicTestnetManifestArgs;
 use crate::types::Hash;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
@@ -25,11 +24,25 @@ fn default_p2p_listen_addr() -> Multiaddr {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
+pub enum RoleCommand {
+    #[command(about = "Register, check, run, or inspect a miner role.")]
+    #[command(subcommand)]
+    Miner(MinerCommand),
+    #[command(about = "Register, check, run, or inspect a validator role.")]
+    #[command(subcommand)]
+    Validator(ValidatorCommand),
+    #[command(about = "Run a proposer role.")]
+    #[command(subcommand)]
+    Proposer(ProposerCommand),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
+#[command(rename_all = "kebab-case")]
 pub enum MinerCommand {
     #[command(about = "Check miner registration stake requirements.")]
     Register(StakeArgs),
-    #[command(about = "Check miner startup inputs without running a service.")]
-    Start(MinerStartArgs),
+    #[command(about = "Check miner runtime inputs without running the role.")]
+    Check(MinerCheckArgs),
     #[command(about = "Run a miner service.")]
     Run(MinerRunArgs),
     #[command(about = "Show miner readiness metadata.")]
@@ -41,8 +54,8 @@ pub enum MinerCommand {
 pub enum ValidatorCommand {
     #[command(about = "Check validator registration stake requirements.")]
     Register(StakeArgs),
-    #[command(about = "Check validator startup inputs without running a service.")]
-    Start(ValidatorStartArgs),
+    #[command(about = "Check validator runtime inputs without running the role.")]
+    Check(ValidatorCheckArgs),
     #[command(about = "Run a validator service.")]
     Run(ValidatorRunArgs),
     #[command(about = "Show validator readiness metadata.")]
@@ -58,38 +71,36 @@ pub enum ProposerCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum ServiceCommand {
+pub enum NodeCommand {
     #[command(about = "Initialize the service node store.")]
     Init(DataDirArgs),
     #[command(about = "Manage libp2p peers.")]
     #[command(subcommand)]
-    Peer(ServicePeerCommand),
+    Peer(NodePeerCommand),
     #[command(about = "Check libp2p and node-store readiness.")]
-    Readiness(ServiceReadinessArgs),
+    Check(NodeCheckArgs),
     #[command(about = "Serve RPC, explorer, faucet, telemetry, and libp2p.")]
-    Serve(ServiceServeArgs),
+    Serve(NodeServeArgs),
     #[command(about = "Show node-store status.")]
     Status(DataDirArgs),
     #[command(about = "Show one persisted block from the node store.")]
-    Block(ServiceBlockArgs),
+    Block(NodeBlockArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum ServicePeerCommand {
+pub enum NodePeerCommand {
     #[command(about = "Add a libp2p bootstrap peer to the node store.")]
-    Add(ServicePeerAddArgs),
+    Add(NodePeerAddArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
-pub enum TestnetCommand {
+pub enum LocalnetCommand {
     #[command(about = "Seed local CPU testnet data.")]
     Seed(DataDirArgs),
-    #[command(about = "Validate a public-testnet preflight manifest.")]
-    Preflight(PublicTestnetManifestArgs),
     #[command(about = "Verify local CPU testnet state.")]
-    VerifyLocalCpu(LocalCpuVerifyArgs),
+    Verify(LocalCpuVerifyArgs),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -99,7 +110,7 @@ pub struct StakeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct MinerStartArgs {
+pub struct MinerCheckArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub wallet: PathBuf,
     #[arg(long, default_value = "cpu", value_name = "DEVICE")]
@@ -119,7 +130,7 @@ pub struct MinerRunArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ValidatorStartArgs {
+pub struct ValidatorCheckArgs {
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub wallet: PathBuf,
     #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
@@ -139,11 +150,11 @@ pub struct RoleRuntimeArgs {
     #[arg(long, default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
     pub node: Multiaddr,
     #[command(flatten)]
-    pub service: ServiceRuntimeArgs,
+    pub node_runtime: NodeRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceRuntimeArgs {
+pub struct NodeRuntimeArgs {
     #[arg(long, env = "TVMD_LISTEN", default_value_t = default_listen_addr(), value_name = "ADDR")]
     pub listen: SocketAddr,
     #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
@@ -173,7 +184,7 @@ pub struct LocalCpuVerifyArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServicePeerAddArgs {
+pub struct NodePeerAddArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
     pub data_dir: PathBuf,
     #[arg(long, value_name = "PEER_ID")]
@@ -183,7 +194,7 @@ pub struct ServicePeerAddArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceReadinessArgs {
+pub struct NodeCheckArgs {
     #[arg(long, env = "TVMD_P2P_LISTEN", default_value_t = default_p2p_listen_addr(), value_name = "MULTIADDR")]
     pub p2p_listen: Multiaddr,
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
@@ -193,13 +204,13 @@ pub struct ServiceReadinessArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceServeArgs {
+pub struct NodeServeArgs {
     #[command(flatten)]
-    pub runtime: ServiceRuntimeArgs,
+    pub runtime: NodeRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceBlockArgs {
+pub struct NodeBlockArgs {
     #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_name = "DIR", value_hint = ValueHint::DirPath)]
     pub data_dir: PathBuf,
     #[arg(long, value_name = "HEIGHT")]

@@ -1,9 +1,10 @@
 use std::path::Path;
 
 use crate::cli::{
-    EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
-    TestnetCommand, TvmdCli, TvmdCommand, ValidatorCommand, execute_public_evidence_command,
-    validate_public_evidence_manifest, validate_public_testnet_preflight_manifest,
+    EvidenceCommand, LocalnetCommand, MinerCommand, NodeCommand, NodePeerCommand, ProposerCommand,
+    PublicCommand, RoleCommand, TvmdCli, TvmdCommand, ValidatorCommand,
+    execute_public_evidence_command, validate_public_evidence_manifest,
+    validate_public_testnet_preflight_manifest,
 };
 
 use super::operator_checks::{
@@ -31,7 +32,7 @@ impl TvmdCommand {
 
 pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {
-        TvmdCommand::Evidence(EvidenceCommand::Validate(args)) => {
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Validate(args))) => {
             let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
                 format!(
                     "failed to read evidence manifest {}: {error}",
@@ -40,7 +41,7 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             })?;
             validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::Testnet(TestnetCommand::Preflight(args)) => {
+        TvmdCommand::Public(PublicCommand::Preflight(args)) => {
             let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
                 format!(
                     "failed to read preflight manifest {}: {error}",
@@ -49,21 +50,23 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
-        TvmdCommand::Miner(MinerCommand::Start(args)) => check_miner_start(
+        TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Register(args))) => {
+            check_miner_registration(args.stake)
+        }
+        TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Check(args))) => check_miner_start(
             &path_arg(&args.wallet),
             &args.device,
             &args.node.to_string(),
         ),
-        TvmdCommand::Miner(MinerCommand::Run(args)) => {
+        TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Run(args))) => {
             let runtime = &args.runtime;
-            let service = &runtime.service;
+            let node_runtime = &runtime.node_runtime;
             let wallet = path_arg(&args.wallet);
             let node = runtime.node.to_string();
-            let listen = service.listen.to_string();
-            let p2p_listen = service.p2p_listen.to_string();
-            let data_dir = path_arg(&service.data_dir);
-            validate_miner_runtime(&wallet, &args.device, &data_dir, &service.auth_token)?;
+            let listen = node_runtime.listen.to_string();
+            let p2p_listen = node_runtime.p2p_listen.to_string();
+            let data_dir = path_arg(&node_runtime.data_dir);
+            validate_miner_runtime(&wallet, &args.device, &data_dir, &node_runtime.auth_token)?;
             run_miner_service(RoleServiceConfig {
                 wallet: &wallet,
                 device: Some(&args.device),
@@ -71,27 +74,27 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 listen: &listen,
                 p2p_listen: &p2p_listen,
                 data_dir: &data_dir,
-                identity_seed: service.identity_seed,
-                auth_token: &service.auth_token,
-                max_requests: service.max_requests,
+                identity_seed: node_runtime.identity_seed,
+                auth_token: &node_runtime.auth_token,
+                max_requests: node_runtime.max_requests,
             })
         }
-        TvmdCommand::Miner(MinerCommand::Status) => Ok(miner_status()),
-        TvmdCommand::Validator(ValidatorCommand::Register(args)) => {
+        TvmdCommand::Role(RoleCommand::Miner(MinerCommand::Status)) => Ok(miner_status()),
+        TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Register(args))) => {
             check_validator_registration(args.stake)
         }
-        TvmdCommand::Validator(ValidatorCommand::Start(args)) => {
+        TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Check(args))) => {
             check_validator_start(&path_arg(&args.wallet), &args.node.to_string())
         }
-        TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
+        TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Run(args))) => {
             let runtime = &args.runtime;
-            let service = &runtime.service;
+            let node_runtime = &runtime.node_runtime;
             let wallet = path_arg(&args.wallet);
             let node = runtime.node.to_string();
-            let listen = service.listen.to_string();
-            let p2p_listen = service.p2p_listen.to_string();
-            let data_dir = path_arg(&service.data_dir);
-            validate_role_runtime(&wallet, &data_dir, &service.auth_token)?;
+            let listen = node_runtime.listen.to_string();
+            let p2p_listen = node_runtime.p2p_listen.to_string();
+            let data_dir = path_arg(&node_runtime.data_dir);
+            validate_role_runtime(&wallet, &data_dir, &node_runtime.auth_token)?;
             run_validator_service(RoleServiceConfig {
                 wallet: &wallet,
                 device: None,
@@ -99,21 +102,23 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 listen: &listen,
                 p2p_listen: &p2p_listen,
                 data_dir: &data_dir,
-                identity_seed: service.identity_seed,
-                auth_token: &service.auth_token,
-                max_requests: service.max_requests,
+                identity_seed: node_runtime.identity_seed,
+                auth_token: &node_runtime.auth_token,
+                max_requests: node_runtime.max_requests,
             })
         }
-        TvmdCommand::Validator(ValidatorCommand::Status) => Ok(validator_status()),
-        TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
+        TvmdCommand::Role(RoleCommand::Validator(ValidatorCommand::Status)) => {
+            Ok(validator_status())
+        }
+        TvmdCommand::Role(RoleCommand::Proposer(ProposerCommand::Run(args))) => {
             let runtime = &args.runtime;
-            let service = &runtime.service;
+            let node_runtime = &runtime.node_runtime;
             let wallet = path_arg(&args.wallet);
             let node = runtime.node.to_string();
-            let listen = service.listen.to_string();
-            let p2p_listen = service.p2p_listen.to_string();
-            let data_dir = path_arg(&service.data_dir);
-            validate_role_runtime(&wallet, &data_dir, &service.auth_token)?;
+            let listen = node_runtime.listen.to_string();
+            let p2p_listen = node_runtime.p2p_listen.to_string();
+            let data_dir = path_arg(&node_runtime.data_dir);
+            validate_role_runtime(&wallet, &data_dir, &node_runtime.auth_token)?;
             run_proposer_service(RoleServiceConfig {
                 wallet: &wallet,
                 device: None,
@@ -121,16 +126,16 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 listen: &listen,
                 p2p_listen: &p2p_listen,
                 data_dir: &data_dir,
-                identity_seed: service.identity_seed,
-                auth_token: &service.auth_token,
-                max_requests: service.max_requests,
+                identity_seed: node_runtime.identity_seed,
+                auth_token: &node_runtime.auth_token,
+                max_requests: node_runtime.max_requests,
             })
         }
-        TvmdCommand::Service(ServiceCommand::Init(args)) => {
+        TvmdCommand::Node(NodeCommand::Init(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             init_service_store(&path_arg(&args.data_dir))
         }
-        TvmdCommand::Service(ServiceCommand::Peer(ServicePeerCommand::Add(args))) => {
+        TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(args))) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             add_service_peer(
                 &path_arg(&args.data_dir),
@@ -138,7 +143,7 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 &args.address.to_string(),
             )
         }
-        TvmdCommand::Service(ServiceCommand::Readiness(args)) => {
+        TvmdCommand::Node(NodeCommand::Check(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             check_service_readiness(
                 &args.p2p_listen.to_string(),
@@ -146,7 +151,7 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 args.identity_seed,
             )
         }
-        TvmdCommand::Service(ServiceCommand::Serve(args)) => {
+        TvmdCommand::Node(NodeCommand::Serve(args)) => {
             let runtime = &args.runtime;
             let listen = runtime.listen.to_string();
             let p2p_listen = runtime.p2p_listen.to_string();
@@ -161,23 +166,23 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
                 runtime.max_requests,
             )
         }
-        TvmdCommand::Service(ServiceCommand::Status(args)) => {
+        TvmdCommand::Node(NodeCommand::Status(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             service_status(&path_arg(&args.data_dir))
         }
-        TvmdCommand::Service(ServiceCommand::Block(args)) => {
+        TvmdCommand::Node(NodeCommand::Block(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             service_block_status(&path_arg(&args.data_dir), args.height)
         }
-        TvmdCommand::Testnet(TestnetCommand::Seed(args)) => {
+        TvmdCommand::Localnet(LocalnetCommand::Seed(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             seed_local_testnet(&path_arg(&args.data_dir))
         }
-        TvmdCommand::Testnet(TestnetCommand::VerifyLocalCpu(args)) => {
+        TvmdCommand::Localnet(LocalnetCommand::Verify(args)) => {
             validate_data_dir(&path_arg(&args.data_dir))?;
             verify_local_cpu_store(&path_arg(&args.data_dir), args.json)
         }
-        TvmdCommand::Evidence(command) => {
+        TvmdCommand::Public(PublicCommand::Evidence(command)) => {
             execute_public_evidence_command(command).map_err(|error| error.to_string())
         }
     }

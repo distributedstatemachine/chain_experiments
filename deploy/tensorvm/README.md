@@ -8,19 +8,19 @@ artifacts for launching a service that can later produce independently checkable
 
 - `env/public-testnet.env.example` - environment file consumed by the systemd unit
 - `RUNBOOK.md` - operator runbook for launch, evidence collection, validation, and publication
-- `systemd/tensorvm.service` - `tvmd service serve` unit with mandatory libp2p listen configuration
+- `systemd/tensorvm.service` - `tvmd node serve` unit with mandatory libp2p listen configuration
   and startup from the durable libp2p peer book
 - `nginx/tensorvm.conf` - TLS reverse-proxy template for RPC, explorer, faucet, and telemetry hostnames
 - `manifests/public-testnet.preflight.example` - manifest shape accepted by the parser, but not launch-ready
   until the special-use example hosts, IDs, and public content URLs are replaced
 - `manifests/public-testnet.evidence.example` - structurally valid post-run evidence example accepted by
-  `tvmd evidence validate <path>`, but intentionally not independently checkable or
+  `tvmd public evidence validate <path>`, but intentionally not independently checkable or
   full-spec evidence because it uses special-use example hosts and contains only a 60-second, 10-block,
   2-miner, 1-validator sample
 
 ## Deployment Shape
 
-The reference service process exposes all required surfaces from one `tvmd service serve` process:
+The reference service process exposes all required surfaces from one `tvmd node serve` process:
 
 ```text
 GET /health
@@ -40,7 +40,7 @@ external URL, signed service-content records for the deployed content paths usin
 as each corresponding health URL, exact health/content paths without query strings or fragments, and
 one signed `network_runtime_observation=...` record per counted public operator proving libp2p discovery,
 gossip, request/response, and configured DoS controls during the external run. Those observation roots
-can be generated directly from captured `tvmd service serve` logs with
+can be generated directly from captured `tvmd node serve` logs with
 `evidence network from-service-log`, but the supplied listen multiaddr still has to be public. They
 can be aggregated from the saved raw-record file with `evidence record summary-file` and
 `evidence record artifact-file`. Each signed block, finality, libp2p,
@@ -70,7 +70,7 @@ Node-heartbeat records can be derived from saved per-block
 
 ```bash
 cargo build -p tensor_vm --release --features cuda-kernels
-target/release/tvmd miner start --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001
+target/release/tvmd role miner check --wallet miner.key --device cuda:0 --node /dns/bootstrap.tensorvm.net/tcp/4001
 sudo install -m 0755 target/release/tvmd /usr/local/bin/tvmd
 sudo useradd --system --home-dir /var/lib/tensorvm --shell /usr/sbin/nologin tensorvm
 sudo install -d -o tensorvm -g tensorvm /var/lib/tensorvm
@@ -78,8 +78,8 @@ sudo install -d /etc/tensorvm
 sudo install -m 0640 deploy/tensorvm/env/public-testnet.env.example /etc/tensorvm/public-testnet.env
 sudo install -m 0644 deploy/tensorvm/systemd/tensorvm.service /etc/systemd/system/tensorvm.service
 # On non-bootstrap nodes, seed at least one reachable libp2p peer before starting:
-sudo -u tensorvm /usr/local/bin/tvmd service peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
-sudo -u tensorvm /usr/local/bin/tvmd service readiness --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm
+sudo -u tensorvm /usr/local/bin/tvmd node peer add --data-dir /var/lib/tensorvm --peer-id "$BOOTSTRAP_PEER_ID" --address /dns/bootstrap.tensorvm.net/tcp/4001
+sudo -u tensorvm /usr/local/bin/tvmd node check --p2p-listen /ip4/0.0.0.0/tcp/4001 --data-dir /var/lib/tensorvm
 sudo systemctl daemon-reload
 sudo systemctl enable --now tensorvm.service
 ```
@@ -89,20 +89,20 @@ The CUDA miner-start check must report `device_backend=cuda`, `gpu_backend_ready
 it is not public GPU-miner evidence. Set `cuda_ready_miner_count` in the preflight manifest to the number
 of planned miner hosts that passed this CUDA readiness check; launch readiness requires it to match
 `miner_count`. Set `libp2p_ready_node_count` to the number of planned miner and validator nodes where
-`tvmd service readiness` reports `p2p_runtime=libp2p`, `node_store_ready=true`, and
+`tvmd node check` reports `p2p_runtime=libp2p`, `node_store_ready=true`, and
 `libp2p_ready=true`; launch readiness requires it to match `miner_count + validator_count`.
 
 Before advertising the run, replace all example hostnames, tokens, peer IDs, and service IDs, publish HTTPS
-with valid TLS, seed non-bootstrap peer books with `tvmd service peer add`, and run:
+with valid TLS, seed non-bootstrap peer books with `tvmd node peer add`, and run:
 
 ```bash
-tvmd testnet preflight deploy/tensorvm/manifests/public-testnet.preflight.example
+tvmd public preflight deploy/tensorvm/manifests/public-testnet.preflight.example
 ```
 
 After a run, operators can use the post-run evidence shape with real roots and signatures:
 
 ```bash
-tvmd evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
+tvmd public evidence validate deploy/tensorvm/manifests/public-testnet.evidence.example
 ```
 
 The checked example reports `independently_checkable=false` and `public_evidence_full_spec=false` because

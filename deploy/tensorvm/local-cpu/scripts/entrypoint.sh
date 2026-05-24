@@ -27,11 +27,11 @@ export TENSORVM_CHAIN_PROFILE
 mkdir -p "$DATA_DIR"
 rm -f "$READY_FILE"
 
-tvmd service init --data-dir "$DATA_DIR" > "$INIT_OUT"
+tvmd node init --data-dir "$DATA_DIR" > "$INIT_OUT"
 cp "$INIT_OUT" "$DATA_DIR/service-init.out"
 
 if [ "$IS_BOOTSTRAP" != "true" ]; then
-  tvmd service peer add \
+  tvmd node peer add \
     --data-dir "$DATA_DIR" \
     --peer-id "$BOOTSTRAP_PEER_ID" \
     --address "$BOOTSTRAP_ADDRESS" > "$DATA_DIR/service-peer-add.out"
@@ -39,15 +39,15 @@ fi
 
 case "$ROLE" in
   miner)
-    tvmd miner register --stake "$MINER_STAKE" > "$DATA_DIR/role-register.out"
-    tvmd miner start \
+    tvmd role miner register --stake "$MINER_STAKE" > "$DATA_DIR/role-register.out"
+    tvmd role miner check \
       --wallet "$WALLET" \
       --device cpu \
       --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out"
     ;;
   validator)
-    tvmd validator register --stake "$VALIDATOR_STAKE" > "$DATA_DIR/role-register.out"
-    tvmd validator start \
+    tvmd role validator register --stake "$VALIDATOR_STAKE" > "$DATA_DIR/role-register.out"
+    tvmd role validator check \
       --wallet "$WALLET" \
       --node "$NODE_MULTIADDR" > "$DATA_DIR/role-start.out"
     ;;
@@ -58,10 +58,10 @@ case "$ROLE" in
 esac
 
 if [ "$SEED_LOCAL_TESTNET" = "true" ] && [ ! -f "$DATA_DIR/local-testnet-seed.out" ]; then
-  tvmd testnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out"
+  tvmd localnet seed --data-dir "$DATA_DIR" > "$DATA_DIR/local-testnet-seed.out"
 fi
 
-tvmd service readiness \
+tvmd node check \
   --p2p-listen "$P2P_LISTEN" \
   --data-dir "$DATA_DIR" \
   --identity-seed "$IDENTITY_SEED" > "$DATA_DIR/service-readiness.out"
@@ -86,7 +86,7 @@ tvmd service readiness \
 case "$ROLE" in
   miner)
     if [ "$RUNTIME_COMMAND" = "proposer_run" ]; then
-      exec tvmd proposer run \
+      exec tvmd role proposer run \
         --wallet "$WALLET" \
         --node "$NODE_MULTIADDR" \
         --listen "$RPC_LISTEN" \
@@ -96,7 +96,7 @@ case "$ROLE" in
         --auth-token "$AUTH_TOKEN" \
         --max-requests 0
     fi
-    exec tvmd miner run \
+    exec tvmd role miner run \
       --wallet "$WALLET" \
       --device cpu \
       --node "$NODE_MULTIADDR" \
@@ -108,7 +108,7 @@ case "$ROLE" in
       --max-requests 0
     ;;
   validator)
-    exec tvmd validator run \
+    exec tvmd role validator run \
       --wallet "$WALLET" \
       --node "$NODE_MULTIADDR" \
       --listen "$RPC_LISTEN" \

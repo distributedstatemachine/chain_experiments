@@ -21,7 +21,7 @@ The crate implements the deterministic local/testnet core:
 - miner hardware-class and GPU utilization telemetry
 - deterministic local-chain execution harness for adversarial tests
 - rust-libp2p P2P runtime wiring with Gossipsub, Identify, Kademlia discovery, TCP/TLS/Yamux swarm
-  construction, JSON request-response protocols, and a service runtime started by `tvmd service serve`
+  construction, JSON request-response protocols, and a service runtime started by `tvmd node serve`
 - durable libp2p peer-book storage for bootstrap peer IDs and multiaddrs
 - mandatory libp2p networking for consensus propagation and bounded tensor/program fetches
 - restartable `NodeStore` persistence for chain snapshots, full chain state, append-only block logs, and peer books
@@ -29,7 +29,7 @@ The crate implements the deterministic local/testnet core:
 - local browser-facing explorer, telemetry, and faucet HTML pages; the standalone explorer UI lives in
   [`../tensor_vm_explorer`](../tensor_vm_explorer/README.md)
 - executable reference `tvmd` miner/validator CLI validation and readiness reports using libp2p multiaddrs
-- `tvmd service init/serve` launch configuration for a NodeStore-backed RPC/explorer/faucet/telemetry process
+- `tvmd node init/serve` launch configuration for a NodeStore-backed RPC/explorer/faucet/telemetry process
   with mandatory libp2p listen configuration
 - watcher scans for invalid receipts, data withholding, validator misconduct, and settlement blockers
 - public-testnet evidence reporting that distinguishes local preflight shape from actual 7-day

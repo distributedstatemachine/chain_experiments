@@ -110,55 +110,55 @@ pub const TENSOR_DATA_RPC_ROUTES: &[&str] = &[
 ];
 
 pub const MINER_CLI_COMMANDS: &[&str] = &[
-    "tvmd miner register --stake <tokens>",
-    "tvmd miner start --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
-    "tvmd miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-    "tvmd miner status",
+    "tvmd role miner register --stake <tokens>",
+    "tvmd role miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
+    "tvmd role miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd role miner status",
 ];
 
 pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
-    "tvmd validator register --stake <tokens>",
-    "tvmd validator start --wallet <key> [--node <libp2p-multiaddr>]",
-    "tvmd validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-    "tvmd validator status",
+    "tvmd role validator register --stake <tokens>",
+    "tvmd role validator check --wallet <key> [--node <libp2p-multiaddr>]",
+    "tvmd role validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd role validator status",
 ];
 
 pub const PROPOSER_CLI_COMMANDS: &[&str] = &[
-    "tvmd proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd role proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
 ];
 
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
-    "tvmd service init [--data-dir <path>]",
-    "tvmd service peer add --peer-id <peer-id> --address <libp2p-multiaddr> [--data-dir <path>]",
-    "tvmd service readiness [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>]",
-    "tvmd service serve --auth-token <token> [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+    "tvmd node init [--data-dir <path>]",
+    "tvmd node peer add --peer-id <peer-id> --address <libp2p-multiaddr> [--data-dir <path>]",
+    "tvmd node check [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>]",
+    "tvmd node serve --auth-token <token> [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
 ];
 
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[
-    "tvmd evidence validate <path>",
-    "tvmd evidence publish --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
-    "tvmd evidence audit --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
-    "tvmd evidence run window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
-    "tvmd evidence run window-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
-    "tvmd evidence node heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
-    "tvmd evidence node heartbeat-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
-    "tvmd evidence node operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
-    "tvmd evidence service health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
-    "tvmd evidence service health-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
-    "tvmd evidence service content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
-    "tvmd evidence service content-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
-    "tvmd evidence service content-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
-    "tvmd evidence network observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
-    "tvmd evidence network from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
-    "tvmd evidence record summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
-    "tvmd evidence record artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
-    "tvmd evidence record artifact-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
-    "tvmd evidence record artifact-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
-    "tvmd evidence record summary-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
-    "tvmd evidence record summary-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
+    "tvmd public evidence validate <path>",
+    "tvmd public evidence publish --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
+    "tvmd public evidence audit --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
+    "tvmd public evidence run window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
+    "tvmd public evidence run window-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
+    "tvmd public evidence node heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
+    "tvmd public evidence node heartbeat-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
+    "tvmd public evidence node operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
+    "tvmd public evidence service health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
+    "tvmd public evidence service health-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
+    "tvmd public evidence service content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
+    "tvmd public evidence service content-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
+    "tvmd public evidence service content-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
+    "tvmd public evidence network observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
+    "tvmd public evidence network from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
+    "tvmd public evidence record summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
+    "tvmd public evidence record artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
+    "tvmd public evidence record artifact-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
+    "tvmd public evidence record artifact-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
+    "tvmd public evidence record summary-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
+    "tvmd public evidence record summary-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
 ];
 
-pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] = &["tvmd testnet preflight <path>"];
+pub const PUBLIC_TESTNET_CLI_COMMANDS: &[&str] = &["tvmd public preflight <path>"];
 
 #[cfg(test)]
 mod tests {
@@ -214,65 +214,65 @@ mod tests {
         assert_eq!(
             MINER_CLI_COMMANDS,
             &[
-                "tvmd miner register --stake <tokens>",
-                "tvmd miner start --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
-                "tvmd miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-                "tvmd miner status",
+                "tvmd role miner register --stake <tokens>",
+                "tvmd role miner check --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
+                "tvmd role miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd role miner status",
             ]
         );
         assert_eq!(
             VALIDATOR_CLI_COMMANDS,
             &[
-                "tvmd validator register --stake <tokens>",
-                "tvmd validator start --wallet <key> [--node <libp2p-multiaddr>]",
-                "tvmd validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
-                "tvmd validator status",
+                "tvmd role validator register --stake <tokens>",
+                "tvmd role validator check --wallet <key> [--node <libp2p-multiaddr>]",
+                "tvmd role validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd role validator status",
             ]
         );
         assert_eq!(
             PROPOSER_CLI_COMMANDS,
             &[
-                "tvmd proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd role proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
             ]
         );
         assert_eq!(
             SERVICE_CLI_COMMANDS,
             &[
-                "tvmd service init [--data-dir <path>]",
-                "tvmd service peer add --peer-id <peer-id> --address <libp2p-multiaddr> [--data-dir <path>]",
-                "tvmd service readiness [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>]",
-                "tvmd service serve --auth-token <token> [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
+                "tvmd node init [--data-dir <path>]",
+                "tvmd node peer add --peer-id <peer-id> --address <libp2p-multiaddr> [--data-dir <path>]",
+                "tvmd node check [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>]",
+                "tvmd node serve --auth-token <token> [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
             ]
         );
         assert_eq!(
             PUBLIC_EVIDENCE_CLI_COMMANDS,
             &[
-                "tvmd evidence validate <path>",
-                "tvmd evidence publish --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
-                "tvmd evidence audit --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
-                "tvmd evidence run window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
-                "tvmd evidence run window-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
-                "tvmd evidence node heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
-                "tvmd evidence node heartbeat-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
-                "tvmd evidence node operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
-                "tvmd evidence service health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
-                "tvmd evidence service health-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
-                "tvmd evidence service content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
-                "tvmd evidence service content-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
-                "tvmd evidence service content-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
-                "tvmd evidence network observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
-                "tvmd evidence network from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
-                "tvmd evidence record summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
-                "tvmd evidence record artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
-                "tvmd evidence record artifact-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
-                "tvmd evidence record artifact-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
-                "tvmd evidence record summary-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
-                "tvmd evidence record summary-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
+                "tvmd public evidence validate <path>",
+                "tvmd public evidence publish --bundle-id <hex> --public-uri <uri> --manifest-signer <address-hex> --manifest-signature-count <n> --independent-auditor-count <n>",
+                "tvmd public evidence audit --bundle-id <hex> --public-uri <uri> --auditor-id <address-hex> --audit-uri <uri> --observed-at <unix-seconds>",
+                "tvmd public evidence run window --bundle-id <hex> --manifest-signer <address-hex> --started-at <unix-seconds> --ended-at <unix-seconds> --observed-blocks <n>",
+                "tvmd public evidence run window-file --bundle-id <hex> --manifest-signer <address-hex> --block-observation-file <path>",
+                "tvmd public evidence node heartbeat --role <miner|validator> --address <address-hex> --operator-id <hex> --first-block <n> --last-block <n> --heartbeat-count <n>",
+                "tvmd public evidence node heartbeat-file --role <miner|validator> --address <address-hex> --operator-id <hex> --heartbeat-file <path>",
+                "tvmd public evidence node operator-attestation --role <miner|validator> --address <address-hex> --operator-id <hex> --identity-uri <uri> --observed-at <unix-seconds>",
+                "tvmd public evidence service health --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --first-block <n> --last-block <n> --reachable-count <n> --signed-health-check-count <n>",
+                "tvmd public evidence service health-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --health-path <path> --observation-file <path>",
+                "tvmd public evidence service content --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --content-root <hex> --observed-at <unix-seconds> --min-content-bytes <n>",
+                "tvmd public evidence service content-bytes --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-hex <hex-bytes>",
+                "tvmd public evidence service content-file --kind <rpc|explorer|faucet|telemetry> --endpoint-id <hex> --public-url <url> --content-path <path> --observed-at <unix-seconds> --content-file <path>",
+                "tvmd public evidence network observation --operator-id <hex> --peer-id <peer-id> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --gossip-topics <n> --request-response-protocols <n> --bootstrap-peers <n> --max-transmit-bytes <n> --request-timeout-seconds <n> --max-concurrent-streams <n> --idle-timeout-seconds <n>",
+                "tvmd public evidence network from-service-log --operator-id <hex> --listen-address <public-libp2p-multiaddr> --observed-at <unix-seconds> --service-log <path>",
+                "tvmd public evidence record summary --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-root <hex> --record-count <n>",
+                "tvmd public evidence record artifact --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-root <hex> --record-count <n>",
+                "tvmd public evidence record artifact-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-roots <comma-separated-roots>",
+                "tvmd public evidence record artifact-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --artifact-uri <uri> --record-file <path>",
+                "tvmd public evidence record summary-roots --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-roots <comma-separated-roots>",
+                "tvmd public evidence record summary-file --kind <block-history|finality-history|network-runtime|data-availability|invalid-work|reward-settlement> --bundle-id <hex> --manifest-signer <address-hex> --record-file <path>",
             ]
         );
         assert_eq!(
             PUBLIC_TESTNET_CLI_COMMANDS,
-            &["tvmd testnet preflight <path>"]
+            &["tvmd public preflight <path>"]
         );
     }
 }

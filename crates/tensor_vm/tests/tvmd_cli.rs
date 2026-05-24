@@ -253,6 +253,7 @@ fn assert_service_health_evidence_from_response(
     assert_eq!(body["status"].as_str(), Some("ok"));
     assert_eq!(body["service"].as_str(), Some(kind));
     let health = run_tvmd(&[
+        "public",
         "evidence",
         "service",
         "health",
@@ -306,6 +307,7 @@ fn assert_service_content_evidence_from_response(
     );
     let body_hex = hex(body.as_bytes());
     let content_from_bytes = run_tvmd(&[
+        "public",
         "evidence",
         "service",
         "content-bytes",
@@ -333,6 +335,7 @@ fn assert_service_content_evidence_from_response(
     std::fs::write(&content_file, body.as_bytes()).expect("service body fixture must be written");
     let content_file_text = content_file.to_string_lossy().into_owned();
     let content_from_file = run_tvmd(&[
+        "public",
         "evidence",
         "service",
         "content-file",
@@ -362,7 +365,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     let data_dir = unique_test_dir("local-testnet-seed");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
-    let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
+    let seed = run_tvmd(&["localnet", "seed", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
     assert_eq!(stdout_u64(&seed, "miners"), 10);
     assert_eq!(stdout_u64(&seed, "validators"), 5);
@@ -383,7 +386,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
         .args([
-            "service",
+            "node",
             "serve",
             "--listen",
             &listen,
@@ -402,7 +405,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("tvmd service serve must spawn");
+        .expect("tvmd node serve must spawn");
 
     let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert_eq!(response_status_line(&initial_chain_head), "HTTP/1.1 200 OK");
@@ -460,7 +463,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     assert_eq!(stdout_u64(&stdout, "served_requests"), 4);
     assert_eq!(stdout_value(&stdout, "produced_blocks"), "0");
 
-    let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+    let status = run_tvmd(&["node", "status", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&status, "command"), "service_status");
     assert_eq!(stdout_value(&status, "node_store_ready"), "true");
     assert_eq!(stdout_value(&status, "status_source"), "node_store");
@@ -519,7 +522,7 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
     assert_eq!(first_live_block_hash, "0".repeat(64));
 
     let block = run_tvmd(&[
-        "service",
+        "node",
         "block",
         "--data-dir",
         &data_dir_text,
@@ -570,13 +573,14 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     let data_dir = unique_test_dir("validator-local-producer");
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
-    let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
+    let seed = run_tvmd(&["localnet", "seed", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
 
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
     let child = Command::new(env!("CARGO_BIN_EXE_tvmd"))
         .args([
+            "role",
             "validator",
             "run",
             "--wallet",
@@ -600,7 +604,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("tvmd validator run must spawn");
+        .expect("tvmd role validator run must spawn");
 
     let initial_chain_head = authenticated_get_request(rpc_port, "/chain/head");
     assert_eq!(response_status_line(&initial_chain_head), "HTTP/1.1 200 OK");
@@ -643,7 +647,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     assert_eq!(stdout_value(&stdout, "local_producer"), "true");
     assert!(stdout_u64(&stdout, "produced_blocks") > 0);
 
-    let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+    let status = run_tvmd(&["node", "status", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&status, "role_loop_role"), "validator");
     assert_eq!(stdout_value(&status, "role_can_produce_blocks"), "true");
     assert_eq!(
@@ -654,7 +658,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     assert!(stdout_u64(&status, "role_produced_blocks") > 0);
     assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
     let block = run_tvmd(&[
-        "service",
+        "node",
         "block",
         "--data-dir",
         &data_dir_text,
@@ -681,12 +685,17 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
     for role in ["miner", "validator", "proposer"] {
         let data_dir = unique_test_dir(&format!("{role}-run"));
         let data_dir_text = data_dir.to_string_lossy().into_owned();
-        let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
+        let seed = run_tvmd(&["localnet", "seed", "--data-dir", &data_dir_text]);
         assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
 
         let rpc_port = free_local_port();
         let listen = format!("127.0.0.1:{rpc_port}");
-        let mut args = vec![role.to_owned(), "run".to_owned(), "--wallet".to_owned()];
+        let mut args = vec![
+            "role".to_owned(),
+            role.to_owned(),
+            "run".to_owned(),
+            "--wallet".to_owned(),
+        ];
         let (wallet, expected_registration) = match role {
             "miner" => ("testnet-miner-0", "miner"),
             "validator" => ("testnet-validator-0", "validator"),
@@ -843,7 +852,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert_eq!(stdout_u64(&stdout, "network_block_votes_applied"), 0);
         assert_eq!(stdout_u64(&stdout, "network_invalid_events"), 0);
 
-        let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
+        let status = run_tvmd(&["node", "status", "--data-dir", &data_dir_text]);
         assert_eq!(
             stdout_value(&status, "role_runtime_command"),
             format!("{role}_run")

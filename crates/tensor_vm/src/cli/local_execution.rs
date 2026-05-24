@@ -1,9 +1,9 @@
 use super::TvmdCommand;
-use super::commands::TestnetCommand;
+use super::commands::{LocalnetCommand, RoleCommand};
 use super::local_role_execution::{
     execute_miner_command, execute_proposer_command, execute_validator_command,
 };
-use super::local_service_execution::execute_service_command;
+use super::local_service_execution::execute_node_command;
 use super::validation::{ensure_data_dir, json_escape, path_argument};
 use crate::chain::ChainParams;
 use crate::error::Result;
@@ -11,18 +11,20 @@ use crate::error::Result;
 pub(super) fn execute_local_cli_command(command: &TvmdCommand) -> Result<String> {
     let params = ChainParams::default();
     match command {
-        TvmdCommand::Miner(command) => execute_miner_command(command, &params),
-        TvmdCommand::Validator(command) => execute_validator_command(command, &params),
-        TvmdCommand::Proposer(command) => execute_proposer_command(command),
-        TvmdCommand::Service(command) => execute_service_command(command),
-        TvmdCommand::Testnet(command) => execute_testnet_command(command),
-        _ => unreachable!("public evidence commands are handled by cli::execution"),
+        TvmdCommand::Role(RoleCommand::Miner(command)) => execute_miner_command(command, &params),
+        TvmdCommand::Role(RoleCommand::Validator(command)) => {
+            execute_validator_command(command, &params)
+        }
+        TvmdCommand::Role(RoleCommand::Proposer(command)) => execute_proposer_command(command),
+        TvmdCommand::Node(command) => execute_node_command(command),
+        TvmdCommand::Localnet(command) => execute_localnet_command(command),
+        TvmdCommand::Public(_) => unreachable!("public commands are handled by cli::execution"),
     }
 }
 
-fn execute_testnet_command(command: &TestnetCommand) -> Result<String> {
+fn execute_localnet_command(command: &LocalnetCommand) -> Result<String> {
     match command {
-        TestnetCommand::Seed(args) => {
+        LocalnetCommand::Seed(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             Ok(format!(
@@ -30,7 +32,7 @@ fn execute_testnet_command(command: &TestnetCommand) -> Result<String> {
                 data_dir
             ))
         }
-        TestnetCommand::VerifyLocalCpu(args) => {
+        LocalnetCommand::Verify(args) => {
             ensure_data_dir(&args.data_dir)?;
             let data_dir = path_argument(&args.data_dir);
             if args.json {
@@ -45,9 +47,5 @@ fn execute_testnet_command(command: &TestnetCommand) -> Result<String> {
                 ))
             }
         }
-        TestnetCommand::Preflight(args) => Ok(format!(
-            "run public testnet preflight manifest {}",
-            path_argument(&args.manifest)
-        )),
     }
 }

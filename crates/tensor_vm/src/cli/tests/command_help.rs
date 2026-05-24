@@ -14,21 +14,19 @@ fn clap_help(args: &[&str]) -> String {
 fn clap_help_exposes_the_tvmd_command_tree() {
     let help = clap_help(&["--help"]);
     assert!(help.contains("Usage: tvmd <COMMAND>"));
-    for command in [
-        "miner",
-        "validator",
-        "proposer",
-        "service",
-        "testnet",
-        "evidence",
-    ] {
+    for command in ["node", "role", "localnet", "public"] {
         assert!(
             help.contains(command),
             "top-level help should list {command}"
         );
     }
 
-    let miner_run = clap_help(&["miner", "run", "--help"]);
+    let role = clap_help(&["role", "--help"]);
+    for command in ["miner", "validator", "proposer"] {
+        assert!(role.contains(command), "role help should list {command}");
+    }
+
+    let miner_run = clap_help(&["role", "miner", "run", "--help"]);
     for argument in [
         "--wallet <PATH>",
         "--device <DEVICE>",
@@ -46,7 +44,7 @@ fn clap_help_exposes_the_tvmd_command_tree() {
         );
     }
 
-    let evidence = clap_help(&["evidence", "--help"]);
+    let evidence = clap_help(&["public", "evidence", "--help"]);
     for command in [
         "validate", "publish", "audit", "run", "node", "service", "network", "record",
     ] {
@@ -60,6 +58,12 @@ fn clap_help_exposes_the_tvmd_command_tree() {
 #[test]
 fn clap_rejects_retired_top_level_command_families() {
     for command in [
+        "miner",
+        "validator",
+        "proposer",
+        "service",
+        "testnet",
+        "evidence",
         "public-evidence",
         "public-testnet",
         "local-testnet",

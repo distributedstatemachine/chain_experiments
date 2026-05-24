@@ -44,17 +44,17 @@ use arguments::{
 pub use commands::{
     AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
     EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
-    LocalCpuVerifyArgs, MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    OperatorAttestationArgs, ProposerCommand, PublicEvidenceManifestArgs,
-    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
-    PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
-    RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs, RunWindowFromFileArgs,
-    ServiceBlockArgs, ServiceCommand, ServiceContentArgs, ServiceContentFromBytesArgs,
-    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, ServicePeerAddArgs,
-    ServicePeerCommand, ServiceReadinessArgs, ServiceRuntimeArgs, ServiceServeArgs, StakeArgs,
-    TestnetCommand, TvmdCli, TvmdCommand, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
+    LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs,
+    NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
+    NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
+    PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
+    PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
+    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleCommand, RoleRuntimeArgs,
+    RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs, TvmdCli,
+    TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,
 };
 #[cfg(test)]
 use network_evidence::{

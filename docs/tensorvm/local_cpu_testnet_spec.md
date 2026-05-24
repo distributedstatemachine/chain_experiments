@@ -167,7 +167,7 @@ initialize or load its durable node store
 load its stable wallet and libp2p identity
 seed the bootstrap peer book, except for miner-00
 start the mandatory libp2p control plane
-start its role command as `tvmd miner run` or `tvmd validator run`; `validator-00` is the only service
+start its role command as `tvmd role miner run` or `tvmd role validator run`; `validator-00` is the only service
 with the local timed producer flag
 report readiness only after the role process and libp2p runtime are live
 ```
@@ -180,7 +180,7 @@ device=cpu
 
 Validator containers must connect through libp2p and validate receipts using the canonical verifier
 paths. Role loops may be supervised by an entrypoint script, but the role loops must use real `tvmd`
-protocol paths and persisted state. The readiness file and `tvmd service status` output must expose the
+protocol paths and persisted state. The readiness file and `tvmd node status` output must expose the
 actual long-running role command so the checker can reject operators that fall back to a generic service
 entrypoint. The status output must also expose role-loop counters, local-producer mode, network-applied
 block counters for non-producers, the runtime-observed libp2p connected peer count, job, receipt,
@@ -266,7 +266,7 @@ synthetic post-startup jobs, receipts, and settled receipts are visible through 
 at least one settled matmul TensorWork receipt
 at least one settled LinearTrainingStep receipt
 post-seed receipt details name TensorOp and LinearTrainingStep primitive types
-`tvmd service block` exposes finalized live block-height receipt IDs and primitive counts for both TensorOp
+`tvmd node block` exposes finalized live block-height receipt IDs and primitive counts for both TensorOp
 and LinearTrainingStep work
 validator attestations for settled receipts
 miner and validator rewards credited from settled TensorWork
@@ -313,7 +313,7 @@ and continued producing finalized blocks. A smaller explicit service list may be
 it does not satisfy this spec.
 
 The restart path must also tolerate an interrupted local write where the snapshot and block log disagree.
-`tvmd service init` must validate the complete node store, recover snapshot and block-log files from the
+`tvmd node init` must validate the complete node store, recover snapshot and block-log files from the
 persisted `chain.state` file when that state is valid, and fail readiness if neither the complete store nor
 chain-state recovery is valid.
 
