@@ -270,6 +270,8 @@ spaghetti around.
 - Iteration 112 extracted public network-observation address filtering into
   `cli/network_observation.rs`, giving the public-evidence path a focused owner for routability
   checks.
+- Iteration 113 extracted shared CLI argument parsing and public-evidence tag helpers into
+  `cli/arguments.rs`, reducing parser/helper coupling in the parent CLI module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
