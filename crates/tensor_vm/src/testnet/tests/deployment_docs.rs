@@ -14,6 +14,30 @@ fn assert_trimmed_lines(document: &str, expected_lines: &[&str], label: &str) {
     }
 }
 
+fn assert_no_retired_tvmd_commands(document: &str, label: &str) {
+    for command in [
+        "role",
+        "service",
+        "testnet",
+        "evidence",
+        "public-evidence",
+        "public-testnet",
+        "local-testnet",
+        "local-cpu",
+    ] {
+        let direct = format!("tvmd {command}");
+        let cargo_run = format!("-- {command}");
+        assert!(
+            !document.contains(&direct),
+            "{label} should not preserve retired CLI command {direct}"
+        );
+        assert!(
+            !document.contains(&cargo_run),
+            "{label} should not preserve retired cargo-run CLI command {cargo_run}"
+        );
+    }
+}
+
 #[test]
 fn public_deployment_templates_require_libp2p_and_https_surfaces() {
     let env = include_str!("../../../../../deploy/tensorvm/env/public-testnet.env.example");
@@ -180,4 +204,40 @@ fn public_deployment_readme_records_scaffold_boundary_and_operator_flow() {
         ],
         "deployment README operator-flow requirements",
     );
+}
+
+#[test]
+fn operator_docs_do_not_preserve_retired_tvmd_commands() {
+    for (label, document) in [
+        (
+            "public testnet preflight docs",
+            include_str!("../../../../../docs/tensorvm/public_testnet_preflight.md"),
+        ),
+        (
+            "public testnet evidence docs",
+            include_str!("../../../../../docs/tensorvm/public_testnet_evidence.md"),
+        ),
+        (
+            "deployment README",
+            include_str!("../../../../../deploy/tensorvm/README.md"),
+        ),
+        (
+            "deployment runbook",
+            include_str!("../../../../../deploy/tensorvm/RUNBOOK.md"),
+        ),
+        (
+            "public deployment env template",
+            include_str!("../../../../../deploy/tensorvm/env/public-testnet.env.example"),
+        ),
+        (
+            "public deployment systemd unit",
+            include_str!("../../../../../deploy/tensorvm/systemd/tensorvm.service"),
+        ),
+        (
+            "operator boundary goal",
+            include_str!("../../../../../goal.md"),
+        ),
+    ] {
+        assert_no_retired_tvmd_commands(document, label);
+    }
 }

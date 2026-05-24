@@ -887,6 +887,8 @@ spaghetti around.
   counts from the shared topology script instead of hard-coding those policy constants in the checker.
 - Iteration 356 moved the local CPU checker's bootstrap service, network observer, seed height/block
   expectations, and full-rate basis-point constants into the shared topology script.
+- Iteration 357 removed the last retired preflight and service-run command references from
+  operator-facing docs and added a deployment-doc regression against retired top-level CLI families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -29,7 +29,7 @@ Hard rules:
 - Replace `tvmd` paths that synthesize jobs, receipts, attestations, blocks, votes, or role counters for other operators. Do not preserve them behind compatibility flags.
 - Do not count single-process helpers, deterministic replay, service-owned local producer loops, or in-memory propagation as local-chain readiness evidence.
 - `tvmd miner run` owns only miner behavior. `tvmd validator run` owns validator verification, useful-verification PoW, block proposal, and finality voting. There is no separate miner proposer process.
-- `tvmd service serve` may expose local node APIs and start one configured node role. It must not perform multi-role orchestration.
+- `tvmd node serve` may expose local node APIs and start one configured node role. It must not perform multi-role orchestration.
 - Tests for pure chain state transitions may call the chain engine directly. Acceptance tests for local production readiness must prove interprocess libp2p/RPC behavior.
 
 ## Architecture Shortcut Ban
