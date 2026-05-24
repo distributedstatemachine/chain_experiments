@@ -188,6 +188,7 @@ pub(super) fn decode_block_payload(bytes: &[u8]) -> Result<TensorBlock> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chain::{ChainCommand, ChainEngine};
     use crate::types::{address, hash_bytes};
 
     fn chain_with_blocks(chain: &Chain, blocks: Vec<TensorBlock>) -> Chain {
@@ -198,18 +199,44 @@ mod tests {
         })
     }
 
+    fn register_block_producer(chain: &mut Chain, producer: crate::types::Address) {
+        chain
+            .apply_command(ChainCommand::RegisterMiner {
+                address: producer,
+                stake: chain.params().miner_min_stake,
+            })
+            .unwrap();
+        chain
+            .apply_command(ChainCommand::RegisterValidator {
+                address: producer,
+                stake: chain.params().validator_min_stake,
+            })
+            .unwrap();
+    }
+
+    fn produce_block(
+        chain: &mut Chain,
+        proposer: crate::types::Address,
+        timestamp: u64,
+    ) -> TensorBlock {
+        let block_count = chain.blocks().len();
+        chain
+            .apply_command(ChainCommand::ProduceBlock {
+                proposer,
+                timestamp,
+            })
+            .unwrap();
+        assert_eq!(chain.blocks().len(), block_count + 1);
+        chain.blocks().last().unwrap().clone()
+    }
+
     #[test]
     fn block_log_store_appends_loads_and_detects_tampering() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-genesis"]));
         let miner = address(b"block-log-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
-        chain.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
+        produce_block(&mut chain, miner, 1_006);
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-{}-{}.bin",
@@ -250,14 +277,9 @@ mod tests {
     fn block_log_sync_appends_only_missing_blocks_and_rejects_mismatches() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-sync"]));
         let miner = address(b"block-log-sync-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
-        chain.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
+        produce_block(&mut chain, miner, 1_006);
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-sync-{}-{}.bin",
@@ -287,14 +309,9 @@ mod tests {
         );
 
         let mut different = Chain::new(hash_bytes(b"test", &[b"block-log-sync-other"]));
-        different
-            .register_miner(miner, different.params().miner_min_stake)
-            .unwrap();
-        different
-            .register_validator(miner, different.params().validator_min_stake)
-            .unwrap();
-        different.produce_block(miner, 1_000).unwrap();
-        different.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut different, miner);
+        produce_block(&mut different, miner, 1_000);
+        produce_block(&mut different, miner, 1_006);
         assert_eq!(
             store.sync_chain(&different),
             Err(TvmError::Storage("block log chain mismatch"))
@@ -307,14 +324,9 @@ mod tests {
     fn block_log_replace_chain_overwrites_ahead_log() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-replace"]));
         let miner = address(b"block-log-replace-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
-        chain.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
+        produce_block(&mut chain, miner, 1_006);
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-block-log-replace-{}-{}.bin",
@@ -363,14 +375,9 @@ mod tests {
 
         let mut chain = Chain::new(hash_bytes(b"test", &[b"block-log-parent"]));
         let miner = address(b"block-log-parent-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
-        let mut second = chain.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
+        let mut second = produce_block(&mut chain, miner, 1_006);
         second.parent_hash = hash_bytes(b"test", &[b"wrong-parent"]);
 
         let mut bytes = Vec::from(BLOCK_LOG_MAGIC);

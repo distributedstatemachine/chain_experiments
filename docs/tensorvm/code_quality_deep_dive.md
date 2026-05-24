@@ -646,6 +646,9 @@ spaghetti around.
 - Iteration 248 routed `tvmd_runtime` miner and validator registration setup through `ChainCommand`
   helpers, removing another runtime-facing integration-test dependency on direct `Chain::register_*`
   mutation methods outside the chain module.
+- Iteration 249 routed block-log storage fixtures through `ChainCommand`-backed registration and block
+  production helpers, removing direct `Chain::register_*` and `Chain::produce_block` setup from that
+  storage codec test surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
