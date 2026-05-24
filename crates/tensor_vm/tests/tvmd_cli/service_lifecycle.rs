@@ -317,9 +317,24 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "--idle-timeout-seconds",
         "60",
     ]);
-    assert!(public_observation.starts_with("network_runtime_observation="));
-    assert!(public_observation.contains(p2p_peer_id));
-    assert!(public_observation.contains("/dns/node-a.tensorvm.net/tcp/4001"));
+    let public_observation_fields =
+        comma_record_fields(&public_observation, "network_runtime_observation=", 13);
+    assert_eq!(public_observation_fields[0], "99".repeat(32));
+    assert_eq!(public_observation_fields[1], p2p_peer_id);
+    assert_eq!(
+        public_observation_fields[2],
+        "/dns/node-a.tensorvm.net/tcp/4001"
+    );
+    assert_eq!(public_observation_fields[3], "1700000000");
+    assert_eq!(public_observation_fields[4], p2p_gossipsub_topics);
+    assert_eq!(public_observation_fields[5], p2p_request_response_protocols);
+    assert_eq!(public_observation_fields[6], p2p_bootstrap_peers);
+    assert_eq!(public_observation_fields[7], "1048576");
+    assert_eq!(public_observation_fields[8], "10");
+    assert_eq!(public_observation_fields[9], "128");
+    assert_eq!(public_observation_fields[10], "60");
+    assert_eq!(public_observation_fields[11].len(), 64);
+    assert_eq!(public_observation_fields[12].len(), 64);
     let public_observation_from_service_log = run_tvmd(&[
         "evidence",
         "network",
@@ -350,9 +365,17 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "--record-roots",
         observation_root,
     ]);
-    assert!(summary_from_root.contains("network_runtime_observation_records=1"));
-    assert!(summary_from_root.contains("network_runtime_observation_root="));
-    assert!(summary_from_root.contains("network_runtime_observation_signature="));
+    assert_eq!(
+        stdout_u64(&summary_from_root, "network_runtime_observation_records"),
+        1
+    );
+    let summary_record_root = stdout_value(&summary_from_root, "network_runtime_observation_root");
+    let summary_signature =
+        stdout_value(&summary_from_root, "network_runtime_observation_signature");
+    assert_eq!(summary_record_root.len(), 64);
+    assert_ne!(summary_record_root, "0".repeat(64));
+    assert_eq!(summary_signature.len(), 64);
+    assert_ne!(summary_signature, "0".repeat(64));
     let artifact_from_root = run_tvmd(&[
         "evidence",
         "record",
@@ -368,10 +391,16 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
         "--record-roots",
         observation_root,
     ]);
-    assert!(artifact_from_root.starts_with(
-        "record_artifact=network-runtime,https://evidence.tensorvm.net/network-runtime.json,"
-    ));
-    assert!(artifact_from_root.contains(",1,"));
+    let artifact_fields = comma_record_fields(&artifact_from_root, "record_artifact=", 5);
+    assert_eq!(artifact_fields[0], "network-runtime");
+    assert_eq!(
+        artifact_fields[1],
+        "https://evidence.tensorvm.net/network-runtime.json"
+    );
+    assert_eq!(artifact_fields[2], summary_record_root);
+    assert_eq!(artifact_fields[3], "1");
+    assert_eq!(artifact_fields[4].len(), 64);
+    assert_ne!(artifact_fields[4], "0".repeat(64));
     let (status, public_observation_stdout, public_observation_stderr) = run_tvmd_failure(&[
         "evidence",
         "network",
@@ -401,7 +430,10 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     ]);
     assert_eq!(status, 1);
     assert!(public_observation_stdout.is_empty());
-    assert!(public_observation_stderr.contains("network observation address is not public"));
+    assert_eq!(
+        public_observation_stderr.trim_end(),
+        "invalid receipt: network observation address is not public"
+    );
     let (status, log_observation_stdout, log_observation_stderr) = run_tvmd_failure(&[
         "evidence",
         "network",
@@ -417,7 +449,10 @@ fn service_cli_lifecycle_starts_libp2p_and_serves_public_surfaces() {
     ]);
     assert_eq!(status, 1);
     assert!(log_observation_stdout.is_empty());
-    assert!(log_observation_stderr.contains("network observation address is not public"));
+    assert_eq!(
+        log_observation_stderr.trim_end(),
+        "invalid receipt: network observation address is not public"
+    );
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }

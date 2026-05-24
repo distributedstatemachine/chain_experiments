@@ -723,6 +723,8 @@ spaghetti around.
   report parsing, exact HTTP status-line checks, and parsed tensor JSON counts.
 - Iteration 284 converted the `tvmd_cli` role-run service-status checks from broad `role_*` substring
   scans to keyed field, numeric, boolean, hash, and list assertions.
+- Iteration 285 converted service-lifecycle network evidence checks from prefix/substring scans to parsed
+  comma-record, keyed summary, artifact, and exact CLI error assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
