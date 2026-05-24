@@ -515,6 +515,8 @@ spaghetti around.
   `rpc/gateway.rs`, preserving the public RPC facade while separating gateway policy from route logic.
 - Iteration 196 moved tensor descriptor, row, chunk, opening, latest, and tensor lookup route helpers
   into `rpc/tensor_routes.rs`, separating tensor data serving from the main RPC route dispatcher.
+- Iteration 197 moved mutable RPC transaction, receipt-reference, attestation-reference, and faucet
+  claim handlers into `rpc/mutations.rs`, isolating chain/txpool mutation paths from read routing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
