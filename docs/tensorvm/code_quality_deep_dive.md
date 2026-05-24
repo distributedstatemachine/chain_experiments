@@ -1030,6 +1030,8 @@ spaghetti around.
 - Iteration 424 split miner, validator, proposer, and shared role-runtime clap command types into
   `cli/local_role_commands.rs`, leaving `cli/local_commands.rs` focused on node, peer, runtime, and
   localnet argument groups.
+- Iteration 425 split node and peer clap command types into `cli/local_node_commands.rs`, leaving
+  `cli/local_commands.rs` focused on shared runtime, data-dir, and localnet argument groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

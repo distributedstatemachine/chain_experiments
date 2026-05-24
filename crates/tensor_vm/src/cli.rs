@@ -11,6 +11,7 @@ mod evidence_fields;
 mod local_commands;
 #[cfg(test)]
 mod local_execution;
+mod local_node_commands;
 #[cfg(test)]
 mod local_p2p_report_fields;
 mod local_role_commands;
