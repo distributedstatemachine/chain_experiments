@@ -483,6 +483,9 @@ spaghetti around.
 - Iteration 184 moved public service kind, endpoint, signed health evidence, and content evidence
   validation into `testnet/public_services.rs`, separating service proof policy from the remaining
   public evidence bundle and node evidence types.
+- Iteration 185 moved production libp2p runtime evidence and signed runtime observation proof checks
+  into `testnet/public_network_runtime.rs`, leaving the top-level testnet module less coupled to
+  peer ID, multiaddr, and network-runtime validation details.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
