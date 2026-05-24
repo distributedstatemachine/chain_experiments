@@ -1,6 +1,6 @@
 use crate::error::{Result, TvmError};
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
-use crate::types::Hash;
+use crate::types::{Hash, parse_hash_hex};
 
 pub(super) fn exact_comma_fields<'a>(
     value: &'a str,
@@ -97,17 +97,7 @@ pub(super) fn public_evidence_record_field_prefix(kind: PublicEvidenceRecordKind
 }
 
 pub(super) fn parse_hash_argument(value: &str) -> Result<Hash> {
-    let value = value.strip_prefix("0x").unwrap_or(value);
-    if value.len() != 64 {
-        return Err(TvmError::InvalidReceipt("invalid hash argument"));
-    }
-    let mut out = [0u8; 32];
-    for (index, byte) in out.iter_mut().enumerate() {
-        let high = parse_hash_nibble(value.as_bytes()[index * 2])?;
-        let low = parse_hash_nibble(value.as_bytes()[index * 2 + 1])?;
-        *byte = (high << 4) | low;
-    }
-    Ok(out)
+    parse_hash_hex(value).map_err(|_| TvmError::InvalidReceipt("invalid hash argument"))
 }
 
 pub(super) fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
@@ -122,10 +112,6 @@ pub(super) fn parse_hex_bytes_argument(value: &str) -> Result<Vec<u8>> {
         out.push((high << 4) | low);
     }
     Ok(out)
-}
-
-fn parse_hash_nibble(value: u8) -> Result<u8> {
-    parse_hex_nibble(value).map_err(|_| TvmError::InvalidReceipt("invalid hash argument"))
 }
 
 fn parse_hex_nibble(value: u8) -> Result<u8> {

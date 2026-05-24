@@ -809,6 +809,8 @@ spaghetti around.
 - Iteration 321 routed crate-internal CLI evidence comma-record assertions through the same exact
   comma-field parser used by evidence readers, removing the last local `split(',')` helper from CLI
   report tests.
+- Iteration 322 extracted fixed-size hash hex parsing into `types.rs`, leaving CLI arguments and public
+  manifest parsing as domain-specific error wrappers instead of maintaining parallel 32-byte nibble loops.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

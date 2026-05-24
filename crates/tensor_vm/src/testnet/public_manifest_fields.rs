@@ -1,6 +1,6 @@
 use super::PublicServiceKind;
 use crate::error::{Result, TvmError};
-use crate::types::Hash;
+use crate::types::{Hash, HashHexParseError, parse_hash_hex as parse_typed_hash_hex};
 use std::collections::BTreeSet;
 
 pub(super) struct ManifestEntry<'a> {
@@ -75,25 +75,14 @@ pub(super) fn parse_service_kind(value: &str) -> Result<PublicServiceKind> {
 }
 
 pub(super) fn parse_hash_hex(value: &str) -> Result<Hash> {
-    let value = value.strip_prefix("0x").unwrap_or(value);
-    if value.len() != 64 {
-        return Err(TvmError::InvalidReceipt("invalid evidence hash length"));
-    }
-    let mut out = [0_u8; 32];
-    for (index, byte) in out.iter_mut().enumerate() {
-        let high = parse_hex_nibble(value.as_bytes()[index * 2])?;
-        let low = parse_hex_nibble(value.as_bytes()[index * 2 + 1])?;
-        *byte = (high << 4) | low;
-    }
-    Ok(out)
-}
-
-fn parse_hex_nibble(value: u8) -> Result<u8> {
-    match value {
-        b'0'..=b'9' => Ok(value - b'0'),
-        b'a'..=b'f' => Ok(value - b'a' + 10),
-        b'A'..=b'F' => Ok(value - b'A' + 10),
-        _ => Err(TvmError::InvalidReceipt("invalid evidence hash hex")),
+    match parse_typed_hash_hex(value) {
+        Ok(hash) => Ok(hash),
+        Err(HashHexParseError::InvalidLength) => {
+            Err(TvmError::InvalidReceipt("invalid evidence hash length"))
+        }
+        Err(HashHexParseError::InvalidHex) => {
+            Err(TvmError::InvalidReceipt("invalid evidence hash hex"))
+        }
     }
 }
 

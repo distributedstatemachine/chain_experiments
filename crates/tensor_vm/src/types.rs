@@ -4,6 +4,35 @@ pub type Hash = [u8; 32];
 pub type Address = [u8; 32];
 pub type Signature = [u8; 32];
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HashHexParseError {
+    InvalidLength,
+    InvalidHex,
+}
+
+pub(crate) fn parse_hash_hex(value: &str) -> std::result::Result<Hash, HashHexParseError> {
+    let value = value.strip_prefix("0x").unwrap_or(value);
+    if value.len() != 64 {
+        return Err(HashHexParseError::InvalidLength);
+    }
+    let mut out = [0_u8; 32];
+    for (index, byte) in out.iter_mut().enumerate() {
+        let high = parse_hex_nibble(value.as_bytes()[index * 2])?;
+        let low = parse_hex_nibble(value.as_bytes()[index * 2 + 1])?;
+        *byte = (high << 4) | low;
+    }
+    Ok(out)
+}
+
+fn parse_hex_nibble(value: u8) -> std::result::Result<u8, HashHexParseError> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        b'A'..=b'F' => Ok(value - b'A' + 10),
+        _ => Err(HashHexParseError::InvalidHex),
+    }
+}
+
 pub fn hash_bytes(domain: &[u8], parts: &[&[u8]]) -> Hash {
     let mut hasher = Sha256::new();
     hasher.update_len_prefixed(domain);
@@ -69,5 +98,20 @@ mod tests {
         let mut expected = [0_u8; 16];
         expected.copy_from_slice(&left[..16]);
         assert_eq!(hash_to_u128(&left), u128::from_le_bytes(expected));
+    }
+
+    #[test]
+    fn hash_hex_parser_accepts_hash_text_and_reports_edges() {
+        let hash = hash_bytes(b"hash-hex", &[b"value"]);
+        assert_eq!(parse_hash_hex(&crate::hash::hex(&hash)).unwrap(), hash);
+        assert_eq!(
+            parse_hash_hex(&format!("0x{}", crate::hash::hex(&hash).to_uppercase())).unwrap(),
+            hash
+        );
+        assert_eq!(parse_hash_hex("12"), Err(HashHexParseError::InvalidLength));
+        assert_eq!(
+            parse_hash_hex(&format!("z{}", "0".repeat(63))),
+            Err(HashHexParseError::InvalidHex)
+        );
     }
 }
