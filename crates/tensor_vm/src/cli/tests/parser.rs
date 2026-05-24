@@ -1,16 +1,80 @@
 use super::{
-    CommandFixture, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
+    CommandFixture, DataDirArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
+    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs,
+    NodeServeArgs, ProposerCommand, RoleRuntimeArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs,
+    ValidatorCommand, ValidatorRunArgs, manifest_address, manifest_auditor_uri, manifest_hash,
+    parse_test_cli,
 };
 use crate::hash::hex;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+
+fn path(value: &str) -> PathBuf {
+    value.into()
+}
+
+fn multiaddr(value: &str) -> libp2p::Multiaddr {
+    value.parse().expect("fixture multiaddr must parse")
+}
+
+fn socket_addr(value: &str) -> SocketAddr {
+    value.parse().expect("fixture socket address must parse")
+}
+
+fn data_dir_args(data_dir: &str) -> DataDirArgs {
+    DataDirArgs {
+        data_dir: path(data_dir),
+    }
+}
+
+fn node_runtime_args(
+    listen: &str,
+    p2p_listen: &str,
+    data_dir: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
+) -> NodeRuntimeArgs {
+    NodeRuntimeArgs {
+        listen: socket_addr(listen),
+        p2p_listen: multiaddr(p2p_listen),
+        data_dir: path(data_dir),
+        identity_seed: identity_seed.map(super::HashArg::new),
+        auth_token: auth_token.to_owned(),
+        max_requests,
+    }
+}
+
+fn role_runtime_args(
+    node: &str,
+    listen: &str,
+    p2p_listen: &str,
+    data_dir: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
+) -> RoleRuntimeArgs {
+    RoleRuntimeArgs {
+        node: multiaddr(node),
+        node_runtime: node_runtime_args(
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        ),
+    }
+}
 
 #[test]
 fn parses_documented_miner_commands() {
     assert_eq!(
         parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
-        CommandFixture::MinerRegister { stake: 100 }
+        TvmdCommand::Miner(MinerCommand::Register(StakeArgs { stake: 100 }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -24,15 +88,15 @@ fn parses_documented_miner_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
+        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
+            wallet: path("miner.key"),
             device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        }
+            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["miner", "status"]).unwrap(),
-        CommandFixture::MinerStatus
+        TvmdCommand::Miner(MinerCommand::Status)
     );
     assert_eq!(
         parse_test_cli(&[
@@ -56,17 +120,19 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::MinerRun {
-            wallet: "miner.key".to_owned(),
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: path("miner.key"),
             device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                None,
+                "secret",
+                7,
+            ),
+        }))
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
@@ -93,17 +159,19 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::MinerRun {
-            wallet: "miner.key".to_owned(),
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: path("miner.key"),
             device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: Some([0x11; 32]),
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                Some([0x11; 32]),
+                "secret",
+                7,
+            ),
+        }))
     );
 }
 
@@ -111,7 +179,7 @@ fn parses_documented_miner_commands() {
 fn parses_documented_validator_commands() {
     assert_eq!(
         parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
-        CommandFixture::ValidatorRegister { stake: 10_000 }
+        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake: 10_000 }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -123,14 +191,14 @@ fn parses_documented_validator_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        CommandFixture::ValidatorStart {
-            wallet: "validator.key".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        }
+        TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
+            wallet: path("validator.key"),
+            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["validator", "status"]).unwrap(),
-        CommandFixture::ValidatorStatus
+        TvmdCommand::Validator(ValidatorCommand::Status)
     );
     assert_eq!(
         parse_test_cli(&[
@@ -152,16 +220,18 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::ValidatorRun {
-            wallet: "validator.key".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: path("validator.key"),
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                None,
+                "secret",
+                7,
+            ),
+        }))
     );
     let identity_seed = "22".repeat(32);
     assert_eq!(
@@ -186,22 +256,22 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::ValidatorRun {
-            wallet: "validator.key".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: Some([0x22; 32]),
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: path("validator.key"),
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                Some([0x22; 32]),
+                "secret",
+                7,
+            ),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["localnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CommandFixture::LocalTestnetSeed {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-        }
+        TvmdCommand::Localnet(LocalnetCommand::Seed(data_dir_args("/var/lib/tensorvm")))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -211,7 +281,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.evidence"
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceValidate {
+        CommandFixture::EvidenceValidate {
             manifest: "docs/tensorvm/public-testnet.evidence".to_owned(),
         }
     );
@@ -222,7 +292,7 @@ fn parses_documented_validator_commands() {
             "docs/tensorvm/public-testnet.preflight"
         ])
         .unwrap(),
-        CommandFixture::PublicTestnetPreflight {
+        CommandFixture::TestnetPreflight {
             manifest: "docs/tensorvm/public-testnet.preflight".to_owned(),
         }
     );
@@ -245,7 +315,7 @@ fn parses_documented_validator_commands() {
             "1",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidencePublication {
+        CommandFixture::EvidencePublication {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -270,7 +340,7 @@ fn parses_documented_validator_commands() {
             "1700000060",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceAuditorRecord {
+        CommandFixture::EvidenceAuditorRecord {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
             auditor_id: address(b"public-evidence-auditor-0"),
@@ -296,7 +366,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRunWindow {
+        CommandFixture::EvidenceRunWindow {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             run_started_at_unix_seconds: 1_700_000_000,
@@ -318,7 +388,7 @@ fn parses_documented_validator_commands() {
             "artifacts/block-observations.records",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRunWindowFromFile {
+        CommandFixture::EvidenceRunWindowFromFile {
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
             block_observation_file: "artifacts/block-observations.records".to_owned(),
@@ -344,7 +414,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceNodeHeartbeat {
+        CommandFixture::EvidenceNodeHeartbeat {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -369,7 +439,7 @@ fn parses_documented_validator_commands() {
             "artifacts/miner-a-heartbeats.records",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceNodeHeartbeatFromFile {
+        CommandFixture::EvidenceNodeHeartbeatFromFile {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -394,7 +464,7 @@ fn parses_documented_validator_commands() {
             "1700000000",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceOperatorAttestation {
+        CommandFixture::EvidenceOperatorAttestation {
             role: PublicNodeRole::Miner,
             address: address(b"miner-a"),
             operator_id: hash_bytes(b"test", &[b"miner-a-operator"]),
@@ -427,7 +497,7 @@ fn parses_documented_validator_commands() {
             "10",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceServiceHealth {
+        CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -456,7 +526,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-health.records",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceServiceHealthFromFile {
+        CommandFixture::EvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -487,7 +557,7 @@ fn parses_documented_validator_commands() {
             "64",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceServiceContent {
+        CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -518,7 +588,7 @@ fn parses_documented_validator_commands() {
             &content_hex,
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceServiceContentFromBytes {
+        CommandFixture::EvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -547,7 +617,7 @@ fn parses_documented_validator_commands() {
             "artifacts/rpc-chain-head.body",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceServiceContentFromFile {
+        CommandFixture::EvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -587,7 +657,7 @@ fn parses_documented_validator_commands() {
             "60",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceNetworkObservation {
+        CommandFixture::EvidenceNetworkObservation {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             peer_id: peer_id.clone(),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
@@ -617,7 +687,7 @@ fn parses_documented_validator_commands() {
             "artifacts/node-a-service.log",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceNetworkObservationFromServiceLog {
+        CommandFixture::EvidenceNetworkObservationFromServiceLog {
             operator_id: hash_bytes(b"test", &[b"network-operator"]),
             listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
@@ -643,7 +713,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordSummary {
+        CommandFixture::EvidenceRecordSummary {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -671,7 +741,7 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordArtifact {
+        CommandFixture::EvidenceRecordArtifact {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -701,7 +771,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordSummaryFromRoots {
+        CommandFixture::EvidenceRecordSummaryFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -729,7 +799,7 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordArtifactFromRoots {
+        CommandFixture::EvidenceRecordArtifactFromRoots {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -756,7 +826,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordSummaryFromFile {
+        CommandFixture::EvidenceRecordSummaryFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -781,7 +851,7 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        CommandFixture::PublicEvidenceRecordArtifactFromFile {
+        CommandFixture::EvidenceRecordArtifactFromFile {
             kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
             bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
             manifest_signer: address(b"public-evidence-publisher"),
@@ -791,9 +861,7 @@ fn parses_documented_validator_commands() {
     );
     assert_eq!(
         parse_test_cli(&["node", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CommandFixture::ServiceInit {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-        }
+        TvmdCommand::Node(NodeCommand::Init(data_dir_args("/var/lib/tensorvm")))
     );
     let bootstrap_peer = PeerId::random().to_string();
     assert_eq!(
@@ -809,11 +877,11 @@ fn parses_documented_validator_commands() {
             "/dns/bootstrap.tensorvm.net/tcp/4001",
         ])
         .unwrap(),
-        CommandFixture::ServicePeerAdd {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            peer_id: bootstrap_peer.clone(),
-            address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
-        }
+        TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(NodePeerAddArgs {
+            data_dir: path("/var/lib/tensorvm"),
+            peer_id: bootstrap_peer.parse().expect("fixture peer ID must parse"),
+            address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
+        })))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -825,11 +893,11 @@ fn parses_documented_validator_commands() {
             "/var/lib/tensorvm",
         ])
         .unwrap(),
-        CommandFixture::ServiceReadiness {
-            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
+        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
+            p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
+            data_dir: path("/var/lib/tensorvm"),
             identity_seed: None,
-        }
+        }))
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
@@ -844,11 +912,11 @@ fn parses_documented_validator_commands() {
             &identity_seed,
         ])
         .unwrap(),
-        CommandFixture::ServiceReadiness {
-            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: Some([0x11; 32]),
-        }
+        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
+            p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
+            data_dir: path("/var/lib/tensorvm"),
+            identity_seed: Some(super::HashArg::new([0x11; 32])),
+        }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -866,14 +934,16 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        CommandFixture::ServiceServe {
-            listen: "0.0.0.0:8545".to_owned(),
-            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        }
+        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
+            runtime: node_runtime_args(
+                "0.0.0.0:8545",
+                "/ip4/0.0.0.0/tcp/4001",
+                "/var/lib/tensorvm",
+                None,
+                "secret",
+                0,
+            ),
+        }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -893,20 +963,20 @@ fn parses_documented_validator_commands() {
             "0",
         ])
         .unwrap(),
-        CommandFixture::ServiceServe {
-            listen: "0.0.0.0:8545".to_owned(),
-            p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: Some([0x11; 32]),
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        }
+        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
+            runtime: node_runtime_args(
+                "0.0.0.0:8545",
+                "/ip4/0.0.0.0/tcp/4001",
+                "/var/lib/tensorvm",
+                Some([0x11; 32]),
+                "secret",
+                0,
+            ),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["node", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
-        CommandFixture::ServiceStatus {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-        }
+        TvmdCommand::Node(NodeCommand::Status(data_dir_args("/var/lib/tensorvm")))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -918,10 +988,10 @@ fn parses_documented_validator_commands() {
             "3"
         ])
         .unwrap(),
-        CommandFixture::ServiceBlock {
-            data_dir: "/var/lib/tensorvm".to_owned(),
+        TvmdCommand::Node(NodeCommand::Block(NodeBlockArgs {
+            data_dir: path("/var/lib/tensorvm"),
             height: 3,
-        }
+        }))
     );
 }
 
@@ -947,16 +1017,18 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::ProposerRun {
-            wallet: "proposer.key".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
+            wallet: path("proposer.key"),
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                None,
+                "secret",
+                7,
+            ),
+        }))
     );
     let identity_seed = "33".repeat(32);
     assert_eq!(
@@ -981,16 +1053,18 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        CommandFixture::ProposerRun {
-            wallet: "proposer.key".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: Some([0x33; 32]),
-            auth_token: "secret".to_owned(),
-            max_requests: 7,
-        }
+        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
+            wallet: path("proposer.key"),
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/0",
+                "/var/lib/tensorvm",
+                Some([0x33; 32]),
+                "secret",
+                7,
+            ),
+        }))
     );
 }
 
@@ -1051,11 +1125,11 @@ fn rejects_retired_top_level_command_families() {
 fn clap_cli_defaults_runtime_arguments() {
     assert_eq!(
         parse_test_cli(&["miner", "check", "--wallet", "miner.key"]).unwrap(),
-        CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
+        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
+            wallet: path("miner.key"),
             device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        }
+            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -1067,33 +1141,35 @@ fn clap_cli_defaults_runtime_arguments() {
             "secret"
         ])
         .unwrap(),
-        CommandFixture::MinerRun {
-            wallet: "miner.key".to_owned(),
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: path("miner.key"),
             device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: ".tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        }
+            runtime: role_runtime_args(
+                "/ip4/127.0.0.1/tcp/4001",
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/4001",
+                ".tensorvm",
+                None,
+                "secret",
+                0,
+            ),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["node", "serve", "--auth-token", "secret"]).unwrap(),
-        CommandFixture::ServiceServe {
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: ".tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        }
+        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
+            runtime: node_runtime_args(
+                "127.0.0.1:8545",
+                "/ip4/127.0.0.1/tcp/4001",
+                ".tensorvm",
+                None,
+                "secret",
+                0,
+            ),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["node", "init"]).unwrap(),
-        CommandFixture::ServiceInit {
-            data_dir: ".tensorvm".to_owned(),
-        }
+        TvmdCommand::Node(NodeCommand::Init(data_dir_args(".tensorvm")))
     );
 }

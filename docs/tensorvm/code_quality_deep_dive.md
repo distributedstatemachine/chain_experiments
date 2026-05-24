@@ -928,6 +928,9 @@ spaghetti around.
   removing the now-dead local CPU verify fixture variant.
 - Iteration 378 migrated local CLI validation tests to execute clap-parsed commands directly instead
   of constructing local `CommandFixture` variants.
+- Iteration 379 moved local CLI parser expectations onto direct `TvmdCommand` construction, removed
+  the local command family from `CommandFixture`, and renamed the remaining public-evidence fixture
+  variants without the redundant `Public` prefix.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

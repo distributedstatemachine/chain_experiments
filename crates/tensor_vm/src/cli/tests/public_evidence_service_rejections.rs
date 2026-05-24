@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "http://127.0.0.1/health".to_owned(),
@@ -16,7 +16,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.example.test/health".to_owned(),
@@ -29,7 +29,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -42,7 +42,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -55,7 +55,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health?probe=1".to_owned(),
@@ -68,7 +68,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health#probe".to_owned(),
@@ -81,7 +81,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -94,7 +94,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -107,7 +107,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: [0; 32],
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -120,7 +120,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealth {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -153,7 +153,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceHealthFromFile {
+        execute_command_fixture(&CommandFixture::EvidenceServiceHealthFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
@@ -169,7 +169,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://localhost/chain/head".to_owned(),
@@ -181,7 +181,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -193,7 +193,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/".to_owned(),
@@ -205,7 +205,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head?height=1".to_owned(),
@@ -217,7 +217,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head#latest".to_owned(),
@@ -229,7 +229,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -241,7 +241,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
@@ -253,7 +253,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -265,7 +265,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -277,7 +277,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContent {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -313,7 +313,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         );
     }
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
@@ -324,7 +324,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromFile {
+        execute_command_fixture(&CommandFixture::EvidenceServiceContentFromFile {
             kind: PublicServiceKind::Rpc,
             endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
