@@ -773,6 +773,9 @@ spaghetti around.
 - Iteration 307 centralized public-testnet manifest line scanning, comment skipping, key whitespace
   rejection, and duplicate scalar-field checks so evidence and preflight manifests no longer maintain
   parallel `key=value` parser loops.
+- Iteration 308 introduced an explicit transaction-body parser for txpool envelopes, moving command
+  dispatch, argument extraction, and extra-token rejection out of the raw whitespace-scanner flow while
+  preserving the existing transaction wire format.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

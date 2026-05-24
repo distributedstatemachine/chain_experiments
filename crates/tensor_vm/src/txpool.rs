@@ -59,56 +59,76 @@ impl TxPool {
 }
 
 pub fn parse_transaction_envelope(body: &[u8]) -> Result<TransactionEnvelope> {
-    let body = std::str::from_utf8(body)
-        .map_err(|_| TvmError::InvalidReceipt("transaction body is not utf-8"))?;
-    let mut parts = body.split_whitespace();
-    let Some(kind) = parts.next() else {
-        return Err(TvmError::InvalidReceipt("empty transaction body"));
-    };
-    let envelope = match kind {
-        "register_miner" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::RegisterMiner(parse_hash_token(parts.next())?),
-        },
-        "register_validator" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::RegisterValidator(parse_hash_token(parts.next())?),
-        },
-        "transfer" => {
-            let sender = parse_hash_token(parts.next())?;
-            let to = parse_hash_token(parts.next())?;
-            let amount = parse_u64_token(parts.next())?;
-            TransactionEnvelope {
-                sender: Some(sender),
-                transaction: Transaction::Transfer { to, amount },
-            }
-        }
-        "claim_reward" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::ClaimReward(parse_hash_token(parts.next())?),
-        },
-        "submit_tensor_receipt" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::SubmitTensorOpReceipt(parse_hash_token(parts.next())?),
-        },
-        "submit_linear_receipt" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::SubmitLinearTrainingStepReceipt(parse_hash_token(
-                parts.next(),
-            )?),
-        },
-        "submit_attestation" => TransactionEnvelope {
-            sender: None,
-            transaction: Transaction::SubmitAttestation(parse_hash_token(parts.next())?),
-        },
-        _ => return Err(TvmError::InvalidReceipt("unknown transaction kind")),
-    };
-    if parts.next().is_some() {
-        return Err(TvmError::InvalidReceipt(
-            "unexpected transaction body token",
-        ));
+    let body = TransactionBody::parse(body)?;
+    body.envelope()
+}
+
+struct TransactionBody<'a> {
+    kind: &'a str,
+    args: Vec<&'a str>,
+}
+
+impl<'a> TransactionBody<'a> {
+    fn parse(body: &'a [u8]) -> Result<Self> {
+        let body = std::str::from_utf8(body)
+            .map_err(|_| TvmError::InvalidReceipt("transaction body is not utf-8"))?;
+        let mut tokens = body.split_whitespace();
+        let Some(kind) = tokens.next() else {
+            return Err(TvmError::InvalidReceipt("empty transaction body"));
+        };
+        Ok(Self {
+            kind,
+            args: tokens.collect(),
+        })
     }
-    Ok(envelope)
+
+    fn envelope(&self) -> Result<TransactionEnvelope> {
+        match self.kind {
+            "register_miner" => self.single_hash_transaction(Transaction::RegisterMiner),
+            "register_validator" => self.single_hash_transaction(Transaction::RegisterValidator),
+            "claim_reward" => self.single_hash_transaction(Transaction::ClaimReward),
+            "submit_tensor_receipt" => {
+                self.single_hash_transaction(Transaction::SubmitTensorOpReceipt)
+            }
+            "submit_linear_receipt" => {
+                self.single_hash_transaction(Transaction::SubmitLinearTrainingStepReceipt)
+            }
+            "submit_attestation" => self.single_hash_transaction(Transaction::SubmitAttestation),
+            "transfer" => self.transfer(),
+            _ => Err(TvmError::InvalidReceipt("unknown transaction kind")),
+        }
+    }
+
+    fn single_hash_transaction(
+        &self,
+        transaction: impl FnOnce(Hash) -> Transaction,
+    ) -> Result<TransactionEnvelope> {
+        self.reject_extra_args(1)?;
+        Ok(TransactionEnvelope {
+            sender: None,
+            transaction: transaction(parse_hash_token(self.args.first().copied())?),
+        })
+    }
+
+    fn transfer(&self) -> Result<TransactionEnvelope> {
+        self.reject_extra_args(3)?;
+        let sender = parse_hash_token(self.args.first().copied())?;
+        let to = parse_hash_token(self.args.get(1).copied())?;
+        let amount = parse_u64_token(self.args.get(2).copied())?;
+        Ok(TransactionEnvelope {
+            sender: Some(sender),
+            transaction: Transaction::Transfer { to, amount },
+        })
+    }
+
+    fn reject_extra_args(&self, expected: usize) -> Result<()> {
+        if self.args.len() > expected {
+            return Err(TvmError::InvalidReceipt(
+                "unexpected transaction body token",
+            ));
+        }
+        Ok(())
+    }
 }
 
 fn parse_hash_token(token: Option<&str>) -> Result<Hash> {
