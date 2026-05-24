@@ -702,6 +702,8 @@ spaghetti around.
   exact job IDs, primitive types, tensor dimensions, training shapes, and deadlines.
 - Iteration 274 converted the explorer, telemetry, and faucet RPC route checks to parsed JSON assertions,
   leaving only the intentionally HTML page responses as content checks.
+- Iteration 275 converted the RPC receipt lookup route test to parsed JSON assertions for receipt ID,
+  job ID, and tensor-work units while preserving the HTTP status-text edge coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

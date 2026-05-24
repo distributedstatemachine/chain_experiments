@@ -753,17 +753,22 @@ fn rpc_serves_receipts_and_status_text_edges() {
     let job = MatmulJob::synthetic(0, 42, 2, 2, 2, &beacon, 10);
     let (receipt, _a, _b, _c) = crate::jobs::TensorOpReceipt::from_job(&job, miner, 1, 5)
         .expect("static matmul receipt should build");
+    let job_id = hex(&receipt.job_id);
+    let receipt_id = hex(&receipt.receipt_id);
     chain.submit_job(JobState::TensorOp(job));
     chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
     let rpc = RpcNode::new(chain);
 
     let response = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
-        path: format!("/receipts/{}", hex(&receipt.receipt_id)),
+        path: format!("/receipts/{receipt_id}"),
         body: Vec::new(),
     });
     assert_eq!(response.status, 200);
-    assert!(response.body.contains("\"tensor_work_units\":16"));
+    let response = response_json(&response);
+    assert_eq!(response["receipt_id"].as_str(), Some(receipt_id.as_str()));
+    assert_eq!(response["job_id"].as_str(), Some(job_id.as_str()));
+    assert_eq!(response["tensor_work_units"].as_u64(), Some(16));
 
     for (status, text) in [
         (400, "Bad Request"),
