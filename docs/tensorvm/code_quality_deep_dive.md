@@ -828,6 +828,8 @@ spaghetti around.
   evidence readers and public manifest readers, removing another duplicated CSV-like validation loop.
 - Iteration 330 moved RPC dynamic-route path splitting into a fixed-capacity parser helper, keeping
   route matching focused on method/segment dispatch instead of owning the trim/split logic inline.
+- Iteration 331 moved RPC HTTP header parsing into a private header accumulator, preserving auth
+  precedence while keeping request framing separate from individual header interpretation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

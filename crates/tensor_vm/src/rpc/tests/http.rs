@@ -142,6 +142,16 @@ fn rpc_http_parser_rejects_bad_headers_and_waits_for_complete_bodies() {
     ));
     assert!(matches!(
         try_parse_http_request(
+            b"POST /tx?token=query HTTP/1.1\r\nauthorization: Bearer header\r\nx-tensorchain-auth: local\r\ncontent-length: 4\r\n\r\nbody",
+            16,
+        ),
+        Some(ParsedHttpRequest::Request {
+            request,
+            auth_token: Some(token),
+        }) if request.path == "/tx" && token == "local"
+    ));
+    assert!(matches!(
+        try_parse_http_request(
             b"GET /explorer/ws?token=local HTTP/1.1\r\nupgrade: websocket\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
             16,
         ),

@@ -180,54 +180,29 @@ pub(super) fn try_parse_http_request(
     let method = request_line.method.to_owned();
     let (path, query_auth_token) = split_path_and_auth_token(request_line.path);
 
-    let mut content_length = 0_usize;
-    let mut auth_token = query_auth_token;
-    let mut websocket_key = None;
-    let mut websocket_upgrade = false;
-    for line in lines {
-        let Some((name, value)) = line.split_once(':') else {
-            continue;
-        };
-        let name = name.trim();
-        let value = value.trim();
-        if name.eq_ignore_ascii_case("content-length") {
-            content_length = match value.parse() {
-                Ok(content_length) => content_length,
-                Err(_) => return Some(ParsedHttpRequest::BadRequest),
-            };
-        } else if name.eq_ignore_ascii_case("authorization") {
-            auth_token = Some(
-                value
-                    .strip_prefix("Bearer ")
-                    .unwrap_or(value)
-                    .trim()
-                    .to_owned(),
-            );
-        } else if name.eq_ignore_ascii_case("x-tensorchain-auth") {
-            auth_token = Some(value.to_owned());
-        } else if name.eq_ignore_ascii_case("sec-websocket-key") {
-            websocket_key = Some(value.to_owned());
-        } else if name.eq_ignore_ascii_case("upgrade") && value.eq_ignore_ascii_case("websocket") {
-            websocket_upgrade = true;
+    let headers = match HttpRequestHeaders::parse(lines, query_auth_token) {
+        Ok(headers) => headers,
+        Err(HttpHeaderParseError::InvalidContentLength) => {
+            return Some(ParsedHttpRequest::BadRequest);
         }
-    }
-    if content_length > max_body_bytes {
+    };
+    if headers.content_length > max_body_bytes {
         return Some(ParsedHttpRequest::TooLarge);
     }
 
-    if websocket_upgrade {
-        let Some(websocket_key) = websocket_key else {
+    if headers.websocket_upgrade {
+        let Some(websocket_key) = headers.websocket_key else {
             return Some(ParsedHttpRequest::BadRequest);
         };
         return Some(ParsedHttpRequest::WebSocketUpgrade {
             path,
-            auth_token,
+            auth_token: headers.auth_token,
             websocket_key,
         });
     }
 
     let body_start = header_end + 4;
-    let body_end = body_start.checked_add(content_length)?;
+    let body_end = body_start.checked_add(headers.content_length)?;
     if bytes.len() < body_end {
         return None;
     }
@@ -238,8 +213,64 @@ pub(super) fn try_parse_http_request(
             path,
             body: bytes[body_start..body_end].to_vec(),
         },
-        auth_token,
+        auth_token: headers.auth_token,
     })
+}
+
+#[derive(Default)]
+struct HttpRequestHeaders {
+    content_length: usize,
+    auth_token: Option<String>,
+    websocket_key: Option<String>,
+    websocket_upgrade: bool,
+}
+
+enum HttpHeaderParseError {
+    InvalidContentLength,
+}
+
+impl HttpRequestHeaders {
+    fn parse<'a>(
+        lines: impl IntoIterator<Item = &'a str>,
+        auth_token: Option<String>,
+    ) -> Result<Self, HttpHeaderParseError> {
+        let mut headers = Self {
+            auth_token,
+            ..Self::default()
+        };
+        for line in lines {
+            headers.apply(line)?;
+        }
+        Ok(headers)
+    }
+
+    fn apply(&mut self, line: &str) -> Result<(), HttpHeaderParseError> {
+        let Some((name, value)) = line.split_once(':') else {
+            return Ok(());
+        };
+        let name = name.trim();
+        let value = value.trim();
+        if name.eq_ignore_ascii_case("content-length") {
+            self.content_length = value
+                .parse()
+                .map_err(|_| HttpHeaderParseError::InvalidContentLength)?;
+        } else if name.eq_ignore_ascii_case("authorization") {
+            self.auth_token = Some(
+                value
+                    .strip_prefix("Bearer ")
+                    .unwrap_or(value)
+                    .trim()
+                    .to_owned(),
+            );
+        } else if name.eq_ignore_ascii_case("x-tensorchain-auth") {
+            self.auth_token = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("sec-websocket-key") {
+            self.websocket_key = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("upgrade") && value.eq_ignore_ascii_case("websocket") {
+            self.websocket_upgrade = true;
+        }
+        Ok(())
+    }
 }
 
 pub(super) struct HttpRequestLine<'a> {
