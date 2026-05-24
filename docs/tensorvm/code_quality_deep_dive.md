@@ -634,6 +634,9 @@ spaghetti around.
 - Iteration 244 moved miner, validator, and proposer role-service runners into the library-owned `app`
   module, replacing the binary-private `RoleRunLoop` wrapper with an app-level `RoleServiceRunner` API and
   leaving `tvmd` to translate parsed Clap commands into app calls.
+- Iteration 245 moved the service runtime wrapper into the library-owned `app` module, removing the last
+  production module from the `src/main/*` tree so `tvmd` now owns Clap parsing and dispatch while app APIs
+  own service startup and runtime execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
