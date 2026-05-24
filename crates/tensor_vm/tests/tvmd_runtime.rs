@@ -29,30 +29,30 @@ use tensor_vm::{
 };
 use tensor_vm::{ChainSnapshot, types::address};
 
-#[path = "main_tests/miner_role.rs"]
+#[path = "tvmd_runtime/miner_role.rs"]
 mod miner_role;
 
-#[path = "main_tests/network_payloads.rs"]
+#[path = "tvmd_runtime/network_payloads.rs"]
 mod network_payloads;
 
-#[path = "main_tests/runtime_persistence.rs"]
+#[path = "tvmd_runtime/runtime_persistence.rs"]
 mod runtime_persistence;
 
-#[path = "main_tests/runtime_roles.rs"]
+#[path = "tvmd_runtime/runtime_roles.rs"]
 mod runtime_roles;
 
-#[path = "main_tests/runtime_state.rs"]
+#[path = "tvmd_runtime/runtime_state.rs"]
 mod runtime_state;
 
-#[path = "main_tests/service_commands.rs"]
+#[path = "tvmd_runtime/service_commands.rs"]
 mod service_commands;
 
-#[path = "main_tests/support.rs"]
+#[path = "tvmd_runtime/support.rs"]
 mod support;
 use support::{
     assert_tensor_count, file_modified_at, free_tcp_port, insert_bundle_tensors, send_http_request,
     test_service_runtime_config, unique_temp_data_dir, wait_for_connected_role_services,
 };
 
-#[path = "main_tests/validator_role.rs"]
+#[path = "tvmd_runtime/validator_role.rs"]
 mod validator_role;

@@ -640,6 +640,9 @@ spaghetti around.
 - Iteration 246 moved the `tvmd` command-dispatch match into the library-owned `app` module as
   `execute_tvmd_command`, leaving `main.rs` as a minimal Clap parse/execute/print entrypoint instead of the
   owner of command-family routing and manifest-file handling.
+- Iteration 247 moved the remaining `tvmd` runtime harness out of the binary unit-test module and into a
+  `tvmd_runtime` integration-test target, removing the final `main.rs` module hook now that the runtime
+  surface is library-owned.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

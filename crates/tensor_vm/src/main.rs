@@ -11,7 +11,3 @@ fn main() {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "main_tests.rs"]
-mod tests;
