@@ -252,6 +252,9 @@ spaghetti around.
 - Iteration 104 moved concrete network payload decode, validation, and chain application helpers
   into `node/payload_application.rs`, keeping the existing public `node` helper API while reducing
   `node.rs` to network message orchestration and tests.
+- Iteration 105 split network message ingest ordering and event-counter orchestration into
+  `node/message_ingest.rs`, leaving `node.rs` as the public node facade plus the remaining inline
+  tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
