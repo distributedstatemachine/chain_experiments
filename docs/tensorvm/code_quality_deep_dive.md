@@ -883,6 +883,8 @@ spaghetti around.
   `local-cpu-ready` with an exact shell line reader.
 - Iteration 354 moved the local CPU operator topology list into one sourced deployment script so the
   check, restart, and rolling-restart gates no longer duplicate the service inventory.
+- Iteration 355 derived local CPU checker service, miner, validator, settled-receipt, and CUDA-expected
+  counts from the shared topology script instead of hard-coding those policy constants in the checker.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

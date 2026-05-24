@@ -20,6 +20,11 @@ fail() {
 EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
 MINERS="$LOCAL_CPU_MINERS"
 VALIDATORS="$LOCAL_CPU_VALIDATORS"
+EXPECTED_SERVICE_COUNT="$LOCAL_CPU_EXPECTED_SERVICE_COUNT"
+EXPECTED_MINER_COUNT="$LOCAL_CPU_MINER_COUNT"
+EXPECTED_VALIDATOR_COUNT="$LOCAL_CPU_VALIDATOR_COUNT"
+EXPECTED_SETTLED_RECEIPTS="$LOCAL_CPU_EXPECTED_SETTLED_RECEIPTS"
+EXPECTED_CUDA_REQUIRED_MINER_COUNT="$LOCAL_CPU_CUDA_REQUIRED_MINER_COUNT"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -329,9 +334,9 @@ for service in $EXPECTED_SERVICES; do
   compose exec -T "$service" printenv TENSORVM_NODE_MULTIADDR >> "$TMP_DIR/node_multiaddrs"
 done
 
-[ "$(unique_count "$TMP_DIR/operator_ids")" = "15" ] || fail "operator IDs are not distinct"
-[ "$(unique_count "$TMP_DIR/p2p_peer_ids")" = "15" ] || fail "libp2p peer IDs are not distinct"
-[ "$(unique_count "$TMP_DIR/node_multiaddrs")" = "15" ] || fail "node multiaddrs are not distinct"
+[ "$(unique_count "$TMP_DIR/operator_ids")" = "$EXPECTED_SERVICE_COUNT" ] || fail "operator IDs are not distinct"
+[ "$(unique_count "$TMP_DIR/p2p_peer_ids")" = "$EXPECTED_SERVICE_COUNT" ] || fail "libp2p peer IDs are not distinct"
+[ "$(unique_count "$TMP_DIR/node_multiaddrs")" = "$EXPECTED_SERVICE_COUNT" ] || fail "node multiaddrs are not distinct"
 
 for service in $EXPECTED_SERVICES; do
   SEED_REPORT=$(read_seed_report "$service") \
@@ -354,7 +359,7 @@ MINER_SEED_REPORT=$(read_seed_report miner-00) \
 [ "$(status_value command "$MINER_SEED_REPORT")" = "local_testnet_seed" ] \
   || fail "miner-00 did not seed local testnet chain state"
 SEED_SETTLED_RECEIPTS=$(status_value settled_receipts "$MINER_SEED_REPORT")
-[ "$SEED_SETTLED_RECEIPTS" = "10" ] \
+[ "$SEED_SETTLED_RECEIPTS" = "$EXPECTED_SETTLED_RECEIPTS" ] \
   || fail "seeded local testnet did not report settled receipts"
 SEED_MATMUL_SETTLED=$(status_value matmul_settled "$MINER_SEED_REPORT")
 [ "$SEED_MATMUL_SETTLED" = "true" ] \
@@ -996,7 +1001,7 @@ while [ "$attempt" -lt 60 ]; do
     fi
     CONVERGED_OPERATOR_COUNT=$((CONVERGED_OPERATOR_COUNT + 1))
   done
-  if [ "$CONVERGED_OPERATOR_COUNT" = "15" ] && [ "$STATUS_MISMATCH" = "false" ]; then
+  if [ "$CONVERGED_OPERATOR_COUNT" = "$EXPECTED_SERVICE_COUNT" ] && [ "$STATUS_MISMATCH" = "false" ]; then
     COMMON_HEAD_MISMATCH=false
     TARGET_HEAD_MISMATCH=false
     ALL_OPERATOR_COMMON_HEAD_HEIGHT="$ALL_OPERATOR_MIN_HEIGHT"
@@ -1041,7 +1046,7 @@ while [ "$attempt" -lt 60 ]; do
   sleep 1
 done
 
-[ "$CONVERGED_OPERATOR_COUNT" = "15" ] || fail "not all operators produced and finalized a live block"
+[ "$CONVERGED_OPERATOR_COUNT" = "$EXPECTED_SERVICE_COUNT" ] || fail "not all operators produced and finalized a live block"
 [ -n "$ALL_OPERATOR_MIN_HEIGHT" ] || fail "operator convergence height was not observed"
 [ "$ALL_OPERATOR_MIN_HEIGHT" -gt 2 ] || fail "not all operators advanced past seeded height 2"
 [ -n "$ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH" ] || fail "operator live block hash convergence was not observed"
@@ -1059,15 +1064,15 @@ done
 
 cat <<STATUS
 local_cpu_testnet_ready=true
-ready_miners=10
-ready_validators=5
-distinct_operator_ids=15
-distinct_libp2p_peer_ids=15
-distinct_node_multiaddrs=15
-libp2p_ready_node_count=15
-cpu_ready_miner_count=10
-cuda_required_miner_count=0
-settled_receipts=10
+ready_miners=${EXPECTED_MINER_COUNT}
+ready_validators=${EXPECTED_VALIDATOR_COUNT}
+distinct_operator_ids=${EXPECTED_SERVICE_COUNT}
+distinct_libp2p_peer_ids=${EXPECTED_SERVICE_COUNT}
+distinct_node_multiaddrs=${EXPECTED_SERVICE_COUNT}
+libp2p_ready_node_count=${EXPECTED_SERVICE_COUNT}
+cpu_ready_miner_count=${EXPECTED_MINER_COUNT}
+cuda_required_miner_count=${EXPECTED_CUDA_REQUIRED_MINER_COUNT}
+settled_receipts=${EXPECTED_SETTLED_RECEIPTS}
 matmul_settled=true
 linear_training_settled=true
 rewarded_miners=${SEED_REWARDED_MINERS}
@@ -1090,7 +1095,7 @@ live_linear_training_block_height=${LIVE_LINEAR_TRAINING_BLOCK_HEIGHT}
 live_linear_training_block_receipts=${LIVE_LINEAR_TRAINING_BLOCK_RECEIPTS}
 live_tensor_fetch=true
 live_rewards=true
-all_operator_status_count=15
+all_operator_status_count=${EXPECTED_SERVICE_COUNT}
 all_operator_min_height=${ALL_OPERATOR_MIN_HEIGHT}
 all_operator_first_live_block_hash=${ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH}
 all_operator_live_block_convergence=true
