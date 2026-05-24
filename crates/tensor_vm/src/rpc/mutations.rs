@@ -2,6 +2,7 @@ use super::{RpcNode, RpcRequest, RpcResponse, parse_address};
 use crate::chain::{ChainCommand, ChainEngine};
 use crate::hash::hex;
 use crate::txpool::parse_transaction_envelope;
+use serde_json::json;
 
 impl RpcNode {
     pub(super) fn submit_faucet_claim(&mut self, request: &RpcRequest) -> RpcResponse {
@@ -21,12 +22,12 @@ impl RpcNode {
             {
                 Ok(_) => {
                     let balance = faucet.balance();
-                    self.ok(format!(
-                        "{{\"claimed\":{},\"address\":\"{}\",\"faucet_balance\":{}}}",
-                        amount,
-                        hex(&address),
-                        balance
-                    ))
+                    self.ok(json!({
+                        "claimed": amount,
+                        "address": hex(&address),
+                        "faucet_balance": balance,
+                    })
+                    .to_string())
                 }
                 Err(error) => self.bad_request(&error.to_string()),
             },

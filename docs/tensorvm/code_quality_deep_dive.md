@@ -834,6 +834,8 @@ spaghetti around.
   and object string assembly while expanding tensor route field assertions.
 - Iteration 333 moved core RPC read, status, accepted, and error responses onto `serde_json::json!`, so
   route helpers no longer hand-build those JSON objects or own escaping details.
+- Iteration 334 moved the faucet claim mutation response onto `serde_json::json!` and asserted the
+  returned claim amount, account, and remaining balance, removing the last hand-built RPC JSON object.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

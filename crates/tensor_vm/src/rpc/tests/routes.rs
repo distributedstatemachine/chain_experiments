@@ -424,6 +424,10 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(claim.status, 200);
+    let claim = response_json(&claim);
+    assert_eq!(claim["claimed"].as_u64(), Some(100));
+    assert_eq!(claim["address"].as_str(), Some(hex(&user).as_str()));
+    assert_eq!(claim["faucet_balance"].as_u64(), Some(900));
     assert_eq!(rpc.chain.state().rewards().balance(&user), 100);
     assert_eq!(rpc.faucet.as_ref().unwrap().balance(), 900);
 
