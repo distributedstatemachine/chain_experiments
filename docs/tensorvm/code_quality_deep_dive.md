@@ -859,6 +859,9 @@ spaghetti around.
 - Iteration 343 moved the local CPU deployment checker's `tvmd localnet verify --json` readiness checks
   from substring greps to a real JSON boolean parser, keeping Docker orchestration in shell while reducing
   one policy-critical ad hoc parsing surface.
+- Iteration 344 replaced the local CPU deployment checker's scalar JSON number and string extraction
+  helpers with Python JSON readers, removing another sed/tr pipeline from live-chain and tensor-route
+  policy checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

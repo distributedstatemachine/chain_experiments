@@ -86,13 +86,37 @@ sys.exit(0 if value is True else 1)
 json_number() {
   key="$1"
   document="$2"
-  printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\([0-9][0-9]*\).*/\1/p" | sed -n '1p'
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+try:
+    value = json.load(sys.stdin)[sys.argv[1]]
+except (KeyError, TypeError, json.JSONDecodeError):
+    sys.exit(1)
+if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+    print(value)
+    sys.exit(0)
+sys.exit(1)
+' "$key"
 }
 
 json_string() {
   key="$1"
   document="$2"
-  printf '%s\n' "$document" | tr ',' '\n' | sed -n "s/.*\"$key\":\"\([^\"]*\)\".*/\1/p" | sed -n '1p'
+  printf '%s\n' "$document" | python3 -c '
+import json
+import sys
+
+try:
+    value = json.load(sys.stdin)[sys.argv[1]]
+except (KeyError, TypeError, json.JSONDecodeError):
+    sys.exit(1)
+if isinstance(value, str):
+    print(value)
+    sys.exit(0)
+sys.exit(1)
+' "$key"
 }
 
 json_positive_field_count() {
