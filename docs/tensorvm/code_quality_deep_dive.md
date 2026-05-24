@@ -293,6 +293,9 @@ spaghetti around.
 - Iteration 121 extracted CLI public evidence record summary, artifact, aggregation, and
   supporting-record parsing helpers into `cli/record_evidence.rs`, leaving the parent CLI module
   focused on dispatch.
+- Iteration 122 extracted CLI command description rendering into `cli/descriptions.rs`, preserving
+  the public `describe_command` export while reducing the parent CLI module to parser and dispatch
+  orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
