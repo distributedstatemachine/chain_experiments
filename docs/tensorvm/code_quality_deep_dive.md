@@ -668,6 +668,8 @@ spaghetti around.
   ergonomic typed Clap command tree, and the old top-level compatibility commands are no longer preserved.
 - Iteration 257 added a shared CLI test helper for parsing `key=value` reports and converted local
   runtime report assertions from substring checks to field-level expectations.
+- Iteration 258 reused the parsed CLI report helper in manifest report tests, replacing another
+  substring-heavy status assertion surface with explicit field checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
