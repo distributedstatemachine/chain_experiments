@@ -464,6 +464,9 @@ spaghetti around.
 - Iteration 178 moved shared public manifest field validation, scalar parsing, hash decoding, and
   required-field helpers into `testnet/public_manifest_fields.rs`, letting both public manifest
   parsers depend on one small parsing utility module instead of the main testnet orchestration file.
+- Iteration 179 moved public evidence manifest parsing, record-line decoders, and evidence bundle
+  manifest assembly into `testnet/public_evidence_manifest.rs`, leaving `testnet.rs` focused on
+  evidence data types and orchestration logic rather than key-value parser state.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
