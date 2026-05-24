@@ -107,14 +107,16 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ),
     ];
     for (role, address_label, operator_label, tag) in node_cases {
-        let node = execute_evidence_fixture(&EvidenceFixture::NodeHeartbeat {
-            role,
-            address: address(address_label),
-            operator_id: hash_bytes(b"test", &[operator_label]),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            signed_heartbeat_count: 10,
-        })
+        let node = execute_public_evidence_command(&EvidenceCommand::Node(
+            EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
+                role: node_role_arg(role),
+                address: address_arg(address(address_label)),
+                operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+                first_block: 0,
+                last_block: 9,
+                heartbeat_count: 10,
+            }),
+        ))
         .unwrap();
         let node_address = hex(&address(address_label));
         let operator_id = hex(&hash_bytes(b"test", &[operator_label]));
@@ -146,12 +148,14 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
             .collect::<Vec<_>>()
             .join("\n");
         std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
-        let node_from_file = execute_evidence_fixture(&EvidenceFixture::NodeHeartbeatFromFile {
-            role,
-            address: address(address_label),
-            operator_id: hash_bytes(b"test", &[operator_label]),
-            heartbeat_file: heartbeat_file.to_string_lossy().into_owned(),
-        })
+        let node_from_file = execute_public_evidence_command(&EvidenceCommand::Node(
+            EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
+                role: node_role_arg(role),
+                address: address_arg(address(address_label)),
+                operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+                heartbeat_file: heartbeat_file.clone(),
+            }),
+        ))
         .unwrap();
         std::fs::remove_file(&heartbeat_file).unwrap();
         assert_eq!(node_from_file, node);
@@ -159,13 +163,15 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
 
     let operator_id = hash_bytes(b"test", &[b"miner-a-operator"]);
     let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
-    let operator_attestation = execute_evidence_fixture(&EvidenceFixture::OperatorAttestation {
-        role: PublicNodeRole::Miner,
-        address: address(b"miner-a"),
-        operator_id,
-        identity_uri: operator_identity_uri.clone(),
-        observed_at_unix_seconds: 1_700_000_000,
-    })
+    let operator_attestation = execute_public_evidence_command(&EvidenceCommand::Node(
+        EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
+            role: node_role_arg(PublicNodeRole::Miner),
+            address: address_arg(address(b"miner-a")),
+            operator_id: hash_arg(operator_id),
+            identity_uri: operator_identity_uri.clone(),
+            observed_at: 1_700_000_000,
+        }),
+    ))
     .unwrap();
     assert_eq!(
         operator_attestation,

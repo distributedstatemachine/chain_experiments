@@ -946,6 +946,8 @@ spaghetti around.
   `TvmdCommand` construction and removed the remaining parser fixture equality adapter.
 - Iteration 386 moved public publication, auditor, and run-window evidence report tests from
   `EvidenceFixture` to direct `EvidenceCommand` execution.
+- Iteration 387 moved public node heartbeat, heartbeat-file, and operator-attestation report tests from
+  `EvidenceFixture` to direct `EvidenceCommand` execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
