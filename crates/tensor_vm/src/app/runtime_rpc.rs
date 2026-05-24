@@ -1,8 +1,8 @@
 use std::io::ErrorKind;
 
-use tensor_vm::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer};
+use crate::{ChainSnapshot, NodeRuntimeState, NodeStore, RpcHttpServer};
 
-pub(super) fn serve_rpc_once(
+pub fn serve_rpc_once(
     store: &NodeStore,
     server: &mut RpcHttpServer,
     runtime_state: &mut NodeRuntimeState,

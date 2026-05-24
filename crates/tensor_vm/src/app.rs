@@ -4,6 +4,7 @@ mod network;
 mod runtime_config;
 mod runtime_network;
 mod runtime_production;
+mod runtime_rpc;
 mod runtime_services;
 mod runtime_status;
 mod runtime_status_snapshot;
@@ -26,6 +27,7 @@ pub use runtime_config::{
 };
 pub use runtime_network::ingest_network_once;
 pub use runtime_production::LocalProductionSchedule;
+pub use runtime_rpc::serve_rpc_once;
 pub use runtime_services::{RuntimeP2pMetadata, RuntimeServices, start_runtime_services};
 pub use runtime_status::{format_role_runtime_report, write_role_runtime_status};
 pub use runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};

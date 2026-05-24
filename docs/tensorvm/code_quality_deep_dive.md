@@ -616,6 +616,9 @@ spaghetti around.
 - Iteration 238 moved runtime network ingestion, p2p announcement publishing, and scheduled local synthetic
   production helpers into the library-owned `app` module, leaving role workers and the runtime loop to call
   app-level network/runtime helpers instead of binary-private network modules.
+- Iteration 239 moved the runtime RPC serving helper into the library-owned `app` module, so request serving,
+  mutation detection, and service-state persistence are exposed as an app runtime helper instead of another
+  binary-private loop dependency.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
