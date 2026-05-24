@@ -24,13 +24,16 @@ fn docs_public_testnet_preflight_command_reports_pending_status() {
     )))
     .unwrap();
 
-    assert!(report.contains("public_testnet_preflight_ready=false"));
-    assert!(report.contains("local_shape_ready=true"));
-    assert!(report.contains("deployment_plan_ready=false"));
-    assert!(report.contains("miners=10"));
-    assert!(report.contains("validators=5"));
-    assert!(report.contains("production_libp2p_runtime=true"));
-    assert!(report.contains("public_services_planned=false"));
+    assert_eq!(
+        report_field(&report, "public_testnet_preflight_ready"),
+        "false"
+    );
+    assert_eq!(report_field(&report, "local_shape_ready"), "true");
+    assert_eq!(report_field(&report, "deployment_plan_ready"), "false");
+    assert_eq!(report_u64(&report, "miners"), 10);
+    assert_eq!(report_u64(&report, "validators"), 5);
+    assert_eq!(report_field(&report, "production_libp2p_runtime"), "true");
+    assert_eq!(report_field(&report, "public_services_planned"), "false");
 }
 
 #[test]
@@ -42,15 +45,21 @@ fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
     )))
     .unwrap();
 
-    assert!(report.contains("public_evidence_full_spec=false"));
-    assert!(report.contains("public_criterion=false"));
-    assert!(report.contains("independently_checkable=false"));
-    assert!(report.contains("published_evidence_bundle=false"));
-    assert!(report.contains("signed_run_window=true"));
-    assert!(report.contains("supporting_record_artifacts=false"));
-    assert!(report.contains("deployed_public_service_content=false"));
-    assert!(report.contains("required_run_duration=false"));
-    assert!(report.contains("required_block_count=false"));
+    assert_eq!(report_field(&report, "public_evidence_full_spec"), "false");
+    assert_eq!(report_field(&report, "public_criterion"), "false");
+    assert_eq!(report_field(&report, "independently_checkable"), "false");
+    assert_eq!(report_field(&report, "published_evidence_bundle"), "false");
+    assert_eq!(report_field(&report, "signed_run_window"), "true");
+    assert_eq!(
+        report_field(&report, "supporting_record_artifacts"),
+        "false"
+    );
+    assert_eq!(
+        report_field(&report, "deployed_public_service_content"),
+        "false"
+    );
+    assert_eq!(report_field(&report, "required_run_duration"), "false");
+    assert_eq!(report_field(&report, "required_block_count"), "false");
 }
 
 #[test]
@@ -74,11 +83,11 @@ fn service_init_recovers_torn_snapshot_and_block_log_from_chain_state() {
     store.snapshot_store().save(&stale_snapshot).unwrap();
 
     let report = init_service_store(&data_dir_text).unwrap();
-    assert!(report.contains("command=service_init"));
-    assert!(report.contains("existing_store=true"));
-    assert!(report.contains("recovered_store=true"));
-    assert!(report.contains("recovery_source=chain_state"));
-    assert!(report.contains("block_count=2"));
+    assert_eq!(report_field(&report, "command"), "service_init");
+    assert_eq!(report_field(&report, "existing_store"), "true");
+    assert_eq!(report_field(&report, "recovered_store"), "true");
+    assert_eq!(report_field(&report, "recovery_source"), "chain_state");
+    assert_eq!(report_u64(&report, "block_count"), 2);
     assert_eq!(store.load_chain().unwrap(), chain);
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");

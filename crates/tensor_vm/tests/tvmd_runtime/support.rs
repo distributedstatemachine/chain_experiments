@@ -22,6 +22,20 @@ pub(super) fn insert_bundle_tensors(node: &mut RpcNode, bundle: &RoleReceiptBund
     }
 }
 
+pub(super) fn report_field<'a>(report: &'a str, key: &str) -> &'a str {
+    report
+        .lines()
+        .find_map(|line| line.strip_prefix(key))
+        .and_then(|value| value.strip_prefix('='))
+        .unwrap_or_else(|| panic!("expected report field {key}"))
+}
+
+pub(super) fn report_u64(report: &str, key: &str) -> u64 {
+    report_field(report, key)
+        .parse()
+        .unwrap_or_else(|_| panic!("expected numeric report field {key}"))
+}
+
 pub(super) fn register_miner(chain: &mut Chain, miner: tensor_vm::Address) {
     let stake = chain.params().miner_min_stake;
     chain
