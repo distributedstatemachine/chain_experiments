@@ -406,6 +406,9 @@ spaghetti around.
 - Iteration 159 moved CLI public-evidence and public-testnet manifest report tests into
   `cli/tests/manifest_reports.rs`, keeping manifest report assertions separate from parser and command
   execution coverage while shrinking the parent CLI test module.
+- Iteration 160 moved CLI command-description coverage into `cli/tests/command_descriptions.rs`,
+  separating clap parsing/default tests from description snapshot assertions and further shrinking the
+  parent CLI test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
