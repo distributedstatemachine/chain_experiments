@@ -1088,6 +1088,9 @@ spaghetti around.
 - Iteration 446 split public network observation and service-log Clap parser coverage into
   `cli/tests/public_evidence_network_parser.rs`, leaving the mixed public parser suite focused on
   manifest and supporting-record command families.
+- Iteration 447 split public supporting-record Clap parser coverage into
+  `cli/tests/public_evidence_record_parser.rs`, leaving `cli/tests/public_parser.rs` focused on
+  public manifest parsing and retired top-level command rejection.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
