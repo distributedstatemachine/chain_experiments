@@ -306,6 +306,9 @@ spaghetti around.
 - Iteration 126 split the clap public-evidence command tree into `cli/public_evidence_parser.rs` and
   moved shared clap value parsers into `cli/parser_values.rs`, leaving `cli/parser.rs` focused on the
   top-level local node, service, and public-testnet command structure.
+- Iteration 127 moved the local miner, validator, proposer, service, local-testnet, and local-cpu
+  clap command groups into `cli/local_parser.rs`, leaving `cli/parser.rs` as the top-level clap
+  router plus public-testnet preflight parser.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
