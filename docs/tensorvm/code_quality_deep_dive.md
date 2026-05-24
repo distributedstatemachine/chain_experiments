@@ -563,6 +563,8 @@ spaghetti around.
   narrowing `chain/tests/blocks.rs` to block production, finality, vote admission, and root commitments.
 - Iteration 220 moved chain transaction application and reference-submission rejection tests into
   `chain/tests/transactions.rs`, reducing boundary tests to account/job, parameter, root, and rejection edges.
+- Iteration 221 moved account/job tracking, chain parameter retention math, and miner root commitment tests
+  into focused modules, leaving `chain/tests/boundaries.rs` for rejection-boundary coverage only.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

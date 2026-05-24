@@ -16,13 +16,16 @@ use crate::verify::{
 };
 use std::collections::BTreeSet;
 
+mod accounts;
 mod attestations;
 mod blocks;
 mod boundaries;
 mod challenges;
 mod commands;
 mod models;
+mod params;
 mod proposers;
 mod rewards;
+mod root_hashes;
 mod settlement;
 mod transactions;

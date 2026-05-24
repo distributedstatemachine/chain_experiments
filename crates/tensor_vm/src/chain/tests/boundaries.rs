@@ -1,55 +1,6 @@
 use super::*;
 
 #[test]
-fn chain_tracks_accounts_jobs_and_transfers() {
-    let beacon = hash_bytes(b"test", &[b"beacon"]);
-    let mut chain = Chain::new(beacon);
-    let alice = address(b"alice");
-    let bob = address(b"bob");
-    chain.credit_account(alice, 1_000);
-    chain.transfer(alice, bob, 250).unwrap();
-    assert_eq!(chain.state.accounts.get(&alice).unwrap().balance, 750);
-    assert_eq!(chain.state.accounts.get(&alice).unwrap().nonce, 1);
-    assert_eq!(chain.state.accounts.get(&bob).unwrap().balance, 250);
-
-    let job = MatmulJob::synthetic(0, 3, 2, 2, 2, &beacon, 10);
-    chain.submit_job(JobState::TensorOp(job.clone()));
-    assert_eq!(chain.job(&job.job_id).unwrap().deadline_block(), 10);
-}
-
-#[test]
-fn chain_params_define_tensor_retention_deadline() {
-    let params = ChainParams {
-        epoch_length: 50,
-        reward_settlement_delay_epochs: 2,
-        challenge_window_epochs: 3,
-        ..ChainParams::default()
-    };
-    assert_eq!(params.tensor_retention_window_blocks(), 250);
-    assert_eq!(params.tensor_retention_deadline(10), 260);
-}
-
-#[test]
-fn miner_root_commits_to_operator_identity() {
-    let beacon = hash_bytes(b"test", &[b"beacon"]);
-    let mut chain = Chain::new(beacon);
-    let miner = address(b"operator-root-miner");
-    chain
-        .register_miner_with_operator(
-            miner,
-            chain.params.miner_min_stake,
-            address(b"operator-root-a"),
-        )
-        .unwrap();
-
-    let original_root = miner_root(&chain.state.miners);
-    let mut changed_miners = chain.state.miners.clone();
-    changed_miners.get_mut(&miner).unwrap().operator_id = address(b"operator-root-b");
-
-    assert_ne!(original_root, miner_root(&changed_miners));
-}
-
-#[test]
 fn chain_rejects_boundary_registration_receipt_vote_and_challenge_errors() {
     let beacon = hash_bytes(b"test", &[b"beacon"]);
     let mut chain = Chain::new(beacon);
