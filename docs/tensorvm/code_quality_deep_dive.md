@@ -706,6 +706,8 @@ spaghetti around.
   job ID, and tensor-work units while preserving the HTTP status-text edge coverage.
 - Iteration 276 moved the RPC JSON test helpers to the shared RPC test module and converted the
   `/tensor/latest` synthetic-round assertion to parsed tensor-count and hash-field checks.
+- Iteration 277 converted explorer websocket collection and error-response tests from substring scans to
+  parsed JSON assertions over response types, hardware classes, primitive types, receipt fields, and errors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

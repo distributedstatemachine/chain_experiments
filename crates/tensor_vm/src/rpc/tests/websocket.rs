@@ -48,29 +48,100 @@ fn explorer_websocket_views_cover_chain_collections_and_bad_commands() {
     let rpc = RpcNode::new(chain);
 
     let miners = rpc.explorer_websocket_response("miners");
-    assert!(miners.contains("\"hardware_class\":\"cpu\""));
-    assert!(miners.contains("\"hardware_class\":\"consumer_gpu\""));
-    assert!(miners.contains("\"hardware_class\":\"datacenter_gpu\""));
-    assert!(miners.contains("\"hardware_class\":\"other\""));
+    let miners = json_text(&miners);
+    assert_eq!(miners["type"].as_str(), Some("miners"));
+    let mut hardware_classes = miners["miners"]
+        .as_array()
+        .expect("miners response must contain miners array")
+        .iter()
+        .map(|miner| {
+            miner["hardware_class"]
+                .as_str()
+                .expect("miner hardware class must be a string")
+        })
+        .collect::<Vec<_>>();
+    hardware_classes.sort_unstable();
+    assert_eq!(
+        hardware_classes,
+        ["consumer_gpu", "cpu", "datacenter_gpu", "other"]
+    );
+
     let validators = rpc.explorer_websocket_response("{\"type\":\"validators\"}");
-    assert!(validators.contains("\"valid_attestations\""));
+    let validators = json_text(&validators);
+    assert_eq!(validators["type"].as_str(), Some("validators"));
+    let validators = validators["validators"]
+        .as_array()
+        .expect("validators response must contain validators array");
+    assert_eq!(validators.len(), 2);
+    assert!(
+        validators
+            .iter()
+            .all(|validator| validator["valid_attestations"].as_u64().is_some())
+    );
+
     let jobs = rpc.explorer_websocket_response("{\"type\":\"jobs\",\"job_limit\":2}");
-    assert!(jobs.contains("\"primitive_type\":\"tensor_op\""));
-    assert!(jobs.contains("\"primitive_type\":\"linear_training_step\""));
+    let jobs = json_text(&jobs);
+    assert_eq!(jobs["type"].as_str(), Some("jobs"));
+    let mut primitive_types = jobs["jobs"]
+        .as_array()
+        .expect("jobs response must contain jobs array")
+        .iter()
+        .map(|job| {
+            job["primitive_type"]
+                .as_str()
+                .expect("job primitive type must be a string")
+        })
+        .collect::<Vec<_>>();
+    primitive_types.sort_unstable();
+    assert_eq!(primitive_types, ["linear_training_step", "tensor_op"]);
+
     let receipts = rpc.explorer_websocket_response("{\"type\":\"receipts\",\"receipt_limit\":1}");
-    assert!(receipts.contains("\"primitive_type\":\"tensor_op\""));
-    assert!(receipts.contains("\"attestation_count\":0"));
-    assert!(receipts.contains("\"validator_attestations\":[]"));
-    assert!(receipts.contains("\"settled\":true"));
+    let receipts = json_text(&receipts);
+    assert_eq!(receipts["type"].as_str(), Some("receipts"));
+    let receipts = receipts["receipts"]
+        .as_array()
+        .expect("receipts response must contain receipts array");
+    assert_eq!(receipts.len(), 1);
+    assert_eq!(receipts[0]["primitive_type"].as_str(), Some("tensor_op"));
+    assert_eq!(receipts[0]["attestation_count"].as_u64(), Some(0));
+    assert!(
+        receipts[0]["validator_attestations"]
+            .as_array()
+            .expect("receipt validator attestations must be an array")
+            .is_empty()
+    );
+    assert_eq!(receipts[0]["settled"].as_bool(), Some(true));
+
     let blocks = rpc.explorer_websocket_response("{\"type\":\"blocks\",\"block_limit\":1}");
-    assert!(blocks.contains("\"blocks\""));
+    let blocks = json_text(&blocks);
+    assert_eq!(blocks["type"].as_str(), Some("blocks"));
+    let blocks = blocks["blocks"]
+        .as_array()
+        .expect("blocks response must contain blocks array");
+    assert_eq!(blocks.len(), 1);
+    assert_eq!(blocks[0]["height"].as_u64(), Some(0));
+
     let summary = rpc.explorer_websocket_response("summary");
-    assert!(summary.contains("\"type\":\"summary\""));
+    let summary = json_text(&summary);
+    assert_eq!(summary["type"].as_str(), Some("summary"));
+    assert_eq!(summary["summary"]["miner_count"].as_u64(), Some(4));
+    assert_eq!(summary["summary"]["job_count"].as_u64(), Some(2));
+
     let missing_account = rpc.explorer_websocket_response("{\"type\":\"account\"}");
-    assert!(missing_account.contains("missing account address"));
+    let missing_account = json_text(&missing_account);
+    assert_eq!(missing_account["type"].as_str(), Some("error"));
+    assert_eq!(
+        missing_account["error"].as_str(),
+        Some("missing account address")
+    );
     let invalid_account =
         rpc.explorer_websocket_response("{\"type\":\"account\",\"address\":\"bad\"}");
-    assert!(invalid_account.contains("invalid account address"));
+    let invalid_account = json_text(&invalid_account);
+    assert_eq!(invalid_account["type"].as_str(), Some("error"));
+    assert_eq!(
+        invalid_account["error"].as_str(),
+        Some("invalid account address")
+    );
 
     assert_eq!(primitive_label(PrimitiveType::TensorOp), "tensor_op");
     assert_eq!(

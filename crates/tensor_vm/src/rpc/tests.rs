@@ -21,7 +21,11 @@ use super::websocket::{
 };
 
 fn response_json(response: &RpcResponse) -> serde_json::Value {
-    serde_json::from_str(&response.body).expect("RPC response body must be JSON")
+    json_text(&response.body)
+}
+
+fn json_text(body: &str) -> serde_json::Value {
+    serde_json::from_str(body).expect("RPC response body must be JSON")
 }
 
 fn json_hex_field<'a>(json: &'a serde_json::Value, field: &str) -> &'a str {
