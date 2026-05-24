@@ -575,6 +575,10 @@ spaghetti around.
 - Iteration 225 split local runtime/service execution-report assertions into
   `cli/tests/local_execution_reports.rs`, leaving public-evidence output assertions in
   `cli/tests/execution_reports.rs`.
+- Iteration 226 moved public-evidence supporting-record summary, artifact, file-derived aggregation, and
+  malformed-record report assertions into `cli/tests/public_evidence_record_reports.rs`, leaving
+  `cli/tests/execution_reports.rs` focused on publication, run-window, node, service, and network output
+  assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
