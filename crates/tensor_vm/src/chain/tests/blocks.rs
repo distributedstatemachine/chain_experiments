@@ -81,7 +81,7 @@ fn block_finality_ignores_invalid_direct_vote_records() {
     let duplicate = BlockVote::new(validators[0], 10_000, &block);
     let mut bad_signature = BlockVote::new(validators[1], 10_000, &block);
     bad_signature.signature = [9; 32];
-    chain.state.block_votes.insert(
+    chain.insert_block_votes_for_testing(
         block_hash,
         vec![unknown, wrong_stake, valid, duplicate, bad_signature],
     );
@@ -101,37 +101,37 @@ fn block_votes_reject_invalid_useful_pow_and_checks_root() {
     let mut bad_target = block.clone();
     bad_target.difficulty_target = [0; 32];
     resign_test_block(&mut bad_target);
-    chain.blocks.push(bad_target.clone());
+    chain.push_block_for_testing(bad_target.clone());
     assert_eq!(
         chain.submit_block_vote(BlockVote::new(validator, 10_000, &bad_target)),
         Err(TvmError::InvalidReceipt("block difficulty target mismatch"))
     );
-    chain.blocks.pop();
+    chain.pop_block_for_testing();
 
     let mut bad_checks = block.clone();
     bad_checks.checks_root = hash_bytes(b"test", &[b"bad-block-checks"]);
     mine_test_block(&mut bad_checks);
-    chain.blocks.push(bad_checks.clone());
+    chain.push_block_for_testing(bad_checks.clone());
     assert_eq!(
         chain.submit_block_vote(BlockVote::new(validator, 10_000, &bad_checks)),
         Err(TvmError::InvalidReceipt("block checks root mismatch"))
     );
-    chain.blocks.pop();
+    chain.pop_block_for_testing();
 
     let mut bad_state_root = block.clone();
     bad_state_root.state_root = hash_bytes(b"test", &[b"bad-block-state-root"]);
     mine_test_block(&mut bad_state_root);
-    chain.blocks.push(bad_state_root.clone());
+    chain.push_block_for_testing(bad_state_root.clone());
     assert_eq!(
         chain.submit_block_vote(BlockVote::new(validator, 10_000, &bad_state_root)),
         Err(TvmError::InvalidReceipt("block state root mismatch"))
     );
-    chain.blocks.pop();
+    chain.pop_block_for_testing();
 
     let mut bad_receipts = block.clone();
     bad_receipts.settled_receipt_set_root = hash_bytes(b"test", &[b"bad-receipt-set"]);
     mine_test_block(&mut bad_receipts);
-    chain.blocks.push(bad_receipts.clone());
+    chain.push_block_for_testing(bad_receipts.clone());
     assert_eq!(
         chain.submit_block_vote(BlockVote::new(validator, 10_000, &bad_receipts)),
         Err(TvmError::InvalidReceipt("noncanonical settled receipt set"))
@@ -149,18 +149,20 @@ fn produced_blocks_mark_selected_settled_receipts_included_once() {
 
     let job = MatmulJob::synthetic(0, 0, 2, 2, 2, &beacon, 10);
     let (receipt, _a, _b, _c) = TensorOpReceipt::from_job(&job, miner, 1, 5).unwrap();
-    chain
-        .state
-        .receipts
-        .insert(receipt.receipt_id, ReceiptState::TensorOp(receipt.clone()));
-    chain.state.settled_receipts.insert(receipt.receipt_id);
+    chain.insert_receipt_for_testing(ReceiptState::TensorOp(receipt.clone()));
+    chain.mark_receipt_settled_for_testing(receipt.receipt_id);
 
     let first = chain.produce_block(validator, 1_000).unwrap();
     assert_eq!(
         chain.selected_receipts_for_block(&first),
         vec![receipt.receipt_id]
     );
-    assert!(chain.state.included_receipts.contains(&receipt.receipt_id));
+    assert!(
+        chain
+            .state()
+            .included_receipts()
+            .contains(&receipt.receipt_id)
+    );
 
     let second = chain.produce_block(validator, 2_000).unwrap();
     assert!(chain.selected_receipts_for_block(&second).is_empty());
@@ -188,7 +190,7 @@ fn block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values
         &b,
         &c,
         &hash_bytes(b"test", &[b"validation"]),
-        &chain.params.freivalds,
+        &chain.params().freivalds,
     )
     .unwrap();
     chain.submit_job(JobState::TensorOp(job.clone()));
@@ -208,19 +210,21 @@ fn block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values
         ))
         .unwrap();
 
-    chain.state.settled_receipts.insert(receipt.receipt_id);
+    chain.mark_receipt_settled_for_testing(receipt.receipt_id);
     let parent_hash = chain
-        .blocks
+        .blocks()
         .last()
         .map(TensorBlock::hash)
         .unwrap_or([0; 32]);
     let expected_selection =
-        chain.canonical_blockspace(&parent_hash, &chain.state.finalized_randomness);
+        chain.canonical_blockspace(&parent_hash, &chain.state().finalized_randomness());
     let expected_settled_receipt_set_root =
         selected_receipt_root(&expected_selection.receipt_set());
-    let expected_checks_root =
-        block_checks_root(&expected_selection.receipt_ids, &chain.state.attestations);
-    let expected_attestation_root = attestation_root(&chain.state.attestations);
+    let expected_checks_root = block_checks_root(
+        &expected_selection.receipt_ids,
+        chain.state().attestations(),
+    );
+    let expected_attestation_root = attestation_root(chain.state().attestations());
     let expected_state_root = chain.state_root();
     let block = chain.produce_block(validator, 1_000).unwrap();
     assert_eq!(

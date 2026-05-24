@@ -982,6 +982,8 @@ spaghetti around.
   fixture terminology and cleaned stale CLI test expectation wording.
 - Iteration 403 moved proposer edge-case tests off direct `ChainState` field mutation by adding
   explicit crate-test-only `Chain` helpers for validator stake and miner tensor-work setup.
+- Iteration 404 moved block finality and block-root tests off direct `ChainState`/`blocks`
+  mutation by adding explicit crate-test-only helpers for injected votes, receipts, and blocks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,4 +1,4 @@
-use super::{Chain, ReceiptState, RewardState};
+use super::{BlockVote, Chain, ReceiptState, RewardState, TensorBlock};
 use crate::error::{Result, TvmError};
 use crate::types::{Address, Hash};
 use crate::verify::ValidatorAttestation;
@@ -61,6 +61,22 @@ impl Chain {
 
     pub(crate) fn insert_receipt_for_testing(&mut self, receipt: ReceiptState) {
         self.state.receipts.insert(receipt.receipt_id(), receipt);
+    }
+
+    pub(crate) fn insert_block_votes_for_testing(
+        &mut self,
+        block_hash: Hash,
+        votes: Vec<BlockVote>,
+    ) {
+        self.state.block_votes.insert(block_hash, votes);
+    }
+
+    pub(crate) fn push_block_for_testing(&mut self, block: TensorBlock) {
+        self.blocks.push(block);
+    }
+
+    pub(crate) fn pop_block_for_testing(&mut self) -> Option<TensorBlock> {
+        self.blocks.pop()
     }
 
     pub(crate) fn insert_attestation_for_testing(&mut self, attestation: ValidatorAttestation) {
