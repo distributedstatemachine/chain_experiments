@@ -1,4 +1,4 @@
-use super::arguments::{parse_hash_argument, parse_u64};
+use super::arguments::{exact_comma_fields, parse_hash_argument, parse_u64};
 use super::network_observation::network_observation_multiaddr_is_public;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
@@ -6,17 +6,7 @@ use crate::types::{Hash, hash_bytes};
 use libp2p::{Multiaddr, PeerId};
 
 pub(super) fn network_observation_root_from_record_line(record: &str) -> Result<Hash> {
-    let fields = record.split(',').collect::<Vec<_>>();
-    if fields.len() != 13 {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
-    if fields.iter().any(|field| field.trim() != *field) {
-        return Err(TvmError::InvalidReceipt(
-            "invalid network observation record line",
-        ));
-    }
+    let fields = exact_comma_fields(record, 13, "invalid network observation record line")?;
     let operator_id = parse_hash_argument(fields[0])?;
     if operator_id == [0; 32] {
         return Err(TvmError::InvalidReceipt("operator id argument is empty"));

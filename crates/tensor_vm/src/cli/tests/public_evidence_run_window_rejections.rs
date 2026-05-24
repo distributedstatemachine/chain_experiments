@@ -59,6 +59,7 @@ fn execute_command_fixture_rejects_invalid_run_window_evidence_args() {
         "run_window_observation=0,1700000000\nrun_window_observation=2,1700000012\n",
         "run_window_observation=0,1700000006\nrun_window_observation=1,1700000000\n",
         "run_window_observation=0,0\n",
+        "run_window_observation=0, 1700000000\n",
         "run_window_observation=0\n",
         "service_health_observation=0,reachable\n",
     ] {

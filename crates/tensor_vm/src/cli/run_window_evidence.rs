@@ -1,4 +1,4 @@
-use super::arguments::parse_u64;
+use super::arguments::{exact_comma_fields, parse_u64};
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::sign_public_run_window;
@@ -134,9 +134,6 @@ fn parse_run_window_observation_line(line: &str) -> Result<(u64, u64)> {
         .ok_or(TvmError::InvalidReceipt(
             "unsupported run-window observation line",
         ))?;
-    let fields: Vec<&str> = record.split(',').collect();
-    if fields.len() != 2 {
-        return Err(TvmError::InvalidReceipt("malformed run-window observation"));
-    }
+    let fields = exact_comma_fields(record, 2, "malformed run-window observation")?;
     Ok((parse_u64(fields[0])?, parse_u64(fields[1])?))
 }

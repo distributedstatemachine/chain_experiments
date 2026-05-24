@@ -146,6 +146,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         "service_health_observation=0,reachable\nservice_health_observation=0,reachable\n",
         "service_health_observation=0,reachable\nservice_health_observation=2,reachable\n",
         "service_health_observation=0,ok\n",
+        "service_health_observation=0, reachable\n",
         "service_health_observation=0\n",
         "record_root=00\n",
     ] {

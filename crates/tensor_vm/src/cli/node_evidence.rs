@@ -1,5 +1,6 @@
 use super::arguments::{
-    parse_hash_argument, parse_public_node_role, parse_u64, public_node_role_tag,
+    exact_comma_fields, parse_hash_argument, parse_public_node_role, parse_u64,
+    public_node_role_tag,
 };
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
@@ -145,12 +146,7 @@ fn parse_node_heartbeat_observation_line(
             .ok_or(TvmError::InvalidReceipt(
                 "unsupported node heartbeat observation line",
             ))?;
-    let fields: Vec<&str> = record.split(',').collect();
-    if fields.len() != 4 {
-        return Err(TvmError::InvalidReceipt(
-            "malformed node heartbeat observation",
-        ));
-    }
+    let fields = exact_comma_fields(record, 4, "malformed node heartbeat observation")?;
     Ok((
         parse_public_node_role(fields[0])?,
         parse_hash_argument(fields[1])?,

@@ -765,6 +765,8 @@ spaghetti around.
   serialization and converted its remaining JSON substring checks to parsed field assertions.
 - Iteration 304 replaced explorer WebSocket command substring routing with `serde_json` command parsing,
   preserving shorthand commands while removing the test-only hand-written JSON field extractors.
+- Iteration 305 added a shared exact comma-field parser for CLI evidence records and moved network,
+  node-heartbeat, service-health, and run-window observation parsers off repeated raw split/count logic.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

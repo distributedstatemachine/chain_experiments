@@ -2,6 +2,18 @@ use crate::error::{Result, TvmError};
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::Hash;
 
+pub(super) fn exact_comma_fields<'a>(
+    value: &'a str,
+    expected_len: usize,
+    error: &'static str,
+) -> Result<Vec<&'a str>> {
+    let fields = value.split(',').collect::<Vec<_>>();
+    if fields.len() != expected_len || fields.iter().any(|field| field.trim() != *field) {
+        return Err(TvmError::InvalidReceipt(error));
+    }
+    Ok(fields)
+}
+
 pub(super) fn parse_u64(value: &str) -> Result<u64> {
     value
         .parse()
