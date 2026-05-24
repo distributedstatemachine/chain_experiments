@@ -384,6 +384,9 @@ spaghetti around.
   `cli/local_role_execution.rs` with shared identity report rendering in
   `cli/local_execution_values.rs`, narrowing `cli/local_execution.rs` toward service/local-testnet
   command execution and family dispatch.
+- Iteration 153 moved local service command execution into `cli/local_service_execution.rs`,
+  leaving `cli/local_execution.rs` as a compact local command-family dispatcher plus the tiny
+  local-testnet and local-cpu execution handlers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
