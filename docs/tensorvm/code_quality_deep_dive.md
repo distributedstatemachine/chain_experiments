@@ -451,6 +451,9 @@ spaghetti around.
 - Iteration 174 moved public HTTPS endpoint, content-addressed evidence URI, and public network
   multiaddr validation helpers into `testnet/public_urls.rs`, separating public-address policy from
   the remaining public-testnet evidence and manifest orchestration code.
+- Iteration 175 moved public-operator independence matching, quota search, and attestation-key
+  derivation into `testnet/public_operators.rs`, keeping public-run criteria evaluation separate
+  from the address/operator matching policy.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
