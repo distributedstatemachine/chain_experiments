@@ -68,7 +68,7 @@ impl RpcHttpServer {
                     stream.write_all(http_response_text(&response).as_bytes())?;
                     return stream.flush();
                 }
-                super::write_websocket_handshake(&mut stream, &websocket_key)?;
+                super::websocket::write_websocket_handshake(&mut stream, &websocket_key)?;
                 self.gateway.node.serve_explorer_websocket_once(&mut stream)
             }
             ParsedHttpRequest::BadRequest => {

@@ -506,6 +506,9 @@ spaghetti around.
   public `RpcHttpServer` and `http_response_text` exports.
 - Iteration 192 extracted read-only explorer DTO projection helpers into `rpc/explorer.rs`, keeping
   account, block, miner, validator, receipt, job, and overview shaping separate from RPC route dispatch.
+- Iteration 193 extracted websocket handshake, frame encoding/decoding, accept-key hashing, and
+  websocket command-field parsing into `rpc/websocket.rs`, leaving `rpc.rs` closer to route dispatch
+  and application state handling.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
