@@ -1,5 +1,5 @@
-use super::arguments::{
-    exact_comma_fields, parse_hash_argument, parse_u64, public_evidence_record_field_prefix,
+use super::evidence_fields::{
+    exact_comma_fields, parse_hash_field, parse_u64_field, public_evidence_record_field_prefix,
     public_evidence_record_kind_tag,
 };
 use super::network_evidence::network_observation_root_from_record_line;
@@ -212,13 +212,13 @@ pub(super) fn validate_supporting_record_payload(
     match kind {
         PublicEvidenceRecordKind::BlockHistory => {
             let fields = exact_comma_fields(payload, 2, INVALID_SUPPORTING_RECORD)?;
-            parse_u64(fields[0])?;
-            parse_hash_argument(fields[1])?;
+            parse_u64_field(fields[0])?;
+            parse_hash_field(fields[1])?;
         }
         PublicEvidenceRecordKind::FinalityHistory => {
             let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
-            parse_u64(fields[0])?;
-            parse_hash_argument(fields[1])?;
+            parse_u64_field(fields[0])?;
+            parse_hash_field(fields[1])?;
             require_supporting_record_status(fields[2], &["finalized", "unfinalized"])?;
         }
         PublicEvidenceRecordKind::NetworkRuntimeObservations => {
@@ -226,22 +226,22 @@ pub(super) fn validate_supporting_record_payload(
         }
         PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
             let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
-            parse_hash_argument(fields[0])?;
+            parse_hash_field(fields[0])?;
             require_supporting_record_status(fields[1], &["available", "unavailable"])?;
-            parse_u64(fields[2])?;
+            parse_u64_field(fields[2])?;
         }
         PublicEvidenceRecordKind::InvalidWorkRejections => {
             let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
-            parse_hash_argument(fields[0])?;
+            parse_hash_field(fields[0])?;
             require_supporting_record_status(fields[1], &["rejected"])?;
-            parse_u64(fields[2])?;
+            parse_u64_field(fields[2])?;
         }
         PublicEvidenceRecordKind::RewardSettlements => {
             let fields = exact_comma_fields(payload, 4, INVALID_SUPPORTING_RECORD)?;
-            parse_hash_argument(fields[0])?;
-            parse_hash_argument(fields[1])?;
-            parse_hash_argument(fields[2])?;
-            parse_u64(fields[3])?;
+            parse_hash_field(fields[0])?;
+            parse_hash_field(fields[1])?;
+            parse_hash_field(fields[2])?;
+            parse_u64_field(fields[3])?;
         }
     }
     Ok(())
@@ -260,5 +260,5 @@ fn parse_record_file_root(root: &str) -> Result<Hash> {
     if root.trim() != root {
         return Err(TvmError::InvalidReceipt("invalid record root file line"));
     }
-    parse_hash_argument(root)
+    parse_hash_field(root)
 }

@@ -11,7 +11,7 @@ pub(super) fn exact_comma_fields<'a>(
     exact_record_fields(value, expected_len).ok_or(TvmError::InvalidReceipt(error))
 }
 
-pub(super) fn parse_u64(value: &str) -> Result<u64> {
+pub(super) fn parse_u64_field(value: &str) -> Result<u64> {
     value
         .parse()
         .map_err(|_| TvmError::InvalidReceipt("invalid numeric argument"))
@@ -63,6 +63,6 @@ pub(super) fn public_evidence_record_field_prefix(kind: PublicEvidenceRecordKind
     }
 }
 
-pub(super) fn parse_hash_argument(value: &str) -> Result<Hash> {
+pub(super) fn parse_hash_field(value: &str) -> Result<Hash> {
     parse_hash_hex(value).map_err(|_| TvmError::InvalidReceipt("invalid hash argument"))
 }

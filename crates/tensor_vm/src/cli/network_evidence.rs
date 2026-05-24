@@ -1,4 +1,4 @@
-use super::arguments::{exact_comma_fields, parse_hash_argument, parse_u64};
+use super::evidence_fields::{exact_comma_fields, parse_hash_field, parse_u64_field};
 use crate::app::{KeyValueReport, KeyValueReportError};
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
@@ -8,7 +8,7 @@ use libp2p::{Multiaddr, PeerId};
 
 pub(super) fn network_observation_root_from_record_line(record: &str) -> Result<Hash> {
     let fields = exact_comma_fields(record, 13, "invalid network observation record line")?;
-    let operator_id = parse_hash_argument(fields[0])?;
+    let operator_id = parse_hash_field(fields[0])?;
     if operator_id == [0; 32] {
         return Err(TvmError::InvalidReceipt("operator id argument is empty"));
     }
@@ -29,14 +29,14 @@ pub(super) fn network_observation_root_from_record_line(record: &str) -> Result<
         operator_id,
         peer_id: &peer_id,
         listen_address: &listen_address,
-        observed_at_unix_seconds: parse_u64(fields[3])?,
-        gossip_topic_count: parse_u64(fields[4])?,
-        request_response_protocol_count: parse_u64(fields[5])?,
-        bootstrap_peer_count: parse_u64(fields[6])?,
-        max_transmit_bytes: parse_u64(fields[7])?,
-        request_timeout_seconds: parse_u64(fields[8])?,
-        max_concurrent_streams: parse_u64(fields[9])?,
-        idle_connection_timeout_seconds: parse_u64(fields[10])?,
+        observed_at_unix_seconds: parse_u64_field(fields[3])?,
+        gossip_topic_count: parse_u64_field(fields[4])?,
+        request_response_protocol_count: parse_u64_field(fields[5])?,
+        bootstrap_peer_count: parse_u64_field(fields[6])?,
+        max_transmit_bytes: parse_u64_field(fields[7])?,
+        request_timeout_seconds: parse_u64_field(fields[8])?,
+        max_concurrent_streams: parse_u64_field(fields[9])?,
+        idle_connection_timeout_seconds: parse_u64_field(fields[10])?,
     };
     if input.observed_at_unix_seconds == 0
         || input.gossip_topic_count == 0
@@ -70,7 +70,7 @@ fn parse_record_file_root(root: &str) -> Result<Hash> {
     if root.trim() != root {
         return Err(TvmError::InvalidReceipt("invalid record root file line"));
     }
-    parse_hash_argument(root)
+    parse_hash_field(root)
 }
 
 pub(super) struct NetworkObservationEvidenceLine<'a> {
@@ -178,15 +178,19 @@ pub(super) fn network_observation_evidence_line_from_service_log(
         peer_id: service_log.field("p2p_peer_id")?,
         listen_address,
         observed_at_unix_seconds,
-        gossip_topic_count: parse_u64(service_log.field("p2p_gossipsub_topics")?)?,
-        request_response_protocol_count: parse_u64(
+        gossip_topic_count: parse_u64_field(service_log.field("p2p_gossipsub_topics")?)?,
+        request_response_protocol_count: parse_u64_field(
             service_log.field("p2p_request_response_protocols")?,
         )?,
-        bootstrap_peer_count: parse_u64(service_log.field("p2p_bootstrap_peers")?)?,
-        max_transmit_bytes: parse_u64(service_log.field("p2p_max_transmit_bytes")?)?,
-        request_timeout_seconds: parse_u64(service_log.field("p2p_request_timeout_seconds")?)?,
-        max_concurrent_streams: parse_u64(service_log.field("p2p_max_concurrent_streams")?)?,
-        idle_connection_timeout_seconds: parse_u64(service_log.field("p2p_idle_timeout_seconds")?)?,
+        bootstrap_peer_count: parse_u64_field(service_log.field("p2p_bootstrap_peers")?)?,
+        max_transmit_bytes: parse_u64_field(service_log.field("p2p_max_transmit_bytes")?)?,
+        request_timeout_seconds: parse_u64_field(
+            service_log.field("p2p_request_timeout_seconds")?,
+        )?,
+        max_concurrent_streams: parse_u64_field(service_log.field("p2p_max_concurrent_streams")?)?,
+        idle_connection_timeout_seconds: parse_u64_field(
+            service_log.field("p2p_idle_timeout_seconds")?,
+        )?,
     })
 }
 

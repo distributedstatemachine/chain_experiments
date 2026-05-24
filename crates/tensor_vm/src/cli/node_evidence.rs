@@ -1,5 +1,5 @@
-use super::arguments::{
-    exact_comma_fields, parse_hash_argument, parse_public_node_role, parse_u64,
+use super::evidence_fields::{
+    exact_comma_fields, parse_hash_field, parse_public_node_role, parse_u64_field,
     public_node_role_tag,
 };
 use crate::error::{Result, TvmError};
@@ -149,9 +149,9 @@ fn parse_node_heartbeat_observation_line(
     let fields = exact_comma_fields(record, 4, "malformed node heartbeat observation")?;
     Ok((
         parse_public_node_role(fields[0])?,
-        parse_hash_argument(fields[1])?,
-        parse_hash_argument(fields[2])?,
-        parse_u64(fields[3])?,
+        parse_hash_field(fields[1])?,
+        parse_hash_field(fields[2])?,
+        parse_u64_field(fields[3])?,
     ))
 }
 

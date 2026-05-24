@@ -6,8 +6,8 @@ use crate::runtime::cuda_device_count;
 use crate::runtime::cuda_kernels_compiled;
 #[cfg(test)]
 use crate::testnet::sign_public_evidence_record;
-mod arguments;
 mod commands;
+mod evidence_fields;
 mod local_commands;
 #[cfg(test)]
 mod local_execution;
@@ -35,8 +35,6 @@ mod service_evidence;
 mod validation;
 mod value_types;
 
-#[cfg(test)]
-use arguments::{public_evidence_record_kind_tag, public_service_kind_tag};
 pub use commands::{
     AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
     EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
@@ -52,6 +50,8 @@ pub use commands::{
     ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs, TvmdCli,
     TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,
 };
+#[cfg(test)]
+use evidence_fields::{public_evidence_record_kind_tag, public_service_kind_tag};
 #[cfg(test)]
 use network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,

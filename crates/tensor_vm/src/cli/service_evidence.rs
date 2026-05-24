@@ -1,4 +1,4 @@
-use super::arguments::{exact_comma_fields, parse_u64, public_service_kind_tag};
+use super::evidence_fields::{exact_comma_fields, parse_u64_field, public_service_kind_tag};
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
@@ -136,7 +136,7 @@ fn parse_service_health_observation_line(line: &str) -> Result<(u64, bool)> {
                 "unsupported service health observation line",
             ))?;
     let fields = exact_comma_fields(record, 2, "malformed service health observation")?;
-    let block = parse_u64(fields[0])?;
+    let block = parse_u64_field(fields[0])?;
     let reachable = match fields[1] {
         "reachable" => true,
         "unreachable" => false,

@@ -974,6 +974,8 @@ spaghetti around.
   direct `EvidenceCommand` execution and removed the obsolete fixture enum entirely.
 - Iteration 399 removed the test-only public kind parser shims and covered invalid service
   and record kind inputs through clap parsing instead.
+- Iteration 400 renamed the leftover `cli/arguments.rs` record-field helper module to
+  `cli/evidence_fields.rs` and made hash/numeric helpers explicit field parsers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
