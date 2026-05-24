@@ -710,6 +710,9 @@ spaghetti around.
   parsed JSON assertions over response types, hardware classes, primitive types, receipt fields, and errors.
 - Iteration 278 reused the shared RPC JSON parser in the HTTP parser coverage for direct explorer websocket
   overview/account responses, replacing another pair of substring checks.
+- Iteration 279 removed the runtime dependency on the preserved CLI execution facade: `tvmd` now parses
+  through the Clap command tree, dispatches app commands directly, keeps public-evidence generation behind
+  an explicit evidence executor, and moves role/service argument validation into the app boundary.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -1286,8 +1289,7 @@ Prefer dry-run validation or a journal.
 
 ### Avoid Massive Match Functions
 
-`execute_cli_command`, CLI parsing, and RPC route dispatch should be split into typed command
-handlers.
+App command dispatch, CLI parsing, and RPC route dispatch should be split into typed command handlers.
 
 ## Tests Review
 

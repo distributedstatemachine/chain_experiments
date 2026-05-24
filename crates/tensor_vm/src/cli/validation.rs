@@ -1,11 +1,16 @@
+#[cfg(test)]
 use crate::error::{Result, TvmError};
+#[cfg(test)]
 use crate::hash::hex;
-#[cfg(feature = "cuda-kernels")]
+#[cfg(all(test, feature = "cuda-kernels"))]
 use crate::runtime::cuda_device_count;
+#[cfg(test)]
 use crate::runtime::cuda_kernels_compiled;
+#[cfg(test)]
 use crate::types::address;
 use std::path::Path;
 
+#[cfg(test)]
 pub(super) fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
     if stake < minimum {
         return Err(TvmError::InsufficientStake);
@@ -17,6 +22,7 @@ pub(super) fn path_argument(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+#[cfg(test)]
 pub(super) fn wallet_address_hex(wallet: &Path) -> Result<String> {
     let wallet = path_argument(wallet);
     if wallet.trim().is_empty() {
@@ -26,6 +32,7 @@ pub(super) fn wallet_address_hex(wallet: &Path) -> Result<String> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(test)]
 pub(super) enum MinerDeviceReadiness {
     CpuReference,
     #[cfg(feature = "cuda-kernels")]
@@ -35,6 +42,7 @@ pub(super) enum MinerDeviceReadiness {
     },
 }
 
+#[cfg(test)]
 impl MinerDeviceReadiness {
     pub(super) fn report(&self) -> String {
         match self {
@@ -53,6 +61,7 @@ impl MinerDeviceReadiness {
     }
 }
 
+#[cfg(test)]
 pub(super) fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadiness> {
     let device = device.trim();
     if device.trim().is_empty() {
@@ -89,6 +98,7 @@ pub(super) fn miner_device_readiness(device: &str) -> Result<MinerDeviceReadines
     }
 }
 
+#[cfg(test)]
 pub(super) fn ensure_data_dir(data_dir: &Path) -> Result<()> {
     let data_dir = path_argument(data_dir);
     if data_dir.trim().is_empty() {
@@ -97,10 +107,12 @@ pub(super) fn ensure_data_dir(data_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 pub(super) fn json_escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+#[cfg(test)]
 pub(super) fn ensure_auth_token(auth_token: &str) -> Result<()> {
     if auth_token.trim().is_empty() {
         return Err(TvmError::InvalidReceipt("auth token argument is empty"));

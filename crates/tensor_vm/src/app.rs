@@ -2,6 +2,7 @@ mod block_status;
 mod commands;
 mod miner_role;
 mod network;
+mod operator_checks;
 mod role_services;
 mod runtime_config;
 mod runtime_loop;

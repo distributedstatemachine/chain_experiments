@@ -256,7 +256,20 @@ pub(super) enum CommandFixture {
 }
 
 pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
-    super::execute_cli_command(&command.clone().into_cli_command())
+    let cli_command = command.clone().into_cli_command();
+    match &cli_command {
+        super::TvmdCommand::Miner(_)
+        | super::TvmdCommand::Validator(_)
+        | super::TvmdCommand::Proposer(_)
+        | super::TvmdCommand::Service(_)
+        | super::TvmdCommand::Testnet(_) => {
+            super::local_execution::execute_local_cli_command(&cli_command)
+        }
+        super::TvmdCommand::Evidence(super::EvidenceCommand::Validate(_)) => {
+            Ok(describe_command_fixture(command))
+        }
+        super::TvmdCommand::Evidence(command) => super::execute_public_evidence_command(command),
+    }
 }
 
 pub(super) fn describe_command_fixture(command: &CommandFixture) -> String {

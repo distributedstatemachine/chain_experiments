@@ -1,23 +1,19 @@
-use super::TvmdCommand;
 use super::commands::EvidenceCommand;
-use super::descriptions::describe_cli_command;
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_node_execution::execute_public_evidence_node_command;
 use super::public_evidence_publication_execution::execute_public_evidence_publication_command;
 use super::public_evidence_record_execution::execute_public_evidence_record_command;
 use super::public_evidence_run_window_execution::execute_public_evidence_run_window_command;
 use super::public_evidence_service_execution::execute_public_evidence_service_command;
-use crate::error::Result;
+use crate::error::{Result, TvmError};
 
-pub(super) fn execute_public_evidence_cli_command(command: &TvmdCommand) -> Result<String> {
-    let TvmdCommand::Evidence(public_command) = command else {
-        unreachable!("local commands are handled by cli::local_execution")
-    };
-
-    match public_command {
-        EvidenceCommand::Validate(_) => Ok(describe_cli_command(command)),
+pub(crate) fn execute_public_evidence_command(command: &EvidenceCommand) -> Result<String> {
+    match command {
+        EvidenceCommand::Validate(_) => Err(TvmError::InvalidReceipt(
+            "evidence validate is handled by the app dispatcher",
+        )),
         EvidenceCommand::Publish(_) | EvidenceCommand::Audit(_) => {
-            execute_public_evidence_publication_command(public_command)
+            execute_public_evidence_publication_command(command)
         }
         EvidenceCommand::Run(command) => execute_public_evidence_run_window_command(command),
         EvidenceCommand::Node(command) => execute_public_evidence_node_command(command),
