@@ -186,6 +186,20 @@ fn network_observation_root(line: &str) -> &str {
     fields[11]
 }
 
+fn comma_record_fields<'a>(line: &'a str, prefix: &str, expected_len: usize) -> Vec<&'a str> {
+    let record = line
+        .trim()
+        .strip_prefix(prefix)
+        .unwrap_or_else(|| panic!("record missing prefix {prefix:?}: {line}"));
+    let fields = record.split(',').collect::<Vec<_>>();
+    assert_eq!(
+        fields.len(),
+        expected_len,
+        "unexpected field count for {prefix:?}: {line}"
+    );
+    fields
+}
+
 fn assert_service_health_evidence_from_response(
     kind: &str,
     endpoint_id: &str,
@@ -216,9 +230,21 @@ fn assert_service_health_evidence_from_response(
         "--signed-health-check-count",
         "10",
     ]);
-    assert!(health.starts_with(&format!("service={kind},")));
-    assert!(health.contains(endpoint_id));
-    assert!(health.contains(&format!("{public_url},/health,0,9,10,10")));
+    let fields = comma_record_fields(&health, "service=", 9);
+    assert_eq!(
+        fields[..8],
+        [
+            kind,
+            endpoint_id,
+            public_url,
+            "/health",
+            "0",
+            "9",
+            "10",
+            "10"
+        ]
+    );
+    assert_eq!(fields[8].len(), 64);
 }
 
 fn assert_service_content_evidence_from_response(
@@ -253,10 +279,12 @@ fn assert_service_content_evidence_from_response(
         "--content-hex",
         &body_hex,
     ]);
-    assert!(content_from_bytes.starts_with(&format!("service_content={kind},")));
-    assert!(content_from_bytes.contains(endpoint_id));
-    assert!(content_from_bytes.contains(&format!("{public_url},{content_path}")));
-    assert!(content_from_bytes.contains(&format!(",{},", body.len())));
+    let min_content_bytes = body.len().to_string();
+    let fields = comma_record_fields(&content_from_bytes, "service_content=", 8);
+    assert_eq!(fields[..4], [kind, endpoint_id, public_url, content_path]);
+    assert_eq!(fields[4].len(), 64);
+    assert_eq!(fields[5..7], ["1700000000", min_content_bytes.as_str()]);
+    assert_eq!(fields[7].len(), 64);
 
     let content_file = data_dir.join(file_name);
     std::fs::write(&content_file, body.as_bytes()).expect("service body fixture must be written");

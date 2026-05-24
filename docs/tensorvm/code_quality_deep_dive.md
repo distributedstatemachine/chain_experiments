@@ -686,6 +686,8 @@ spaghetti around.
   substring assertions from those report-status tests.
 - Iteration 266 converted service lifecycle init, peer-add, readiness, and serve report checks to keyed
   stdout assertions with numeric parsing for counters and libp2p limits.
+- Iteration 267 added comma-record parsing to the `tvmd_cli` integration harness and used it for public
+  service health/content evidence generated from live service responses.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
