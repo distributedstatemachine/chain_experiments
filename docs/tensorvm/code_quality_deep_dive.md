@@ -737,6 +737,8 @@ spaghetti around.
   scripts, replacing fragment inventories with exact continuity command and status-output checks.
 - Iteration 291 moved the local CPU check script setup and seeded-state gate assertions to exact
   shell logical lines, shrinking the remaining broad inventory to live/status-network checks.
+- Iteration 292 moved the local CPU check script live gateway, explorer, tensor, and ready-report
+  assertions to exact shell logical lines, leaving the remaining inventory focused on operator status.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
