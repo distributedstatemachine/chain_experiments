@@ -1,6 +1,6 @@
 use super::commands::{NodeCommand, NodePeerCommand};
-use super::local_fixture_reports::{
-    write_default_libp2p_limit_fields, write_libp2p_fixture_fields,
+use super::local_p2p_report_fields::{
+    write_default_libp2p_control_fields, write_libp2p_runtime_fields,
 };
 use super::validation::{ensure_auth_token, ensure_data_dir, path_argument};
 use crate::app::{KeyValueReportWriter, p2p_identity_report};
@@ -40,9 +40,9 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
             let mut report = KeyValueReportWriter::new();
             report.field("command", "service_readiness");
             report.field("p2p_listen", &args.p2p_listen);
-            write_libp2p_fixture_fields(&mut report);
+            write_libp2p_runtime_fields(&mut report);
             report.append_report(&identity);
-            write_default_libp2p_limit_fields(&mut report);
+            write_default_libp2p_control_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("node_store_required", true);
             report.field("libp2p_ready", true);
@@ -58,9 +58,9 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> Result<String> {
             report.field("command", "service_serve");
             report.field("listen", runtime.listen);
             report.field("p2p_listen", &runtime.p2p_listen);
-            write_libp2p_fixture_fields(&mut report);
+            write_libp2p_runtime_fields(&mut report);
             report.append_report(&identity);
-            write_default_libp2p_limit_fields(&mut report);
+            write_default_libp2p_control_fields(&mut report);
             report.field("data_dir", data_dir);
             report.field("auth_enabled", true);
             report.field("max_requests", runtime.max_requests);

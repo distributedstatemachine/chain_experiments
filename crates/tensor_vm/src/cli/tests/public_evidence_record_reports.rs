@@ -6,7 +6,7 @@ fn execute_public_evidence_record_reports_outputs() {
     let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
             operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
-            peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+            peer_id: peer_id.parse().expect("test peer ID must parse"),
             listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
             observed_at: 1_700_000_000,
             gossip_topics: 5,

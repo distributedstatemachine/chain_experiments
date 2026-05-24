@@ -558,7 +558,7 @@ fn execute_network_observation(
     execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
             operator_id: hash_arg(operator_id),
-            peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+            peer_id: peer_id.parse().expect("test peer ID must parse"),
             listen_address: multiaddr_arg(listen_address.to_owned()),
             observed_at,
             gossip_topics,

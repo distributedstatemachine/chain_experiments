@@ -39,8 +39,7 @@ fn execute_localnet_command(command: &LocalnetCommand) -> Result<String> {
                 structured_verifier_ready: true,
             };
             if args.json {
-                Ok(serde_json::to_string(&report)
-                    .expect("local CPU verify fixture report must serialize"))
+                Ok(serde_json::to_string(&report).expect("local CPU verify report must serialize"))
             } else {
                 Ok(report.to_key_value_report())
             }

@@ -12,7 +12,7 @@ mod local_commands;
 #[cfg(test)]
 mod local_execution;
 #[cfg(test)]
-mod local_fixture_reports;
+mod local_p2p_report_fields;
 #[cfg(test)]
 mod local_role_execution;
 #[cfg(test)]

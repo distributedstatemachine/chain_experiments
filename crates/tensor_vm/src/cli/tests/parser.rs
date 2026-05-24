@@ -702,7 +702,7 @@ fn parses_documented_validator_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
             EvidenceNetworkCommand::Observation(NetworkObservationArgs {
                 operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
-                peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+                peer_id: peer_id.parse().expect("test peer ID must parse"),
                 listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
                 observed_at: 1_700_000_000,
                 gossip_topics: 5,
@@ -937,7 +937,7 @@ fn parses_documented_validator_commands() {
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(NodePeerAddArgs {
             data_dir: path("/var/lib/tensorvm"),
-            peer_id: bootstrap_peer.parse().expect("fixture peer ID must parse"),
+            peer_id: bootstrap_peer.parse().expect("test peer ID must parse"),
             address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
         })))
     );

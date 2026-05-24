@@ -978,6 +978,8 @@ spaghetti around.
   `cli/evidence_fields.rs` and made hash/numeric helpers explicit field parsers.
 - Iteration 401 renamed the CLI test command helper module away from fixture terminology now
   that tests parse and execute clap commands directly.
+- Iteration 402 renamed the local libp2p CLI report helper module and functions away from
+  fixture terminology and cleaned stale CLI test expectation wording.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,7 +1,7 @@
 use crate::app::KeyValueReportWriter;
 use crate::p2p::Libp2pControlPlaneConfig;
 
-pub(super) fn write_libp2p_fixture_fields(report: &mut KeyValueReportWriter) {
+pub(super) fn write_libp2p_runtime_fields(report: &mut KeyValueReportWriter) {
     report.field("p2p_runtime", "libp2p");
     report.field("p2p_gossipsub", "enabled");
     report.field("p2p_identify", "enabled");
@@ -9,7 +9,7 @@ pub(super) fn write_libp2p_fixture_fields(report: &mut KeyValueReportWriter) {
     report.field("p2p_request_response", "enabled");
 }
 
-pub(super) fn write_default_libp2p_limit_fields(report: &mut KeyValueReportWriter) {
+pub(super) fn write_default_libp2p_control_fields(report: &mut KeyValueReportWriter) {
     let p2p_config = Libp2pControlPlaneConfig::default();
     report.field(
         "p2p_max_transmit_bytes",
