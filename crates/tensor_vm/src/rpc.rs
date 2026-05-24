@@ -1,4 +1,4 @@
-use crate::chain::{Chain, ChainCommand, ChainEngine, JobState};
+use crate::chain::{Chain, ChainCommand, ChainEngine};
 use crate::error::{Result, TvmError};
 use crate::faucet::Faucet;
 use crate::hash::hex;
@@ -24,6 +24,7 @@ use tensor_vm_explorer::{
 
 mod explorer;
 mod http;
+mod render;
 mod websocket;
 use explorer::{
     explorer_account, explorer_blocks, explorer_jobs, explorer_miners, explorer_overview,
@@ -36,6 +37,9 @@ use http::{
     ParsedHttpRequest, read_http_request_from, split_path_and_auth_token, try_parse_http_request,
 };
 pub use http::{RpcHttpServer, http_response_text};
+use render::{
+    faucet_page_html, job_json, json_u64_array, json_usize_array, telemetry_dashboard_html,
+};
 #[cfg(test)]
 use websocket::{base64_encode, websocket_accept_key, write_websocket_frame};
 use websocket::{
@@ -676,113 +680,6 @@ fn hex_value(value: u8) -> Result<u8> {
         b'a'..=b'f' => Ok(value - b'a' + 10),
         b'A'..=b'F' => Ok(value - b'A' + 10),
         _ => Err(TvmError::InvalidReceipt("invalid hex")),
-    }
-}
-
-fn json_usize_array(values: &[usize]) -> String {
-    let parts: Vec<_> = values.iter().map(|value| value.to_string()).collect();
-    format!("[{}]", parts.join(","))
-}
-
-fn json_u64_array(values: &[u64]) -> String {
-    let parts: Vec<_> = values.iter().map(|value| value.to_string()).collect();
-    format!("[{}]", parts.join(","))
-}
-
-fn telemetry_dashboard_html(snapshot: &TelemetrySnapshot) -> String {
-    html_document(
-        "TensorVM Telemetry",
-        format!(
-            "<section><h1>Telemetry Dashboard</h1><dl>{}</dl></section>",
-            metric_rows(&[
-                (
-                    "Block Finality Rate",
-                    format!("{:.6}", snapshot.block_finality_rate),
-                ),
-                (
-                    "Average Block Time",
-                    format!("{:.6}", snapshot.average_block_time),
-                ),
-                (
-                    "Data Availability Rate",
-                    format!("{:.6}", snapshot.data_availability_rate),
-                ),
-                (
-                    "Invalid Receipts Submitted",
-                    snapshot.invalid_receipts_submitted.to_string(),
-                ),
-                (
-                    "Validator Disagreement Rate",
-                    format!("{:.6}", snapshot.validator_disagreement_rate),
-                ),
-                ("Total TensorWork", snapshot.total_tensor_work.to_string(),),
-                (
-                    "Max Miner Work Share",
-                    format!("{:.6}", snapshot.max_miner_work_share),
-                ),
-                (
-                    "GPU Utilization",
-                    format!("{:.6}", snapshot.estimated_gpu_utilization),
-                ),
-                (
-                    "Hardware Classes",
-                    snapshot.hardware_class_participation.to_string(),
-                ),
-            ]),
-        ),
-    )
-}
-
-fn faucet_page_html(faucet: Option<&Faucet>) -> String {
-    let rows = match faucet {
-        Some(faucet) => metric_rows(&[
-            ("Balance", faucet.balance().to_string()),
-            ("Drip Amount", faucet.drip_amount().to_string()),
-        ]),
-        None => metric_rows(&[("Status", "Not configured".to_owned())]),
-    };
-    html_document(
-        "TensorVM Faucet",
-        format!("<section><h1>Faucet</h1><dl>{rows}</dl></section>"),
-    )
-}
-
-fn metric_rows(rows: &[(&str, String)]) -> String {
-    rows.iter()
-        .map(|(name, value)| format!("<dt>{name}</dt><dd>{value}</dd>"))
-        .collect::<Vec<_>>()
-        .join("")
-}
-
-fn html_document(title: &str, body: String) -> String {
-    format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>{title}</title><style>body{{font-family:system-ui,sans-serif;margin:0;background:#f7f7f4;color:#151515}}main{{max-width:960px;margin:0 auto;padding:32px}}section{{border-top:1px solid #d8d8d0;padding:20px 0}}dl{{display:grid;grid-template-columns:minmax(160px,260px)1fr;gap:8px 16px}}dt{{font-weight:700}}dd{{margin:0}}code{{font-size:12px;word-break:break-all}}</style></head><body><main>{body}</main></body></html>"
-    )
-}
-
-fn job_json(job: &JobState) -> String {
-    match job {
-        JobState::TensorOp(job) => format!(
-            "{{\"job_id\":\"{}\",\"primitive_type\":\"tensor_op\",\"epoch\":{},\"m\":{},\"k\":{},\"n\":{},\"deadline_block\":{},\"reward_weight\":{}}}",
-            hex(&job.job_id),
-            job.epoch,
-            job.m,
-            job.k,
-            job.n,
-            job.deadline_block,
-            job.reward_weight
-        ),
-        JobState::LinearTrainingStep(job) => format!(
-            "{{\"job_id\":\"{}\",\"primitive_type\":\"linear_training_step\",\"model_id\":\"{}\",\"step\":{},\"input_shape\":{},\"weight_shape\":{},\"target_shape\":{},\"deadline_block\":{},\"reward_weight\":{}}}",
-            hex(&job.job_id),
-            hex(&job.model_id),
-            job.step,
-            json_usize_array(&job.input_shape),
-            json_usize_array(&job.weight_shape),
-            json_usize_array(&job.target_shape),
-            job.deadline_block,
-            job.reward_weight
-        ),
     }
 }
 

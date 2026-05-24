@@ -509,6 +509,8 @@ spaghetti around.
 - Iteration 193 extracted websocket handshake, frame encoding/decoding, accept-key hashing, and
   websocket command-field parsing into `rpc/websocket.rs`, leaving `rpc.rs` closer to route dispatch
   and application state handling.
+- Iteration 194 extracted job JSON, tensor numeric-array JSON, and the small telemetry/faucet HTML
+  renderers into `rpc/render.rs`, keeping presentation string assembly out of RPC route logic.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
