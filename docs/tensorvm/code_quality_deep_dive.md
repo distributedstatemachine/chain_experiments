@@ -1002,6 +1002,8 @@ spaghetti around.
   onto `Chain` accessors instead of reaching through crate-visible fields.
 - Iteration 413 moved the production local testnet harness off direct `Chain.params` and
   `Chain.blocks` field reads, keeping profile/run evidence code behind the accessor boundary.
+- Iteration 414 moved synthetic localnet production code and its unit tests off direct
+  `Chain.params`/`Chain.blocks` reads, leaving the module on the same accessor path.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

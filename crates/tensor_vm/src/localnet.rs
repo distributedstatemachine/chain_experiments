@@ -87,12 +87,12 @@ fn produce_synthetic_matmul_round(
     })?;
     let proposer = chain.proposer_for_next_epoch(&beacon).unwrap_or_default();
     let timestamp = chain
-        .blocks
+        .blocks()
         .last()
         .map(|block| {
             block
                 .timestamp
-                .saturating_add(chain.params.block_time_seconds)
+                .saturating_add(chain.params().block_time_seconds)
         })
         .unwrap_or(0);
     chain.apply_command(ChainCommand::ProduceBlock {
@@ -151,12 +151,12 @@ fn produce_synthetic_linear_training_round(
     })?;
     let proposer = chain.proposer_for_next_epoch(&beacon).unwrap_or_default();
     let timestamp = chain
-        .blocks
+        .blocks()
         .last()
         .map(|block| {
             block
                 .timestamp
-                .saturating_add(chain.params.block_time_seconds)
+                .saturating_add(chain.params().block_time_seconds)
         })
         .unwrap_or(0);
     chain.apply_command(ChainCommand::ProduceBlock {
@@ -189,7 +189,7 @@ fn attest_receipt_bundles(
                 job,
                 receipt,
                 &validation_seed,
-                &chain.params.freivalds,
+                &chain.params().freivalds,
             )?;
             chain.apply_command(ChainCommand::SubmitAttestation(attestation))?;
         }
@@ -264,19 +264,19 @@ mod tests {
             chain
                 .register_miner(
                     address(format!("localnet-miner-{index}").as_bytes()),
-                    chain.params.miner_min_stake,
+                    chain.params().miner_min_stake,
                 )
                 .unwrap();
             chain
                 .register_validator(
                     address(format!("localnet-validator-{index}").as_bytes()),
-                    chain.params.validator_min_stake,
+                    chain.params().validator_min_stake,
                 )
                 .unwrap();
         }
 
         let height = produce_synthetic_cpu_round(&mut chain).unwrap();
-        let first_block = chain.blocks.last().unwrap().clone();
+        let first_block = chain.blocks().last().unwrap().clone();
 
         assert_eq!(height, Some(1));
         assert_eq!(chain.state().height(), 1);
@@ -292,14 +292,14 @@ mod tests {
         assert!(chain.is_block_finalized(&first_block.hash()));
 
         let height = produce_synthetic_cpu_round(&mut chain).unwrap();
-        let second_block = chain.blocks.last().unwrap().clone();
+        let second_block = chain.blocks().last().unwrap().clone();
 
         assert_eq!(height, Some(2));
         assert_eq!(
             second_block.timestamp,
             first_block
                 .timestamp
-                .saturating_add(chain.params.block_time_seconds)
+                .saturating_add(chain.params().block_time_seconds)
         );
         assert!(
             !chain
@@ -324,14 +324,14 @@ mod tests {
         );
 
         let height = produce_synthetic_cpu_round(&mut chain).unwrap();
-        let third_block = chain.blocks.last().unwrap();
+        let third_block = chain.blocks().last().unwrap();
 
         assert_eq!(height, Some(3));
         assert_eq!(
             third_block.timestamp,
             second_block
                 .timestamp
-                .saturating_add(chain.params.block_time_seconds)
+                .saturating_add(chain.params().block_time_seconds)
         );
         assert!(
             !chain
@@ -370,13 +370,13 @@ mod tests {
             chain
                 .register_miner(
                     address(format!("profile-localnet-miner-{index}").as_bytes()),
-                    chain.params.miner_min_stake,
+                    chain.params().miner_min_stake,
                 )
                 .unwrap();
             chain
                 .register_validator(
                     address(format!("profile-localnet-validator-{index}").as_bytes()),
-                    chain.params.validator_min_stake,
+                    chain.params().validator_min_stake,
                 )
                 .unwrap();
         }
@@ -397,13 +397,13 @@ mod tests {
         chain
             .register_miner(
                 address(b"profile-no-synthetic-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"profile-no-synthetic-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
 
@@ -412,7 +412,7 @@ mod tests {
                 .unwrap(),
             None
         );
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
         assert!(chain.state().jobs().is_empty());
     }
 
@@ -430,13 +430,13 @@ mod tests {
         chain
             .register_miner(
                 address(b"localnet-no-job-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"localnet-no-job-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
         let mut job_source = EmptyJobSource;
@@ -445,7 +445,7 @@ mod tests {
             produce_synthetic_cpu_round_from_source(&mut chain, &mut job_source).unwrap(),
             None
         );
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
     }
 
     #[test]
@@ -463,18 +463,18 @@ mod tests {
         chain
             .register_miner(
                 address(b"localnet-assignment-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"localnet-assignment-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
     }
 
     #[test]
@@ -494,18 +494,18 @@ mod tests {
         chain
             .register_miner(
                 address(b"localnet-agreement-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"localnet-agreement-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
         assert!(chain.state().settled_receipts().is_empty());
     }
 
@@ -526,18 +526,18 @@ mod tests {
         chain
             .register_miner(
                 address(b"localnet-linear-assignment-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"localnet-linear-assignment-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
         assert_eq!(chain.state().model_states().len(), 1);
         assert_eq!(
             chain.state().model_states().values().next().unwrap().step,
@@ -565,18 +565,18 @@ mod tests {
         chain
             .register_miner(
                 address(b"localnet-linear-agreement-miner"),
-                chain.params.miner_min_stake,
+                chain.params().miner_min_stake,
             )
             .unwrap();
         chain
             .register_validator(
                 address(b"localnet-linear-agreement-validator"),
-                chain.params.validator_min_stake,
+                chain.params().validator_min_stake,
             )
             .unwrap();
 
         assert_eq!(produce_synthetic_cpu_round(&mut chain).unwrap(), None);
-        assert!(chain.blocks.is_empty());
+        assert!(chain.blocks().is_empty());
         assert!(chain.state().settled_receipts().is_empty());
         assert_eq!(
             chain.state().model_states().values().next().unwrap().step,
