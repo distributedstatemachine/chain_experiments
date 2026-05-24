@@ -249,6 +249,9 @@ spaghetti around.
 - Iteration 103 split network payload apply result types, processor traits, and chain/context
   processor adapters into `node/payload_processor.rs`, leaving `node.rs` to orchestrate message
   ingest and concrete payload application.
+- Iteration 104 moved concrete network payload decode, validation, and chain application helpers
+  into `node/payload_application.rs`, keeping the existing public `node` helper API while reducing
+  `node.rs` to network message orchestration and tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

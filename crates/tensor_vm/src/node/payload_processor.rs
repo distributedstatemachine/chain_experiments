@@ -1,4 +1,4 @@
-use super::{
+use super::payload_application::{
     apply_network_attestation_payload, apply_network_block_payload,
     apply_network_block_vote_payload, apply_network_job_payload, apply_network_receipt_payload,
 };
