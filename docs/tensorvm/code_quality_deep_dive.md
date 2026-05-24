@@ -763,6 +763,8 @@ spaghetti around.
   explicit absent NVIDIA runtime/device lines.
 - Iteration 303 replaced telemetry snapshot's hand-formatted JSON string builder with `serde_json`
   serialization and converted its remaining JSON substring checks to parsed field assertions.
+- Iteration 304 replaced explorer WebSocket command substring routing with `serde_json` command parsing,
+  preserving shorthand commands while removing the test-only hand-written JSON field extractors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

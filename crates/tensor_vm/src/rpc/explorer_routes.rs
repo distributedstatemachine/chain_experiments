@@ -2,11 +2,9 @@ use super::explorer::{
     explorer_account, explorer_blocks, explorer_jobs, explorer_miners, explorer_overview,
     explorer_receipts, explorer_summary, explorer_validators,
 };
-use super::websocket::{
-    json_string_field, json_usize_field, read_websocket_text_frame, write_websocket_close,
-    write_websocket_text,
-};
+use super::websocket::{read_websocket_text_frame, write_websocket_close, write_websocket_text};
 use super::{RpcNode, RpcResponse, parse_hash};
+use serde_json::{Value, json};
 use std::io::Write;
 use std::net::TcpStream;
 use tensor_vm_explorer::{
@@ -53,43 +51,127 @@ impl RpcNode {
     }
 
     pub(super) fn explorer_websocket_response(&self, command: &str) -> String {
-        let command = command.trim();
-        if command.contains("\"type\":\"account\"") || command.contains("\"type\": \"account\"") {
-            let Some(address) = json_string_field(command, "address") else {
-                return "{\"type\":\"error\",\"error\":\"missing account address\"}".to_owned();
-            };
-            let Ok(address) = parse_hash(&address) else {
-                return "{\"type\":\"error\",\"error\":\"invalid account address\"}".to_owned();
-            };
-            return account_json(&explorer_account(&self.chain, &address));
-        }
-        if command == "summary" || command.contains("\"type\":\"summary\"") {
-            return format!(
+        match ExplorerWebsocketCommand::parse(command) {
+            ExplorerWebsocketCommand::Account { address } => {
+                let Some(address) = address else {
+                    return explorer_websocket_error("missing account address");
+                };
+                let Ok(address) = parse_hash(&address) else {
+                    return explorer_websocket_error("invalid account address");
+                };
+                account_json(&explorer_account(&self.chain, &address))
+            }
+            ExplorerWebsocketCommand::Summary => format!(
                 "{{\"type\":\"summary\",\"summary\":{}}}",
                 explorer_summary(&self.chain).to_json()
-            );
+            ),
+            ExplorerWebsocketCommand::Miners => miners_json(&explorer_miners(&self.chain)),
+            ExplorerWebsocketCommand::Validators => {
+                validators_json(&explorer_validators(&self.chain))
+            }
+            ExplorerWebsocketCommand::Jobs { limit } => {
+                jobs_json(&explorer_jobs(&self.chain, limit))
+            }
+            ExplorerWebsocketCommand::Receipts { limit } => {
+                receipts_json(&explorer_receipts(&self.chain, limit))
+            }
+            ExplorerWebsocketCommand::Blocks { limit } => {
+                blocks_json(&explorer_blocks(&self.chain, limit))
+            }
+            ExplorerWebsocketCommand::Overview {
+                block_limit,
+                receipt_limit,
+                job_limit,
+            } => explorer_overview(&self.chain, block_limit, receipt_limit, job_limit).to_json(),
         }
-        if command == "miners" || command.contains("\"type\":\"miners\"") {
-            return miners_json(&explorer_miners(&self.chain));
-        }
-        if command == "validators" || command.contains("\"type\":\"validators\"") {
-            return validators_json(&explorer_validators(&self.chain));
-        }
-        if command == "jobs" || command.contains("\"type\":\"jobs\"") {
-            let limit = json_usize_field(command, "job_limit").unwrap_or(50);
-            return jobs_json(&explorer_jobs(&self.chain, limit));
-        }
-        if command == "receipts" || command.contains("\"type\":\"receipts\"") {
-            let limit = json_usize_field(command, "receipt_limit").unwrap_or(50);
-            return receipts_json(&explorer_receipts(&self.chain, limit));
-        }
-        if command == "blocks" || command.contains("\"type\":\"blocks\"") {
-            let limit = json_usize_field(command, "block_limit").unwrap_or(25);
-            return blocks_json(&explorer_blocks(&self.chain, limit));
-        }
-        let block_limit = json_usize_field(command, "block_limit").unwrap_or(12);
-        let receipt_limit = json_usize_field(command, "receipt_limit").unwrap_or(20);
-        let job_limit = json_usize_field(command, "job_limit").unwrap_or(20);
-        explorer_overview(&self.chain, block_limit, receipt_limit, job_limit).to_json()
     }
+}
+
+enum ExplorerWebsocketCommand {
+    Account {
+        address: Option<String>,
+    },
+    Summary,
+    Miners,
+    Validators,
+    Jobs {
+        limit: usize,
+    },
+    Receipts {
+        limit: usize,
+    },
+    Blocks {
+        limit: usize,
+    },
+    Overview {
+        block_limit: usize,
+        receipt_limit: usize,
+        job_limit: usize,
+    },
+}
+
+impl ExplorerWebsocketCommand {
+    fn parse(command: &str) -> Self {
+        match command.trim() {
+            "summary" => return Self::Summary,
+            "miners" => return Self::Miners,
+            "validators" => return Self::Validators,
+            "jobs" => return Self::Jobs { limit: 50 },
+            "receipts" => return Self::Receipts { limit: 50 },
+            "blocks" => return Self::Blocks { limit: 25 },
+            _ => {}
+        }
+
+        let Ok(command) = serde_json::from_str::<Value>(command) else {
+            return Self::default_overview();
+        };
+        match command.get("type").and_then(Value::as_str) {
+            Some("account") => Self::Account {
+                address: command
+                    .get("address")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+            },
+            Some("summary") => Self::Summary,
+            Some("miners") => Self::Miners,
+            Some("validators") => Self::Validators,
+            Some("jobs") => Self::Jobs {
+                limit: command_limit(&command, "job_limit").unwrap_or(50),
+            },
+            Some("receipts") => Self::Receipts {
+                limit: command_limit(&command, "receipt_limit").unwrap_or(50),
+            },
+            Some("blocks") => Self::Blocks {
+                limit: command_limit(&command, "block_limit").unwrap_or(25),
+            },
+            Some("overview") | None | Some(_) => Self::Overview {
+                block_limit: command_limit(&command, "block_limit").unwrap_or(12),
+                receipt_limit: command_limit(&command, "receipt_limit").unwrap_or(20),
+                job_limit: command_limit(&command, "job_limit").unwrap_or(20),
+            },
+        }
+    }
+
+    fn default_overview() -> Self {
+        Self::Overview {
+            block_limit: 12,
+            receipt_limit: 20,
+            job_limit: 20,
+        }
+    }
+}
+
+fn command_limit(command: &Value, field: &str) -> Option<usize> {
+    command
+        .get(field)
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok())
+}
+
+fn explorer_websocket_error(error: &str) -> String {
+    json!({
+        "type": "error",
+        "error": error
+    })
+    .to_string()
 }

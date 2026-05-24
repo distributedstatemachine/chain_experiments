@@ -126,6 +126,20 @@ fn explorer_websocket_views_cover_chain_collections_and_bad_commands() {
     assert_eq!(summary["type"].as_str(), Some("summary"));
     assert_eq!(summary["summary"]["miner_count"].as_u64(), Some(4));
     assert_eq!(summary["summary"]["job_count"].as_u64(), Some(2));
+    let spaced_summary = rpc.explorer_websocket_response("{\"type\": \"summary\"}");
+    let spaced_summary = json_text(&spaced_summary);
+    assert_eq!(spaced_summary["type"].as_str(), Some("summary"));
+
+    let unknown_type = rpc.explorer_websocket_response("{\"type\":\"other\",\"block_limit\":1}");
+    let unknown_type = json_text(&unknown_type);
+    assert_eq!(unknown_type["type"].as_str(), Some("overview"));
+    assert_eq!(
+        unknown_type["blocks"]
+            .as_array()
+            .expect("overview must include blocks")
+            .len(),
+        1
+    );
 
     let missing_account = rpc.explorer_websocket_response("{\"type\":\"account\"}");
     let missing_account = json_text(&missing_account);
@@ -246,16 +260,7 @@ fn websocket_frame_helpers_cover_close_errors_and_extended_lengths() {
 }
 
 #[test]
-fn websocket_json_and_query_helpers_handle_escaping_and_decoding() {
-    let escaped =
-        json_string_field("{\"address\":\"a\\\"b\\\\c\\n\\r\\t\\x\"}", "address").unwrap();
-    assert_eq!(escaped, "a\"b\\c\n\r\tx");
-    assert!(json_string_field("{\"address\":\"unterminated", "address").is_none());
-    assert_eq!(
-        json_usize_field("{\"limit\":123,\"next\":1}", "limit"),
-        Some(123)
-    );
-    assert!(json_usize_field("{\"limit\":nope}", "limit").is_none());
+fn websocket_query_helper_decodes_auth_tokens() {
     let (path, token) = split_path_and_auth_token("/explorer/ws?x=1&token=a%20b+z%2f%ZZ");
     assert_eq!(path, "/explorer/ws");
     assert_eq!(token.as_deref(), Some("a b z/%ZZ"));

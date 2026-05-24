@@ -16,8 +16,7 @@ use super::http::{
     ParsedHttpRequest, read_http_request_from, split_path_and_auth_token, try_parse_http_request,
 };
 use super::websocket::{
-    base64_encode, json_string_field, json_usize_field, read_websocket_text_frame,
-    websocket_accept_key, write_websocket_frame,
+    base64_encode, read_websocket_text_frame, websocket_accept_key, write_websocket_frame,
 };
 
 fn response_json(response: &RpcResponse) -> serde_json::Value {
