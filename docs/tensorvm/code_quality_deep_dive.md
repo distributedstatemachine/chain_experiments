@@ -349,6 +349,9 @@ spaghetti around.
 - Iteration 141 moved public-evidence run-window command execution into
   `cli/public_evidence_run_window_execution.rs`, isolating block-observation file dispatch from the
   parent public-evidence command router.
+- Iteration 142 moved public-evidence node heartbeat and operator-attestation command execution into
+  `cli/public_evidence_node_execution.rs`, keeping node observation file dispatch beside the node
+  evidence command family instead of in the parent public-evidence router.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
