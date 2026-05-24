@@ -537,6 +537,8 @@ spaghetti around.
   `rpc/tests/http.rs`, continuing to reduce the RPC facade's inline test surface.
 - Iteration 207 moved RPC explorer websocket, frame, and websocket JSON/query helper tests into
   `rpc/tests/websocket.rs`, leaving only tensor and synthetic-round tests inline in the facade.
+- Iteration 208 moved the remaining RPC tensor route and synthetic-round tensor retention tests into
+  `rpc/tests/tensors.rs`, leaving `rpc.rs` as RPC module wiring plus shared test-module imports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
