@@ -511,6 +511,8 @@ spaghetti around.
   and application state handling.
 - Iteration 194 extracted job JSON, tensor numeric-array JSON, and the small telemetry/faucet HTML
   renderers into `rpc/render.rs`, keeping presentation string assembly out of RPC route logic.
+- Iteration 195 moved `RpcPolicy` and `RpcGateway` auth/body-limit/rate-limit handling into
+  `rpc/gateway.rs`, preserving the public RPC facade while separating gateway policy from route logic.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
