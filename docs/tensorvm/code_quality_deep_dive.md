@@ -486,6 +486,9 @@ spaghetti around.
 - Iteration 185 moved production libp2p runtime evidence and signed runtime observation proof checks
   into `testnet/public_network_runtime.rs`, leaving the top-level testnet module less coupled to
   peer ID, multiaddr, and network-runtime validation details.
+- Iteration 186 moved public evidence publication, auditor-record, and supporting-artifact proof
+  validation into `testnet/public_evidence_publication.rs`, separating evidence publication policy
+  from node/operator liveness evidence.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
