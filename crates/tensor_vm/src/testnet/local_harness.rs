@@ -176,7 +176,7 @@ impl LocalTestnet {
                 .proposer_for_next_epoch(&beacon)
                 .or_else(|| self.validators.first().copied())
                 .unwrap_or([0; 32]);
-            let timestamp = i.saturating_mul(self.chain.params.block_time_seconds);
+            let timestamp = i.saturating_mul(self.chain.params().block_time_seconds);
             let block = self.produce_block_with_command(proposer, timestamp);
             self.finalize_block(&block);
         }
@@ -188,7 +188,7 @@ impl LocalTestnet {
             self.chain.state().epoch(),
             self.chain.state().height(),
             &beacon,
-            self.chain.state().height() + self.chain.params.receipt_submission_window,
+            self.chain.state().height() + self.chain.params().receipt_submission_window,
         );
         let mut txpool = TxPool::default();
         self.chain
@@ -224,7 +224,7 @@ impl LocalTestnet {
             .unwrap_or_else(|| self.validators[0]);
         let block = self.produce_block_with_command(
             proposer,
-            self.chain.state().height() * self.chain.params.block_time_seconds,
+            self.chain.state().height() * self.chain.params().block_time_seconds,
         );
         self.finalize_block(&block);
     }
@@ -254,7 +254,7 @@ impl LocalTestnet {
             target_shape: vec![4, 2],
             lr: 2,
             deadline_block: self.chain.state().height()
-                + self.chain.params.receipt_submission_window,
+                + self.chain.params().receipt_submission_window,
         });
         let mut txpool = TxPool::default();
         self.chain
@@ -304,7 +304,7 @@ impl LocalTestnet {
                         &weights,
                         output,
                         &validation_seed,
-                        &self.chain.params.freivalds,
+                        &self.chain.params().freivalds,
                     )
                     .expect("reference validator should verify generated training step");
                 assert!(txpool.submit(Transaction::SubmitAttestation(attestation.receipt_id)));
@@ -349,13 +349,13 @@ impl LocalTestnet {
             .unwrap_or_else(|| self.validators[0]);
         let block = self.produce_block_with_command(
             proposer,
-            self.chain.state().height() * self.chain.params.block_time_seconds,
+            self.chain.state().height() * self.chain.params().block_time_seconds,
         );
         self.finalize_block(&block);
     }
 
     pub fn expected_blocks_for_days(&self, days: u64) -> u64 {
-        required_blocks_for_days(days, self.chain.params.block_time_seconds.max(1))
+        required_blocks_for_days(days, self.chain.params().block_time_seconds.max(1))
     }
 
     pub fn telemetry(&self) -> TelemetrySnapshot {
@@ -367,7 +367,7 @@ impl LocalTestnet {
         ExplorerSummary {
             height: state.height(),
             epoch: state.epoch(),
-            block_count: self.chain.blocks.len(),
+            block_count: self.chain.blocks().len(),
             miner_count: state.miners().len(),
             validator_count: state.validators().len(),
             job_count: state.jobs().len(),
@@ -389,21 +389,21 @@ impl LocalTestnet {
         let telemetry = self.telemetry();
         let required_blocks = self.expected_blocks_for_days(criteria.duration_days);
         let required_duration_seconds = required_duration_seconds_for_days(criteria.duration_days);
-        let observed_blocks = self.chain.blocks.len() as u64;
+        let observed_blocks = self.chain.blocks().len() as u64;
         let run_started_at_unix_seconds = self
             .chain
-            .blocks
+            .blocks()
             .first()
             .map(|block| block.timestamp)
             .unwrap_or(0);
         let run_ended_at_unix_seconds = self
             .chain
-            .blocks
+            .blocks()
             .last()
             .map(|block| {
                 block
                     .timestamp
-                    .saturating_add(self.chain.params.block_time_seconds)
+                    .saturating_add(self.chain.params().block_time_seconds)
             })
             .unwrap_or(run_started_at_unix_seconds);
         let observed_duration_seconds =
@@ -499,7 +499,7 @@ impl LocalTestnet {
                         receipt,
                         tensor_server,
                         &validation_seed,
-                        &self.chain.params.freivalds,
+                        &self.chain.params().freivalds,
                     )
                     .expect("reference validator should verify generated job");
                 assert!(txpool.submit(Transaction::SubmitAttestation(attestation.receipt_id)));

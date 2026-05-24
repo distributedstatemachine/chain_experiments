@@ -1000,6 +1000,8 @@ spaghetti around.
   last chain-test suite with broad direct field reads follows the same encapsulation boundary.
 - Iteration 412 moved RPC route/explorer block reads and external RPC/testnet test parameter reads
   onto `Chain` accessors instead of reaching through crate-visible fields.
+- Iteration 413 moved the production local testnet harness off direct `Chain.params` and
+  `Chain.blocks` field reads, keeping profile/run evidence code behind the accessor boundary.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
