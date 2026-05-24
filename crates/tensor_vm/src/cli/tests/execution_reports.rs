@@ -357,19 +357,21 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
     assert_eq!(service_content_from_file, service_content_from_bytes);
 
     let peer_id = PeerId::random().to_string();
-    let network_observation = execute_evidence_fixture(&EvidenceFixture::NetworkObservation {
-        operator_id: hash_bytes(b"test", &[b"network-operator"]),
-        peer_id: peer_id.clone(),
-        listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-        observed_at_unix_seconds: 1_700_000_000,
-        gossip_topic_count: 5,
-        request_response_protocol_count: 4,
-        bootstrap_peer_count: 2,
-        max_transmit_bytes: 1_048_576,
-        request_timeout_seconds: 10,
-        max_concurrent_streams: 128,
-        idle_connection_timeout_seconds: 60,
-    })
+    let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
+        EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+            peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
+            observed_at: 1_700_000_000,
+            gossip_topics: 5,
+            request_response_protocols: 4,
+            bootstrap_peers: 2,
+            max_transmit_bytes: 1_048_576,
+            request_timeout_seconds: 10,
+            max_concurrent_streams: 128,
+            idle_timeout_seconds: 60,
+        }),
+    ))
     .unwrap();
     let observation_input = NetworkObservationEvidenceLine {
         operator_id: hash_bytes(b"test", &[b"network-operator"]),
@@ -537,24 +539,27 @@ p2p_idle_timeout_seconds=60
         observation_root[0]
     ));
     std::fs::write(&service_log_file, &service_log).unwrap();
-    let network_observation_from_file =
-        execute_evidence_fixture(&EvidenceFixture::NetworkObservationFromServiceLog {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            service_log: service_log_file.to_string_lossy().into_owned(),
-        })
-        .unwrap();
+    let network_observation_from_file = execute_public_evidence_command(&EvidenceCommand::Network(
+        EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
+            observed_at: 1_700_000_000,
+            service_log: service_log_file.clone(),
+        }),
+    ))
+    .unwrap();
     std::fs::remove_file(&service_log_file).unwrap();
     assert_eq!(network_observation_from_file, network_observation);
 
     assert_eq!(
-        execute_evidence_fixture(&EvidenceFixture::NetworkObservationFromServiceLog {
-            operator_id: hash_bytes(b"test", &[b"network-operator"]),
-            listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            service_log: service_log_file.to_string_lossy().into_owned(),
-        })
+        execute_public_evidence_command(&EvidenceCommand::Network(
+            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+                listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
+                observed_at: 1_700_000_000,
+                service_log: service_log_file.clone(),
+            }),
+        ))
         .unwrap_err()
         .to_string(),
         "storage error: failed to read service log file"

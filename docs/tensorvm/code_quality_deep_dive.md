@@ -950,6 +950,8 @@ spaghetti around.
   `EvidenceFixture` to direct `EvidenceCommand` execution.
 - Iteration 388 moved public service health/content report tests from `EvidenceFixture` to direct
   `EvidenceCommand` execution.
+- Iteration 389 moved public network observation report tests from `EvidenceFixture` to direct
+  `EvidenceCommand` execution and removed the now-dead service-log network fixture variant.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

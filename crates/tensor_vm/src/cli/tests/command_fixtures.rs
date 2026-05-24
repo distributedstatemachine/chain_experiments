@@ -112,12 +112,6 @@ pub(super) enum EvidenceFixture {
         max_concurrent_streams: u64,
         idle_connection_timeout_seconds: u64,
     },
-    NetworkObservationFromServiceLog {
-        operator_id: Hash,
-        listen_address: String,
-        observed_at_unix_seconds: u64,
-        service_log: String,
-    },
     Publication {
         bundle_id: Hash,
         public_uri: String,
@@ -428,19 +422,6 @@ impl EvidenceFixture {
                     request_timeout_seconds,
                     max_concurrent_streams,
                     idle_timeout_seconds: idle_connection_timeout_seconds,
-                }),
-            )),
-            Self::NetworkObservationFromServiceLog {
-                operator_id,
-                listen_address,
-                observed_at_unix_seconds,
-                service_log,
-            } => public_evidence_command(EvidenceCommand::Network(
-                EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
-                    operator_id: hash_arg(operator_id),
-                    listen_address: multiaddr_arg(listen_address),
-                    observed_at: observed_at_unix_seconds,
-                    service_log: path_arg(service_log),
                 }),
             )),
             Self::Publication {
