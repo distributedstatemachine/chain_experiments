@@ -1,5 +1,6 @@
 mod block_status;
 mod commands;
+mod key_value_report;
 mod miner_role;
 mod network;
 mod operator_checks;
@@ -25,6 +26,7 @@ pub use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
 };
+pub(crate) use key_value_report::{KeyValueReport, KeyValueReportError};
 pub use miner_role::{
     MinerRoleReceiptSubmission, MinerRoleWorkObservation, miner_role_work_observation,
     submit_miner_role_receipt, tick_miner_role_work_once,

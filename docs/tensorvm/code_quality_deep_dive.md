@@ -791,6 +791,8 @@ spaghetti around.
 - Iteration 313 deleted the test-only CLI identity-report renderer and reused the app-owned
   `p2p_identity_report` for local role and node readiness fixture output, leaving the identity seed status
   text with one formatter.
+- Iteration 314 added a shared `KeyValueReport` parser for app-owned status/log text, replacing the
+  separate service-status file scanner and CLI service-log field loop used by network evidence generation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, path::Path};
 
+use super::KeyValueReport;
 use crate::{NodeStore, hash::hex};
 
 pub fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
@@ -21,7 +22,7 @@ impl StatusFileFields {
     fn from_path(path: impl AsRef<Path>) -> Self {
         let fields = std::fs::read_to_string(path)
             .ok()
-            .map(|contents| status_file_fields(&contents))
+            .map(|contents| KeyValueReport::parse_lenient(&contents).into_owned())
             .unwrap_or_default();
         Self { fields }
     }
@@ -32,18 +33,6 @@ impl StatusFileFields {
             .cloned()
             .unwrap_or_else(|| "unknown".to_owned())
     }
-}
-
-fn status_file_fields(contents: &str) -> BTreeMap<String, String> {
-    let mut fields = BTreeMap::new();
-    for line in contents.lines() {
-        if let Some((key, value)) = line.split_once('=') {
-            fields
-                .entry(key.to_owned())
-                .or_insert_with(|| value.to_owned());
-        }
-    }
-    fields
 }
 
 pub fn service_status(data_dir: &str) -> std::result::Result<String, String> {

@@ -1,4 +1,5 @@
 use super::arguments::{exact_comma_fields, parse_hash_argument, parse_u64};
+use crate::app::{KeyValueReport, KeyValueReportError};
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::public_network_runtime_multiaddr_is_external;
@@ -163,56 +164,61 @@ pub(super) fn network_observation_evidence_line_from_service_log(
     observed_at_unix_seconds: u64,
     service_log: &str,
 ) -> Result<String> {
-    if service_log_field(service_log, "command")? != "service_serve" {
+    let service_log = ServiceLogFields::parse(service_log)?;
+    if service_log.field("command")? != "service_serve" {
         return Err(TvmError::InvalidReceipt("service log is not service_serve"));
     }
-    if service_log_field(service_log, "p2p_runtime")? != "libp2p" {
+    if service_log.field("p2p_runtime")? != "libp2p" {
         return Err(TvmError::InvalidReceipt(
             "service log does not prove libp2p runtime",
         ));
     }
     network_observation_evidence_line(NetworkObservationEvidenceLine {
         operator_id,
-        peer_id: service_log_field(service_log, "p2p_peer_id")?,
+        peer_id: service_log.field("p2p_peer_id")?,
         listen_address,
         observed_at_unix_seconds,
-        gossip_topic_count: parse_u64(service_log_field(service_log, "p2p_gossipsub_topics")?)?,
-        request_response_protocol_count: parse_u64(service_log_field(
-            service_log,
-            "p2p_request_response_protocols",
-        )?)?,
-        bootstrap_peer_count: parse_u64(service_log_field(service_log, "p2p_bootstrap_peers")?)?,
-        max_transmit_bytes: parse_u64(service_log_field(service_log, "p2p_max_transmit_bytes")?)?,
-        request_timeout_seconds: parse_u64(service_log_field(
-            service_log,
-            "p2p_request_timeout_seconds",
-        )?)?,
-        max_concurrent_streams: parse_u64(service_log_field(
-            service_log,
-            "p2p_max_concurrent_streams",
-        )?)?,
-        idle_connection_timeout_seconds: parse_u64(service_log_field(
-            service_log,
-            "p2p_idle_timeout_seconds",
-        )?)?,
+        gossip_topic_count: parse_u64(service_log.field("p2p_gossipsub_topics")?)?,
+        request_response_protocol_count: parse_u64(
+            service_log.field("p2p_request_response_protocols")?,
+        )?,
+        bootstrap_peer_count: parse_u64(service_log.field("p2p_bootstrap_peers")?)?,
+        max_transmit_bytes: parse_u64(service_log.field("p2p_max_transmit_bytes")?)?,
+        request_timeout_seconds: parse_u64(service_log.field("p2p_request_timeout_seconds")?)?,
+        max_concurrent_streams: parse_u64(service_log.field("p2p_max_concurrent_streams")?)?,
+        idle_connection_timeout_seconds: parse_u64(service_log.field("p2p_idle_timeout_seconds")?)?,
     })
 }
 
+#[cfg(test)]
 pub(super) fn service_log_field<'a>(service_log: &'a str, key: &str) -> Result<&'a str> {
-    let prefix = format!("{key}=");
-    let mut found = None;
-    for line in service_log.lines() {
-        if let Some(value) = line.strip_prefix(&prefix) {
-            if found.is_some() {
-                return Err(TvmError::InvalidReceipt("duplicate service log field"));
-            }
-            if value.is_empty() || value.trim() != value {
-                return Err(TvmError::InvalidReceipt("invalid service log field"));
-            }
-            found = Some(value);
-        }
+    ServiceLogFields::parse(service_log)?.field(key)
+}
+
+struct ServiceLogFields<'a> {
+    report: KeyValueReport<'a>,
+}
+
+impl<'a> ServiceLogFields<'a> {
+    fn parse(service_log: &'a str) -> Result<Self> {
+        let report = KeyValueReport::parse_strict(service_log).map_err(service_log_parse_error)?;
+        Ok(Self { report })
     }
-    found.ok_or(TvmError::InvalidReceipt("missing service log field"))
+
+    fn field(&self, key: &str) -> Result<&'a str> {
+        self.report
+            .value(key)
+            .ok_or(TvmError::InvalidReceipt("missing service log field"))
+    }
+}
+
+fn service_log_parse_error(error: KeyValueReportError) -> TvmError {
+    match error {
+        KeyValueReportError::DuplicateField => {
+            TvmError::InvalidReceipt("duplicate service log field")
+        }
+        KeyValueReportError::InvalidField => TvmError::InvalidReceipt("invalid service log field"),
+    }
 }
 
 pub(super) fn network_observation_root(
