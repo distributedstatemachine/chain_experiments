@@ -912,6 +912,8 @@ spaghetti around.
   topology policy script.
 - Iteration 370 moved the restart continuity checker's Docker restart command timeout into the shared
   topology policy script.
+- Iteration 371 moved the restart continuity checker's full local CPU check timeout into the shared
+  topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
