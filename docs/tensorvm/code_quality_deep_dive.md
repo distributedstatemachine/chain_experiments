@@ -275,6 +275,8 @@ spaghetti around.
 - Iteration 114 extracted CLI runtime validation, address derivation, CUDA readiness, and endpoint
   checks into `cli/validation.rs`, leaving the parent CLI module closer to command parsing and
   dispatch.
+- Iteration 115 extracted CLI public-testnet evidence and preflight report renderers into
+  `cli/reports.rs`, preserving the exported validation functions while narrowing `cli.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
