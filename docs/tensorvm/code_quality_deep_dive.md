@@ -380,6 +380,10 @@ spaghetti around.
 - Iteration 151 moved local service command descriptions into
   `cli/local_service_descriptions.rs`, leaving `cli/local_descriptions.rs` as a small local
   command-family dispatcher plus the tiny local-testnet and local-cpu descriptions.
+- Iteration 152 moved local miner, validator, and proposer command execution into
+  `cli/local_role_execution.rs` with shared identity report rendering in
+  `cli/local_execution_values.rs`, narrowing `cli/local_execution.rs` toward service/local-testnet
+  command execution and family dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
