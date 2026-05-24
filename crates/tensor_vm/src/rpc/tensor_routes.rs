@@ -1,7 +1,7 @@
-use super::render::{json_u64_array, json_usize_array};
 use super::{RpcNode, RpcResponse, parse_hash};
 use crate::hash::hex;
 use crate::tensor::{DEFAULT_CHUNK_SIZE, Tensor};
+use serde_json::json;
 
 impl RpcNode {
     pub(super) fn tensor_descriptor(&self, tensor_id: &str) -> RpcResponse {
@@ -9,13 +9,13 @@ impl RpcNode {
             return self.not_found("tensor not found");
         };
         let descriptor = tensor.descriptor();
-        self.ok(format!(
-            "{{\"tensor_id\":\"{}\",\"shape\":{},\"byte_size\":{},\"root\":\"{}\"}}",
-            hex(&descriptor.tensor_id),
-            json_usize_array(&descriptor.shape),
-            descriptor.byte_size,
-            hex(&descriptor.commitment.root)
-        ))
+        self.ok(json!({
+            "tensor_id": hex(&descriptor.tensor_id),
+            "shape": descriptor.shape,
+            "byte_size": descriptor.byte_size,
+            "root": hex(&descriptor.commitment.root),
+        })
+        .to_string())
     }
 
     pub(super) fn tensor_chunk(&self, tensor_id: &str, chunk_index: &str) -> RpcResponse {
@@ -26,12 +26,12 @@ impl RpcNode {
             return self.bad_request("invalid chunk index");
         };
         match tensor.opening(chunk_index, DEFAULT_CHUNK_SIZE) {
-            Ok(opening) => self.ok(format!(
-                "{{\"tensor_id\":\"{}\",\"chunk_index\":{},\"bytes\":\"{}\"}}",
-                hex(&opening.tensor_id),
-                opening.chunk_index,
-                hex(&opening.chunk_bytes)
-            )),
+            Ok(opening) => self.ok(json!({
+                "tensor_id": hex(&opening.tensor_id),
+                "chunk_index": opening.chunk_index,
+                "bytes": hex(&opening.chunk_bytes),
+            })
+            .to_string()),
             Err(_) => self.not_found("chunk not found"),
         }
     }
@@ -44,7 +44,7 @@ impl RpcNode {
             return self.bad_request("invalid row index");
         };
         match tensor.row(row_index) {
-            Ok(row) => self.ok(format!("{{\"row\":{}}}", json_u64_array(row))),
+            Ok(row) => self.ok(json!({ "row": row }).to_string()),
             Err(_) => self.not_found("row not found"),
         }
     }
@@ -57,12 +57,12 @@ impl RpcNode {
             return self.bad_request("invalid chunk index");
         };
         match tensor.opening(chunk_index, DEFAULT_CHUNK_SIZE) {
-            Ok(opening) => self.ok(format!(
-                "{{\"tensor_id\":\"{}\",\"chunk_index\":{},\"proof_len\":{}}}",
-                hex(&opening.tensor_id),
-                opening.chunk_index,
-                opening.merkle_proof.siblings.len()
-            )),
+            Ok(opening) => self.ok(json!({
+                "tensor_id": hex(&opening.tensor_id),
+                "chunk_index": opening.chunk_index,
+                "proof_len": opening.merkle_proof.siblings.len(),
+            })
+            .to_string()),
             Err(_) => self.not_found("opening not found"),
         }
     }
@@ -71,12 +71,12 @@ impl RpcNode {
         let Some((tensor_id, tensor)) = self.tensors.iter().next_back() else {
             return self.not_found("tensor not found");
         };
-        self.ok(format!(
-            "{{\"tensor_id\":\"{}\",\"tensor_count\":{},\"root\":\"{}\"}}",
-            hex(tensor_id),
-            self.tensors.len(),
-            hex(&tensor.commitment_root())
-        ))
+        self.ok(json!({
+            "tensor_id": hex(tensor_id),
+            "tensor_count": self.tensors.len(),
+            "root": hex(&tensor.commitment_root()),
+        })
+        .to_string())
     }
 
     fn lookup_tensor(&self, tensor_id: &str) -> Option<&Tensor> {

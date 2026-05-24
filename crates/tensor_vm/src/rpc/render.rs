@@ -2,16 +2,7 @@ use crate::chain::JobState;
 use crate::faucet::Faucet;
 use crate::hash::hex;
 use crate::telemetry::TelemetrySnapshot;
-
-pub(super) fn json_usize_array(values: &[usize]) -> String {
-    let parts: Vec<_> = values.iter().map(|value| value.to_string()).collect();
-    format!("[{}]", parts.join(","))
-}
-
-pub(super) fn json_u64_array(values: &[u64]) -> String {
-    let parts: Vec<_> = values.iter().map(|value| value.to_string()).collect();
-    format!("[{}]", parts.join(","))
-}
+use serde_json::{Value, json};
 
 pub(super) fn telemetry_dashboard_html(snapshot: &TelemetrySnapshot) -> String {
     html_document(
@@ -71,29 +62,29 @@ pub(super) fn faucet_page_html(faucet: Option<&Faucet>) -> String {
     )
 }
 
-pub(super) fn job_json(job: &JobState) -> String {
+pub(super) fn job_value(job: &JobState) -> Value {
     match job {
-        JobState::TensorOp(job) => format!(
-            "{{\"job_id\":\"{}\",\"primitive_type\":\"tensor_op\",\"epoch\":{},\"m\":{},\"k\":{},\"n\":{},\"deadline_block\":{},\"reward_weight\":{}}}",
-            hex(&job.job_id),
-            job.epoch,
-            job.m,
-            job.k,
-            job.n,
-            job.deadline_block,
-            job.reward_weight
-        ),
-        JobState::LinearTrainingStep(job) => format!(
-            "{{\"job_id\":\"{}\",\"primitive_type\":\"linear_training_step\",\"model_id\":\"{}\",\"step\":{},\"input_shape\":{},\"weight_shape\":{},\"target_shape\":{},\"deadline_block\":{},\"reward_weight\":{}}}",
-            hex(&job.job_id),
-            hex(&job.model_id),
-            job.step,
-            json_usize_array(&job.input_shape),
-            json_usize_array(&job.weight_shape),
-            json_usize_array(&job.target_shape),
-            job.deadline_block,
-            job.reward_weight
-        ),
+        JobState::TensorOp(job) => json!({
+            "job_id": hex(&job.job_id),
+            "primitive_type": "tensor_op",
+            "epoch": job.epoch,
+            "m": job.m,
+            "k": job.k,
+            "n": job.n,
+            "deadline_block": job.deadline_block,
+            "reward_weight": job.reward_weight,
+        }),
+        JobState::LinearTrainingStep(job) => json!({
+            "job_id": hex(&job.job_id),
+            "primitive_type": "linear_training_step",
+            "model_id": hex(&job.model_id),
+            "step": job.step,
+            "input_shape": job.input_shape,
+            "weight_shape": job.weight_shape,
+            "target_shape": job.target_shape,
+            "deadline_block": job.deadline_block,
+            "reward_weight": job.reward_weight,
+        }),
     }
 }
 

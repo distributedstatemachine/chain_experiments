@@ -21,20 +21,57 @@ fn tensor_rpc_serves_descriptor_rows_chunks_and_openings() {
         Some(tensor_id)
     );
 
-    for path in [
-        "/tensor/latest".to_owned(),
-        format!("/tensor/{}/descriptor", hex(&tensor_id)),
-        format!("/tensor/{}/row/1", hex(&tensor_id)),
-        format!("/tensor/{}/chunk/0", hex(&tensor_id)),
-        format!("/tensor/{}/opening/0", hex(&tensor_id)),
-    ] {
+    let get_tensor_route = |path: String| {
         let response = rpc.handle(&RpcRequest {
             method: "GET".to_owned(),
             path,
             body: Vec::new(),
         });
         assert_eq!(response.status, 200);
-    }
+        response_json(&response)
+    };
+
+    let latest = get_tensor_route("/tensor/latest".to_owned());
+    assert_eq!(latest["tensor_id"].as_str(), Some(hex(&tensor_id).as_str()));
+    assert_eq!(latest["tensor_count"].as_u64(), Some(1));
+    assert_eq!(
+        latest["root"].as_str(),
+        Some(hex(&commitment_root).as_str())
+    );
+
+    let descriptor = get_tensor_route(format!("/tensor/{}/descriptor", hex(&tensor_id)));
+    assert_eq!(
+        descriptor["tensor_id"].as_str(),
+        Some(hex(&tensor_id).as_str())
+    );
+    assert_eq!(descriptor["shape"], serde_json::json!([2, 3]));
+    assert_eq!(descriptor["byte_size"].as_u64(), Some(48));
+    assert_eq!(
+        descriptor["root"].as_str(),
+        Some(hex(&commitment_root).as_str())
+    );
+
+    let row = get_tensor_route(format!("/tensor/{}/row/1", hex(&tensor_id)));
+    assert_eq!(row["row"], serde_json::json!([4, 5, 6]));
+
+    let chunk = get_tensor_route(format!("/tensor/{}/chunk/0", hex(&tensor_id)));
+    assert_eq!(chunk["tensor_id"].as_str(), Some(hex(&tensor_id).as_str()));
+    assert_eq!(chunk["chunk_index"].as_u64(), Some(0));
+    assert!(
+        chunk["bytes"]
+            .as_str()
+            .expect("chunk bytes must be a string")
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
+    );
+
+    let opening = get_tensor_route(format!("/tensor/{}/opening/0", hex(&tensor_id)));
+    assert_eq!(
+        opening["tensor_id"].as_str(),
+        Some(hex(&tensor_id).as_str())
+    );
+    assert_eq!(opening["chunk_index"].as_u64(), Some(0));
+    assert!(opening["proof_len"].as_u64().is_some());
 }
 
 #[test]

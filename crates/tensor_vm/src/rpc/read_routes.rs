@@ -1,6 +1,7 @@
-use super::render::job_json;
+use super::render::job_value;
 use super::{RpcNode, RpcResponse, parse_hash};
 use crate::hash::hex;
+use serde_json::json;
 
 impl RpcNode {
     pub(super) fn chain_block(&self, height: &str) -> RpcResponse {
@@ -45,8 +46,8 @@ impl RpcNode {
     }
 
     pub(super) fn jobs_current(&self) -> RpcResponse {
-        let jobs: Vec<_> = self.chain.state().jobs().values().map(job_json).collect();
-        self.ok(format!("{{\"jobs\":[{}]}}", jobs.join(",")))
+        let jobs: Vec<_> = self.chain.state().jobs().values().map(job_value).collect();
+        self.ok(json!({ "jobs": jobs }).to_string())
     }
 
     pub(super) fn job(&self, job_id: &str) -> RpcResponse {
@@ -56,7 +57,7 @@ impl RpcNode {
         let Some(job) = self.chain.state().jobs().get(&job_id) else {
             return self.not_found("job not found");
         };
-        self.ok(job_json(job))
+        self.ok(job_value(job).to_string())
     }
 
     pub(super) fn miner(&self, address: &str) -> RpcResponse {

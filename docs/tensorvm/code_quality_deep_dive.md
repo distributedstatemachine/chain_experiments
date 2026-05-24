@@ -830,6 +830,8 @@ spaghetti around.
   route matching focused on method/segment dispatch instead of owning the trim/split logic inline.
 - Iteration 331 moved RPC HTTP header parsing into a private header accumulator, preserving auth
   precedence while keeping request framing separate from individual header interpretation.
+- Iteration 332 moved RPC job and tensor response JSON onto `serde_json::json!`, replacing manual array
+  and object string assembly while expanding tensor route field assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
