@@ -1119,6 +1119,9 @@ spaghetti around.
 - Iteration 457 split service health execution and health-observation file rejection coverage into
   `cli/tests/public_evidence_service_health_rejections.rs`, leaving the service rejection suite focused
   on service content validation errors.
+- Iteration 458 split CUDA miner readiness validation into `cli/tests/local_cuda_validation.rs`
+  and added a shared CLI-argument execution helper, leaving local validation focused on invalid local
+  argument paths.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

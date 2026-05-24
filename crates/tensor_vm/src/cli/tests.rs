@@ -9,6 +9,7 @@ use libp2p::PeerId;
 
 mod command_help;
 mod command_helpers;
+mod local_cuda_validation;
 mod local_execution_reports;
 mod local_miner_parser;
 mod local_parser;

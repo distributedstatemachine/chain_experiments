@@ -18,6 +18,11 @@ pub(super) fn execute_test_cli_command(
     crate::app::execute_tvmd_command(cli_command)
 }
 
+pub(super) fn execute_test_cli_args(args: &[&str]) -> std::result::Result<String, String> {
+    let command = parse_test_cli(args).expect("test CLI args must parse");
+    execute_test_cli_command(&command)
+}
+
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
     value.parse().expect("test multiaddr must parse")
 }
