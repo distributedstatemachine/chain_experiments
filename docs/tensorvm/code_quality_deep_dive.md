@@ -433,6 +433,9 @@ spaghetti around.
 - Iteration 168 moved the public evidence bundle publication and auditor-record coverage into
   `testnet/tests/evidence_bundle.rs`, separating bundle-level evidence assertions from the remaining
   manifest and deployment-template tests.
+- Iteration 169 moved the public evidence manifest parse, docs-example, deployed-example, and
+  malformed-input tests into `testnet/tests/evidence_manifest.rs`, leaving preflight and deployment
+  template coverage as the remaining inline testnet groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
