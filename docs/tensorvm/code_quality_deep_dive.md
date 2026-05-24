@@ -843,6 +843,9 @@ spaghetti around.
 - Iteration 337 tightened the Clap command tree so incomplete nested command groups show their scoped help
   directly, keeping the ergonomic `tvmd node ...`, `tvmd role ...`, `tvmd localnet ...`, and
   `tvmd public ...` surfaces without reintroducing legacy aliases.
+- Iteration 338 moved app-owned miner and validator registration, readiness, and status reports onto the
+  shared key-value report writer, including device-readiness fields, with parseability coverage for the
+  operator-check surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
