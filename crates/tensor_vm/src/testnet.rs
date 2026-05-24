@@ -1,7 +1,7 @@
 use crate::profile::ChainProfile;
 #[cfg(test)]
 use crate::types::address;
-use crate::types::{Address, Hash, Signature, sign, verify_signature};
+use crate::types::{Hash, Signature};
 #[cfg(test)]
 use crate::{ChainParams, JobScheduler};
 #[cfg(test)]
@@ -18,6 +18,7 @@ mod public_evidence_manifest;
 mod public_evidence_publication;
 mod public_manifest_fields;
 mod public_network_runtime;
+mod public_node_evidence;
 mod public_operators;
 mod public_preflight_manifest;
 mod public_preflight_plan;
@@ -43,7 +44,6 @@ pub use public_evidence_crypto::{
 pub(crate) use public_evidence_crypto::{
     aggregate_public_evidence_record_roots, public_network_runtime_observations_for_run,
 };
-use public_evidence_crypto::{public_node_heartbeat_message, public_operator_identity_message};
 pub use public_evidence_manifest::parse_public_testnet_evidence_manifest;
 pub use public_evidence_publication::{
     PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceSupportingArtifact,
@@ -51,6 +51,9 @@ pub use public_evidence_publication::{
 #[cfg(test)]
 use public_manifest_fields::parse_hash_hex;
 pub use public_network_runtime::{PublicNetworkRuntimeEvidence, PublicNetworkRuntimeObservation};
+pub use public_node_evidence::{
+    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
+};
 #[cfg(test)]
 use public_operators::match_public_operator_address;
 pub use public_preflight_manifest::parse_public_testnet_preflight_manifest;
@@ -58,13 +61,10 @@ use public_services::public_service_kinds;
 pub use public_services::{
     PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
 };
-use public_urls::public_evidence_uri_is_external;
-#[cfg(test)]
-use public_urls::public_https_authorities_match;
 #[cfg(test)]
 use public_urls::{
-    public_host_is_external, public_https_host, public_https_path,
-    public_network_runtime_multiaddr_is_external,
+    public_evidence_uri_is_external, public_host_is_external, public_https_authorities_match,
+    public_https_host, public_https_path, public_network_runtime_multiaddr_is_external,
 };
 
 pub const PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION: &str = "tensor-vm-public-testnet-evidence-v1";
@@ -214,184 +214,6 @@ pub struct PublicTestnetEvidence {
     pub has_invalid_work_rejection_evidence: bool,
     pub has_reward_settlement_records: bool,
     pub public_criterion_met: bool,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum PublicNodeRole {
-    Miner,
-    Validator,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PublicNodeEvidence {
-    pub address: Address,
-    pub operator_id: Hash,
-    pub role: PublicNodeRole,
-    pub first_seen_block: u64,
-    pub last_seen_block: u64,
-    pub signed_heartbeat_count: u64,
-    pub heartbeat_signature: Signature,
-}
-
-impl PublicNodeEvidence {
-    pub fn miner(
-        address: Address,
-        operator_id: Hash,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        signed_heartbeat_count: u64,
-    ) -> Self {
-        Self::new(
-            address,
-            operator_id,
-            PublicNodeRole::Miner,
-            first_seen_block,
-            last_seen_block,
-            signed_heartbeat_count,
-        )
-    }
-
-    pub fn validator(
-        address: Address,
-        operator_id: Hash,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        signed_heartbeat_count: u64,
-    ) -> Self {
-        Self::new(
-            address,
-            operator_id,
-            PublicNodeRole::Validator,
-            first_seen_block,
-            last_seen_block,
-            signed_heartbeat_count,
-        )
-    }
-
-    pub fn covers_run(&self, observed_blocks: u64) -> bool {
-        observed_blocks == 0
-            || (self.first_seen_block == 0
-                && self.last_seen_block.saturating_add(1) >= observed_blocks)
-    }
-
-    pub fn has_external_operator_proof(&self) -> bool {
-        self.address != [0; 32]
-            && self.operator_id != [0; 32]
-            && self.last_seen_block >= self.first_seen_block
-            && self.signed_heartbeat_count > 0
-            && self.heartbeat_signature_valid()
-    }
-
-    pub fn is_live_for_run(&self, observed_blocks: u64) -> bool {
-        self.covers_run(observed_blocks)
-            && self.has_external_operator_proof()
-            && self.has_run_heartbeat_coverage(observed_blocks)
-    }
-
-    pub fn heartbeat_signature_valid(&self) -> bool {
-        verify_signature(
-            &self.address,
-            &public_node_heartbeat_message(
-                &self.address,
-                &self.operator_id,
-                self.role,
-                self.first_seen_block,
-                self.last_seen_block,
-                self.signed_heartbeat_count,
-            ),
-            &self.heartbeat_signature,
-        )
-    }
-
-    fn new(
-        address: Address,
-        operator_id: Hash,
-        role: PublicNodeRole,
-        first_seen_block: u64,
-        last_seen_block: u64,
-        signed_heartbeat_count: u64,
-    ) -> Self {
-        let message = public_node_heartbeat_message(
-            &address,
-            &operator_id,
-            role,
-            first_seen_block,
-            last_seen_block,
-            signed_heartbeat_count,
-        );
-        Self {
-            address,
-            operator_id,
-            role,
-            first_seen_block,
-            last_seen_block,
-            signed_heartbeat_count,
-            heartbeat_signature: sign(&address, &message),
-        }
-    }
-
-    fn has_run_heartbeat_coverage(&self, observed_blocks: u64) -> bool {
-        observed_blocks == 0 || self.signed_heartbeat_count >= observed_blocks
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PublicOperatorIdentityAttestation {
-    pub role: PublicNodeRole,
-    pub address: Address,
-    pub operator_id: Hash,
-    pub identity_uri: String,
-    pub observed_at_unix_seconds: u64,
-    pub operator_signature: Signature,
-}
-
-impl PublicOperatorIdentityAttestation {
-    pub fn new(
-        role: PublicNodeRole,
-        address: Address,
-        operator_id: Hash,
-        identity_uri: impl Into<String>,
-        observed_at_unix_seconds: u64,
-    ) -> Self {
-        let identity_uri = identity_uri.into();
-        let message = public_operator_identity_message(
-            role,
-            &address,
-            &operator_id,
-            &identity_uri,
-            observed_at_unix_seconds,
-        );
-        Self {
-            role,
-            address,
-            operator_id,
-            identity_uri,
-            observed_at_unix_seconds,
-            operator_signature: sign(&operator_id, &message),
-        }
-    }
-
-    pub fn operator_signature_valid(&self) -> bool {
-        verify_signature(
-            &self.operator_id,
-            &public_operator_identity_message(
-                self.role,
-                &self.address,
-                &self.operator_id,
-                &self.identity_uri,
-                self.observed_at_unix_seconds,
-            ),
-            &self.operator_signature,
-        )
-    }
-
-    pub fn has_external_identity_proof(&self) -> bool {
-        self.address != [0; 32]
-            && self.operator_id != [0; 32]
-            && self.observed_at_unix_seconds > 0
-            && public_evidence_uri_is_external(&self.identity_uri)
-            && self.operator_signature_valid()
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

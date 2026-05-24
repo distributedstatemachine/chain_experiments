@@ -489,6 +489,9 @@ spaghetti around.
 - Iteration 186 moved public evidence publication, auditor-record, and supporting-artifact proof
   validation into `testnet/public_evidence_publication.rs`, separating evidence publication policy
   from node/operator liveness evidence.
+- Iteration 187 moved public node role, signed heartbeat evidence, and operator identity attestation
+  validation into `testnet/public_node_evidence.rs`, leaving the top-level testnet module focused on
+  shared public-testnet structs and aggregate report shapes.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
