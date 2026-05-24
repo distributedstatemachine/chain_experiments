@@ -424,6 +424,9 @@ spaghetti around.
 - Iteration 165 moved local testnet bootstrap and matmul/linear round tests into
   `testnet/tests/local_harness.rs`, separating local harness behavior from public evidence evaluation
   coverage in the large testnet test module.
+- Iteration 166 moved the public-run independent external operator criteria test into
+  `testnet/tests/run_evidence.rs`, further separating public evidence rule coverage from the shared
+  testnet fixture module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
