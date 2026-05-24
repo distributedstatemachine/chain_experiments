@@ -739,6 +739,8 @@ spaghetti around.
   shell logical lines, shrinking the remaining broad inventory to live/status-network checks.
 - Iteration 292 moved the local CPU check script live gateway, explorer, tensor, and ready-report
   assertions to exact shell logical lines, leaving the remaining inventory focused on operator status.
+- Iteration 293 added generated exact assertions for local CPU check script `status_value` reads and
+  replaced operator role/runtime readiness fragments with typed status-field checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

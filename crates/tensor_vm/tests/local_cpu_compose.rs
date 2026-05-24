@@ -71,6 +71,17 @@ fn assert_shell_logical_lines(script: &str, expected_lines: &[&str]) {
     }
 }
 
+fn assert_status_value_reads(script: &str, document: &str, expected_reads: &[(&str, &str)]) {
+    let actual_lines = shell_logical_lines(script);
+    for (variable, key) in expected_reads {
+        let expected = format!("{variable}=$(status_value {key} \"${document}\")");
+        assert!(
+            actual_lines.iter().any(|line| line == &expected),
+            "script should read status field {key} into {variable}"
+        );
+    }
+}
+
 fn compose_service_section<'a>(compose: &'a str, service: &str) -> &'a str {
     let marker = format!("  {service}:\n");
     let start = compose
@@ -494,61 +505,218 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         ],
     );
 
+    assert_status_value_reads(
+        &check_script,
+        "STATUS",
+        &[
+            ("SERVICE_LATEST_BLOCK_HEIGHT", "latest_block_height"),
+            ("SERVICE_BLOCK_LOG_ROOT", "block_log_root"),
+            ("SERVICE_REGISTERED_MINER_COUNT", "registered_miner_count"),
+            (
+                "SERVICE_REGISTERED_VALIDATOR_COUNT",
+                "registered_validator_count",
+            ),
+            ("SERVICE_JOB_COUNT", "job_count"),
+            ("SERVICE_RECEIPT_COUNT", "receipt_count"),
+            ("SERVICE_ATTESTATION_COUNT", "attestation_count"),
+            ("SERVICE_ROLE_RUNTIME_COMMAND", "role_runtime_command"),
+            ("SERVICE_ROLE_LOOP_READY", "role_loop_ready"),
+            ("SERVICE_ROLE_LOOP_ROLE", "role_loop_role"),
+            ("SERVICE_ROLE_CHAIN_PROFILE", "role_chain_profile"),
+            ("SERVICE_ROLE_CAN_PRODUCE_BLOCKS", "role_can_produce_blocks"),
+            ("SERVICE_ROLE_WALLET_ADDRESS", "role_wallet_address"),
+            (
+                "SERVICE_ROLE_WALLET_REGISTRATION",
+                "role_wallet_registration",
+            ),
+            ("SERVICE_ROLE_WALLET_REGISTERED", "role_wallet_registered"),
+            ("SERVICE_ROLE_MINER_WORK_READY", "role_miner_work_ready"),
+            (
+                "SERVICE_ROLE_MINER_ASSIGNED_JOBS_SEEN",
+                "role_miner_assigned_jobs_seen",
+            ),
+            (
+                "SERVICE_ROLE_MINER_UNRECEIPTED_JOBS",
+                "role_miner_unreceipted_jobs",
+            ),
+            (
+                "SERVICE_ROLE_MINER_RECEIPTS_SUBMITTED",
+                "role_miner_receipts_submitted",
+            ),
+            (
+                "SERVICE_ROLE_MINER_TENSORS_INSERTED",
+                "role_miner_tensors_inserted",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_WORK_READY",
+                "role_validator_work_ready",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_ASSIGNED_RECEIPTS_SEEN",
+                "role_validator_assigned_receipts_seen",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_UNATTESTED_RECEIPTS",
+                "role_validator_unattested_receipts",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_ARTIFACT_READY_RECEIPTS",
+                "role_validator_artifact_ready_receipts",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_ARTIFACT_MISSING_RECEIPTS",
+                "role_validator_artifact_missing_receipts",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_ATTEMPTS",
+                "role_validator_remote_tensor_fetch_attempts",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_SUCCESSES",
+                "role_validator_remote_tensor_fetch_successes",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_FAILURES",
+                "role_validator_remote_tensor_fetch_failures",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_REMOTE_FETCH_BYTES",
+                "role_validator_remote_tensor_fetch_bytes",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_REMOTE_TENSORS_INSERTED",
+                "role_validator_remote_tensors_inserted",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_ATTESTATIONS_SUBMITTED",
+                "role_validator_attestations_submitted",
+            ),
+            (
+                "SERVICE_ROLE_VALIDATOR_BLOCK_VOTES_SUBMITTED",
+                "role_validator_block_votes_submitted",
+            ),
+            ("SERVICE_ROLE_LOCAL_PRODUCER", "role_local_producer"),
+            (
+                "SERVICE_ROLE_NETWORK_APPLIED_BLOCKS",
+                "role_network_applied_blocks",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_EVENTS",
+                "role_network_events_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_BLOCK_HEADERS",
+                "role_network_block_headers_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS",
+                "role_network_block_payloads_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_BLOCK_PAYLOADS_APPLIED",
+                "role_network_block_payloads_applied",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_BLOCK_VOTES",
+                "role_network_block_votes_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_BLOCK_VOTES_APPLIED",
+                "role_network_block_votes_applied",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_JOB_EVENTS",
+                "role_network_job_events_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_JOB_PAYLOADS",
+                "role_network_job_payloads_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_JOB_PAYLOADS_APPLIED",
+                "role_network_job_payloads_applied",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_RECEIPT_EVENTS",
+                "role_network_receipt_events_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_RECEIPT_PAYLOADS",
+                "role_network_receipt_payloads_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_RECEIPT_PAYLOADS_APPLIED",
+                "role_network_receipt_payloads_applied",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_ATTESTATION_EVENTS",
+                "role_network_attestation_events_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_ATTESTATION_PAYLOADS",
+                "role_network_attestation_payloads_ingested",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_ATTESTATION_PAYLOADS_APPLIED",
+                "role_network_attestation_payloads_applied",
+            ),
+            (
+                "SERVICE_ROLE_NETWORK_INVALID_EVENTS",
+                "role_network_invalid_events",
+            ),
+            (
+                "SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOADS",
+                "role_p2p_observed_block_payloads",
+            ),
+            (
+                "SERVICE_ROLE_P2P_OBSERVED_BLOCK_VOTES",
+                "role_p2p_observed_block_votes",
+            ),
+            (
+                "SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_HEIGHT",
+                "role_p2p_latest_observed_block_height",
+            ),
+            (
+                "SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HEIGHT",
+                "role_p2p_latest_observed_block_payload_height",
+            ),
+            (
+                "SERVICE_ROLE_P2P_LATEST_OBSERVED_BLOCK_PAYLOAD_HASH",
+                "role_p2p_latest_observed_block_payload_hash",
+            ),
+            (
+                "SERVICE_ROLE_P2P_OBSERVED_BLOCK_PAYLOAD_HASHES",
+                "role_p2p_observed_block_payload_hashes",
+            ),
+        ],
+    );
+    assert_shell_logical_lines(
+        &check_script,
+        &[
+            r#"TARGET_STATUS_RAW=$(read_service_status miner-01) || fail "could not read miner-01 network-observed service status""#,
+            r#"CANDIDATE_NETWORK_HEAD_HEIGHT=$(status_value role_p2p_latest_observed_block_payload_height "$TARGET_STATUS")"#,
+            r#"if STATUS_RAW=$(read_service_status "$service"); then"#,
+            r#"all_operator_status_count=15"#,
+            r#"all_operator_min_height=${ALL_OPERATOR_MIN_HEIGHT}"#,
+            r#"all_operator_first_live_block_hash=${ALL_OPERATOR_FIRST_LIVE_BLOCK_HASH}"#,
+            r#"all_operator_live_block_convergence=true"#,
+            r#"all_operator_role_status=true"#,
+            r#"all_operator_role_runtime_commands=true"#,
+            r#"all_operator_role_wallets_registered=true"#,
+            r#"all_operator_miner_work_status=true"#,
+            r#"all_operator_miner_receipt_status=true"#,
+            r#"all_operator_validator_attestation_status=true"#,
+            r#"all_operator_validator_remote_tensor_fetch_status=true"#,
+            r#"all_operator_chain_profiles=true"#,
+            r#"all_operator_role_production_policy=true"#,
+            r#"all_operator_role_runtime_counters=true"#,
+            r#"single_local_producer=true"#,
+            r#"local_proposer_runtime=false"#,
+            r#"local_validator_producer=true"#,
+        ],
+    );
+
     for required in [
-        "tvmd service status",
-        "all_operator_status_count=15",
-        "CANDIDATE_NETWORK_HEAD_HEIGHT",
-        "role_can_produce_blocks",
-        "role_wallet_address",
-        "role_wallet_registration",
-        "role_wallet_registered",
-        "role_miner_work_ready",
-        "role_miner_assigned_jobs_seen",
-        "role_miner_unreceipted_jobs",
-        "role_miner_receipts_submitted",
-        "role_miner_tensors_inserted",
-        "role_validator_work_ready",
-        "role_validator_assigned_receipts_seen",
-        "role_validator_unattested_receipts",
-        "role_validator_artifact_ready_receipts",
-        "role_validator_artifact_missing_receipts",
-        "role_validator_remote_tensor_fetch_attempts",
-        "role_validator_remote_tensor_fetch_successes",
-        "role_validator_remote_tensor_fetch_failures",
-        "role_validator_remote_tensor_fetch_bytes",
-        "role_validator_remote_tensors_inserted",
-        "role_validator_attestations_submitted",
-        "role_validator_block_votes_submitted",
-        "role_chain_profile",
-        "role_local_producer",
-        "role_network_applied_blocks",
-        "role_network_events_ingested",
-        "role_network_block_headers_ingested",
-        "role_network_block_payloads_ingested",
-        "role_network_block_payloads_applied",
-        "role_network_block_votes_ingested",
-        "role_network_block_votes_applied",
-        "role_network_job_events_ingested",
-        "role_network_job_payloads_ingested",
-        "role_network_job_payloads_applied",
-        "role_network_receipt_payloads_ingested",
-        "role_network_receipt_payloads_applied",
-        "role_network_attestation_payloads_ingested",
-        "role_network_attestation_payloads_applied",
-        "role_network_receipt_events_ingested",
-        "role_network_attestation_events_ingested",
-        "role_network_invalid_events",
-        "role_p2p_latest_observed_block_height",
-        "role_p2p_observed_block_payloads",
-        "role_p2p_observed_block_votes",
-        "role_p2p_latest_observed_block_payload_height",
-        "role_p2p_latest_observed_block_payload_hash",
-        "role_p2p_observed_block_payload_hashes",
-        "all_operator_min_height=",
-        "latest_block_height",
-        "block_log_root",
-        "all_operator_first_live_block_hash=",
-        "all_operator_live_block_convergence=true",
         "tvmd service block",
         "block_validation",
         "useful_verification_pow",
@@ -575,19 +743,6 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "all_operator_network_head_hash=",
         "all_operator_network_state_root=",
         "all_operator_network_head_convergence=true",
-        "all_operator_role_status=true",
-        "all_operator_role_runtime_commands=true",
-        "all_operator_role_wallets_registered=true",
-        "all_operator_miner_work_status=true",
-        "all_operator_miner_receipt_status=true",
-        "all_operator_validator_attestation_status=true",
-        "all_operator_validator_remote_tensor_fetch_status=true",
-        "all_operator_chain_profiles=true",
-        "all_operator_role_production_policy=true",
-        "all_operator_role_runtime_counters=true",
-        "single_local_producer=true",
-        "local_proposer_runtime=false",
-        "local_validator_producer=true",
         "useful_pow_block_evidence=",
         "canonical_blockspace_evidence=",
         "block_checks_root_evidence=",
