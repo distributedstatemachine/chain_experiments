@@ -290,6 +290,9 @@ spaghetti around.
 - Iteration 120 extracted CLI public network observation evidence and service-log parsing into
   `cli/network_evidence.rs`, giving public evidence record aggregation a focused network-root
   verifier to call into.
+- Iteration 121 extracted CLI public evidence record summary, artifact, aggregation, and
+  supporting-record parsing helpers into `cli/record_evidence.rs`, leaving the parent CLI module
+  focused on dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
