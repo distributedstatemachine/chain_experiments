@@ -682,6 +682,8 @@ spaghetti around.
   comma-record field assertions, matching the service evidence coverage style.
 - Iteration 264 reused parsed integration-test stdout fields for the local testnet seed report, replacing
   broad substring checks with keyed numeric and boolean assertions.
+- Iteration 265 converted public evidence/preflight integration checks to parsed stdout fields, removing
+  substring assertions from those report-status tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

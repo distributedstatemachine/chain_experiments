@@ -8,11 +8,14 @@ fn documented_public_testnet_preflight_command_reports_pending_status() {
         "docs/tensorvm/public-testnet.preflight",
     ]);
 
-    assert!(stdout.contains("public_testnet_preflight_ready=false"));
-    assert!(stdout.contains("local_shape_ready=true"));
-    assert!(stdout.contains("deployment_plan_ready=false"));
-    assert!(stdout.contains("production_libp2p_runtime=true"));
-    assert!(stdout.contains("public_services_planned=false"));
+    assert_eq!(
+        stdout_value(&stdout, "public_testnet_preflight_ready"),
+        "false"
+    );
+    assert_eq!(stdout_value(&stdout, "local_shape_ready"), "true");
+    assert_eq!(stdout_value(&stdout, "deployment_plan_ready"), "false");
+    assert_eq!(stdout_value(&stdout, "production_libp2p_runtime"), "true");
+    assert_eq!(stdout_value(&stdout, "public_services_planned"), "false");
 }
 
 #[test]
@@ -44,19 +47,25 @@ service=telemetry,44444444444444444444444444444444444444444444444444444444444444
     std::fs::write(&manifest_path, manifest).expect("generated preflight manifest must be written");
 
     let stdout = run_tvmd(&["testnet", "preflight", &manifest_path_text]);
-    assert!(stdout.contains("public_testnet_preflight_ready=true"));
-    assert!(stdout.contains("local_shape_ready=true"));
-    assert!(stdout.contains("deployment_plan_ready=true"));
-    assert!(stdout.contains("miners=10"));
-    assert!(stdout.contains("validators=5"));
-    assert!(stdout.contains("required_blocks=100800"));
-    assert!(stdout.contains("cuda_ready_miner_count=10"));
-    assert!(stdout.contains("cuda_ready_miners=true"));
-    assert!(stdout.contains("libp2p_ready_node_count=15"));
-    assert!(stdout.contains("libp2p_ready_nodes=true"));
-    assert!(stdout.contains("production_libp2p_runtime=true"));
-    assert!(stdout.contains("public_service_content_planned=true"));
-    assert!(stdout.contains("public_services_planned=true"));
+    assert_eq!(
+        stdout_value(&stdout, "public_testnet_preflight_ready"),
+        "true"
+    );
+    assert_eq!(stdout_value(&stdout, "local_shape_ready"), "true");
+    assert_eq!(stdout_value(&stdout, "deployment_plan_ready"), "true");
+    assert_eq!(stdout_u64(&stdout, "miners"), 10);
+    assert_eq!(stdout_u64(&stdout, "validators"), 5);
+    assert_eq!(stdout_u64(&stdout, "required_blocks"), 100_800);
+    assert_eq!(stdout_u64(&stdout, "cuda_ready_miner_count"), 10);
+    assert_eq!(stdout_value(&stdout, "cuda_ready_miners"), "true");
+    assert_eq!(stdout_u64(&stdout, "libp2p_ready_node_count"), 15);
+    assert_eq!(stdout_value(&stdout, "libp2p_ready_nodes"), "true");
+    assert_eq!(stdout_value(&stdout, "production_libp2p_runtime"), "true");
+    assert_eq!(
+        stdout_value(&stdout, "public_service_content_planned"),
+        "true"
+    );
+    assert_eq!(stdout_value(&stdout, "public_services_planned"), "true");
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
@@ -69,14 +78,17 @@ fn documented_public_testnet_evidence_command_reports_non_full_spec_status() {
         "docs/tensorvm/public-testnet.evidence",
     ]);
 
-    assert!(stdout.contains("public_evidence_full_spec=false"));
-    assert!(stdout.contains("public_criterion=false"));
-    assert!(stdout.contains("independently_checkable=false"));
-    assert!(stdout.contains("published_evidence_bundle=false"));
-    assert!(stdout.contains("signed_run_window=true"));
-    assert!(stdout.contains("supporting_record_artifacts=false"));
-    assert!(stdout.contains("required_run_duration=false"));
-    assert!(stdout.contains("required_block_count=false"));
+    assert_eq!(stdout_value(&stdout, "public_evidence_full_spec"), "false");
+    assert_eq!(stdout_value(&stdout, "public_criterion"), "false");
+    assert_eq!(stdout_value(&stdout, "independently_checkable"), "false");
+    assert_eq!(stdout_value(&stdout, "published_evidence_bundle"), "false");
+    assert_eq!(stdout_value(&stdout, "signed_run_window"), "true");
+    assert_eq!(
+        stdout_value(&stdout, "supporting_record_artifacts"),
+        "false"
+    );
+    assert_eq!(stdout_value(&stdout, "required_run_duration"), "false");
+    assert_eq!(stdout_value(&stdout, "required_block_count"), "false");
 }
 
 #[test]
@@ -537,19 +549,25 @@ invalid_receipts_rejected=1
     std::fs::write(&manifest_path, manifest).expect("generated evidence manifest must be written");
 
     let report = run_tvmd(&["evidence", "validate", &manifest_path_text]);
-    assert!(report.contains("public_evidence_full_spec=false"));
-    assert!(report.contains("public_criterion=false"));
-    assert!(report.contains("independently_checkable=true"));
-    assert!(report.contains("published_evidence_bundle=true"));
-    assert!(report.contains("supporting_record_artifacts=true"));
-    assert!(report.contains("network_runtime_observations=true"));
-    assert!(report.contains("deployed_public_services=true"));
-    assert!(report.contains("deployed_public_service_content=true"));
-    assert!(report.contains("production_libp2p_runtime=true"));
-    assert!(report.contains("required_run_duration=false"));
-    assert!(report.contains("required_block_count=false"));
-    assert!(report.contains("required_miners=false"));
-    assert!(report.contains("required_validators=false"));
+    assert_eq!(stdout_value(&report, "public_evidence_full_spec"), "false");
+    assert_eq!(stdout_value(&report, "public_criterion"), "false");
+    assert_eq!(stdout_value(&report, "independently_checkable"), "true");
+    assert_eq!(stdout_value(&report, "published_evidence_bundle"), "true");
+    assert_eq!(stdout_value(&report, "supporting_record_artifacts"), "true");
+    assert_eq!(
+        stdout_value(&report, "network_runtime_observations"),
+        "true"
+    );
+    assert_eq!(stdout_value(&report, "deployed_public_services"), "true");
+    assert_eq!(
+        stdout_value(&report, "deployed_public_service_content"),
+        "true"
+    );
+    assert_eq!(stdout_value(&report, "production_libp2p_runtime"), "true");
+    assert_eq!(stdout_value(&report, "required_run_duration"), "false");
+    assert_eq!(stdout_value(&report, "required_block_count"), "false");
+    assert_eq!(stdout_value(&report, "required_miners"), "false");
+    assert_eq!(stdout_value(&report, "required_validators"), "false");
 
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
 }
