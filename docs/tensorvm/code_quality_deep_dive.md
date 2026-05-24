@@ -654,6 +654,8 @@ spaghetti around.
   persistence test surface.
 - Iteration 251 routed the remaining `tvmd_runtime` block-production setup through a `ChainCommand`
   helper, removing direct `Chain::produce_block` calls from the runtime integration harness.
+- Iteration 252 reused the command-backed storage test helpers in simple node-store persistence fixtures,
+  removing another set of direct registration and block-production setup calls from storage tests.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -158,6 +158,7 @@ impl ChainStore for NodeStore {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_support::{produce_block, register_block_producer};
     use super::*;
     use crate::chain::{BlockVote, ChainCommand, ChainParams, ChainParts, HardwareClass, JobState};
     use crate::jobs::{
@@ -298,14 +299,9 @@ mod tests {
     fn node_store_persists_snapshot_block_log_and_peer_book_paths() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store"]));
         let miner = address(b"node-store-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
-        chain.produce_block(miner, 1_006).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
+        produce_block(&mut chain, miner, 1_006);
 
         let data_dir =
             std::env::temp_dir().join(format!("tensor-vm-node-store-{}", std::process::id()));
@@ -343,7 +339,7 @@ mod tests {
         assert_eq!(loaded.blocks.as_slice(), chain.blocks());
         assert_eq!(store.load_chain().unwrap(), chain);
 
-        chain.produce_block(miner, 1_012).unwrap();
+        produce_block(&mut chain, miner, 1_012);
         let updated = store.persist_chain(&chain).unwrap();
         assert_eq!(updated.block_count, 3);
         assert_ne!(updated.block_log_root, status.block_log_root);
@@ -382,9 +378,7 @@ mod tests {
         assert_eq!(store.load_chain().unwrap(), chain);
 
         let mut ahead = chain.clone();
-        ahead
-            .produce_block(address(b"durable-validator"), 1_012)
-            .unwrap();
+        produce_block(&mut ahead, address(b"durable-validator"), 1_012);
         store
             .block_log_store()
             .append_block(ahead.blocks().last().unwrap())
@@ -421,13 +415,8 @@ mod tests {
 
         let mut chain = Chain::new(hash_bytes(b"test", &[b"chain-store-boundary"]));
         let miner = address(b"chain-store-boundary-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
 
         let data_dir = std::env::temp_dir().join(format!(
             "tensor-vm-chain-store-boundary-{}",
@@ -492,13 +481,8 @@ mod tests {
     fn node_store_detects_snapshot_and_block_log_disagreement() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"node-store-mismatch"]));
         let miner = address(b"node-store-mismatch-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 1_000).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 1_000);
 
         let data_dir = std::env::temp_dir().join(format!(
             "tensor-vm-node-store-mismatch-{}",
