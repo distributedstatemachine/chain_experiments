@@ -1,14 +1,39 @@
-use super::parser_support::{path, role_runtime_args};
-use super::{ProposerCommand, TvmdCommand, ValidatorRunArgs, parse_test_cli};
+use super::parser_support::{multiaddr, path, role_runtime_args};
+use super::{
+    StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs, parse_test_cli,
+};
 
 #[test]
-fn parses_documented_proposer_commands() {
+fn parses_documented_validator_commands() {
+    assert_eq!(
+        parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
+        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake: 10_000 }))
+    );
     assert_eq!(
         parse_test_cli(&[
-            "proposer",
+            "validator",
+            "check",
+            "--wallet",
+            "validator.key",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001"
+        ])
+        .unwrap(),
+        TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
+            wallet: path("validator.key"),
+            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+        }))
+    );
+    assert_eq!(
+        parse_test_cli(&["validator", "status"]).unwrap(),
+        TvmdCommand::Validator(ValidatorCommand::Status)
+    );
+    assert_eq!(
+        parse_test_cli(&[
+            "validator",
             "run",
             "--wallet",
-            "proposer.key",
+            "validator.key",
             "--node",
             "/ip4/127.0.0.1/tcp/4001",
             "--listen",
@@ -23,8 +48,8 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: path("proposer.key"),
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: path("validator.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
@@ -36,13 +61,13 @@ fn parses_documented_proposer_commands() {
             ),
         }))
     );
-    let identity_seed = "33".repeat(32);
+    let identity_seed = "22".repeat(32);
     assert_eq!(
         parse_test_cli(&[
-            "proposer",
+            "validator",
             "run",
             "--wallet",
-            "proposer.key",
+            "validator.key",
             "--node",
             "/ip4/127.0.0.1/tcp/4001",
             "--listen",
@@ -59,14 +84,14 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: path("proposer.key"),
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: path("validator.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
                 "/var/lib/tensorvm",
-                Some([0x33; 32]),
+                Some([0x22; 32]),
                 "secret",
                 7,
             ),

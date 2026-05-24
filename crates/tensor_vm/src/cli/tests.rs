@@ -14,6 +14,7 @@ mod local_miner_parser;
 mod local_parser;
 mod local_role_parser;
 mod local_validation;
+mod local_validator_parser;
 mod manifest_fixtures;
 mod manifest_reports;
 mod parser_support;
