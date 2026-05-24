@@ -301,6 +301,8 @@ spaghetti around.
 - Iteration 124 replaced the hand-rolled CLI parser with a typed `clap` command tree in
   `cli/parser.rs`, making the binary parse directly through `Cli::parse()` instead of preserving the
   old string-slice parser API.
+- Iteration 125 extracted the `CliCommand` data model into `cli/commands.rs`, leaving `cli.rs` as a
+  small facade over command definitions, clap parsing, descriptions, execution, and evidence helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
