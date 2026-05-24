@@ -708,6 +708,8 @@ spaghetti around.
   `/tensor/latest` synthetic-round assertion to parsed tensor-count and hash-field checks.
 - Iteration 277 converted explorer websocket collection and error-response tests from substring scans to
   parsed JSON assertions over response types, hardware classes, primitive types, receipt fields, and errors.
+- Iteration 278 reused the shared RPC JSON parser in the HTTP parser coverage for direct explorer websocket
+  overview/account responses, replacing another pair of substring checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

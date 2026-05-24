@@ -98,14 +98,28 @@ fn rpc_http_parser_rejects_bad_headers_and_waits_for_complete_bodies() {
     let overview = rpc.explorer_websocket_response(
         "{\"type\":\"overview\",\"block_limit\":1,\"receipt_limit\":1,\"job_limit\":1}",
     );
-    assert!(overview.contains("\"type\":\"overview\""));
-    assert!(overview.contains("\"block_count\":1"));
+    let overview = json_text(&overview);
+    assert_eq!(overview["type"].as_str(), Some("overview"));
+    assert_eq!(overview["summary"]["block_count"].as_u64(), Some(1));
+    assert_eq!(
+        overview["blocks"]
+            .as_array()
+            .expect("overview must include blocks")
+            .len(),
+        1
+    );
     let account = rpc.explorer_websocket_response(&format!(
         "{{\"type\":\"account\",\"address\":\"{}\"}}",
         hex(&miner)
     ));
-    assert!(account.contains("\"type\":\"account\""));
-    assert!(account.contains("\"is_miner\":true"));
+    let account = json_text(&account);
+    assert_eq!(account["type"].as_str(), Some("account"));
+    assert_eq!(
+        account["account"]["address"].as_str(),
+        Some(hex(&miner).as_str())
+    );
+    assert_eq!(account["account"]["is_miner"].as_bool(), Some(true));
+    assert_eq!(account["account"]["is_validator"].as_bool(), Some(true));
     assert!(matches!(
         try_parse_http_request(b"GET /\xff HTTP/1.1\r\n\r\n", 16),
         Some(ParsedHttpRequest::BadRequest)
