@@ -11,6 +11,11 @@ pub(crate) struct KeyValueReport<'a> {
     fields: BTreeMap<&'a str, &'a str>,
 }
 
+#[derive(Default)]
+pub(crate) struct KeyValueReportWriter {
+    contents: String,
+}
+
 impl<'a> KeyValueReport<'a> {
     pub(crate) fn parse_strict(contents: &'a str) -> Result<Self, KeyValueReportError> {
         let mut fields = BTreeMap::new();
@@ -43,6 +48,30 @@ impl<'a> KeyValueReport<'a> {
             .into_iter()
             .map(|(key, value)| (key.to_owned(), value.to_owned()))
             .collect()
+    }
+}
+
+impl KeyValueReportWriter {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn field(&mut self, key: &str, value: impl std::fmt::Display) {
+        let value = value.to_string();
+        assert!(
+            parse_key_value_line(&format!("{key}={value}")).is_some(),
+            "invalid key-value report field {key:?}"
+        );
+        if !self.contents.is_empty() {
+            self.contents.push('\n');
+        }
+        self.contents.push_str(key);
+        self.contents.push('=');
+        self.contents.push_str(&value);
+    }
+
+    pub(crate) fn finish(self) -> String {
+        self.contents
     }
 }
 
@@ -90,5 +119,18 @@ mod tests {
         );
         assert_eq!(fields.get("role").map(String::as_str), Some("miner"));
         assert!(!fields.contains_key("empty"));
+    }
+
+    #[test]
+    fn key_value_report_writer_renders_parseable_fields() {
+        let mut report = KeyValueReportWriter::new();
+        report.field("command", "service_serve");
+        report.field("max_requests", 7);
+        let report = report.finish();
+
+        assert_eq!(report, "command=service_serve\nmax_requests=7");
+        let parsed = KeyValueReport::parse_strict(&report).expect("writer output must parse");
+        assert_eq!(parsed.value("command"), Some("service_serve"));
+        assert_eq!(parsed.value("max_requests"), Some("7"));
     }
 }

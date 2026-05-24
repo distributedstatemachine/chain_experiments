@@ -836,6 +836,8 @@ spaghetti around.
   route helpers no longer hand-build those JSON objects or own escaping details.
 - Iteration 334 moved the faucet claim mutation response onto `serde_json::json!` and asserted the
   returned claim amount, account, and remaining balance, removing the last hand-built RPC JSON object.
+- Iteration 335 added a shared key-value report writer beside the parser and moved p2p identity readiness
+  reports onto it, starting to consolidate status rendering without changing the larger service-status shape.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

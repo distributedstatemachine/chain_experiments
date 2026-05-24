@@ -1,3 +1,4 @@
+use super::KeyValueReportWriter;
 use crate::{hash::hex, types::hash_bytes};
 
 pub fn local_cpu_seed_beacon() -> [u8; 32] {
@@ -5,8 +6,10 @@ pub fn local_cpu_seed_beacon() -> [u8; 32] {
 }
 
 pub fn p2p_identity_report(identity_seed: Option<[u8; 32]>) -> String {
-    match identity_seed {
-        Some(seed) => format!("p2p_identity_seeded=true\np2p_identity_seed={}", hex(&seed)),
-        None => "p2p_identity_seeded=false".to_owned(),
+    let mut report = KeyValueReportWriter::new();
+    report.field("p2p_identity_seeded", identity_seed.is_some());
+    if let Some(seed) = identity_seed {
+        report.field("p2p_identity_seed", hex(&seed));
     }
+    report.finish()
 }
