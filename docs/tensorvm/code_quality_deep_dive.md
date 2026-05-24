@@ -317,6 +317,9 @@ spaghetti around.
 - Iteration 130 split CLI command descriptions into `cli/local_descriptions.rs` and
   `cli/public_evidence_descriptions.rs`, leaving `cli/descriptions.rs` as the exported
   command-family description dispatcher.
+- Iteration 131 moved public-evidence service health/content clap argument structs and command
+  conversion into `cli/public_evidence_service_parser.rs`, narrowing `cli/public_evidence_parser.rs`
+  toward public-evidence family routing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

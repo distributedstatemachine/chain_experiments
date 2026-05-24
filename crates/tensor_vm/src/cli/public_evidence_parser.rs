@@ -1,7 +1,11 @@
 use super::CliCommand;
 use super::parser_values::{
-    HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
-    parse_hash_list_value, parse_hash_value,
+    HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, parse_hash_list_value,
+    parse_hash_value,
+};
+use super::public_evidence_service_parser::{
+    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs,
 };
 use crate::types::{Address, Hash};
 use clap::{Args, Subcommand};
@@ -37,56 +41,11 @@ impl PublicEvidenceCommand {
             PublicEvidenceCommand::Validate(args) => CliCommand::PublicEvidenceValidate {
                 manifest: args.manifest,
             },
-            PublicEvidenceCommand::ServiceHealth(args) => CliCommand::PublicEvidenceServiceHealth {
-                kind: args.kind.into(),
-                endpoint_id: args.endpoint_id,
-                public_url: args.public_url,
-                health_path: args.health_path,
-                first_seen_block: args.first_block,
-                last_seen_block: args.last_block,
-                reachable_observation_count: args.reachable_count,
-                signed_health_check_count: args.signed_health_check_count,
-            },
-            PublicEvidenceCommand::ServiceHealthFromFile(args) => {
-                CliCommand::PublicEvidenceServiceHealthFromFile {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    health_path: args.health_path,
-                    observation_file: args.observation_file,
-                }
-            }
-            PublicEvidenceCommand::ServiceContent(args) => {
-                CliCommand::PublicEvidenceServiceContent {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    content_path: args.content_path,
-                    content_root: args.content_root,
-                    observed_at_unix_seconds: args.observed_at,
-                    min_content_bytes: args.min_content_bytes,
-                }
-            }
-            PublicEvidenceCommand::ServiceContentFromBytes(args) => {
-                CliCommand::PublicEvidenceServiceContentFromBytes {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    content_path: args.content_path,
-                    observed_at_unix_seconds: args.observed_at,
-                    content_hex: args.content_hex,
-                }
-            }
-            PublicEvidenceCommand::ServiceContentFromFile(args) => {
-                CliCommand::PublicEvidenceServiceContentFromFile {
-                    kind: args.kind.into(),
-                    endpoint_id: args.endpoint_id,
-                    public_url: args.public_url,
-                    content_path: args.content_path,
-                    observed_at_unix_seconds: args.observed_at,
-                    content_file: args.content_file,
-                }
-            }
+            PublicEvidenceCommand::ServiceHealth(args) => args.into_command(),
+            PublicEvidenceCommand::ServiceHealthFromFile(args) => args.into_command(),
+            PublicEvidenceCommand::ServiceContent(args) => args.into_command(),
+            PublicEvidenceCommand::ServiceContentFromBytes(args) => args.into_command(),
+            PublicEvidenceCommand::ServiceContentFromFile(args) => args.into_command(),
             PublicEvidenceCommand::RecordSummary(args) => CliCommand::PublicEvidenceRecordSummary {
                 kind: args.kind.into(),
                 bundle_id: args.bundle_id,
@@ -222,90 +181,6 @@ impl PublicEvidenceCommand {
 pub(super) struct ManifestArgs {
     #[arg(long)]
     manifest: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ServiceHealthArgs {
-    #[arg(long)]
-    kind: PublicServiceKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    endpoint_id: Hash,
-    #[arg(long)]
-    public_url: String,
-    #[arg(long)]
-    health_path: String,
-    #[arg(long)]
-    first_block: u64,
-    #[arg(long)]
-    last_block: u64,
-    #[arg(long)]
-    reachable_count: u64,
-    #[arg(long)]
-    signed_health_check_count: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ServiceHealthFromFileArgs {
-    #[arg(long)]
-    kind: PublicServiceKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    endpoint_id: Hash,
-    #[arg(long)]
-    public_url: String,
-    #[arg(long)]
-    health_path: String,
-    #[arg(long)]
-    observation_file: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ServiceContentArgs {
-    #[arg(long)]
-    kind: PublicServiceKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    endpoint_id: Hash,
-    #[arg(long)]
-    public_url: String,
-    #[arg(long)]
-    content_path: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    content_root: Hash,
-    #[arg(long)]
-    observed_at: u64,
-    #[arg(long)]
-    min_content_bytes: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ServiceContentFromBytesArgs {
-    #[arg(long)]
-    kind: PublicServiceKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    endpoint_id: Hash,
-    #[arg(long)]
-    public_url: String,
-    #[arg(long)]
-    content_path: String,
-    #[arg(long)]
-    observed_at: u64,
-    #[arg(long)]
-    content_hex: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct ServiceContentFromFileArgs {
-    #[arg(long)]
-    kind: PublicServiceKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    endpoint_id: Hash,
-    #[arg(long)]
-    public_url: String,
-    #[arg(long)]
-    content_path: String,
-    #[arg(long)]
-    observed_at: u64,
-    #[arg(long)]
-    content_file: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
