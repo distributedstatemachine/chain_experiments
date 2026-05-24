@@ -1058,6 +1058,9 @@ spaghetti around.
   observation behavior.
 - Iteration 436 renamed the remaining network-only execution report suite to
   `cli/tests/public_evidence_network_reports.rs`, removing the generic execution report test module.
+- Iteration 437 split public network observation rejection coverage into
+  `cli/tests/public_evidence_network_rejections.rs`, shrinking the remaining mixed public evidence
+  rejection suite.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
