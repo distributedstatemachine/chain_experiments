@@ -1024,6 +1024,9 @@ spaghetti around.
 - Iteration 422 split the public node/operator evidence clap command family into
   `cli/public_evidence_node_commands.rs`, moving heartbeat, operator-attestation, and node-role
   value types out of the mixed public evidence command module.
+- Iteration 423 split public publication and auditor clap argument structs into
+  `cli/public_evidence_publication_commands.rs`, leaving the mixed public evidence command module
+  focused on top-level command routing and manifest path arguments.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
