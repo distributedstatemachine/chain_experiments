@@ -1,9 +1,23 @@
 use super::{execute_test_cli_command, parse_test_cli};
 use libp2p::PeerId;
+use std::path::PathBuf;
 
-fn execute_cli(args: &[&str]) -> crate::error::Result<String> {
+fn execute_cli(args: &[&str]) -> std::result::Result<String, String> {
     let command = parse_test_cli(args).expect("test CLI args must parse");
     execute_test_cli_command(&command)
+}
+
+fn unique_test_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!(
+        "tensor-vm-cli-validation-{name}-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time must be after unix epoch")
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).expect("test dir must be created");
+    dir
 }
 
 #[test]
@@ -22,7 +36,7 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
         ])
         .unwrap_err()
         .to_string(),
-        "invalid receipt: cuda kernels not compiled"
+        "cuda kernels not compiled"
     );
 
     #[cfg(feature = "cuda-kernels")]
@@ -159,6 +173,8 @@ fn execute_cli_rejects_invalid_local_args() {
     );
     let peer_a = PeerId::random();
     let peer_b = PeerId::random();
+    let peer_data_dir = unique_test_dir("peer-mismatch");
+    let peer_data_dir = peer_data_dir.to_string_lossy().into_owned();
     let mismatched_peer_address = format!("/dns/bootstrap.tensorvm.net/tcp/4001/p2p/{peer_b}");
     assert!(
         execute_cli(&[
@@ -166,7 +182,7 @@ fn execute_cli_rejects_invalid_local_args() {
             "peer",
             "add",
             "--data-dir",
-            "/var/lib/tensorvm",
+            &peer_data_dir,
             "--peer-id",
             &peer_a.to_string(),
             "--address",

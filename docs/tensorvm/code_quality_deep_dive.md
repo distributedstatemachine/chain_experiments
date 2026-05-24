@@ -1070,6 +1070,9 @@ spaghetti around.
 - Iteration 440 folded the remaining service parser rejection checks into
   `cli/tests/public_evidence_service_rejections.rs` and deleted the last mixed public evidence
   rejection module.
+- Iteration 441 removed the test-only local CLI execution shims and routed CLI execution tests
+  through the same `app::execute_tvmd_command` dispatcher used by the binary, leaving `cli` focused
+  on the Clap command model and public evidence helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

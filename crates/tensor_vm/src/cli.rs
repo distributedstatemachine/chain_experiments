@@ -1,25 +1,13 @@
 #[cfg(test)]
 use crate::error::TvmError;
-#[cfg(all(test, feature = "cuda-kernels"))]
-use crate::runtime::cuda_device_count;
-#[cfg(test)]
-use crate::runtime::cuda_kernels_compiled;
 #[cfg(test)]
 use crate::testnet::sign_public_evidence_record;
 mod commands;
 mod evidence_fields;
 mod local_commands;
-#[cfg(test)]
-mod local_execution;
 mod local_node_commands;
-#[cfg(test)]
-mod local_p2p_report_fields;
 mod local_role_commands;
-#[cfg(test)]
-mod local_role_execution;
 mod local_runtime_args;
-#[cfg(test)]
-mod local_service_execution;
 mod localnet_commands;
 mod network_evidence;
 mod node_evidence;

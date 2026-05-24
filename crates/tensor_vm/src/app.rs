@@ -35,11 +35,6 @@ pub use network::{
     ChainAnnouncementCheckpoint, chain_announcement_checkpoint, ingest_network_events,
     produce_and_publish_synthetic_round, publish_new_chain_announcements,
 };
-#[cfg(test)]
-pub(crate) use operator_checks::{
-    check_miner_registration, check_miner_start, check_validator_registration,
-    check_validator_start, miner_status, validator_status,
-};
 pub use role_services::{
     RoleServiceRunner, run_miner_service, run_proposer_service, run_validator_service,
 };

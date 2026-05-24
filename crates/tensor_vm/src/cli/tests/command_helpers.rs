@@ -14,25 +14,8 @@ pub(super) fn parse_test_cli(
 
 pub(super) fn execute_test_cli_command(
     cli_command: &super::TvmdCommand,
-) -> crate::error::Result<String> {
-    match cli_command {
-        super::TvmdCommand::Miner(_)
-        | super::TvmdCommand::Validator(_)
-        | super::TvmdCommand::Proposer(_)
-        | super::TvmdCommand::Node(_)
-        | super::TvmdCommand::Localnet(_) => {
-            super::local_execution::execute_local_cli_command(cli_command)
-        }
-        super::TvmdCommand::Public(super::PublicCommand::Preflight(_))
-        | super::TvmdCommand::Public(super::PublicCommand::Evidence(
-            super::EvidenceCommand::Validate(_),
-        )) => Err(crate::error::TvmError::InvalidReceipt(
-            "public artifact validation reads manifests through the app dispatcher",
-        )),
-        super::TvmdCommand::Public(super::PublicCommand::Evidence(command)) => {
-            super::execute_public_evidence_command(command)
-        }
-    }
+) -> std::result::Result<String, String> {
+    crate::app::execute_tvmd_command(cli_command)
 }
 
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
