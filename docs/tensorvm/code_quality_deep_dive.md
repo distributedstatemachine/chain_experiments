@@ -690,6 +690,8 @@ spaghetti around.
   service health/content evidence generated from live service responses.
 - Iteration 268 converted local service gateway serve/status integration checks to parsed stdout fields,
   replacing another cluster of `key=value` substring assertions.
+- Iteration 269 converted the validator local-producer integration report checks to keyed stdout fields,
+  including produced-block counters.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

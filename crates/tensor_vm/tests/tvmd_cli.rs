@@ -535,7 +535,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
     let data_dir_text = data_dir.to_string_lossy().into_owned();
 
     let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
-    assert!(seed.contains("command=local_testnet_seed"));
+    assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
 
     let rpc_port = free_local_port();
     let listen = format!("127.0.0.1:{rpc_port}");
@@ -595,19 +595,17 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).expect("validator stdout must be utf8");
-    assert!(stdout.contains("command=validator_run"));
-    assert!(stdout.contains("role=validator"));
-    assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("role_can_produce_blocks=true"));
-    assert!(stdout.contains("role_wallet_registration=validator"));
-    assert!(stdout.contains("role_wallet_registered=true"));
-    assert!(stdout.contains("local_producer=true"));
-    assert!(
-        stdout_value(&stdout, "produced_blocks")
-            .parse::<usize>()
-            .expect("produced block count must parse")
-            > 0
+    assert_eq!(stdout_value(&stdout, "command"), "validator_run");
+    assert_eq!(stdout_value(&stdout, "role"), "validator");
+    assert_eq!(stdout_value(&stdout, "runtime_command"), "validator_run");
+    assert_eq!(stdout_value(&stdout, "role_can_produce_blocks"), "true");
+    assert_eq!(
+        stdout_value(&stdout, "role_wallet_registration"),
+        "validator"
     );
+    assert_eq!(stdout_value(&stdout, "role_wallet_registered"), "true");
+    assert_eq!(stdout_value(&stdout, "local_producer"), "true");
+    assert!(stdout_u64(&stdout, "produced_blocks") > 0);
 
     let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
     assert_eq!(stdout_value(&status, "role_loop_role"), "validator");
@@ -617,12 +615,7 @@ fn validator_run_with_local_producer_advances_cpu_chain() {
         "validator"
     );
     assert_eq!(stdout_value(&status, "role_local_producer"), "true");
-    assert!(
-        stdout_value(&status, "role_produced_blocks")
-            .parse::<usize>()
-            .expect("role produced block count must parse")
-            > 0
-    );
+    assert!(stdout_u64(&status, "role_produced_blocks") > 0);
     assert_eq!(stdout_value(&status, "first_live_block_height"), "3");
     let block = run_tvmd(&[
         "service",
