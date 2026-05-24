@@ -1056,6 +1056,8 @@ spaghetti around.
 - Iteration 435 split public service health/content execution report coverage into
   `cli/tests/public_evidence_service_reports.rs`, leaving the mixed report suite focused on network
   observation behavior.
+- Iteration 436 renamed the remaining network-only execution report suite to
+  `cli/tests/public_evidence_network_reports.rs`, removing the generic execution report test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

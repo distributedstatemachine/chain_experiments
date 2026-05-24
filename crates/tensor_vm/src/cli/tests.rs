@@ -9,13 +9,13 @@ use libp2p::PeerId;
 
 mod command_help;
 mod command_helpers;
-mod execution_reports;
 mod local_execution_reports;
 mod local_parser;
 mod local_validation;
 mod manifest_fixtures;
 mod manifest_reports;
 mod parser_support;
+mod public_evidence_network_reports;
 mod public_evidence_node_reports;
 mod public_evidence_publication_rejections;
 mod public_evidence_publication_reports;

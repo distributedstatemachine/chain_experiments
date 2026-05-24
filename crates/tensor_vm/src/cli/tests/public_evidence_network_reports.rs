@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn execute_public_evidence_reports_outputs() {
+fn execute_network_evidence_reports_outputs() {
     let peer_id = PeerId::random().to_string();
     let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
