@@ -1,6 +1,5 @@
 use super::runtime::RoleRuntimeLoop;
 use super::runtime_config::{RuntimeRole, ServiceRuntimeConfig, runtime_node_config};
-use super::shared::local_cpu_seed_beacon;
 use super::*;
 use std::{
     collections::BTreeSet,
@@ -15,6 +14,7 @@ use tensor_vm::{
     ReceiptState, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy, Tensor, TensorVmLibp2pService,
     ValidatorAttestation, VerificationResult,
     api::P2pMessage,
+    app::local_cpu_seed_beacon,
     encode_attestation_payload, encode_job_payload, encode_receipt_payload,
     hash::hex,
     network_ingest_order,

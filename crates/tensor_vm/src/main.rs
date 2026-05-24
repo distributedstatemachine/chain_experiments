@@ -1,6 +1,10 @@
 use clap::Parser;
 use tensor_vm::{
     TvmdCli, TvmdCommand,
+    app::{
+        add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
+        verify_local_cpu_store,
+    },
     cli::{
         EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
         TestnetCommand, ValidatorCommand, execute_cli_command, validate_public_evidence_manifest,
@@ -10,9 +14,6 @@ use tensor_vm::{
 
 #[path = "main/block_status.rs"]
 mod block_status;
-
-#[path = "main/commands.rs"]
-mod commands;
 
 #[path = "main/miner_role.rs"]
 mod miner_role;
@@ -53,9 +54,6 @@ mod runtime_status_snapshot;
 #[path = "main/runtime_validator.rs"]
 mod runtime_validator;
 
-#[path = "main/shared.rs"]
-mod shared;
-
 #[path = "main/status.rs"]
 mod status;
 
@@ -66,10 +64,6 @@ mod validator_fetch;
 mod validator_role;
 
 use block_status::service_block_status;
-use commands::{
-    add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
-    verify_local_cpu_store,
-};
 use runtime::serve_service;
 use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 use runtime_config::RoleServiceConfig;

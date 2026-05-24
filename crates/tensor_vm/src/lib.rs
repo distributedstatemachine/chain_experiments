@@ -7,6 +7,7 @@
 //! with useful-verification PoW; see the docs for the remaining consensus gap.
 
 pub mod api;
+pub mod app;
 pub mod chain;
 pub mod challenge;
 pub mod cli;

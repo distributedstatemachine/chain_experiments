@@ -598,6 +598,9 @@ spaghetti around.
   `tvmd evidence ...` now owns public evidence generation, `tvmd testnet ...` owns preflight/local checks,
   manifest paths are positional arguments, and deployment docs/scripts/tests no longer invoke the retired
   `public-evidence`, `public-testnet`, `local-testnet`, or `local-cpu` top-level commands.
+- Iteration 233 moved service/testnet command helpers and shared local CPU identity/seed helpers out of the
+  binary-only `src/main/*` module tree into a library-owned `app` module, starting the `main.rs` collapse
+  without mixing that ownership change with the larger runtime loop migration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

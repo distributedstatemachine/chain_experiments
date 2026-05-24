@@ -1,10 +1,7 @@
-use super::{
-    runtime_config::ServiceRuntimeConfig, runtime_status::RuntimeP2pReport,
-    shared::p2p_identity_report,
-};
+use super::{runtime_config::ServiceRuntimeConfig, runtime_status::RuntimeP2pReport};
 use tensor_vm::{
     Faucet, Libp2pControlPlaneConfig, NodeStore, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy,
-    TensorVmLibp2pService, spawn_libp2p_service,
+    TensorVmLibp2pService, app::p2p_identity_report, spawn_libp2p_service,
 };
 
 pub(super) struct RuntimeServices {

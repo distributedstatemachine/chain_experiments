@@ -1,6 +1,7 @@
-use super::shared::{local_cpu_seed_beacon, p2p_identity_report};
 use std::path::Path;
-use tensor_vm::{
+
+use super::{local_cpu_seed_beacon, p2p_identity_report};
+use crate::{
     Chain, JobScheduler, Libp2pControlPlaneConfig, NodeStore, PeerRecord,
     hash::hex,
     spawn_libp2p_service,
@@ -8,7 +9,7 @@ use tensor_vm::{
     types::hash_bytes,
 };
 
-pub(super) fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
+pub fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
     let store = NodeStore::open(data_dir);
     if Path::new(data_dir).exists()
         && Path::new(data_dir)
@@ -57,7 +58,7 @@ pub(super) fn init_service_store(data_dir: &str) -> std::result::Result<String, 
     ))
 }
 
-pub(super) fn add_service_peer(
+pub fn add_service_peer(
     data_dir: &str,
     peer_id: &str,
     address: &str,
@@ -79,7 +80,7 @@ pub(super) fn add_service_peer(
     ))
 }
 
-pub(super) fn check_service_readiness(
+pub fn check_service_readiness(
     p2p_listen: &str,
     data_dir: &str,
     identity_seed: Option<[u8; 32]>,
@@ -118,7 +119,7 @@ pub(super) fn check_service_readiness(
     ))
 }
 
-pub(super) fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
+pub fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, String> {
     let mut testnet = LocalTestnet::new(TestnetConfig::default(), local_cpu_seed_beacon());
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     testnet.run_matmul_round(&scheduler);
@@ -170,10 +171,7 @@ pub(super) fn seed_local_testnet(data_dir: &str) -> std::result::Result<String, 
     ))
 }
 
-pub(super) fn verify_local_cpu_store(
-    data_dir: &str,
-    json: bool,
-) -> std::result::Result<String, String> {
+pub fn verify_local_cpu_store(data_dir: &str, json: bool) -> std::result::Result<String, String> {
     let store = NodeStore::open(data_dir);
     let chain = store
         .load_chain()
