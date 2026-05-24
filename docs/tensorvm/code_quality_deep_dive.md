@@ -1019,6 +1019,8 @@ spaghetti around.
 - Iteration 420 split the public libp2p network evidence clap command family into
   `cli/public_evidence_network_commands.rs`, isolating network args and libp2p-specific imports from
   the mixed public evidence command module.
+- Iteration 421 split the public run-window evidence clap command family into
+  `cli/public_evidence_run_window_commands.rs`, moving run-window args beside their subcommand owner.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
