@@ -1067,6 +1067,9 @@ spaghetti around.
 - Iteration 439 split public evidence record parser and direct validation rejection coverage into
   `cli/tests/public_evidence_record_rejections.rs`, leaving only service parser checks in the old
   mixed rejection module.
+- Iteration 440 folded the remaining service parser rejection checks into
+  `cli/tests/public_evidence_service_rejections.rs` and deleted the last mixed public evidence
+  rejection module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
