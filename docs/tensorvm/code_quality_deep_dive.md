@@ -501,6 +501,9 @@ spaghetti around.
 - Iteration 190 split the `tvmd` clap command definitions into `cli/local_commands.rs`,
   `cli/public_evidence_commands.rs`, and `cli/command_values.rs`, leaving `cli/commands.rs` as the
   top-level `TvmdCli`/`TvmdCommand` facade.
+- Iteration 191 extracted the RPC HTTP server, response rendering, request parser, and query-token
+  decoding into `rpc/http.rs`, leaving `rpc.rs` less coupled to transport framing while preserving the
+  public `RpcHttpServer` and `http_response_text` exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
