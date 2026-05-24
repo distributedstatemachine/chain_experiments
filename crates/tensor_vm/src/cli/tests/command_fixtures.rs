@@ -96,10 +96,6 @@ pub(super) enum CommandFixture {
     LocalTestnetSeed {
         data_dir: String,
     },
-    LocalCpuVerify {
-        data_dir: String,
-        json: bool,
-    },
     PublicEvidenceValidate {
         manifest: String,
     },
@@ -476,12 +472,6 @@ impl CommandFixture {
             Self::LocalTestnetSeed { data_dir } => {
                 super::TvmdCommand::Localnet(LocalnetCommand::Seed(DataDirArgs {
                     data_dir: path_arg(data_dir),
-                }))
-            }
-            Self::LocalCpuVerify { data_dir, json } => {
-                super::TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs {
-                    data_dir: path_arg(data_dir),
-                    json,
                 }))
             }
             Self::PublicEvidenceValidate { manifest } => super::TvmdCommand::Public(

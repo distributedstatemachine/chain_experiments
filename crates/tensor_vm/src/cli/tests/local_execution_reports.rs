@@ -1,9 +1,13 @@
 use super::*;
 
+fn execute_cli(args: &[&str]) -> String {
+    let command = parse_test_cli(args).expect("fixture CLI args must parse");
+    execute_test_cli_command(&command).expect("fixture CLI command must execute")
+}
+
 #[test]
 fn execute_command_fixture_reports_local_runtime_readiness() {
-    let miner_register =
-        execute_command_fixture(&CommandFixture::MinerRegister { stake: 100 }).unwrap();
+    let miner_register = execute_cli(&["miner", "register", "--stake", "100"]);
     assert_report_fields(
         &miner_register,
         &[
@@ -14,12 +18,16 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let miner_start = execute_command_fixture(&CommandFixture::MinerStart {
-        wallet: "miner.key".to_owned(),
-        device: "cpu".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-    })
-    .unwrap();
+    let miner_start = execute_cli(&[
+        "miner",
+        "check",
+        "--wallet",
+        "miner.key",
+        "--device",
+        "cpu",
+        "--node",
+        "/ip4/127.0.0.1/tcp/4001",
+    ]);
     let miner_address = hex(&address(b"miner.key"));
     let cuda_kernels_compiled = cuda_kernels_compiled().to_string();
     assert_report_fields(
@@ -37,18 +45,28 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
     );
 
     let identity_seed_11 = "11".repeat(32);
-    let miner_run = execute_command_fixture(&CommandFixture::MinerRun {
-        wallet: "miner.key".to_owned(),
-        device: "cpu".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        listen: "127.0.0.1:8545".to_owned(),
-        p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: Some([0x11; 32]),
-        auth_token: "secret".to_owned(),
-        max_requests: 7,
-    })
-    .unwrap();
+    let miner_run = execute_cli(&[
+        "miner",
+        "run",
+        "--wallet",
+        "miner.key",
+        "--device",
+        "cpu",
+        "--node",
+        "/ip4/127.0.0.1/tcp/4001",
+        "--listen",
+        "127.0.0.1:8545",
+        "--p2p-listen",
+        "/ip4/127.0.0.1/tcp/0",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--identity-seed",
+        &identity_seed_11,
+        "--auth-token",
+        "secret",
+        "--max-requests",
+        "7",
+    ]);
     assert_report_fields(
         &miner_run,
         &[
@@ -80,8 +98,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let validator_register =
-        execute_command_fixture(&CommandFixture::ValidatorRegister { stake: 10_000 }).unwrap();
+    let validator_register = execute_cli(&["validator", "register", "--stake", "10000"]);
     assert_report_fields(
         &validator_register,
         &[
@@ -92,11 +109,14 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let validator_start = execute_command_fixture(&CommandFixture::ValidatorStart {
-        wallet: "validator.key".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-    })
-    .unwrap();
+    let validator_start = execute_cli(&[
+        "validator",
+        "check",
+        "--wallet",
+        "validator.key",
+        "--node",
+        "/ip4/127.0.0.1/tcp/4001",
+    ]);
     let validator_address = hex(&address(b"validator.key"));
     assert_report_fields(
         &validator_start,
@@ -109,17 +129,24 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let validator_run = execute_command_fixture(&CommandFixture::ValidatorRun {
-        wallet: "validator.key".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        listen: "127.0.0.1:8545".to_owned(),
-        p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: None,
-        auth_token: "secret".to_owned(),
-        max_requests: 7,
-    })
-    .unwrap();
+    let validator_run = execute_cli(&[
+        "validator",
+        "run",
+        "--wallet",
+        "validator.key",
+        "--node",
+        "/ip4/127.0.0.1/tcp/4001",
+        "--listen",
+        "127.0.0.1:8545",
+        "--p2p-listen",
+        "/ip4/127.0.0.1/tcp/0",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--auth-token",
+        "secret",
+        "--max-requests",
+        "7",
+    ]);
     assert_report_fields(
         &validator_run,
         &[
@@ -149,17 +176,26 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
     );
 
     let identity_seed_33 = "33".repeat(32);
-    let proposer_run = execute_command_fixture(&CommandFixture::ProposerRun {
-        wallet: "proposer.key".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        listen: "127.0.0.1:8545".to_owned(),
-        p2p_listen: "/ip4/127.0.0.1/tcp/0".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: Some([0x33; 32]),
-        auth_token: "secret".to_owned(),
-        max_requests: 7,
-    })
-    .unwrap();
+    let proposer_run = execute_cli(&[
+        "proposer",
+        "run",
+        "--wallet",
+        "proposer.key",
+        "--node",
+        "/ip4/127.0.0.1/tcp/4001",
+        "--listen",
+        "127.0.0.1:8545",
+        "--p2p-listen",
+        "/ip4/127.0.0.1/tcp/0",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--identity-seed",
+        &identity_seed_33,
+        "--auth-token",
+        "secret",
+        "--max-requests",
+        "7",
+    ]);
     let proposer_address = hex(&address(b"proposer.key"));
     assert_report_fields(
         &proposer_run,
@@ -190,7 +226,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let miner_status = execute_command_fixture(&CommandFixture::MinerStatus).unwrap();
+    let miner_status = execute_cli(&["miner", "status"]);
     assert_report_fields(
         &miner_status,
         &[
@@ -201,7 +237,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let validator_status = execute_command_fixture(&CommandFixture::ValidatorStatus).unwrap();
+    let validator_status = execute_cli(&["validator", "status"]);
     assert_report_fields(
         &validator_status,
         &[
@@ -212,10 +248,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let service_init = execute_command_fixture(&CommandFixture::ServiceInit {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-    })
-    .unwrap();
+    let service_init = execute_cli(&["node", "init", "--data-dir", "/var/lib/tensorvm"]);
     assert_report_fields(
         &service_init,
         &[
@@ -226,12 +259,17 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
     );
 
     let bootstrap_peer = PeerId::random().to_string();
-    let service_peer_add = execute_command_fixture(&CommandFixture::ServicePeerAdd {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        peer_id: bootstrap_peer.clone(),
-        address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
-    })
-    .unwrap();
+    let service_peer_add = execute_cli(&[
+        "node",
+        "peer",
+        "add",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--peer-id",
+        &bootstrap_peer,
+        "--address",
+        "/dns/bootstrap.tensorvm.net/tcp/4001",
+    ]);
     assert_report_fields(
         &service_peer_add,
         &[
@@ -243,12 +281,16 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let service_readiness = execute_command_fixture(&CommandFixture::ServiceReadiness {
-        p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: Some([0x11; 32]),
-    })
-    .unwrap();
+    let service_readiness = execute_cli(&[
+        "node",
+        "check",
+        "--p2p-listen",
+        "/ip4/0.0.0.0/tcp/4001",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--identity-seed",
+        &identity_seed_11,
+    ]);
     assert_report_fields(
         &service_readiness,
         &[
@@ -271,12 +313,14 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let unseeded_service_readiness = execute_command_fixture(&CommandFixture::ServiceReadiness {
-        p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: None,
-    })
-    .unwrap();
+    let unseeded_service_readiness = execute_cli(&[
+        "node",
+        "check",
+        "--p2p-listen",
+        "/ip4/0.0.0.0/tcp/4001",
+        "--data-dir",
+        "/var/lib/tensorvm",
+    ]);
     assert_report_fields(
         &unseeded_service_readiness,
         &[
@@ -286,15 +330,22 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
     );
 
     let identity_seed_22 = "22".repeat(32);
-    let service_serve = execute_command_fixture(&CommandFixture::ServiceServe {
-        listen: "0.0.0.0:8545".to_owned(),
-        p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        identity_seed: Some([0x22; 32]),
-        auth_token: "secret".to_owned(),
-        max_requests: 0,
-    })
-    .unwrap();
+    let service_serve = execute_cli(&[
+        "node",
+        "serve",
+        "--listen",
+        "0.0.0.0:8545",
+        "--p2p-listen",
+        "/ip4/0.0.0.0/tcp/4001",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--identity-seed",
+        &identity_seed_22,
+        "--auth-token",
+        "secret",
+        "--max-requests",
+        "0",
+    ]);
     assert_report_fields(
         &service_serve,
         &[
@@ -323,10 +374,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let service_status = execute_command_fixture(&CommandFixture::ServiceStatus {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-    })
-    .unwrap();
+    let service_status = execute_cli(&["node", "status", "--data-dir", "/var/lib/tensorvm"]);
     assert_report_fields(
         &service_status,
         &[
@@ -336,11 +384,14 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let service_block = execute_command_fixture(&CommandFixture::ServiceBlock {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        height: 3,
-    })
-    .unwrap();
+    let service_block = execute_cli(&[
+        "node",
+        "block",
+        "--data-dir",
+        "/var/lib/tensorvm",
+        "--height",
+        "3",
+    ]);
     assert_report_fields(
         &service_block,
         &[
@@ -351,10 +402,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let local_seed = execute_command_fixture(&CommandFixture::LocalTestnetSeed {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-    })
-    .unwrap();
+    let local_seed = execute_cli(&["localnet", "seed", "--data-dir", "/var/lib/tensorvm"]);
     assert_report_fields(
         &local_seed,
         &[
@@ -364,11 +412,7 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
         ],
     );
 
-    let local_verify = execute_command_fixture(&CommandFixture::LocalCpuVerify {
-        data_dir: "/var/lib/tensorvm".to_owned(),
-        json: false,
-    })
-    .unwrap();
+    let local_verify = execute_cli(&["localnet", "verify", "--data-dir", "/var/lib/tensorvm"]);
     assert_report_fields(
         &local_verify,
         &[
