@@ -1082,6 +1082,9 @@ spaghetti around.
 - Iteration 444 split public node heartbeat, heartbeat-file, and operator-attestation Clap parser
   coverage into `cli/tests/public_evidence_node_parser.rs`, leaving the mixed public parser suite
   focused on manifest, service, network, and record command families.
+- Iteration 445 split public service health/content Clap parser coverage into
+  `cli/tests/public_evidence_service_parser.rs`, leaving the mixed public parser suite focused on
+  manifest, network, and record command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
