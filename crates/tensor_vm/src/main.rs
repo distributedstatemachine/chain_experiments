@@ -27,12 +27,6 @@ mod runtime_commands;
 #[path = "main/runtime_validator.rs"]
 mod runtime_validator;
 
-#[path = "main/validator_fetch.rs"]
-mod validator_fetch;
-
-#[path = "main/validator_role.rs"]
-mod validator_role;
-
 use runtime::serve_service;
 use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 

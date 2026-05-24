@@ -1,14 +1,9 @@
-use super::super::{
-    validator_fetch::{
-        ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
-        validator_remote_tensor_response,
-    },
-    validator_role::{
-        submit_validator_role_attestation, submit_validator_role_block_vote,
-        validator_role_work_observation,
-    },
-};
 use super::*;
+use tensor_vm::app::{
+    ValidatorRemoteTensorResponse, fetch_validator_role_missing_tensors,
+    submit_validator_role_attestation, submit_validator_role_block_vote,
+    validator_remote_tensor_response, validator_role_work_observation,
+};
 
 #[test]
 fn validator_role_work_observation_tracks_assigned_unattested_receipts() {

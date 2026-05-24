@@ -10,6 +10,8 @@ mod runtime_status;
 mod runtime_status_snapshot;
 mod shared;
 mod status;
+mod validator_fetch;
+mod validator_role;
 
 pub use block_status::service_block_status;
 pub use commands::{
@@ -33,3 +35,12 @@ pub use runtime_status::{format_role_runtime_report, write_role_runtime_status};
 pub use runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};
 pub use shared::{local_cpu_seed_beacon, p2p_identity_report};
 pub use status::{hex_hash_list, service_status};
+pub use validator_fetch::{
+    ValidatorRemoteTensorFetchReport, ValidatorRemoteTensorResponse,
+    fetch_validator_role_missing_tensors, validator_remote_tensor_response,
+};
+pub use validator_role::{
+    ValidatorRoleAttestationSubmission, ValidatorRoleBlockVoteSubmission,
+    ValidatorRoleWorkObservation, submit_validator_role_attestation,
+    submit_validator_role_block_vote, validator_role_work_observation,
+};

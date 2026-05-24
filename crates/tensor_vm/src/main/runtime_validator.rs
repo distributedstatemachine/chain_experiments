@@ -1,15 +1,10 @@
-use super::{
-    validator_fetch::fetch_validator_role_missing_tensors,
-    validator_role::{
-        submit_validator_role_attestation, submit_validator_role_block_vote,
-        validator_role_work_observation,
-    },
-};
 use tensor_vm::{
     NodeRuntimeState, NodeStore, RpcHttpServer, TensorVmLibp2pService,
     app::{
-        ServiceRuntimeConfig, chain_announcement_checkpoint, publish_new_chain_announcements,
-        runtime_role_wallet_registration,
+        ServiceRuntimeConfig, chain_announcement_checkpoint, fetch_validator_role_missing_tensors,
+        publish_new_chain_announcements, runtime_role_wallet_registration,
+        submit_validator_role_attestation, submit_validator_role_block_vote,
+        validator_role_work_observation,
     },
 };
 

@@ -1,19 +1,19 @@
-use std::time::Duration;
-use tensor_vm::{
+use crate::{
     ReceiptState, RpcNode, Tensor, TensorVmLibp2pService, api::P2pMessage, decode_tensor_payload,
     types::Hash,
 };
+use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) struct ValidatorRemoteTensorFetchReport {
-    pub(super) attempts: usize,
-    pub(super) successes: usize,
-    pub(super) failures: usize,
-    pub(super) bytes: usize,
-    pub(super) tensors_inserted: usize,
+pub struct ValidatorRemoteTensorFetchReport {
+    pub attempts: usize,
+    pub successes: usize,
+    pub failures: usize,
+    pub bytes: usize,
+    pub tensors_inserted: usize,
 }
 
-pub(super) fn fetch_validator_role_missing_tensors(
+pub fn fetch_validator_role_missing_tensors(
     node: &mut RpcNode,
     p2p_service: &TensorVmLibp2pService,
     receipt_id: Hash,
@@ -73,13 +73,13 @@ pub(super) fn fetch_validator_role_missing_tensors(
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum ValidatorRemoteTensorResponse {
+pub enum ValidatorRemoteTensorResponse {
     Found { tensor: Tensor, bytes: usize },
     Missing,
     Invalid,
 }
 
-pub(super) fn validator_remote_tensor_response(
+pub fn validator_remote_tensor_response(
     requested_root: Hash,
     response: P2pMessage,
 ) -> ValidatorRemoteTensorResponse {

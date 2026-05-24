@@ -619,6 +619,9 @@ spaghetti around.
 - Iteration 239 moved the runtime RPC serving helper into the library-owned `app` module, so request serving,
   mutation detection, and service-state persistence are exposed as an app runtime helper instead of another
   binary-private loop dependency.
+- Iteration 240 moved validator role observation/submission helpers and remote tensor-fetch helpers into the
+  library-owned `app` module, leaving the validator runtime worker to orchestrate app-level validator role
+  APIs instead of owning validator-specific helper modules in the binary tree.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

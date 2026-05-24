@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use tensor_vm::{
-    BlockVote, Chain, ChainCommand, ChainEngine, JobScheduler, ReceiptState, RpcNode,
+use crate::{
+    BlockVote, Chain, ChainCommand, ChainEngine, JobScheduler, JobState, ReceiptState, RpcNode,
     SyntheticLocalJobSource,
     hash::hex,
     jobs::LinearTrainingStepOutput,
@@ -10,14 +10,14 @@ use tensor_vm::{
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(super) struct ValidatorRoleWorkObservation {
-    pub(super) assigned_receipts: BTreeSet<Hash>,
-    pub(super) unattested_receipts: BTreeSet<Hash>,
-    pub(super) artifact_ready_receipts: BTreeSet<Hash>,
-    pub(super) artifact_missing_receipts: BTreeSet<Hash>,
+pub struct ValidatorRoleWorkObservation {
+    pub assigned_receipts: BTreeSet<Hash>,
+    pub unattested_receipts: BTreeSet<Hash>,
+    pub artifact_ready_receipts: BTreeSet<Hash>,
+    pub artifact_missing_receipts: BTreeSet<Hash>,
 }
 
-pub(super) fn validator_role_work_observation(
+pub fn validator_role_work_observation(
     node: &RpcNode,
     validator: Address,
 ) -> ValidatorRoleWorkObservation {
@@ -56,16 +56,16 @@ fn validator_has_attested_for_receipt(chain: &Chain, validator: Address, receipt
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) struct ValidatorRoleAttestationSubmission {
-    pub(super) attestations_submitted: usize,
+pub struct ValidatorRoleAttestationSubmission {
+    pub attestations_submitted: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) struct ValidatorRoleBlockVoteSubmission {
-    pub(super) block_votes_submitted: usize,
+pub struct ValidatorRoleBlockVoteSubmission {
+    pub block_votes_submitted: usize,
 }
 
-pub(super) fn submit_validator_role_attestation(
+pub fn submit_validator_role_attestation(
     node: &mut RpcNode,
     validator: Address,
     receipt_id: Hash,
@@ -126,7 +126,7 @@ pub(super) fn submit_validator_role_attestation(
     }))
 }
 
-pub(super) fn submit_validator_role_block_vote(
+pub fn submit_validator_role_block_vote(
     node: &mut RpcNode,
     validator: Address,
 ) -> std::result::Result<Option<ValidatorRoleBlockVoteSubmission>, String> {
@@ -177,7 +177,7 @@ fn role_receipt_bundle_from_local_tensors(
 ) -> Option<RoleReceiptBundle> {
     let job = node.chain.state().jobs().get(&receipt.job_id())?;
     match (job, receipt) {
-        (tensor_vm::JobState::TensorOp(_), ReceiptState::TensorOp(receipt)) => {
+        (JobState::TensorOp(_), ReceiptState::TensorOp(receipt)) => {
             let a = node
                 .tensor_by_commitment_root(receipt.input_roots.first()?)?
                 .clone();
@@ -192,10 +192,7 @@ fn role_receipt_bundle_from_local_tensors(
                 artifacts: RoleReceiptArtifacts::TensorOp { a, b, c },
             })
         }
-        (
-            tensor_vm::JobState::LinearTrainingStep(job),
-            ReceiptState::LinearTrainingStep(receipt),
-        ) => {
+        (JobState::LinearTrainingStep(job), ReceiptState::LinearTrainingStep(receipt)) => {
             let weights_before = SyntheticLocalJobSource::linear_training_weights();
             if weights_before.commitment_root() != job.weight_root_before
                 || receipt.weight_root_before != job.weight_root_before
