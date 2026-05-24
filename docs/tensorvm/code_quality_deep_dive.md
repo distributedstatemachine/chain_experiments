@@ -523,6 +523,8 @@ spaghetti around.
   handling into `rpc/explorer_routes.rs`, keeping explorer transport responses out of the RPC facade.
 - Iteration 200 moved RPC hash/address parsing helpers into `rpc/parse.rs`, so route modules no
   longer depend on utility code living in the main RPC facade.
+- Iteration 201 moved RPC request/response structs into `rpc/types.rs` and re-exported them from
+  the facade, preserving the public API while reducing root-module responsibility.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

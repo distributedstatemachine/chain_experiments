@@ -26,6 +26,7 @@ mod parse;
 mod read_routes;
 mod render;
 mod tensor_routes;
+mod types;
 mod websocket;
 use explorer::{
     explorer_jobs, explorer_miners, explorer_overview, explorer_summary, explorer_validators,
@@ -40,24 +41,12 @@ use http::{
 pub use http::{RpcHttpServer, http_response_text};
 use parse::{parse_address, parse_hash};
 use render::{faucet_page_html, telemetry_dashboard_html};
+pub use types::{RpcRequest, RpcResponse};
 #[cfg(test)]
 use websocket::{
     base64_encode, json_string_field, json_usize_field, read_websocket_text_frame,
     websocket_accept_key, write_websocket_frame,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RpcRequest {
-    pub method: String,
-    pub path: String,
-    pub body: Vec<u8>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RpcResponse {
-    pub status: u16,
-    pub body: String,
-}
 
 #[derive(Clone, Debug)]
 pub struct RpcNode {
