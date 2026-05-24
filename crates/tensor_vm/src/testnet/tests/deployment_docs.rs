@@ -65,49 +65,47 @@ fn public_deployment_templates_require_libp2p_and_https_surfaces() {
 #[test]
 fn public_deployment_runbook_records_required_evidence_flow() {
     let runbook = include_str!("../../../../../deploy/tensorvm/RUNBOOK.md");
-    for required in [
-        "tvmd testnet preflight deploy/tensorvm/manifests/public-testnet.preflight.example",
-        "public_testnet_preflight_ready=true",
-        "deployment_plan_ready=true",
-        "cuda_ready_miners=true",
-        "libp2p_ready_nodes=true",
-        "production_libp2p_runtime=true",
-        "public_service_content_planned=true",
-        "public_services_planned=true",
-    ] {
-        assert!(
-            runbook.contains(required),
-            "runbook should guard preflight requirement {required}"
-        );
-    }
+    assert_trimmed_lines(
+        runbook,
+        &[
+            "tvmd testnet preflight deploy/tensorvm/manifests/public-testnet.preflight.example",
+            "public_testnet_preflight_ready=true",
+            "deployment_plan_ready=true",
+            "cuda_ready_miners=true",
+            "libp2p_ready_nodes=true",
+            "production_libp2p_runtime=true",
+            "public_service_content_planned=true",
+            "public_services_planned=true",
+        ],
+        "runbook preflight gate",
+    );
 
-    for command in [
-        "tvmd evidence publish ...",
-        "tvmd evidence audit ...",
-        "tvmd evidence run window ...",
-        "tvmd evidence run window-file ...",
-        "tvmd evidence node heartbeat ...",
-        "tvmd evidence node heartbeat-file ...",
-        "tvmd evidence node operator-attestation ...",
-        "tvmd evidence service health ...",
-        "tvmd evidence service health-file ...",
-        "tvmd evidence service content ...",
-        "tvmd evidence service content-bytes ...",
-        "tvmd evidence service content-file ...",
-        "tvmd evidence network observation ...",
-        "tvmd evidence network from-service-log ...",
-        "tvmd evidence record summary ...",
-        "tvmd evidence record artifact ...",
-        "tvmd evidence record artifact-roots ...",
-        "tvmd evidence record artifact-file ...",
-        "tvmd evidence record summary-roots ...",
-        "tvmd evidence record summary-file ...",
-    ] {
-        assert!(
-            runbook.contains(command),
-            "runbook should list evidence command {command}"
-        );
-    }
+    assert_trimmed_lines(
+        runbook,
+        &[
+            "tvmd evidence publish ...",
+            "tvmd evidence audit ...",
+            "tvmd evidence run window ...",
+            "tvmd evidence run window-file ...",
+            "tvmd evidence node heartbeat ...",
+            "tvmd evidence node heartbeat-file ...",
+            "tvmd evidence node operator-attestation ...",
+            "tvmd evidence service health ...",
+            "tvmd evidence service health-file ...",
+            "tvmd evidence service content ...",
+            "tvmd evidence service content-bytes ...",
+            "tvmd evidence service content-file ...",
+            "tvmd evidence network observation ...",
+            "tvmd evidence network from-service-log ...",
+            "tvmd evidence record summary ...",
+            "tvmd evidence record artifact ...",
+            "tvmd evidence record artifact-roots ...",
+            "tvmd evidence record artifact-file ...",
+            "tvmd evidence record summary-roots ...",
+            "tvmd evidence record summary-file ...",
+        ],
+        "runbook evidence command list",
+    );
 
     for required in [
         "The collected records must cover the full 7-day window, not only a final snapshot.",
