@@ -849,6 +849,8 @@ spaghetti around.
 - Iteration 339 added a checked subreport append path to the key-value writer and moved local service CLI
   fixture reports onto it, so node init, peer, readiness, serve, status, and block fixture outputs no
   longer hand-format their status text.
+- Iteration 340 moved local role CLI fixture reports for miner, validator, and proposer registration,
+  checks, runs, and statuses onto the shared key-value report writer, including device and p2p subreports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
