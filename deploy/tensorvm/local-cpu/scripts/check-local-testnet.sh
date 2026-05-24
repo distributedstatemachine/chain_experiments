@@ -36,6 +36,7 @@ EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH"
 EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT"
 EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT"
 EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
+EXPECTED_HTTP_TIMEOUT_SECONDS="$LOCAL_CPU_HTTP_TIMEOUT_SECONDS"
 EXPECTED_CHECKER_RETRY_SLEEP_SECONDS="$LOCAL_CPU_CHECKER_RETRY_SLEEP_SECONDS"
 
 compose() {
@@ -393,18 +394,18 @@ SEED_ATTESTATION_COUNT=$(status_value attestation_count "$MINER_SEED_REPORT")
 [ -n "$SEED_ATTESTATION_COUNT" ] || fail "seeded local testnet did not report attestation count"
 
 for path in /health /rpc/health /chain/head /jobs/current /explorer/health /explorer /faucet/health /faucet/page /telemetry/health /telemetry/dashboard; do
-  curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null \
+  curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}${path}" >/dev/null \
     || fail "gateway route is not reachable: $path"
 done
 
-EXPLORER_HEALTH=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/health")
+EXPLORER_HEALTH=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" "http://127.0.0.1:${EXPLORER_PORT}/health")
 json_bool_true tensorvm_explorer_ready "$EXPLORER_HEALTH" \
   || fail "standalone explorer health is not ready"
 EXPLORER_WS_URL=$(json_string websocket_url "$EXPLORER_HEALTH") \
   || fail "standalone explorer does not publish the TensorVM websocket URL"
 text_contains "$EXPLORER_WS_URL" "/explorer/ws?token=" \
   || fail "standalone explorer does not publish the TensorVM websocket URL"
-EXPLORER_PAGE=$(curl -fsS --max-time 15 "http://127.0.0.1:${EXPLORER_PORT}/")
+EXPLORER_PAGE=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" "http://127.0.0.1:${EXPLORER_PORT}/")
 text_contains "$EXPLORER_PAGE" "TensorVM Explorer" \
   || fail "standalone explorer page is not reachable"
 text_contains "$EXPLORER_PAGE" 'data-ui="ratzilla-tui"' \
@@ -428,17 +429,17 @@ LIVE_TENSOR_OP_RECEIPT_COUNT=0
 LIVE_LINEAR_TRAINING_RECEIPT_COUNT=0
 attempt=0
 while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
-  LIVE_CHAIN_HEAD=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
+  LIVE_CHAIN_HEAD=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/chain/head")
   LIVE_HEIGHT=$(json_number height "$LIVE_CHAIN_HEAD")
   LIVE_BLOCK_COUNT=$(json_number block_count "$LIVE_CHAIN_HEAD")
-  LIVE_OVERVIEW=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
+  LIVE_OVERVIEW=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/overview")
   LIVE_JOB_COUNT=$(json_number job_count "$LIVE_OVERVIEW")
   LIVE_MODEL_COUNT=$(json_number model_count "$LIVE_OVERVIEW")
   LIVE_ATTESTATION_COUNT=$(json_number attestation_count "$LIVE_OVERVIEW")
   LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
   LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
   LIVE_TOTAL_REWARD_BALANCE=$(json_number total_reward_balance "$LIVE_OVERVIEW")
-  LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/${EXPECTED_LIVE_RECEIPT_QUERY_LIMIT}")
+  LIVE_RECEIPTS=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/${EXPECTED_LIVE_RECEIPT_QUERY_LIMIT}")
   LIVE_ATTESTED_RECEIPT_COUNT=$(json_positive_field_count attestation_count "$LIVE_RECEIPTS")
   LIVE_TENSOR_OP_RECEIPT_COUNT=$(json_string_field_count primitive_type tensor_op "$LIVE_RECEIPTS")
   LIVE_LINEAR_TRAINING_RECEIPT_COUNT=$(json_string_field_count primitive_type linear_training_step "$LIVE_RECEIPTS")
@@ -471,24 +472,24 @@ done
 [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
-LIVE_TENSOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
+LIVE_TENSOR=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")
 LIVE_TENSOR_ID=$(json_string tensor_id "$LIVE_TENSOR")
 [ -n "$LIVE_TENSOR_ID" ] || fail "live tensor route did not report a tensor id"
 LIVE_TENSOR_ROOT=$(json_string root "$LIVE_TENSOR")
 [ -n "$LIVE_TENSOR_ROOT" ] || fail "live tensor route did not report a tensor root"
 [ "$(json_number tensor_count "$LIVE_TENSOR")" -gt 0 ] || fail "live tensor route did not report retained tensors"
-LIVE_TENSOR_DESCRIPTOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor")
+LIVE_TENSOR_DESCRIPTOR=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/descriptor")
 LIVE_TENSOR_DESCRIPTOR_ROOT=$(json_string root "$LIVE_TENSOR_DESCRIPTOR") \
   || fail "live tensor descriptor was not fetchable"
 [ "$LIVE_TENSOR_DESCRIPTOR_ROOT" = "$LIVE_TENSOR_ROOT" ] || fail "live tensor descriptor root did not match latest tensor root"
-LIVE_TENSOR_ROW=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0")
+LIVE_TENSOR_ROW=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/row/0")
 [ "$(json_array_length row "$LIVE_TENSOR_ROW")" -gt 0 ] || fail "live tensor row was not fetchable"
-LIVE_TENSOR_CHUNK=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0")
+LIVE_TENSOR_CHUNK=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/chunk/0")
 LIVE_TENSOR_CHUNK_BYTES=$(json_string bytes "$LIVE_TENSOR_CHUNK") \
   || fail "live tensor chunk was not fetchable"
 [ -n "$LIVE_TENSOR_CHUNK_BYTES" ] || fail "live tensor chunk was empty"
 [ "$(json_number chunk_index "$LIVE_TENSOR_CHUNK")" = "0" ] || fail "live tensor chunk index did not match request"
-LIVE_TENSOR_OPENING=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0")
+LIVE_TENSOR_OPENING=$(curl -fsS --max-time "$EXPECTED_HTTP_TIMEOUT_SECONDS" -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/${LIVE_TENSOR_ID}/opening/0")
 LIVE_TENSOR_OPENING_PROOF_LEN=$(json_number proof_len "$LIVE_TENSOR_OPENING") \
   || fail "live tensor opening was not fetchable"
 [ -n "$LIVE_TENSOR_OPENING_PROOF_LEN" ] || fail "live tensor opening did not report a proof length"
