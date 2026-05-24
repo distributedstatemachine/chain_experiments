@@ -4,9 +4,10 @@ use crate::jobs::PrimitiveType;
 use crate::study::matmul_verification_cost_study;
 use crate::types::Hash;
 use crate::verify::VerificationResult;
+use serde::Serialize;
 use std::collections::BTreeSet;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct TelemetrySnapshot {
     pub block_finality_rate: f64,
     pub average_block_time: f64,
@@ -188,32 +189,7 @@ impl TelemetrySnapshot {
     }
 
     pub fn to_json(&self) -> String {
-        format!(
-            "{{\"block_finality_rate\":{:.6},\"average_block_time\":{:.6},\"average_receipt_age_blocks\":{:.6},\"receipt_count\":{},\"settled_receipt_count\":{},\"data_availability_rate\":{:.6},\"invalid_receipts_submitted\":{},\"invalid_receipts_accepted\":{},\"invalid_receipt_detection_rate\":{:.6},\"validator_disagreement_rate\":{:.6},\"data_withholding_incidents\":{},\"total_tensor_work\":{},\"tensor_work_per_epoch\":{:.6},\"max_miner_work_share\":{:.6},\"state_entries_per_epoch\":{:.6},\"estimated_bandwidth_per_validator_bytes\":{:.6},\"estimated_gpu_utilization\":{:.6},\"estimated_verification_to_execution_ratio\":{:.6},\"redundant_compute_overhead\":{:.6},\"miner_reward_per_twu\":{:.6},\"validator_reward_per_attestation\":{:.6},\"hardware_class_participation\":{},\"estimated_cost_to_attack_one_epoch\":{}}}",
-            self.block_finality_rate,
-            self.average_block_time,
-            self.average_receipt_age_blocks,
-            self.receipt_count,
-            self.settled_receipt_count,
-            self.data_availability_rate,
-            self.invalid_receipts_submitted,
-            self.invalid_receipts_accepted,
-            self.invalid_receipt_detection_rate,
-            self.validator_disagreement_rate,
-            self.data_withholding_incidents,
-            self.total_tensor_work,
-            self.tensor_work_per_epoch,
-            self.max_miner_work_share,
-            self.state_entries_per_epoch,
-            self.estimated_bandwidth_per_validator_bytes,
-            self.estimated_gpu_utilization,
-            self.estimated_verification_to_execution_ratio,
-            self.redundant_compute_overhead,
-            self.miner_reward_per_twu,
-            self.validator_reward_per_attestation,
-            self.hardware_class_participation,
-            self.estimated_cost_to_attack_one_epoch
-        )
+        serde_json::to_string(self).expect("telemetry snapshot should serialize to JSON")
     }
 }
 
@@ -409,6 +385,10 @@ mod tests {
     use crate::types::{address, hash_bytes};
     use crate::verify::{AttestationStatement, ValidatorAttestation};
 
+    fn snapshot_json(snapshot: &TelemetrySnapshot) -> serde_json::Value {
+        serde_json::from_str(&snapshot.to_json()).expect("telemetry snapshot JSON must parse")
+    }
+
     #[test]
     fn telemetry_reports_block_timing_and_concentration() {
         let beacon = hash_bytes(b"test", &[b"beacon"]);
@@ -428,11 +408,12 @@ mod tests {
         assert_eq!(snapshot.tensor_work_per_epoch, 500.0);
         assert!(snapshot.state_entries_per_epoch >= 2.0);
         assert_eq!(snapshot.hardware_class_participation, 1);
-        assert!(snapshot.to_json().contains("\"total_tensor_work\":500"));
-        assert!(
-            snapshot
-                .to_json()
-                .contains("\"estimated_cost_to_attack_one_epoch\"")
+        let json = snapshot_json(&snapshot);
+        assert_eq!(json["average_block_time"].as_f64(), Some(6.0));
+        assert_eq!(json["total_tensor_work"].as_u64(), Some(500));
+        assert_eq!(
+            json["estimated_cost_to_attack_one_epoch"].as_u64(),
+            Some(snapshot.estimated_cost_to_attack_one_epoch)
         );
     }
 

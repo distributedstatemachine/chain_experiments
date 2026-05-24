@@ -761,6 +761,8 @@ spaghetti around.
 - Iteration 302 replaced the remaining local CPU Compose artifact substring checks with exact trimmed-line
   helpers, including exact topology-service names in the spec, required Dockerfile/.dockerignore lines, and
   explicit absent NVIDIA runtime/device lines.
+- Iteration 303 replaced telemetry snapshot's hand-formatted JSON string builder with `serde_json`
+  serialization and converted its remaining JSON substring checks to parsed field assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
