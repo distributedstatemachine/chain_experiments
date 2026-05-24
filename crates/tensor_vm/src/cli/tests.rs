@@ -15,13 +15,13 @@ mod local_parser;
 mod local_validation;
 mod manifest_fixtures;
 mod manifest_reports;
-mod parser;
 mod parser_support;
 mod public_evidence_publication_rejections;
 mod public_evidence_record_reports;
 mod public_evidence_rejections;
 mod public_evidence_run_window_rejections;
 mod public_evidence_service_rejections;
+mod public_parser;
 mod report_fields;
 
 use command_helpers::*;

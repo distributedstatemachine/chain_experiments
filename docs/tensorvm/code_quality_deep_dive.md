@@ -1043,6 +1043,8 @@ spaghetti around.
 - Iteration 429 moved local miner, validator, proposer, node, localnet, defaults, and invalid-argument
   parser coverage into `cli/tests/local_parser.rs`, leaving `cli/tests/parser.rs` focused on public
   command parsing and global retired-family rejection.
+- Iteration 430 renamed the remaining public-focused clap parser suite to
+  `cli/tests/public_parser.rs`, removing the last generic parser test module name after the local split.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
