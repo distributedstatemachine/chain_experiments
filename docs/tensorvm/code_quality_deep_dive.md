@@ -652,6 +652,8 @@ spaghetti around.
 - Iteration 250 extracted shared storage test helpers for command-backed block-producer setup and moved
   snapshot storage fixtures onto them, extending the command-boundary cleanup across another storage
   persistence test surface.
+- Iteration 251 routed the remaining `tvmd_runtime` block-production setup through a `ChainCommand`
+  helper, removing direct `Chain::produce_block` calls from the runtime integration harness.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

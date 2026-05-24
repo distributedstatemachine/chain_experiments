@@ -42,6 +42,22 @@ pub(super) fn register_validator(chain: &mut Chain, validator: tensor_vm::Addres
         .unwrap();
 }
 
+pub(super) fn produce_block(
+    chain: &mut Chain,
+    proposer: tensor_vm::Address,
+    timestamp: u64,
+) -> tensor_vm::chain::TensorBlock {
+    let block_count = chain.blocks().len();
+    chain
+        .apply_command(ChainCommand::ProduceBlock {
+            proposer,
+            timestamp,
+        })
+        .unwrap();
+    assert_eq!(chain.blocks().len(), block_count + 1);
+    chain.blocks().last().unwrap().clone()
+}
+
 pub(super) fn unique_temp_data_dir(name: &str) -> std::path::PathBuf {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

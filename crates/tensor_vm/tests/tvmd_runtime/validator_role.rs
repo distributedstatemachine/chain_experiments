@@ -169,7 +169,7 @@ fn validator_role_block_vote_submission_finalizes_only_through_votes() {
     for validator in validators {
         register_validator(&mut chain, validator);
     }
-    let block = chain.produce_block(validators[0], 1_000).unwrap();
+    let block = produce_block(&mut chain, validators[0], 1_000);
     let block_hash = block.hash();
     let mut node = RpcNode::with_faucet(chain, Faucet::new(1_000_000, 100));
 

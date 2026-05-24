@@ -65,8 +65,8 @@ fn service_init_recovers_torn_snapshot_and_block_log_from_chain_state() {
     let miner = address(b"service-init-recovery-miner");
     register_miner(&mut chain, miner);
     register_validator(&mut chain, miner);
-    chain.produce_block(miner, 1_000).unwrap();
-    chain.produce_block(miner, 1_006).unwrap();
+    produce_block(&mut chain, miner, 1_000);
+    produce_block(&mut chain, miner, 1_006);
     store.persist_chain(&chain).unwrap();
 
     let mut stale_snapshot = ChainSnapshot::from_chain(&chain);

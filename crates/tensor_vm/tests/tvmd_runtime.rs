@@ -50,9 +50,9 @@ mod service_commands;
 #[path = "tvmd_runtime/support.rs"]
 mod support;
 use support::{
-    assert_tensor_count, file_modified_at, free_tcp_port, insert_bundle_tensors, register_miner,
-    register_validator, send_http_request, test_service_runtime_config, unique_temp_data_dir,
-    wait_for_connected_role_services,
+    assert_tensor_count, file_modified_at, free_tcp_port, insert_bundle_tensors, produce_block,
+    register_miner, register_validator, send_http_request, test_service_runtime_config,
+    unique_temp_data_dir, wait_for_connected_role_services,
 };
 
 #[path = "tvmd_runtime/validator_role.rs"]
