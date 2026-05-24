@@ -533,6 +533,8 @@ spaghetti around.
   helpers into `rpc/node.rs`, reducing the facade to module wiring plus tests.
 - Iteration 205 moved core RPC route, mutation, malformed-request, and receipt/status tests into
   `rpc/tests/routes.rs`, starting the RPC test split while keeping shared fixtures in the parent test module.
+- Iteration 206 moved RPC HTTP parser/server, gateway policy, and response-format tests into
+  `rpc/tests/http.rs`, continuing to reduce the RPC facade's inline test surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
