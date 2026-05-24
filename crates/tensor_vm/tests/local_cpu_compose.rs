@@ -219,6 +219,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(has_trimmed_line(&compose, "name: tensorvm-local-cpu"));
     assert!(has_trimmed_line(&compose, "tensorvm-local:"));
     assert!(has_trimmed_line(&compose, "driver: bridge"));
+    assert!(has_trimmed_line(
+        &compose,
+        r#"'test -f /var/lib/tensorvm/local-cpu-ready && while IFS= read -r line; do [ "$${line}" = "libp2p_ready=true" ] && exit 0; done < /var/lib/tensorvm/local-cpu-ready; exit 1',"#
+    ));
     assert!(!has_trimmed_line(
         &compose,
         "TENSORVM_ROLE_RUNTIME_COMMAND: proposer_run"
@@ -416,7 +420,11 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert_lacks_trimmed_lines(
         &compose,
         "local CPU compose",
-        &["runtime: nvidia", "devices:"],
+        &[
+            "runtime: nvidia",
+            "devices:",
+            r#""test -f /var/lib/tensorvm/local-cpu-ready && grep -q 'libp2p_ready=true' /var/lib/tensorvm/local-cpu-ready","#,
+        ],
     );
 
     assert_shell_logical_lines(

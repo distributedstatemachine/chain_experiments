@@ -879,6 +879,8 @@ spaghetti around.
   reads and a shell key-value field lookup for status reports.
 - Iteration 352 removed `sed` key-value extraction from the local CPU restart-continuity checker, reusing
   one shell field reader for captured reports and persisted snapshot files.
+- Iteration 353 removed the local CPU operator healthcheck's `grep` dependency by scanning
+  `local-cpu-ready` with an exact shell line reader.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
