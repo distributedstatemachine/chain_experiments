@@ -334,6 +334,9 @@ spaghetti around.
 - Iteration 136 moved public-evidence node heartbeat and operator-attestation clap argument structs and
   command conversion into `cli/public_evidence_node_parser.rs`, leaving `cli/public_evidence_parser.rs`
   as a thin public-evidence command router.
+- Iteration 137 moved public-evidence service health/content command execution into
+  `cli/public_evidence_service_execution.rs`, narrowing `cli/public_evidence_execution.rs` toward a
+  command-family dispatcher.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
