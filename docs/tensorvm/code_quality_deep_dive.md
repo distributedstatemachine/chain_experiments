@@ -692,6 +692,8 @@ spaghetti around.
   replacing another cluster of `key=value` substring assertions.
 - Iteration 269 converted the validator local-producer integration report checks to keyed stdout fields,
   including produced-block counters.
+- Iteration 270 made the service peer command description test exact by formatting the generated peer ID,
+  removing the last substring assertion from CLI command description coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -86,14 +86,6 @@ fn clap_cli_parses_and_describes_commands() {
             "initialize service node store data_dir=/var/lib/tensorvm",
         ),
         (
-            CommandFixture::ServicePeerAdd {
-                data_dir: "/var/lib/tensorvm".to_owned(),
-                peer_id: bootstrap_peer.clone(),
-                address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
-            },
-            "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id=",
-        ),
-        (
             CommandFixture::ServiceReadiness {
                 p2p_listen: "/ip4/0.0.0.0/tcp/4001".to_owned(),
                 data_dir: "/var/lib/tensorvm".to_owned(),
@@ -145,14 +137,18 @@ fn clap_cli_parses_and_describes_commands() {
         ),
     ];
     for (command, description) in commands {
-        let actual = describe_command_fixture(&command);
-        if matches!(command, CommandFixture::ServicePeerAdd { .. }) {
-            assert!(actual.starts_with(description));
-            assert!(actual.contains("address=/dns/bootstrap.tensorvm.net/tcp/4001"));
-        } else {
-            assert_eq!(actual, description);
-        }
+        assert_eq!(describe_command_fixture(&command), description);
     }
+    assert_eq!(
+        describe_command_fixture(&CommandFixture::ServicePeerAdd {
+            data_dir: "/var/lib/tensorvm".to_owned(),
+            peer_id: bootstrap_peer.clone(),
+            address: "/dns/bootstrap.tensorvm.net/tcp/4001".to_owned(),
+        }),
+        format!(
+            "add libp2p bootstrap peer data_dir=/var/lib/tensorvm peer_id={bootstrap_peer} address=/dns/bootstrap.tensorvm.net/tcp/4001"
+        )
+    );
 
     assert_eq!(
         describe_command_fixture(&CommandFixture::PublicEvidenceServiceHealth {
