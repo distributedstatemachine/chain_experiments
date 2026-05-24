@@ -26,7 +26,7 @@ fn chain_settles_valid_tensorwork_and_rewards_participants() {
         &b,
         &c,
         &hash_bytes(b"test", &[b"validation"]),
-        &chain.params.freivalds,
+        &chain.params().freivalds,
     )
     .unwrap();
     chain.submit_job(JobState::TensorOp(job.clone()));
@@ -51,16 +51,21 @@ fn chain_settles_valid_tensorwork_and_rewards_participants() {
     assert!(chain.has_attestation_quorum(&receipt.receipt_id));
     chain.settle_epoch(1_000, 500);
     assert_eq!(
-        chain.state.miners.get(&miner).unwrap().settled_tensor_work,
+        chain
+            .state()
+            .miners()
+            .get(&miner)
+            .unwrap()
+            .settled_tensor_work,
         receipt.tensor_work_units
     );
-    assert_eq!(chain.state.rewards.balance(&miner), 1_000);
-    let validator_reward = chain.state.rewards.balance(&validators[0]);
+    assert_eq!(chain.state().rewards().balance(&miner), 1_000);
+    let validator_reward = chain.state().rewards().balance(&validators[0]);
     assert!(validator_reward > 0);
     chain.settle_epoch(1_000, 500);
-    assert_eq!(chain.state.rewards.balance(&miner), 1_000);
+    assert_eq!(chain.state().rewards().balance(&miner), 1_000);
     assert_eq!(
-        chain.state.rewards.balance(&validators[0]),
+        chain.state().rewards().balance(&validators[0]),
         validator_reward
     );
 }
@@ -72,21 +77,18 @@ fn quorum_and_agreement_helpers_reject_unknown_receipts() {
     let validator = address(b"orphan-validator");
     chain.register_validator(validator, 10_000).unwrap();
     let receipt_id = hash_bytes(b"test", &[b"orphan-receipt"]);
-    chain.state.attestations.insert(
-        receipt_id,
-        vec![ValidatorAttestation::new(
-            validator,
-            10_000,
-            AttestationStatement {
-                receipt_id,
-                job_id: hash_bytes(b"test", &[b"orphan-job"]),
-                primitive_type: PrimitiveType::TensorOp,
-                result: VerificationResult::Valid,
-                checks_root: hash_bytes(b"test", &[b"orphan-checks"]),
-                data_availability_passed: true,
-            },
-        )],
-    );
+    chain.insert_attestation_for_testing(ValidatorAttestation::new(
+        validator,
+        10_000,
+        AttestationStatement {
+            receipt_id,
+            job_id: hash_bytes(b"test", &[b"orphan-job"]),
+            primitive_type: PrimitiveType::TensorOp,
+            result: VerificationResult::Valid,
+            checks_root: hash_bytes(b"test", &[b"orphan-checks"]),
+            data_availability_passed: true,
+        },
+    ));
 
     assert!(!chain.has_attestation_quorum(&receipt_id));
     assert_eq!(chain.redundant_agreement_count(&receipt_id), 0);
@@ -144,7 +146,7 @@ fn redundant_agreement_quorum_is_required_before_settlement() {
     assert_eq!(chain.redundant_agreement_count(&receipts[0].receipt_id), 2);
     assert!(!chain.has_redundant_agreement(&receipts[0].receipt_id));
     chain.settle_epoch(1_000, 500);
-    assert!(chain.state.settled_receipts.is_empty());
+    assert!(chain.state().settled_receipts().is_empty());
 
     let receipt = &receipts[2];
     chain.submit_tensor_op_receipt(receipt.clone()).unwrap();
@@ -166,7 +168,7 @@ fn redundant_agreement_quorum_is_required_before_settlement() {
     assert_eq!(chain.redundant_agreement_count(&receipts[0].receipt_id), 3);
     assert!(chain.has_redundant_agreement(&receipts[0].receipt_id));
     chain.settle_epoch(1_000, 500);
-    assert_eq!(chain.state.settled_receipts.len(), 3);
+    assert_eq!(chain.state().settled_receipts().len(), 3);
 }
 
 #[test]
@@ -235,6 +237,6 @@ fn conflicting_linear_training_roots_do_not_settle() {
     }
 
     chain.settle_epoch(1_000, 500);
-    assert!(chain.state.settled_receipts.is_empty());
-    assert_eq!(chain.state.rewards.balance(&miner), 0);
+    assert!(chain.state().settled_receipts().is_empty());
+    assert_eq!(chain.state().rewards().balance(&miner), 0);
 }

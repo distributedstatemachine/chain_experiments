@@ -984,6 +984,8 @@ spaghetti around.
   explicit crate-test-only `Chain` helpers for validator stake and miner tensor-work setup.
 - Iteration 404 moved block finality and block-root tests off direct `ChainState`/`blocks`
   mutation by adding explicit crate-test-only helpers for injected votes, receipts, and blocks.
+- Iteration 405 moved settlement orphan-attestation setup onto the crate-test-only `Chain`
+  helper and switched adjacent settlement assertions to immutable state accessors.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
