@@ -16,6 +16,7 @@ use crate::verify::{
 };
 use std::collections::BTreeSet;
 
+mod attestations;
 mod blocks;
 mod boundaries;
 mod challenges;

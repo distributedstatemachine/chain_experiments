@@ -555,6 +555,8 @@ spaghetti around.
   production facade code plus `#[cfg(test)] mod tests;` wiring.
 - Iteration 216 moved the remaining model-transition and challenge-outcome tests into focused
   `chain/tests/models.rs` and `chain/tests/challenges.rs` modules, leaving the test root as prelude wiring.
+- Iteration 217 moved attestation rejection, duplicate, availability, and assignment tests into
+  `chain/tests/attestations.rs`, narrowing `chain/tests/settlement.rs` to settlement/quorum flows.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
