@@ -187,8 +187,8 @@ pub(super) fn decode_block_payload(bytes: &[u8]) -> Result<TensorBlock> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_support::{produce_block, register_block_producer};
     use super::*;
-    use crate::chain::{ChainCommand, ChainEngine};
     use crate::types::{address, hash_bytes};
 
     fn chain_with_blocks(chain: &Chain, blocks: Vec<TensorBlock>) -> Chain {
@@ -197,37 +197,6 @@ mod tests {
             state: chain.state().clone(),
             blocks,
         })
-    }
-
-    fn register_block_producer(chain: &mut Chain, producer: crate::types::Address) {
-        chain
-            .apply_command(ChainCommand::RegisterMiner {
-                address: producer,
-                stake: chain.params().miner_min_stake,
-            })
-            .unwrap();
-        chain
-            .apply_command(ChainCommand::RegisterValidator {
-                address: producer,
-                stake: chain.params().validator_min_stake,
-            })
-            .unwrap();
-    }
-
-    fn produce_block(
-        chain: &mut Chain,
-        proposer: crate::types::Address,
-        timestamp: u64,
-    ) -> TensorBlock {
-        let block_count = chain.blocks().len();
-        chain
-            .apply_command(ChainCommand::ProduceBlock {
-                proposer,
-                timestamp,
-            })
-            .unwrap();
-        assert_eq!(chain.blocks().len(), block_count + 1);
-        chain.blocks().last().unwrap().clone()
     }
 
     #[test]

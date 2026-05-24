@@ -137,6 +137,7 @@ impl SnapshotStore {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_support::{produce_block, register_block_producer};
     use super::*;
     use crate::types::{address, hash_bytes};
 
@@ -144,14 +145,9 @@ mod tests {
     fn snapshot_roundtrips_through_bytes_and_detects_tampering() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-genesis"]));
         let miner = address(b"snapshot-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
+        register_block_producer(&mut chain, miner);
         chain.credit_account(miner, 42);
-        chain.produce_block(miner, 1_000).unwrap();
+        produce_block(&mut chain, miner, 1_000);
 
         let snapshot = ChainSnapshot::from_chain(&chain);
         let encoded = snapshot.encode();
@@ -197,13 +193,8 @@ mod tests {
     fn snapshot_store_writes_and_reads_file() {
         let mut chain = Chain::new(hash_bytes(b"test", &[b"snapshot-store-genesis"]));
         let miner = address(b"snapshot-store-miner");
-        chain
-            .register_miner(miner, chain.params().miner_min_stake)
-            .unwrap();
-        chain
-            .register_validator(miner, chain.params().validator_min_stake)
-            .unwrap();
-        chain.produce_block(miner, 2_000).unwrap();
+        register_block_producer(&mut chain, miner);
+        produce_block(&mut chain, miner, 2_000);
 
         let path = std::env::temp_dir().join(format!(
             "tensor-vm-snapshot-{}-{}.bin",

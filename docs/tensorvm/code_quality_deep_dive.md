@@ -649,6 +649,9 @@ spaghetti around.
 - Iteration 249 routed block-log storage fixtures through `ChainCommand`-backed registration and block
   production helpers, removing direct `Chain::register_*` and `Chain::produce_block` setup from that
   storage codec test surface.
+- Iteration 250 extracted shared storage test helpers for command-backed block-producer setup and moved
+  snapshot storage fixtures onto them, extending the command-boundary cleanup across another storage
+  persistence test surface.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

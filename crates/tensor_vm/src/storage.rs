@@ -3,6 +3,8 @@ mod chain_state;
 mod codec;
 mod node_store;
 mod snapshot;
+#[cfg(test)]
+mod test_support;
 
 pub use block_log::BlockLogStore;
 pub use chain_state::ChainStateStore;
