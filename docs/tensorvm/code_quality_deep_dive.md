@@ -361,6 +361,9 @@ spaghetti around.
 - Iteration 145 replaced the legacy flat `CliCommand` adapter with the `clap` command tree itself,
   making parsed commands the execution and description model instead of preserving a parallel CLI
   representation.
+- Iteration 146 moved public-evidence network-observation descriptions into
+  `cli/public_evidence_network_descriptions.rs`, keeping network CLI text beside the network parser
+  and execution command-family modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

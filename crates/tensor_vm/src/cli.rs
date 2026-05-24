@@ -23,6 +23,7 @@ mod parser;
 mod parser_values;
 mod public_evidence_descriptions;
 mod public_evidence_execution;
+mod public_evidence_network_descriptions;
 mod public_evidence_network_execution;
 mod public_evidence_network_parser;
 mod public_evidence_node_execution;

@@ -1,6 +1,7 @@
 use super::CliCommand;
 use super::arguments::public_node_role_tag;
 use super::commands::PublicTestnetCommand;
+use super::public_evidence_network_descriptions::describe_public_evidence_network_command;
 use super::public_evidence_parser::PublicEvidenceCommand;
 use super::public_evidence_record_descriptions::describe_public_evidence_record_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
@@ -23,22 +24,13 @@ fn describe_public_evidence_subcommand(command: &PublicEvidenceCommand) -> Strin
     if let Some(description) = describe_public_evidence_record_command(command) {
         return description;
     }
+    if let Some(description) = describe_public_evidence_network_command(command) {
+        return description;
+    }
 
     match command {
         PublicEvidenceCommand::Validate(args) => {
             format!("validate public evidence manifest {}", args.manifest)
-        }
-        PublicEvidenceCommand::NetworkObservation(args) => {
-            format!(
-                "generate signed libp2p network observation peer_id={} listen_address={}",
-                args.peer_id, args.listen_address
-            )
-        }
-        PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
-            format!(
-                "generate signed libp2p network observation from service log service_log={} listen_address={}",
-                args.service_log, args.listen_address
-            )
         }
         PublicEvidenceCommand::Publication(args) => {
             format!(
