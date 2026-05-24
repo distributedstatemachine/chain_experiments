@@ -1,10 +1,9 @@
-use tensor_vm::{
-    NetworkEventIngest, NodeRuntimeState, RpcHttpServer, TensorVmLibp2pService,
-    app::{RuntimeRole, runtime_role_wallet_registered, runtime_role_wallet_registration},
-    types::Address,
+use super::{RuntimeRole, runtime_role_wallet_registered, runtime_role_wallet_registration};
+use crate::{
+    NetworkEventIngest, NodeRuntimeState, RpcHttpServer, TensorVmLibp2pService, types::Address,
 };
 
-pub(super) struct RuntimeStatusSnapshot {
+pub struct RuntimeStatusSnapshot {
     pub(super) served_requests: usize,
     pub(super) produced_blocks: usize,
     pub(super) network_applied_blocks: usize,
@@ -47,7 +46,7 @@ pub(super) struct RuntimeStatusSnapshot {
 }
 
 impl RuntimeStatusSnapshot {
-    pub(super) fn from_runtime_state(
+    pub fn from_runtime_state(
         state: &NodeRuntimeState,
         server: &RpcHttpServer,
         p2p_service: &TensorVmLibp2pService,
@@ -111,14 +110,14 @@ impl RuntimeStatusSnapshot {
     }
 }
 
-pub(super) struct RuntimeP2pReport<'a> {
-    pub(super) peer_id: &'a str,
-    pub(super) topics: usize,
-    pub(super) request_response_protocols: usize,
-    pub(super) bootstrap_peer_count: usize,
-    pub(super) identity: &'a str,
-    pub(super) max_transmit_bytes: usize,
-    pub(super) request_timeout_seconds: u64,
-    pub(super) max_concurrent_streams: usize,
-    pub(super) idle_timeout_seconds: u64,
+pub struct RuntimeP2pReport<'a> {
+    pub peer_id: &'a str,
+    pub topics: usize,
+    pub request_response_protocols: usize,
+    pub bootstrap_peer_count: usize,
+    pub identity: &'a str,
+    pub max_transmit_bytes: usize,
+    pub request_timeout_seconds: u64,
+    pub max_concurrent_streams: usize,
+    pub idle_timeout_seconds: u64,
 }

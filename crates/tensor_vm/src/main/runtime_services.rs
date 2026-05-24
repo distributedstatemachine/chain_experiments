@@ -1,8 +1,7 @@
-use super::runtime_status::RuntimeP2pReport;
 use tensor_vm::{
     Faucet, Libp2pControlPlaneConfig, NodeStore, RpcGateway, RpcHttpServer, RpcNode, RpcPolicy,
     TensorVmLibp2pService,
-    app::{ServiceRuntimeConfig, p2p_identity_report},
+    app::{RuntimeP2pReport, ServiceRuntimeConfig, p2p_identity_report},
     spawn_libp2p_service,
 };
 

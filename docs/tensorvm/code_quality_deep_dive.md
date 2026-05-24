@@ -607,6 +607,9 @@ spaghetti around.
 - Iteration 235 moved runtime role/config construction, wallet registration helpers, and role-service
   command config structs into the library-owned `app` module, so the remaining binary runtime modules depend
   on an application config API rather than a binary-private `runtime_config` owner.
+- Iteration 236 moved role runtime status snapshot construction, runtime report formatting, and
+  `role-runtime.status` writing into the library-owned `app` module, keeping runtime reporting with the
+  app-owned command/status APIs instead of binary-private formatter modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

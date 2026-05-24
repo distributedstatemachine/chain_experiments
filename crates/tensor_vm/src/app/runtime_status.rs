@@ -1,10 +1,10 @@
-pub(super) use super::runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};
-use tensor_vm::{
-    app::{ServiceRuntimeConfig, hex_hash_list, runtime_role_wallet_address_text},
-    hash::hex,
+use super::{
+    RuntimeP2pReport, RuntimeStatusSnapshot, ServiceRuntimeConfig, hex_hash_list,
+    runtime_role_wallet_address_text,
 };
+use crate::hash::hex;
 
-pub(super) fn format_role_runtime_report(
+pub fn format_role_runtime_report(
     config: &ServiceRuntimeConfig,
     snapshot: &RuntimeStatusSnapshot,
     p2p: &RuntimeP2pReport<'_>,
@@ -87,7 +87,7 @@ pub(super) fn format_role_runtime_report(
     )
 }
 
-pub(super) fn write_role_runtime_status(
+pub fn write_role_runtime_status(
     config: &ServiceRuntimeConfig,
     snapshot: &RuntimeStatusSnapshot,
 ) -> std::result::Result<(), String> {
