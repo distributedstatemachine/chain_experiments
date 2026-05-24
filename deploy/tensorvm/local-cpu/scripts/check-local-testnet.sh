@@ -36,6 +36,7 @@ EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH"
 EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT"
 EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT"
 EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
+EXPECTED_CHECKER_RETRY_SLEEP_SECONDS="$LOCAL_CPU_CHECKER_RETRY_SLEEP_SECONDS"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -259,7 +260,7 @@ read_service_status() {
       return 0
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
   done
   return 1
 }
@@ -274,7 +275,7 @@ read_service_block() {
       return 0
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
   done
   return 1
 }
@@ -455,7 +456,7 @@ while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
     break
   fi
   attempt=$((attempt + 1))
-  sleep 1
+  sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
 done
 
 [ "${LIVE_HEIGHT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "gateway chain head did not advance past seeded height $EXPECTED_SEED_HEIGHT"
@@ -647,7 +648,7 @@ while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
     fi
   fi
   attempt=$((attempt + 1))
-  sleep 1
+  sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
 done
 [ -n "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" ] || fail "network-observed latest head height was not observed"
 [ "$ALL_OPERATOR_NETWORK_HEAD_HEIGHT" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "network-observed latest head did not advance past seeded height $EXPECTED_SEED_HEIGHT"
@@ -1054,7 +1055,7 @@ while [ "$attempt" -lt "$EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT" ]; do
     fi
   fi
   attempt=$((attempt + 1))
-  sleep 1
+  sleep "$EXPECTED_CHECKER_RETRY_SLEEP_SECONDS"
 done
 
 [ "$CONVERGED_OPERATOR_COUNT" = "$EXPECTED_SERVICE_COUNT" ] || fail "not all operators produced and finalized a live block"
