@@ -922,6 +922,8 @@ spaghetti around.
   fixtures.
 - Iteration 375 made parser tests receive the clap-produced `TvmdCommand` directly instead of
   round-tripping parsed commands back through `CommandFixture`.
+- Iteration 376 added a direct `TvmdCommand` execution helper for CLI tests so execution suites can
+  migrate off the parallel `CommandFixture` model incrementally.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

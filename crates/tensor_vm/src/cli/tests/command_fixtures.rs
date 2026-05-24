@@ -265,13 +265,19 @@ impl PartialEq<CommandFixture> for super::TvmdCommand {
 
 pub(super) fn execute_command_fixture(command: &CommandFixture) -> crate::error::Result<String> {
     let cli_command = command.clone().into_cli_command();
-    match &cli_command {
+    execute_test_cli_command(&cli_command)
+}
+
+pub(super) fn execute_test_cli_command(
+    cli_command: &super::TvmdCommand,
+) -> crate::error::Result<String> {
+    match cli_command {
         super::TvmdCommand::Miner(_)
         | super::TvmdCommand::Validator(_)
         | super::TvmdCommand::Proposer(_)
         | super::TvmdCommand::Node(_)
         | super::TvmdCommand::Localnet(_) => {
-            super::local_execution::execute_local_cli_command(&cli_command)
+            super::local_execution::execute_local_cli_command(cli_command)
         }
         super::TvmdCommand::Public(super::PublicCommand::Preflight(_))
         | super::TvmdCommand::Public(super::PublicCommand::Evidence(
