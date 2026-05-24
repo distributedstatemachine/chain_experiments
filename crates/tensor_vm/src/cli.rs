@@ -35,6 +35,7 @@ mod public_evidence_publication_parser;
 mod public_evidence_record_descriptions;
 mod public_evidence_record_execution;
 mod public_evidence_record_parser;
+mod public_evidence_run_window_descriptions;
 mod public_evidence_run_window_execution;
 mod public_evidence_run_window_parser;
 mod public_evidence_service_descriptions;

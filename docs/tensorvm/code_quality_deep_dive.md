@@ -367,6 +367,9 @@ spaghetti around.
 - Iteration 147 moved public-evidence publication and auditor-record descriptions into
   `cli/public_evidence_publication_descriptions.rs`, aligning publication CLI text with its parser
   and execution command-family modules.
+- Iteration 148 moved public-evidence run-window descriptions into
+  `cli/public_evidence_run_window_descriptions.rs`, keeping run-window CLI text beside its parser
+  and execution command-family modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

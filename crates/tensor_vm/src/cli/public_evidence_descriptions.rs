@@ -5,6 +5,7 @@ use super::public_evidence_network_descriptions::describe_public_evidence_networ
 use super::public_evidence_parser::PublicEvidenceCommand;
 use super::public_evidence_publication_descriptions::describe_public_evidence_publication_command;
 use super::public_evidence_record_descriptions::describe_public_evidence_record_command;
+use super::public_evidence_run_window_descriptions::describe_public_evidence_run_window_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
 use crate::hash::hex;
 
@@ -31,22 +32,13 @@ fn describe_public_evidence_subcommand(command: &PublicEvidenceCommand) -> Strin
     if let Some(description) = describe_public_evidence_publication_command(command) {
         return description;
     }
+    if let Some(description) = describe_public_evidence_run_window_command(command) {
+        return description;
+    }
 
     match command {
         PublicEvidenceCommand::Validate(args) => {
             format!("validate public evidence manifest {}", args.manifest)
-        }
-        PublicEvidenceCommand::RunWindow(args) => {
-            format!(
-                "generate public evidence run window started={} ended={} observed_blocks={}",
-                args.started_at, args.ended_at, args.observed_blocks
-            )
-        }
-        PublicEvidenceCommand::RunWindowFromFile(args) => {
-            format!(
-                "generate public evidence run window from captured block observations block_observation_file={}",
-                args.block_observation_file
-            )
         }
         PublicEvidenceCommand::NodeHeartbeat(args) => {
             format!(
