@@ -17,6 +17,7 @@ mod local_p2p_report_fields;
 mod local_role_commands;
 #[cfg(test)]
 mod local_role_execution;
+mod local_runtime_args;
 #[cfg(test)]
 mod local_service_execution;
 mod localnet_commands;

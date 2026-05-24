@@ -1,4 +1,4 @@
-use super::local_commands::{NodeRuntimeArgs, default_p2p_listen_addr};
+use super::local_runtime_args::{NodeRuntimeArgs, default_p2p_listen_addr};
 use super::value_types::MinerDeviceArg;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::Multiaddr;

@@ -1034,6 +1034,9 @@ spaghetti around.
   `cli/local_commands.rs` focused on shared runtime, data-dir, and localnet argument groups.
 - Iteration 426 split the localnet clap command and local CPU verify arguments into
   `cli/localnet_commands.rs`, leaving `cli/local_commands.rs` as the shared local argument module.
+- Iteration 427 moved shared local runtime and data-dir clap arguments into
+  `cli/local_runtime_args.rs`, turning `cli/local_commands.rs` into a thin re-export boundary for local
+  command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,4 +1,4 @@
-use super::local_commands::{DEFAULT_DATA_DIR, DataDirArgs};
+use super::local_runtime_args::{DEFAULT_DATA_DIR, DataDirArgs};
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;
 
