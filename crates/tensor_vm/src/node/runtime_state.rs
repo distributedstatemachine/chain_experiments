@@ -284,3 +284,128 @@ impl NodeRuntimeState {
             .saturating_add(tensors_inserted);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn runtime_state_tracks_loop_counters() {
+        let mut state = NodeRuntimeState::default();
+        state.pending_payloads_mut().queue_receipt([9; 32], vec![9]);
+        let mut assigned_jobs = BTreeSet::new();
+        assigned_jobs.insert([7; 32]);
+        let mut unreceipted_jobs = BTreeSet::new();
+        unreceipted_jobs.insert([7; 32]);
+        assert!(state.record_miner_work_observation(assigned_jobs, unreceipted_jobs));
+        state.record_served_request();
+        state.record_produced_block();
+        state.record_network_ingest(NetworkEventIngest {
+            events: 1,
+            applied_blocks: 2,
+            ..NetworkEventIngest::default()
+        });
+
+        assert_eq!(state.served_requests(), 1);
+        assert_eq!(state.produced_blocks(), 1);
+        assert_eq!(state.network_applied_blocks(), 2);
+        assert_eq!(state.network_events().events, 1);
+        assert_eq!(state.pending_payloads().pending_receipt_count(), 1);
+        assert_eq!(state.pending_payloads().pending_attestation_count(), 0);
+        assert_eq!(state.miner_assigned_jobs_seen(), 1);
+        assert_eq!(state.miner_unreceipted_jobs(), 1);
+        assert!(state.miner_work_ready());
+        assert!(state.record_miner_work_observation(BTreeSet::from([[7; 32]]), BTreeSet::new()));
+        assert_eq!(state.miner_assigned_jobs_seen(), 1);
+        assert_eq!(state.miner_unreceipted_jobs(), 0);
+        assert!(!state.miner_work_ready());
+        state.record_miner_receipt_submission(1, 3);
+        assert_eq!(state.miner_receipts_submitted(), 1);
+        assert_eq!(state.miner_tensors_inserted(), 3);
+        assert!(state.record_validator_work_observation(
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::new(),
+        ));
+        assert_eq!(state.validator_assigned_receipts_seen(), 1);
+        assert_eq!(state.validator_unattested_receipts(), 1);
+        assert_eq!(state.validator_artifact_ready_receipts(), 1);
+        assert_eq!(state.validator_artifact_missing_receipts(), 0);
+        assert!(state.validator_work_ready());
+        assert!(state.record_validator_work_observation(
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::from([[8; 32]]),
+            BTreeSet::new(),
+            BTreeSet::from([[8; 32]]),
+        ));
+        assert_eq!(state.validator_artifact_ready_receipts(), 0);
+        assert_eq!(state.validator_artifact_missing_receipts(), 1);
+        assert!(!state.validator_work_ready());
+        state.record_validator_attestation_submission(1);
+        assert_eq!(state.validator_attestations_submitted(), 1);
+        state.record_validator_block_vote_submission(1);
+        assert_eq!(state.validator_block_votes_submitted(), 1);
+        state.record_validator_remote_tensor_fetch(3, 2, 1, 128, 2);
+        assert_eq!(state.validator_remote_tensor_fetch_attempts(), 3);
+        assert_eq!(state.validator_remote_tensor_fetch_successes(), 2);
+        assert_eq!(state.validator_remote_tensor_fetch_failures(), 1);
+        assert_eq!(state.validator_remote_tensor_fetch_bytes(), 128);
+        assert_eq!(state.validator_remote_tensors_inserted(), 2);
+    }
+
+    #[test]
+    fn network_event_ingest_activity_checks_each_progress_signal() {
+        assert!(!NetworkEventIngest::default().has_activity());
+        assert!(
+            NetworkEventIngest {
+                events: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                job_payloads_applied: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                receipt_payloads_applied: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                attestation_payloads_applied: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                block_payloads_applied: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                invalid_events: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+        assert!(
+            NetworkEventIngest {
+                applied_blocks: 1,
+                ..NetworkEventIngest::default()
+            }
+            .has_activity()
+        );
+    }
+}

@@ -255,6 +255,8 @@ spaghetti around.
 - Iteration 105 split network message ingest ordering and event-counter orchestration into
   `node/message_ingest.rs`, leaving `node.rs` as the public node facade plus the remaining inline
   tests.
+- Iteration 106 moved runtime-state-specific node tests into `node/runtime_state.rs`, starting the
+  inline node test split without changing the public node facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
