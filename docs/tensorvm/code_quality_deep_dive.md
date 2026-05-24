@@ -412,6 +412,9 @@ spaghetti around.
 - Iteration 161 moved the remaining documented clap parser/default/rejection tests into
   `cli/tests/parser.rs`, leaving the parent CLI test module focused on shared fixtures and command
   execution behavior.
+- Iteration 162 moved the positive CLI command execution/report coverage into
+  `cli/tests/execution_reports.rs`, isolating ready-path command output assertions from the remaining
+  public-evidence rejection coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
