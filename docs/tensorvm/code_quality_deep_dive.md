@@ -309,6 +309,9 @@ spaghetti around.
 - Iteration 127 moved the local miner, validator, proposer, service, local-testnet, and local-cpu
   clap command groups into `cli/local_parser.rs`, leaving `cli/parser.rs` as the top-level clap
   router plus public-testnet preflight parser.
+- Iteration 128 moved local miner, validator, proposer, service, local-testnet, and local-cpu
+  reference command execution into `cli/local_execution.rs`, leaving `cli/execution.rs` focused on
+  dispatch plus public-evidence evidence generation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

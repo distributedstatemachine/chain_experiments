@@ -13,6 +13,7 @@ mod arguments;
 mod commands;
 mod descriptions;
 mod execution;
+mod local_execution;
 mod local_parser;
 mod network_evidence;
 mod network_observation;
