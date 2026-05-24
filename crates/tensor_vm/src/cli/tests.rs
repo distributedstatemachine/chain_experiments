@@ -19,6 +19,7 @@ mod public_evidence_network_rejections;
 mod public_evidence_network_reports;
 mod public_evidence_node_rejections;
 mod public_evidence_node_reports;
+mod public_evidence_publication_parser;
 mod public_evidence_publication_rejections;
 mod public_evidence_publication_reports;
 mod public_evidence_record_rejections;

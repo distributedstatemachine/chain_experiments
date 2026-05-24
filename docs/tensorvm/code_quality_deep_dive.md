@@ -1073,6 +1073,9 @@ spaghetti around.
 - Iteration 441 removed the test-only local CLI execution shims and routed CLI execution tests
   through the same `app::execute_tvmd_command` dispatcher used by the binary, leaving `cli` focused
   on the Clap command model and public evidence helpers.
+- Iteration 442 split public publication and auditor Clap parser coverage into
+  `cli/tests/public_evidence_publication_parser.rs`, narrowing the remaining public parser suite
+  toward manifest, run-window, node, service, network, and record command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
