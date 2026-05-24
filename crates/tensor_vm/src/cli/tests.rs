@@ -21,6 +21,7 @@ mod public_evidence_node_rejections;
 mod public_evidence_node_reports;
 mod public_evidence_publication_rejections;
 mod public_evidence_publication_reports;
+mod public_evidence_record_rejections;
 mod public_evidence_record_reports;
 mod public_evidence_rejections;
 mod public_evidence_run_window_rejections;

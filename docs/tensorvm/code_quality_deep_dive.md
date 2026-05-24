@@ -1064,6 +1064,9 @@ spaghetti around.
 - Iteration 438 split public node heartbeat, heartbeat-file, and operator-attestation rejection coverage
   into `cli/tests/public_evidence_node_rejections.rs`, leaving the mixed rejection suite focused on
   service parser and record validation edges.
+- Iteration 439 split public evidence record parser and direct validation rejection coverage into
+  `cli/tests/public_evidence_record_rejections.rs`, leaving only service parser checks in the old
+  mixed rejection module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
