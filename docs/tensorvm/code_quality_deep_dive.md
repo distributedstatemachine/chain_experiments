@@ -678,6 +678,8 @@ spaghetti around.
   reducing broad substring checks in CLI execution report coverage.
 - Iteration 262 moved `evidence service content-bytes --content-hex` decoding into the Clap value parser,
   so command execution receives validated bytes and retired top-level command families stay rejected.
+- Iteration 263 converted public node heartbeat evidence tests from prefix/suffix checks to parsed
+  comma-record field assertions, matching the service evidence coverage style.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

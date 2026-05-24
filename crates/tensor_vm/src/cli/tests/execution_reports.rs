@@ -119,16 +119,21 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
             signed_heartbeat_count: 10,
         })
         .unwrap();
-        assert!(node.starts_with(&format!(
-            "node={tag},{},{}",
-            hex(&address(address_label)),
-            hex(&hash_bytes(b"test", &[operator_label]))
-        )));
-        assert!(node.ends_with(&manifest_node_signature(
-            role,
-            address_label,
-            operator_label
-        )));
+        let node_address = hex(&address(address_label));
+        let operator_id = hex(&hash_bytes(b"test", &[operator_label]));
+        let node_signature = manifest_node_signature(role, address_label, operator_label);
+        assert_eq!(
+            comma_record_fields(&node, "node=", 7),
+            [
+                tag,
+                node_address.as_str(),
+                operator_id.as_str(),
+                "0",
+                "9",
+                "10",
+                node_signature.as_str(),
+            ]
+        );
         let heartbeat_file = std::env::temp_dir().join(format!(
             "tensor-vm-node-heartbeat-{}-{}.records",
             std::process::id(),
@@ -138,9 +143,7 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
             .map(|block| {
                 format!(
                     "node_heartbeat_observation={tag},{},{},{}",
-                    hex(&address(address_label)),
-                    hex(&hash_bytes(b"test", &[operator_label])),
-                    block
+                    node_address, operator_id, block
                 )
             })
             .collect::<Vec<_>>()
