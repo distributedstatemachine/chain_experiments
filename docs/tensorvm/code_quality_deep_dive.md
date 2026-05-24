@@ -553,6 +553,8 @@ spaghetti around.
   `chain/tests/boundaries.rs`, leaving the chain facade test module focused on model/challenge edges.
 - Iteration 215 moved the chain test harness root into `chain/tests.rs`, leaving `chain.rs` with only
   production facade code plus `#[cfg(test)] mod tests;` wiring.
+- Iteration 216 moved the remaining model-transition and challenge-outcome tests into focused
+  `chain/tests/models.rs` and `chain/tests/challenges.rs` modules, leaving the test root as prelude wiring.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
