@@ -990,6 +990,8 @@ spaghetti around.
   mutation by adding a crate-test-only `Chain::credit_reward_for_testing` helper.
 - Iteration 407 made the miner `--device` CLI flag a typed clap argument so invalid backend
   names are rejected at parse time instead of passing through as loose strings.
+- Iteration 408 moved account, challenge, model-command, and reward test assertions onto
+  `Chain`/`ChainState` accessors and used the existing model optimizer test helper for setup.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

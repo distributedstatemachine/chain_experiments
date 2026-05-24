@@ -29,7 +29,7 @@ fn challenge_outcome_slashes_miner_and_credits_treasury() {
             reason: "invalid receipt again".to_owned(),
         })
         .unwrap();
-    assert_eq!(chain.state.miners.get(&miner).unwrap().stake, 70);
-    assert_eq!(chain.state.miners.get(&miner).unwrap().reputation, -20);
-    assert_eq!(chain.state.rewards.treasury(), 30);
+    assert_eq!(chain.state().miners().get(&miner).unwrap().stake, 70);
+    assert_eq!(chain.state().miners().get(&miner).unwrap().reputation, -20);
+    assert_eq!(chain.state().rewards().treasury(), 30);
 }

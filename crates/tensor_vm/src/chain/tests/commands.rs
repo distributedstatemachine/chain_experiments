@@ -178,7 +178,7 @@ fn chain_engine_applies_profile_neutral_commands() {
             .unwrap(),
         vec![ChainEvent::ModelRegistered(model_id)]
     );
-    let registered_model = chain.state.model_states.get(&model_id).unwrap().clone();
+    let registered_model = chain.state().model_states().get(&model_id).unwrap().clone();
     assert_eq!(
         chain.apply_command(ChainCommand::RegisterModel {
             model_id,
@@ -189,7 +189,7 @@ fn chain_engine_applies_profile_neutral_commands() {
         Err(TvmError::InvalidReceipt("duplicate model"))
     );
     assert_eq!(
-        chain.state.model_states.get(&model_id),
+        chain.state().model_states().get(&model_id),
         Some(&registered_model)
     );
     let linear_job = LinearTrainingStepJob::from_spec(LinearTrainingStepSpec {

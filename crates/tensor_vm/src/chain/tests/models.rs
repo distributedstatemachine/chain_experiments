@@ -16,23 +16,23 @@ fn model_transition_enforces_single_sequential_weight_root() {
         .unwrap();
     let before_optimizer_root = chain.state_root();
     chain
-        .state
-        .model_states
-        .get_mut(&model_id)
-        .unwrap()
-        .optimizer_state_root = Some(hash_bytes(b"test", &[b"optimizer"]));
+        .set_model_optimizer_state_root_for_testing(
+            model_id,
+            Some(hash_bytes(b"test", &[b"optimizer"])),
+        )
+        .unwrap();
     assert_ne!(before_optimizer_root, chain.state_root());
     chain
         .apply_model_transition(&model_id, 0, &before, after)
         .unwrap();
-    assert_eq!(chain.state.model_states.get(&model_id).unwrap().step, 1);
-    let transitioned_model = chain.state.model_states.get(&model_id).unwrap().clone();
+    assert_eq!(chain.state().model_states().get(&model_id).unwrap().step, 1);
+    let transitioned_model = chain.state().model_states().get(&model_id).unwrap().clone();
     assert_eq!(
         chain.register_model(model_id, architecture, before, config),
         Err(TvmError::InvalidReceipt("duplicate model"))
     );
     assert_eq!(
-        chain.state.model_states.get(&model_id),
+        chain.state().model_states().get(&model_id),
         Some(&transitioned_model)
     );
     assert_eq!(
