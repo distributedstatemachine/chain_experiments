@@ -733,6 +733,8 @@ spaghetti around.
   CPU-only compose guards, replacing broad build-artifact substring scans with exact line assertions.
 - Iteration 289 added shell logical-line parsing to the local CPU deployment test and replaced
   entrypoint substring checks with exact command/readiness-line assertions.
+- Iteration 290 reused the shell logical-line assertions for restart and rolling-restart deployment
+  scripts, replacing fragment inventories with exact continuity command and status-output checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

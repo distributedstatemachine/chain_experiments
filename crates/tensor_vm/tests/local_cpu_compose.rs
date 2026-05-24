@@ -572,64 +572,62 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         );
     }
 
-    for required in [
-        "check-local-testnet.sh",
-        "docker compose",
-        "timeout 15s docker compose",
-        "tvmd service status",
-        "tvmd service block",
-        "timeout 60s docker compose",
-        "timeout 600s \"$CHECK_SCRIPT\"",
-        "local_cpu_restart_continuity_ready=true",
-        "restart_services=",
-        "before_common_head_height=",
-        "before_common_head_hash=",
-        "before_common_state_root=",
-        "after_common_head_height=",
-        "after_common_head_hash=",
-        "after_common_state_root=",
-        "restart_peer_ids_stable=true",
-        "restart_heights_non_decreasing=true",
-        "restart_heights_advance=true",
-        "restart_block_counts_non_decreasing=true",
-        "restart_block_counts_advance=true",
-        "restart_state_roots_observed=true",
-        "restart_state_roots_advance=true",
-        "restart_block_log_roots_observed=true",
-        "restart_block_log_roots_advance=true",
-        "restart_previous_common_head_preserved=true",
-        "restart_previous_common_state_root_preserved=true",
-        "restart_blocks_continue=true",
-        "restart_common_head_convergence=true",
-    ] {
-        assert!(
-            restart_script.contains(required),
-            "restart continuity script should contain {required}"
-        );
-    }
+    assert_shell_logical_lines(
+        &restart_script,
+        &[
+            r#"CHECK_SCRIPT="$SCRIPT_DIR/check-local-testnet.sh""#,
+            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"RESTART_SERVICES="${*:-miner-03 validator-02}""#,
+            r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then"#,
+            r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd service block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
+            r#"[ -x "$CHECK_SCRIPT" ] || fail "check-local-testnet.sh is not executable""#,
+            r#"timeout 60s docker compose -f "$COMPOSE_FILE" restart $RESTART_SERVICES"#,
+            r#"timeout 600s "$CHECK_SCRIPT""#,
+            r#"local_cpu_restart_continuity_ready=true"#,
+            r#"restart_services=${RESTART_SERVICE_LIST}"#,
+            r#"before_common_head_height=${BEFORE_COMMON_HEIGHT}"#,
+            r#"before_common_head_hash=${BEFORE_COMMON_HASH}"#,
+            r#"before_common_state_root=${BEFORE_COMMON_STATE_ROOT}"#,
+            r#"after_common_head_height=${AFTER_COMMON_HEIGHT}"#,
+            r#"after_common_head_hash=${AFTER_COMMON_HASH}"#,
+            r#"after_common_state_root=${AFTER_COMMON_STATE_ROOT}"#,
+            r#"restart_peer_ids_stable=true"#,
+            r#"restart_heights_non_decreasing=true"#,
+            r#"restart_heights_advance=true"#,
+            r#"restart_block_counts_non_decreasing=true"#,
+            r#"restart_block_counts_advance=true"#,
+            r#"restart_state_roots_observed=true"#,
+            r#"restart_state_roots_advance=true"#,
+            r#"restart_block_log_roots_observed=true"#,
+            r#"restart_block_log_roots_advance=true"#,
+            r#"restart_previous_common_head_preserved=true"#,
+            r#"restart_previous_common_state_root_preserved=true"#,
+            r#"restart_blocks_continue=true"#,
+            r#"restart_common_head_convergence=true"#,
+        ],
+    );
 
-    for required in [
-        "check-restart-continuity.sh",
-        "EXPECTED_SERVICES=\"miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04\"",
-        "ROLLING_SERVICES=\"${*:-$EXPECTED_SERVICES}\"",
-        "\"$RESTART_SCRIPT\" \"$service\"",
-        "local_cpu_rolling_restart_continuity_ready=true",
-        "rolling_restart_services=",
-        "rolling_restart_service_count=",
-        "rolling_restart_service=%s,ready",
-        "rolling_restart_peer_ids_stable=true",
-        "rolling_restart_heights_advance=true",
-        "rolling_restart_block_counts_advance=true",
-        "rolling_restart_state_roots_advance=true",
-        "rolling_restart_block_log_roots_advance=true",
-        "rolling_restart_previous_common_head_preserved=true",
-        "rolling_restart_previous_common_state_root_preserved=true",
-        "rolling_restart_blocks_continue=true",
-        "rolling_restart_common_head_convergence=true",
-    ] {
-        assert!(
-            rolling_restart_script.contains(required),
-            "rolling restart continuity script should contain {required}"
-        );
-    }
+    assert_shell_logical_lines(
+        &rolling_restart_script,
+        &[
+            r#"RESTART_SCRIPT="$SCRIPT_DIR/check-restart-continuity.sh""#,
+            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"ROLLING_SERVICES="${*:-$EXPECTED_SERVICES}""#,
+            r#"[ -x "$RESTART_SCRIPT" ] || fail "check-restart-continuity.sh is not executable""#,
+            r#"if "$RESTART_SCRIPT" "$service"; then"#,
+            r#"printf 'rolling_restart_service=%s,ready\n' "$service""#,
+            r#"local_cpu_rolling_restart_continuity_ready=true"#,
+            r#"rolling_restart_services=${ROLLING_SERVICE_LIST}"#,
+            r#"rolling_restart_service_count=${ROLLING_COUNT}"#,
+            r#"rolling_restart_peer_ids_stable=true"#,
+            r#"rolling_restart_heights_advance=true"#,
+            r#"rolling_restart_block_counts_advance=true"#,
+            r#"rolling_restart_state_roots_advance=true"#,
+            r#"rolling_restart_block_log_roots_advance=true"#,
+            r#"rolling_restart_previous_common_head_preserved=true"#,
+            r#"rolling_restart_previous_common_state_root_preserved=true"#,
+            r#"rolling_restart_blocks_continue=true"#,
+            r#"rolling_restart_common_head_convergence=true"#,
+        ],
+    );
 }
