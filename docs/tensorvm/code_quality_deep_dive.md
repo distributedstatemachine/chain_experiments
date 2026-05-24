@@ -881,6 +881,8 @@ spaghetti around.
   one shell field reader for captured reports and persisted snapshot files.
 - Iteration 353 removed the local CPU operator healthcheck's `grep` dependency by scanning
   `local-cpu-ready` with an exact shell line reader.
+- Iteration 354 moved the local CPU operator topology list into one sourced deployment script so the
+  check, restart, and rolling-restart gates no longer duplicate the service inventory.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

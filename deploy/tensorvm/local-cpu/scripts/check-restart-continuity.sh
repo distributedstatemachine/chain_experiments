@@ -6,8 +6,7 @@ BUNDLE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$BUNDLE_DIR/../../.." && pwd)
 COMPOSE_FILE="$BUNDLE_DIR/docker-compose.yml"
 CHECK_SCRIPT="$SCRIPT_DIR/check-local-testnet.sh"
-
-EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04"
+TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh"
 RESTART_SERVICES="${*:-miner-03 validator-02}"
 ZERO_HASH="0000000000000000000000000000000000000000000000000000000000000000"
 
@@ -15,6 +14,10 @@ fail() {
   echo "local CPU restart continuity check failed: $*" >&2
   exit 1
 }
+
+[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable"
+. "$TOPOLOGY_FILE"
+EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"

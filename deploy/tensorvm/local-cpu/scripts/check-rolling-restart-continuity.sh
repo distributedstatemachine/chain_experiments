@@ -3,14 +3,17 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RESTART_SCRIPT="$SCRIPT_DIR/check-restart-continuity.sh"
-
-EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04"
-ROLLING_SERVICES="${*:-$EXPECTED_SERVICES}"
+TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh"
 
 fail() {
   echo "local CPU rolling restart continuity check failed: $*" >&2
   exit 1
 }
+
+[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable"
+. "$TOPOLOGY_FILE"
+EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
+ROLLING_SERVICES="${*:-$EXPECTED_SERVICES}"
 
 service_is_expected() {
   candidate="$1"

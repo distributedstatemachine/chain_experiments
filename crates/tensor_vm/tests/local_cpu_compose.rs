@@ -161,6 +161,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         "deploy/tensorvm/local-cpu/README.md",
         "deploy/tensorvm/local-cpu/env/local-cpu.env.example",
         "deploy/tensorvm/local-cpu/scripts/entrypoint.sh",
+        "deploy/tensorvm/local-cpu/scripts/local-cpu-topology.sh",
         "deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh",
         "deploy/tensorvm/local-cpu/scripts/check-restart-continuity.sh",
         "deploy/tensorvm/local-cpu/scripts/check-rolling-restart-continuity.sh",
@@ -176,6 +177,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     let entrypoint =
         fs::read_to_string(repo_path("deploy/tensorvm/local-cpu/scripts/entrypoint.sh"))
             .expect("entrypoint should be readable");
+    let topology_script = fs::read_to_string(repo_path(
+        "deploy/tensorvm/local-cpu/scripts/local-cpu-topology.sh",
+    ))
+    .expect("local CPU topology script should be readable");
     let env_file = fs::read_to_string(repo_path(
         "deploy/tensorvm/local-cpu/env/local-cpu.env.example",
     ))
@@ -451,8 +456,23 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     );
 
     assert_shell_logical_lines(
+        &topology_script,
+        &[
+            r#"LOCAL_CPU_MINERS="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09""#,
+            r#"LOCAL_CPU_VALIDATORS="validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"LOCAL_CPU_EXPECTED_SERVICES="$LOCAL_CPU_MINERS $LOCAL_CPU_VALIDATORS""#,
+        ],
+    );
+
+    assert_shell_logical_lines(
         &check_script,
         &[
+            r#"TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh""#,
+            r#"[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable""#,
+            r#". "$TOPOLOGY_FILE""#,
+            r#"EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES""#,
+            r#"MINERS="$LOCAL_CPU_MINERS""#,
+            r#"VALIDATORS="$LOCAL_CPU_VALIDATORS""#,
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
             r#"require_command sort"#,
@@ -533,6 +553,9 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert_lacks_shell_logical_lines(
         &check_script,
         &[
+            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"MINERS="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09""#,
+            r#"VALIDATORS="validator-00 validator-01 validator-02 validator-03 validator-04""#,
             r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"structured_verifier_ready":true' || fail "$service local CPU structured verifier is not ready""#,
             r#"printf '%s\n' "$LOCAL_CPU_VERIFY" | grep -q '"ready":true' || fail "$service local CPU structured verifier did not accept node store""#,
             r#"compose exec -T "$service" test -f /var/lib/tensorvm/local-cpu-ready || fail "$service has not written /var/lib/tensorvm/local-cpu-ready""#,
@@ -980,7 +1003,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &restart_script,
         &[
             r#"CHECK_SCRIPT="$SCRIPT_DIR/check-local-testnet.sh""#,
-            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh""#,
+            r#"[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable""#,
+            r#". "$TOPOLOGY_FILE""#,
+            r#"EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES""#,
             r#"RESTART_SERVICES="${*:-miner-03 validator-02}""#,
             r#"while IFS= read -r line || [ -n "$line" ]; do"#,
             r#"printf '%s\n' "${line#"$prefix"}""#,
@@ -1017,6 +1043,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert_lacks_shell_logical_lines(
         &restart_script,
         &[
+            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
             r#"printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'"#,
             r#"sed -n "s/^${key}=//p" "$file" | sed -n '1p'"#,
         ],
@@ -1026,7 +1053,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
         &rolling_restart_script,
         &[
             r#"RESTART_SCRIPT="$SCRIPT_DIR/check-restart-continuity.sh""#,
-            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
+            r#"TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh""#,
+            r#"[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable""#,
+            r#". "$TOPOLOGY_FILE""#,
+            r#"EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES""#,
             r#"ROLLING_SERVICES="${*:-$EXPECTED_SERVICES}""#,
             r#"[ -x "$RESTART_SCRIPT" ] || fail "check-restart-continuity.sh is not executable""#,
             r#"if "$RESTART_SCRIPT" "$service"; then"#,
@@ -1043,6 +1073,12 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"rolling_restart_previous_common_state_root_preserved=true"#,
             r#"rolling_restart_blocks_continue=true"#,
             r#"rolling_restart_common_head_convergence=true"#,
+        ],
+    );
+    assert_lacks_shell_logical_lines(
+        &rolling_restart_script,
+        &[
+            r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
         ],
     );
 }

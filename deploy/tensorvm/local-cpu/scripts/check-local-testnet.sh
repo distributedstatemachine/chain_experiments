@@ -8,15 +8,18 @@ COMPOSE_FILE="$BUNDLE_DIR/docker-compose.yml"
 RPC_PORT="${TENSORVM_LOCAL_CPU_RPC_PORT:-8545}"
 EXPLORER_PORT="${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}"
 AUTH_TOKEN="${TENSORVM_AUTH_TOKEN:-local-cpu-testnet-token}"
-
-EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04"
-MINERS="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09"
-VALIDATORS="validator-00 validator-01 validator-02 validator-03 validator-04"
+TOPOLOGY_FILE="$SCRIPT_DIR/local-cpu-topology.sh"
 
 fail() {
   echo "local CPU testnet check failed: $*" >&2
   exit 1
 }
+
+[ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable"
+. "$TOPOLOGY_FILE"
+EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
+MINERS="$LOCAL_CPU_MINERS"
+VALIDATORS="$LOCAL_CPU_VALIDATORS"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
