@@ -5,6 +5,7 @@ use super::local_role_execution::{
 };
 use super::local_service_execution::execute_node_command;
 use super::validation::{ensure_data_dir, path_argument};
+use crate::app::KeyValueReportWriter;
 use crate::chain::ChainParams;
 use crate::error::Result;
 
@@ -59,9 +60,10 @@ struct LocalCpuVerifyFixtureReport<'a> {
 
 impl LocalCpuVerifyFixtureReport<'_> {
     fn to_key_value_report(&self) -> String {
-        format!(
-            "command={}\ndata_dir={}\nstructured_verifier_ready={}",
-            self.command, self.data_dir, self.structured_verifier_ready
-        )
+        let mut report = KeyValueReportWriter::new();
+        report.field("command", self.command);
+        report.field("data_dir", self.data_dir);
+        report.field("structured_verifier_ready", self.structured_verifier_ready);
+        report.finish()
     }
 }

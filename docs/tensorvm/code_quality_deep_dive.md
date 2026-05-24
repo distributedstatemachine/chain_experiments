@@ -838,6 +838,8 @@ spaghetti around.
   returned claim amount, account, and remaining balance, removing the last hand-built RPC JSON object.
 - Iteration 335 added a shared key-value report writer beside the parser and moved p2p identity readiness
   reports onto it, starting to consolidate status rendering without changing the larger service-status shape.
+- Iteration 336 moved local CPU verify key-value output, including the CLI fixture path, onto the shared
+  report writer so typed verify structs no longer hand-format their text status form.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

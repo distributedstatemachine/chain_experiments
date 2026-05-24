@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{local_cpu_seed_beacon, p2p_identity_report};
+use super::{KeyValueReportWriter, local_cpu_seed_beacon, p2p_identity_report};
 use crate::{
     Chain, JobScheduler, Libp2pControlPlaneConfig, NodeStore, PeerRecord,
     hash::hex,
@@ -227,17 +227,44 @@ struct LocalCpuVerifyReport<'a> {
 
 impl LocalCpuVerifyReport<'_> {
     fn to_key_value_report(&self) -> String {
-        format!(
-            "command={}\ndata_dir={}\nstructured_verifier_ready={}\nready={}\nheight={}\nlatest_block_height={}\nblock_count={}\nfinalized_block_count={}\nnode_store_ready={}",
-            self.command,
-            self.data_dir,
-            self.structured_verifier_ready,
-            self.ready,
-            self.height,
-            self.latest_block_height,
-            self.block_count,
-            self.finalized_block_count,
-            self.node_store_ready
-        )
+        let mut report = KeyValueReportWriter::new();
+        report.field("command", self.command);
+        report.field("data_dir", self.data_dir);
+        report.field("structured_verifier_ready", self.structured_verifier_ready);
+        report.field("ready", self.ready);
+        report.field("height", self.height);
+        report.field("latest_block_height", self.latest_block_height);
+        report.field("block_count", self.block_count);
+        report.field("finalized_block_count", self.finalized_block_count);
+        report.field("node_store_ready", self.node_store_ready);
+        report.finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::KeyValueReport;
+
+    #[test]
+    fn local_cpu_verify_key_value_report_is_parseable() {
+        let report = LocalCpuVerifyReport {
+            command: "local_cpu_verify",
+            data_dir: "/var/lib/tensorvm",
+            structured_verifier_ready: true,
+            ready: true,
+            height: 2,
+            latest_block_height: 1,
+            block_count: 2,
+            finalized_block_count: 2,
+            node_store_ready: true,
+        }
+        .to_key_value_report();
+
+        let fields = KeyValueReport::parse_strict(&report).expect("verify report must parse");
+        assert_eq!(fields.value("command"), Some("local_cpu_verify"));
+        assert_eq!(fields.value("data_dir"), Some("/var/lib/tensorvm"));
+        assert_eq!(fields.value("ready"), Some("true"));
+        assert_eq!(fields.value("finalized_block_count"), Some("2"));
     }
 }

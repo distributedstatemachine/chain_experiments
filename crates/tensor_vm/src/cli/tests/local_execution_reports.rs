@@ -363,4 +363,18 @@ fn execute_command_fixture_reports_local_runtime_readiness() {
             ("local_cpu_seed_ready", "true"),
         ],
     );
+
+    let local_verify = execute_command_fixture(&CommandFixture::LocalCpuVerify {
+        data_dir: "/var/lib/tensorvm".to_owned(),
+        json: false,
+    })
+    .unwrap();
+    assert_report_fields(
+        &local_verify,
+        &[
+            ("command", "local_cpu_verify"),
+            ("data_dir", "/var/lib/tensorvm"),
+            ("structured_verifier_ready", "true"),
+        ],
+    );
 }
