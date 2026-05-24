@@ -512,7 +512,7 @@ fn parses_documented_validator_commands() {
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
             content_path: "/chain/head".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
-            content_hex,
+            content_bytes: vec![42_u8; 64],
         }
     );
     assert_eq!(
@@ -1001,6 +1001,28 @@ fn rejects_invalid_cli() {
         ])
         .is_err()
     );
+}
+
+#[test]
+fn rejects_retired_top_level_command_families() {
+    assert!(
+        parse_test_cli(&[
+            "public-evidence",
+            "validate",
+            "docs/tensorvm/public-testnet.evidence"
+        ])
+        .is_err()
+    );
+    assert!(
+        parse_test_cli(&[
+            "public-testnet",
+            "preflight",
+            "docs/tensorvm/public-testnet.preflight"
+        ])
+        .is_err()
+    );
+    assert!(parse_test_cli(&["local-testnet", "seed", "--data-dir", "/var/lib/tensorvm"]).is_err());
+    assert!(parse_test_cli(&["local-cpu", "verify", "--json"]).is_err());
 }
 
 #[test]

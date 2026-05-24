@@ -1,3 +1,4 @@
+use super::arguments::parse_hex_bytes_argument;
 use super::command_values::parse_hash_value;
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::{Address, Hash};
@@ -168,8 +169,8 @@ pub struct ServiceContentFromBytesArgs {
     pub content_path: String,
     #[arg(long, value_name = "UNIX_SECONDS")]
     pub observed_at: u64,
-    #[arg(long, value_name = "HEX")]
-    pub content_hex: String,
+    #[arg(long = "content-hex", value_name = "HEX", value_parser = parse_hex_bytes_value)]
+    pub content: HexBytesArg,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -460,4 +461,29 @@ impl From<PublicEvidenceRecordKindArg> for PublicEvidenceRecordKind {
             PublicEvidenceRecordKindArg::RewardSettlement => Self::RewardSettlements,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HexBytesArg {
+    bytes: Vec<u8>,
+}
+
+impl HexBytesArg {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn into_vec(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
+fn parse_hex_bytes_value(value: &str) -> std::result::Result<HexBytesArg, String> {
+    parse_hex_bytes_argument(value)
+        .map(HexBytesArg::new)
+        .map_err(|error| error.to_string())
 }

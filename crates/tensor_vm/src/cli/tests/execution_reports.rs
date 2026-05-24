@@ -190,12 +190,22 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
         signed_health_check_count: 10,
     })
     .unwrap();
-    assert!(service_health.starts_with("service=rpc,"));
-    assert!(service_health.contains("https://rpc.tensorvm.net/health,/health,0,9,10,10"));
-    assert!(service_health.ends_with(&manifest_service_signature(
-        PublicServiceKind::Rpc,
-        b"rpc-service"
-    )));
+    let rpc_service_id = manifest_hash(b"rpc-service");
+    let rpc_service_signature = manifest_service_signature(PublicServiceKind::Rpc, b"rpc-service");
+    assert_eq!(
+        comma_record_fields(&service_health, "service=", 9),
+        [
+            "rpc",
+            rpc_service_id.as_str(),
+            "https://rpc.tensorvm.net/health",
+            "/health",
+            "0",
+            "9",
+            "10",
+            "10",
+            rpc_service_signature.as_str(),
+        ]
+    );
     let health_observation_file = std::env::temp_dir().join(format!(
         "tensor-vm-service-health-{}-{}.records",
         std::process::id(),
@@ -238,9 +248,22 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
             signed_health_check_count: 10,
         })
         .unwrap();
-        assert!(line.starts_with(&format!("service={tag},")));
-        assert!(line.contains(public_service_url(kind)));
-        assert!(line.ends_with(&manifest_service_signature(kind, label)));
+        let endpoint_id = manifest_hash(label);
+        let service_signature = manifest_service_signature(kind, label);
+        assert_eq!(
+            comma_record_fields(&line, "service=", 9),
+            [
+                tag,
+                endpoint_id.as_str(),
+                public_service_url(kind),
+                "/health",
+                "0",
+                "9",
+                "10",
+                "10",
+                service_signature.as_str(),
+            ]
+        );
     }
 
     let service_content = execute_command_fixture(&CommandFixture::PublicEvidenceServiceContent {
@@ -253,8 +276,23 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
         min_content_bytes: 64,
     })
     .unwrap();
-    assert!(service_content.starts_with("service_content=rpc,"));
-    assert!(service_content.contains("https://rpc.tensorvm.net/chain/head,/chain/head"));
+    let rpc_content_root = hex(&hash_bytes(b"test", &[b"rpc-service", b"content-root"]));
+    let rpc_content_signature =
+        public_service_content(PublicServiceKind::Rpc, b"rpc-service").content_signature;
+    let rpc_content_signature = hex(&rpc_content_signature);
+    assert_eq!(
+        comma_record_fields(&service_content, "service_content=", 8),
+        [
+            "rpc",
+            rpc_service_id.as_str(),
+            public_service_content_url(PublicServiceKind::Rpc),
+            public_service_content_path(PublicServiceKind::Rpc),
+            rpc_content_root.as_str(),
+            "1700000000",
+            "64",
+            rpc_content_signature.as_str(),
+        ]
+    );
     assert_eq!(
         service_content,
         manifest_service_content_line(PublicServiceKind::Rpc, b"rpc-service")
@@ -268,13 +306,23 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
             content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
-            content_hex: hex(&observed_content),
+            content_bytes: observed_content.clone(),
         })
         .unwrap();
-    assert!(service_content_from_bytes.starts_with("service_content=rpc,"));
-    assert!(
-        service_content_from_bytes
-            .contains(&format!("{},1700000000,80,", hex(&observed_content_root)))
+    let observed_content_root_hex = hex(&observed_content_root);
+    let service_content_from_bytes_fields =
+        comma_record_fields(&service_content_from_bytes, "service_content=", 8);
+    assert_eq!(
+        service_content_from_bytes_fields[..7],
+        [
+            "rpc",
+            rpc_service_id.as_str(),
+            public_service_content_url(PublicServiceKind::Rpc),
+            public_service_content_path(PublicServiceKind::Rpc),
+            observed_content_root_hex.as_str(),
+            "1700000000",
+            "80",
+        ]
     );
     let content_file = std::env::temp_dir().join(format!(
         "tensor-vm-service-content-{}-{}.body",
@@ -542,4 +590,17 @@ p2p_idle_timeout_seconds=60
             .to_string(),
         "invalid receipt: invalid service log field"
     );
+}
+
+fn comma_record_fields<'a>(line: &'a str, prefix: &str, expected_len: usize) -> Vec<&'a str> {
+    let record = line
+        .strip_prefix(prefix)
+        .unwrap_or_else(|| panic!("record missing prefix {prefix:?}: {line}"));
+    let fields = record.split(',').collect::<Vec<_>>();
+    assert_eq!(
+        fields.len(),
+        expected_len,
+        "unexpected field count for {prefix:?}: {line}"
+    );
+    fields
 }

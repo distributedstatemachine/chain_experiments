@@ -196,7 +196,7 @@ fn clap_cli_parses_and_describes_commands() {
             public_url: "https://faucet.tensorvm.net/faucet/page".to_owned(),
             content_path: "/faucet/page".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
-            content_hex: hex(&[1_u8; 64]),
+            content_bytes: vec![1_u8; 64],
         }),
         "generate faucet service content evidence from observed bytes public_url=https://faucet.tensorvm.net/faucet/page content_path=/faucet/page"
     );

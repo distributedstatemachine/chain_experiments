@@ -1,4 +1,3 @@
-use super::arguments::parse_hex_bytes_argument;
 use super::commands::EvidenceServiceCommand;
 use super::service_evidence::{
     ServiceHealthEvidenceLine, service_content_evidence_line,
@@ -40,17 +39,14 @@ pub(super) fn execute_public_evidence_service_command(
             args.observed_at,
             args.min_content_bytes,
         ),
-        EvidenceServiceCommand::ContentBytes(args) => parse_hex_bytes_argument(&args.content_hex)
-            .and_then(|content_bytes| {
-                service_content_evidence_line_from_bytes(
-                    args.kind.into(),
-                    args.endpoint_id,
-                    &args.public_url,
-                    &args.content_path,
-                    args.observed_at,
-                    &content_bytes,
-                )
-            }),
+        EvidenceServiceCommand::ContentBytes(args) => service_content_evidence_line_from_bytes(
+            args.kind.into(),
+            args.endpoint_id,
+            &args.public_url,
+            &args.content_path,
+            args.observed_at,
+            args.content.as_slice(),
+        ),
         EvidenceServiceCommand::ContentFile(args) => std::fs::read(&args.content_file)
             .map_err(|_| TvmError::Storage("failed to read service content file"))
             .and_then(|content_bytes| {

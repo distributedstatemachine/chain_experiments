@@ -6,13 +6,14 @@ pub use super::local_commands::{
 };
 pub use super::public_evidence_commands::{
     AuditorRecordArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
-    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    OperatorAttestationArgs, PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg,
-    PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
-    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs,
-    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
+    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicEvidenceManifestArgs,
+    PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
+    PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs,
 };
 use clap::{Parser, Subcommand};

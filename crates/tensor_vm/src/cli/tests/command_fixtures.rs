@@ -133,7 +133,7 @@ pub(super) enum CommandFixture {
         public_url: String,
         content_path: String,
         observed_at_unix_seconds: u64,
-        content_hex: String,
+        content_bytes: Vec<u8>,
     },
     PublicEvidenceServiceContentFromFile {
         kind: PublicServiceKind,
@@ -510,7 +510,7 @@ impl CommandFixture {
                 public_url,
                 content_path,
                 observed_at_unix_seconds,
-                content_hex,
+                content_bytes,
             } => super::TvmdCommand::Evidence(EvidenceCommand::Service(
                 EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
                     kind: service_kind_arg(kind),
@@ -518,7 +518,7 @@ impl CommandFixture {
                     public_url,
                     content_path,
                     observed_at: observed_at_unix_seconds,
-                    content_hex,
+                    content: HexBytesArg::new(content_bytes),
                 }),
             )),
             Self::PublicEvidenceServiceContentFromFile {
@@ -921,7 +921,7 @@ impl From<super::TvmdCommand> for CommandFixture {
                             public_url: args.public_url,
                             content_path: args.content_path,
                             observed_at_unix_seconds: args.observed_at,
-                            content_hex: args.content_hex,
+                            content_bytes: args.content.into_vec(),
                         }
                     }
                     EvidenceServiceCommand::ContentFile(args) => {

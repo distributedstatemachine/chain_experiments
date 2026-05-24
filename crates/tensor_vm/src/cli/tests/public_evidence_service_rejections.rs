@@ -287,6 +287,29 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
         })
         .is_err()
     );
+    let endpoint_id = hex(&hash_bytes(b"test", &[b"rpc-service"]));
+    for content_hex in ["zz", "abc"] {
+        assert!(
+            parse_test_cli(&[
+                "evidence",
+                "service",
+                "content-bytes",
+                "--kind",
+                "rpc",
+                "--endpoint-id",
+                &endpoint_id,
+                "--public-url",
+                "https://rpc.tensorvm.net/chain/head",
+                "--content-path",
+                "/chain/head",
+                "--observed-at",
+                "1700000000",
+                "--content-hex",
+                content_hex,
+            ])
+            .is_err()
+        );
+    }
     assert!(
         execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
             kind: PublicServiceKind::Rpc,
@@ -294,29 +317,7 @@ fn execute_command_fixture_rejects_invalid_public_service_evidence_args() {
             public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
             content_path: "/chain/head".to_owned(),
             observed_at_unix_seconds: 1_700_000_000,
-            content_hex: "zz".to_owned(),
-        })
-        .is_err()
-    );
-    assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_hex: "abc".to_owned(),
-        })
-        .is_err()
-    );
-    assert!(
-        execute_command_fixture(&CommandFixture::PublicEvidenceServiceContentFromBytes {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-            public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-            content_path: "/chain/head".to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_hex: hex(&[1_u8; 63]),
+            content_bytes: vec![1_u8; 63],
         })
         .is_err()
     );

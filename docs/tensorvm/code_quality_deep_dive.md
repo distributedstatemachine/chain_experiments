@@ -674,6 +674,10 @@ spaghetti around.
   remaining generated status substring checks in local CLI validation coverage.
 - Iteration 260 reused the parsed CLI report helper for public-evidence publication output assertions,
   removing another generated `key=value` substring check from CLI execution coverage.
+- Iteration 261 added structured comma-record assertions for public service health/content evidence lines,
+  reducing broad substring checks in CLI execution report coverage.
+- Iteration 262 moved `evidence service content-bytes --content-hex` decoding into the Clap value parser,
+  so command execution receives validated bytes and retired top-level command families stay rejected.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

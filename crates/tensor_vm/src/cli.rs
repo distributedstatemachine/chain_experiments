@@ -52,8 +52,8 @@ use arguments::{
 };
 pub use commands::{
     AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
-    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, LocalCpuVerifyArgs,
-    MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
+    EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, HexBytesArg,
+    LocalCpuVerifyArgs, MinerCommand, MinerRunArgs, MinerStartArgs, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, ProposerCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordKindArg, PublicNodeRoleArg, PublicServiceKindArg,
