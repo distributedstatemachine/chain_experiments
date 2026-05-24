@@ -700,6 +700,8 @@ spaghetti around.
   RPC health, and block route checks from raw substring matching to typed JSON field assertions.
 - Iteration 273 reused parsed RPC JSON assertions for the current-job and job-lookup routes, checking
   exact job IDs, primitive types, tensor dimensions, training shapes, and deadlines.
+- Iteration 274 converted the explorer, telemetry, and faucet RPC route checks to parsed JSON assertions,
+  leaving only the intentionally HTML page responses as content checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

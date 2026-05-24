@@ -203,8 +203,12 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(summary.status, 200);
-    assert!(summary.body.contains("\"miner_count\":1"));
-    assert!(summary.body.contains("\"job_count\":0"));
+    let summary = response_json(&summary);
+    assert_eq!(summary["height"].as_u64(), Some(1));
+    assert_eq!(summary["block_count"].as_u64(), Some(1));
+    assert_eq!(summary["miner_count"].as_u64(), Some(1));
+    assert_eq!(summary["validator_count"].as_u64(), Some(1));
+    assert_eq!(summary["job_count"].as_u64(), Some(0));
 
     let overview = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -212,9 +216,23 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(overview.status, 200);
-    assert!(overview.body.contains("\"type\":\"overview\""));
-    assert!(overview.body.contains("\"blocks\""));
-    assert!(overview.body.contains("\"miners\""));
+    let overview = response_json(&overview);
+    assert_eq!(overview["type"].as_str(), Some("overview"));
+    assert_eq!(overview["summary"]["miner_count"].as_u64(), Some(1));
+    assert_eq!(
+        overview["blocks"]
+            .as_array()
+            .expect("overview must include blocks")
+            .len(),
+        1
+    );
+    assert_eq!(
+        overview["miners"]
+            .as_array()
+            .expect("overview must include miners")
+            .len(),
+        1
+    );
 
     let account = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -222,7 +240,15 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(account.status, 200);
-    assert!(account.body.contains("\"is_miner\":true"));
+    let account = response_json(&account);
+    assert_eq!(account["type"].as_str(), Some("account"));
+    assert_eq!(
+        account["account"]["address"].as_str(),
+        Some(hex(&miner).as_str())
+    );
+    assert_eq!(account["account"]["is_miner"].as_bool(), Some(true));
+    assert_eq!(account["account"]["is_validator"].as_bool(), Some(true));
+    assert_eq!(account["account"]["stake"].as_u64(), Some(100));
 
     let blocks = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -230,7 +256,17 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(blocks.status, 200);
-    assert!(blocks.body.contains("\"blocks\""));
+    let blocks = response_json(&blocks);
+    assert_eq!(blocks["type"].as_str(), Some("blocks"));
+    let latest_blocks = blocks["blocks"]
+        .as_array()
+        .expect("blocks response must contain blocks array");
+    assert_eq!(latest_blocks.len(), 1);
+    assert_eq!(latest_blocks[0]["height"].as_u64(), Some(0));
+    assert_eq!(
+        latest_blocks[0]["proposer"].as_str(),
+        Some(hex(&miner).as_str())
+    );
 
     let miners = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -238,7 +274,15 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(miners.status, 200);
-    assert!(miners.body.contains("\"hardware_class\":\"cpu\""));
+    let miners = response_json(&miners);
+    assert_eq!(miners["type"].as_str(), Some("miners"));
+    let miners = miners["miners"]
+        .as_array()
+        .expect("miners response must contain miners array");
+    assert_eq!(miners.len(), 1);
+    assert_eq!(miners[0]["address"].as_str(), Some(hex(&miner).as_str()));
+    assert_eq!(miners[0]["hardware_class"].as_str(), Some("cpu"));
+    assert_eq!(miners[0]["stake"].as_u64(), Some(100));
 
     let validators = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -246,7 +290,17 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(validators.status, 200);
-    assert!(validators.body.contains("\"validators\""));
+    let validators = response_json(&validators);
+    assert_eq!(validators["type"].as_str(), Some("validators"));
+    let validators = validators["validators"]
+        .as_array()
+        .expect("validators response must contain validators array");
+    assert_eq!(validators.len(), 1);
+    assert_eq!(
+        validators[0]["address"].as_str(),
+        Some(hex(&miner).as_str())
+    );
+    assert_eq!(validators[0]["stake"].as_u64(), Some(10_000));
 
     let receipts = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -254,7 +308,14 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(receipts.status, 200);
-    assert!(receipts.body.contains("\"receipts\""));
+    let receipts = response_json(&receipts);
+    assert_eq!(receipts["type"].as_str(), Some("receipts"));
+    assert!(
+        receipts["receipts"]
+            .as_array()
+            .expect("receipts response must contain receipts array")
+            .is_empty()
+    );
     let bad_receipts = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
         path: "/explorer/receipts/latest/nope".to_owned(),
@@ -268,7 +329,14 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(jobs.status, 200);
-    assert!(jobs.body.contains("\"jobs\""));
+    let jobs = response_json(&jobs);
+    assert_eq!(jobs["type"].as_str(), Some("jobs"));
+    assert!(
+        jobs["jobs"]
+            .as_array()
+            .expect("jobs response must contain jobs array")
+            .is_empty()
+    );
 
     let explorer_page = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -286,7 +354,9 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(explorer_health.status, 200);
-    assert!(explorer_health.body.contains("\"service\":\"explorer\""));
+    let explorer_health = response_json(&explorer_health);
+    assert_eq!(explorer_health["status"].as_str(), Some("ok"));
+    assert_eq!(explorer_health["service"].as_str(), Some("explorer"));
 
     let telemetry = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -294,7 +364,10 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(telemetry.status, 200);
-    assert!(telemetry.body.contains("\"block_finality_rate\""));
+    let telemetry = response_json(&telemetry);
+    assert!(telemetry["block_finality_rate"].as_f64().is_some());
+    assert_eq!(telemetry["receipt_count"].as_u64(), Some(0));
+    assert_eq!(telemetry["settled_receipt_count"].as_u64(), Some(0));
 
     let telemetry_page = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -310,7 +383,9 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(telemetry_health.status, 200);
-    assert!(telemetry_health.body.contains("\"service\":\"telemetry\""));
+    let telemetry_health = response_json(&telemetry_health);
+    assert_eq!(telemetry_health["status"].as_str(), Some("ok"));
+    assert_eq!(telemetry_health["service"].as_str(), Some("telemetry"));
 
     let faucet = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -318,7 +393,9 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(faucet.status, 200);
-    assert!(faucet.body.contains("\"drip_amount\":100"));
+    let faucet = response_json(&faucet);
+    assert_eq!(faucet["balance"].as_u64(), Some(1_000));
+    assert_eq!(faucet["drip_amount"].as_u64(), Some(100));
 
     let faucet_page = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -335,8 +412,10 @@ fn node_rpc_serves_explorer_telemetry_and_faucet_routes() {
         body: Vec::new(),
     });
     assert_eq!(faucet_health.status, 200);
-    assert!(faucet_health.body.contains("\"service\":\"faucet\""));
-    assert!(faucet_health.body.contains("\"faucet_configured\":true"));
+    let faucet_health = response_json(&faucet_health);
+    assert_eq!(faucet_health["status"].as_str(), Some("ok"));
+    assert_eq!(faucet_health["service"].as_str(), Some("faucet"));
+    assert_eq!(faucet_health["faucet_configured"].as_bool(), Some(true));
 
     let claim = rpc.handle_mut(&RpcRequest {
         method: "POST".to_owned(),
