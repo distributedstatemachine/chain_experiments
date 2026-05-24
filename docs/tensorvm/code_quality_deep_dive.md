@@ -323,6 +323,9 @@ spaghetti around.
 - Iteration 132 moved public-evidence record summary/artifact clap argument structs and command
   conversion into `cli/public_evidence_record_parser.rs`, and replaced the standalone explorer's
   hand-rolled argv scanner with explicit `tensorvm-explorer serve` and `health-check` clap commands.
+- Iteration 133 moved public-evidence network-observation clap argument structs and command conversion
+  into `cli/public_evidence_network_parser.rs`, continuing to shrink `cli/public_evidence_parser.rs`
+  toward a command-family router.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

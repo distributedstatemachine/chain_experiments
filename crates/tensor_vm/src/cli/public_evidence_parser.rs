@@ -1,5 +1,8 @@
 use super::CliCommand;
 use super::parser_values::{PublicNodeRoleArg, parse_hash_value};
+use super::public_evidence_network_parser::{
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+};
 use super::public_evidence_record_parser::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
@@ -53,29 +56,8 @@ impl PublicEvidenceCommand {
             PublicEvidenceCommand::RecordArtifactFromFile(args) => args.into_command(),
             PublicEvidenceCommand::RecordSummaryFromRoots(args) => args.into_command(),
             PublicEvidenceCommand::RecordSummaryFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::NetworkObservation(args) => {
-                CliCommand::PublicEvidenceNetworkObservation {
-                    operator_id: args.operator_id,
-                    peer_id: args.peer_id,
-                    listen_address: args.listen_address,
-                    observed_at_unix_seconds: args.observed_at,
-                    gossip_topic_count: args.gossip_topics,
-                    request_response_protocol_count: args.request_response_protocols,
-                    bootstrap_peer_count: args.bootstrap_peers,
-                    max_transmit_bytes: args.max_transmit_bytes,
-                    request_timeout_seconds: args.request_timeout_seconds,
-                    max_concurrent_streams: args.max_concurrent_streams,
-                    idle_connection_timeout_seconds: args.idle_timeout_seconds,
-                }
-            }
-            PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => {
-                CliCommand::PublicEvidenceNetworkObservationFromServiceLog {
-                    operator_id: args.operator_id,
-                    listen_address: args.listen_address,
-                    observed_at_unix_seconds: args.observed_at,
-                    service_log: args.service_log,
-                }
-            }
+            PublicEvidenceCommand::NetworkObservation(args) => args.into_command(),
+            PublicEvidenceCommand::NetworkObservationFromServiceLog(args) => args.into_command(),
             PublicEvidenceCommand::Publication(args) => CliCommand::PublicEvidencePublication {
                 bundle_id: args.bundle_id,
                 public_uri: args.public_uri,
@@ -137,44 +119,6 @@ impl PublicEvidenceCommand {
 pub(super) struct ManifestArgs {
     #[arg(long)]
     manifest: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct NetworkObservationArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    operator_id: Hash,
-    #[arg(long)]
-    peer_id: String,
-    #[arg(long)]
-    listen_address: String,
-    #[arg(long)]
-    observed_at: u64,
-    #[arg(long)]
-    gossip_topics: u64,
-    #[arg(long)]
-    request_response_protocols: u64,
-    #[arg(long)]
-    bootstrap_peers: u64,
-    #[arg(long)]
-    max_transmit_bytes: u64,
-    #[arg(long)]
-    request_timeout_seconds: u64,
-    #[arg(long)]
-    max_concurrent_streams: u64,
-    #[arg(long)]
-    idle_timeout_seconds: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct NetworkObservationFromServiceLogArgs {
-    #[arg(long, value_parser = parse_hash_value)]
-    operator_id: Hash,
-    #[arg(long)]
-    listen_address: String,
-    #[arg(long)]
-    observed_at: u64,
-    #[arg(long)]
-    service_log: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
