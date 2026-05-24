@@ -257,6 +257,8 @@ spaghetti around.
   tests.
 - Iteration 106 moved runtime-state-specific node tests into `node/runtime_state.rs`, starting the
   inline node test split without changing the public node facade.
+- Iteration 107 moved pending-payload retry and duplicate-queue tests into
+  `node/pending_payloads.rs`, keeping retry fixtures colocated with the queue implementation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

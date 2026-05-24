@@ -183,3 +183,194 @@ impl PendingNetworkPayloads {
         ingested
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct RetryProcessor {
+        block_result: NetworkBlockPayloadApply,
+        receipt_result: NetworkPayloadApply,
+        attestation_result: NetworkPayloadApply,
+        block_attempts: usize,
+        receipt_attempts: usize,
+        attestation_attempts: usize,
+    }
+
+    impl NetworkPayloadProcessor for RetryProcessor {
+        fn apply_job(&mut self, _job_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
+            NetworkPayloadApply::Applied
+        }
+
+        fn apply_block(
+            &mut self,
+            _height: u64,
+            _block_hash: Hash,
+            _payload: &[u8],
+        ) -> NetworkBlockPayloadApply {
+            self.block_attempts = self.block_attempts.saturating_add(1);
+            self.block_result
+        }
+
+        fn apply_block_vote(
+            &mut self,
+            _block_hash: Hash,
+            _validator: Hash,
+            _payload: &[u8],
+        ) -> NetworkPayloadApply {
+            NetworkPayloadApply::Pending
+        }
+
+        fn apply_receipt(&mut self, _receipt_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
+            self.receipt_attempts = self.receipt_attempts.saturating_add(1);
+            self.receipt_result
+        }
+
+        fn apply_attestation(
+            &mut self,
+            _attestation_id: Hash,
+            _payload: &[u8],
+        ) -> NetworkPayloadApply {
+            self.attestation_attempts = self.attestation_attempts.saturating_add(1);
+            self.attestation_result
+        }
+    }
+
+    impl RetryProcessor {
+        fn new(
+            receipt_result: NetworkPayloadApply,
+            attestation_result: NetworkPayloadApply,
+        ) -> Self {
+            Self {
+                block_result: NetworkBlockPayloadApply::Pending,
+                receipt_result,
+                attestation_result,
+                block_attempts: 0,
+                receipt_attempts: 0,
+                attestation_attempts: 0,
+            }
+        }
+    }
+
+    #[test]
+    fn pending_payloads_retry_applies_and_invalidates_until_quiescent() {
+        let receipt_id = [1; 32];
+        let attestation_id = [2; 32];
+        let mut pending = PendingNetworkPayloads::default();
+        pending.queue_receipt(receipt_id, vec![10]);
+        pending.queue_attestation(attestation_id, vec![20]);
+        let mut processor =
+            RetryProcessor::new(NetworkPayloadApply::Applied, NetworkPayloadApply::Invalid);
+
+        let ingested = pending.retry_with(&mut processor);
+
+        assert_eq!(ingested.receipt_payloads_applied, 1);
+        assert_eq!(ingested.attestation_payloads_applied, 0);
+        assert_eq!(ingested.invalid_events, 1);
+        assert!(pending.is_empty());
+        assert_eq!(processor.receipt_attempts, 1);
+        assert_eq!(processor.attestation_attempts, 1);
+    }
+
+    #[test]
+    fn pending_payloads_retry_handles_invalid_receipts_and_applied_attestations() {
+        let mut pending = PendingNetworkPayloads::default();
+        pending.queue_receipt([3; 32], vec![30]);
+        pending.queue_attestation([4; 32], vec![40]);
+        let mut processor =
+            RetryProcessor::new(NetworkPayloadApply::Invalid, NetworkPayloadApply::Applied);
+
+        let ingested = pending.retry_with(&mut processor);
+
+        assert_eq!(ingested.receipt_payloads_applied, 0);
+        assert_eq!(ingested.attestation_payloads_applied, 1);
+        assert_eq!(ingested.invalid_events, 1);
+        assert!(pending.is_empty());
+        assert_eq!(processor.receipt_attempts, 1);
+        assert_eq!(processor.attestation_attempts, 1);
+    }
+
+    #[test]
+    fn pending_payloads_retry_keeps_pending_payloads() {
+        let mut pending = PendingNetworkPayloads::default();
+        pending.queue_receipt([5; 32], vec![50]);
+        pending.queue_attestation([6; 32], vec![60]);
+        let mut processor =
+            RetryProcessor::new(NetworkPayloadApply::Pending, NetworkPayloadApply::Pending);
+
+        let ingested = pending.retry_with(&mut processor);
+
+        assert!(!ingested.has_activity());
+        assert_eq!(pending.pending_receipt_count(), 1);
+        assert_eq!(pending.pending_attestation_count(), 1);
+        assert_eq!(processor.receipt_attempts, 1);
+        assert_eq!(processor.attestation_attempts, 1);
+    }
+
+    #[test]
+    fn pending_payloads_keep_first_payload_for_duplicate_ids() {
+        struct PayloadCapturingProcessor {
+            block_payloads: Vec<Vec<u8>>,
+            receipt_payloads: Vec<Vec<u8>>,
+            attestation_payloads: Vec<Vec<u8>>,
+        }
+
+        impl NetworkPayloadProcessor for PayloadCapturingProcessor {
+            fn apply_job(&mut self, _job_id: Hash, _payload: &[u8]) -> NetworkPayloadApply {
+                NetworkPayloadApply::Applied
+            }
+
+            fn apply_block(
+                &mut self,
+                _height: u64,
+                _block_hash: Hash,
+                payload: &[u8],
+            ) -> NetworkBlockPayloadApply {
+                self.block_payloads.push(payload.to_vec());
+                NetworkBlockPayloadApply::Applied { appended: 1 }
+            }
+
+            fn apply_block_vote(
+                &mut self,
+                _block_hash: Hash,
+                _validator: Hash,
+                _payload: &[u8],
+            ) -> NetworkPayloadApply {
+                NetworkPayloadApply::Applied
+            }
+
+            fn apply_receipt(&mut self, _receipt_id: Hash, payload: &[u8]) -> NetworkPayloadApply {
+                self.receipt_payloads.push(payload.to_vec());
+                NetworkPayloadApply::Applied
+            }
+
+            fn apply_attestation(
+                &mut self,
+                _attestation_id: Hash,
+                payload: &[u8],
+            ) -> NetworkPayloadApply {
+                self.attestation_payloads.push(payload.to_vec());
+                NetworkPayloadApply::Applied
+            }
+        }
+
+        let mut pending = PendingNetworkPayloads::default();
+        pending.queue_receipt([7; 32], vec![70]);
+        pending.queue_receipt([7; 32], vec![71]);
+        pending.queue_attestation([8; 32], vec![80]);
+        pending.queue_attestation([8; 32], vec![81]);
+        let mut processor = PayloadCapturingProcessor {
+            block_payloads: Vec::new(),
+            receipt_payloads: Vec::new(),
+            attestation_payloads: Vec::new(),
+        };
+
+        let ingested = pending.retry_with(&mut processor);
+
+        assert_eq!(ingested.receipt_payloads_applied, 1);
+        assert_eq!(ingested.attestation_payloads_applied, 1);
+        assert_eq!(processor.receipt_payloads, vec![vec![70]]);
+        assert_eq!(processor.attestation_payloads, vec![vec![80]]);
+        assert!(pending.is_empty());
+    }
+}
