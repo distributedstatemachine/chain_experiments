@@ -183,16 +183,18 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         )
     );
 
-    let service_health = execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-        kind: PublicServiceKind::Rpc,
-        endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-        public_url: "https://rpc.tensorvm.net/health".to_owned(),
-        health_path: "/health".to_owned(),
-        first_seen_block: 0,
-        last_seen_block: 9,
-        reachable_observation_count: 10,
-        signed_health_check_count: 10,
-    })
+    let service_health = execute_public_evidence_command(&EvidenceCommand::Service(
+        EvidenceServiceCommand::Health(ServiceHealthArgs {
+            kind: service_kind_arg(PublicServiceKind::Rpc),
+            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+            public_url: "https://rpc.tensorvm.net/health".to_owned(),
+            health_path: "/health".to_owned(),
+            first_block: 0,
+            last_block: 9,
+            reachable_count: 10,
+            signed_health_check_count: 10,
+        }),
+    ))
     .unwrap();
     let rpc_service_id = manifest_hash(b"rpc-service");
     let rpc_service_signature = manifest_service_signature(PublicServiceKind::Rpc, b"rpc-service");
@@ -220,15 +222,16 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         .collect::<Vec<_>>()
         .join("\n");
     std::fs::write(&health_observation_file, health_observations).unwrap();
-    let service_health_from_file =
-        execute_evidence_fixture(&EvidenceFixture::ServiceHealthFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+    let service_health_from_file = execute_public_evidence_command(&EvidenceCommand::Service(
+        EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
+            kind: service_kind_arg(PublicServiceKind::Rpc),
+            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
             public_url: "https://rpc.tensorvm.net/health".to_owned(),
             health_path: "/health".to_owned(),
-            observation_file: health_observation_file.to_string_lossy().into_owned(),
-        })
-        .unwrap();
+            observation_file: health_observation_file.clone(),
+        }),
+    ))
+    .unwrap();
     std::fs::remove_file(&health_observation_file).unwrap();
     assert_eq!(service_health_from_file, service_health);
     let additional_service_cases: [(PublicServiceKind, &[u8], &str); 3] = [
@@ -241,16 +244,18 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         ),
     ];
     for (kind, label, tag) in additional_service_cases {
-        let line = execute_evidence_fixture(&EvidenceFixture::ServiceHealth {
-            kind,
-            endpoint_id: hash_bytes(b"test", &[label]),
-            public_url: public_service_url(kind).to_owned(),
-            health_path: "/health".to_owned(),
-            first_seen_block: 0,
-            last_seen_block: 9,
-            reachable_observation_count: 10,
-            signed_health_check_count: 10,
-        })
+        let line = execute_public_evidence_command(&EvidenceCommand::Service(
+            EvidenceServiceCommand::Health(ServiceHealthArgs {
+                kind: service_kind_arg(kind),
+                endpoint_id: hash_arg(hash_bytes(b"test", &[label])),
+                public_url: public_service_url(kind).to_owned(),
+                health_path: "/health".to_owned(),
+                first_block: 0,
+                last_block: 9,
+                reachable_count: 10,
+                signed_health_check_count: 10,
+            }),
+        ))
         .unwrap();
         let endpoint_id = manifest_hash(label);
         let service_signature = manifest_service_signature(kind, label);
@@ -270,15 +275,17 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         );
     }
 
-    let service_content = execute_evidence_fixture(&EvidenceFixture::ServiceContent {
-        kind: PublicServiceKind::Rpc,
-        endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
-        public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
-        content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-        content_root: hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
-        observed_at_unix_seconds: 1_700_000_000,
-        min_content_bytes: 64,
-    })
+    let service_content = execute_public_evidence_command(&EvidenceCommand::Service(
+        EvidenceServiceCommand::Content(ServiceContentArgs {
+            kind: service_kind_arg(PublicServiceKind::Rpc),
+            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+            public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
+            content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+            content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service", b"content-root"])),
+            observed_at: 1_700_000_000,
+            min_content_bytes: 64,
+        }),
+    ))
     .unwrap();
     let rpc_content_root = hex(&hash_bytes(b"test", &[b"rpc-service", b"content-root"]));
     let rpc_content_signature =
@@ -303,16 +310,17 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
     );
     let observed_content = vec![7_u8; 80];
     let observed_content_root = public_service_content_root(&observed_content);
-    let service_content_from_bytes =
-        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromBytes {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+    let service_content_from_bytes = execute_public_evidence_command(&EvidenceCommand::Service(
+        EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
+            kind: service_kind_arg(PublicServiceKind::Rpc),
+            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
             content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_bytes: observed_content.clone(),
-        })
-        .unwrap();
+            observed_at: 1_700_000_000,
+            content: HexBytesArg::new(observed_content.clone()),
+        }),
+    ))
+    .unwrap();
     let observed_content_root_hex = hex(&observed_content_root);
     let service_content_from_bytes_fields =
         comma_record_fields(&service_content_from_bytes, "service_content=", 8);
@@ -334,16 +342,17 @@ fn execute_evidence_fixture_reports_public_evidence_outputs() {
         observed_content_root[0]
     ));
     std::fs::write(&content_file, &observed_content).unwrap();
-    let service_content_from_file =
-        execute_evidence_fixture(&EvidenceFixture::ServiceContentFromFile {
-            kind: PublicServiceKind::Rpc,
-            endpoint_id: hash_bytes(b"test", &[b"rpc-service"]),
+    let service_content_from_file = execute_public_evidence_command(&EvidenceCommand::Service(
+        EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
+            kind: service_kind_arg(PublicServiceKind::Rpc),
+            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
             public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
             content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-            observed_at_unix_seconds: 1_700_000_000,
-            content_file: content_file.to_string_lossy().into_owned(),
-        })
-        .unwrap();
+            observed_at: 1_700_000_000,
+            content_file: content_file.clone(),
+        }),
+    ))
+    .unwrap();
     std::fs::remove_file(&content_file).unwrap();
     assert_eq!(service_content_from_file, service_content_from_bytes);
 

@@ -948,6 +948,8 @@ spaghetti around.
   `EvidenceFixture` to direct `EvidenceCommand` execution.
 - Iteration 387 moved public node heartbeat, heartbeat-file, and operator-attestation report tests from
   `EvidenceFixture` to direct `EvidenceCommand` execution.
+- Iteration 388 moved public service health/content report tests from `EvidenceFixture` to direct
+  `EvidenceCommand` execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
