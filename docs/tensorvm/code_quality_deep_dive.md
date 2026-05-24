@@ -754,6 +754,8 @@ spaghetti around.
   the parsed Clap command object instead of extracting a command for a separate call.
 - Iteration 299 converted the remaining public deployment runbook and README prose inventories to exact
   trimmed-line assertions, removing the final document-wide substring loops from deployment docs coverage.
+- Iteration 300 replaced the API surface test's partial CLI command substring scans with exact route and
+  command-list assertions, making the documented API surface coverage fail on drift instead of fragments.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
