@@ -22,8 +22,8 @@ fn blocks_advance_height_and_commit_state() {
     chain.register_validator(proposer, 10_000).unwrap();
     let block = chain.produce_block(proposer, 1_000).unwrap();
     assert_eq!(block.height, 0);
-    assert_eq!(chain.state.height, 1);
-    assert_eq!(chain.blocks.len(), 1);
+    assert_eq!(chain.state().height(), 1);
+    assert_eq!(chain.blocks().len(), 1);
 }
 
 #[test]
@@ -236,17 +236,20 @@ fn block_roots_commit_to_canonical_receipts_checks_attestations_and_state_values
     assert_eq!(block.state_root, expected_state_root);
     assert!(block.pow_valid());
 
-    let mut altered_miners = chain.state.miners.clone();
+    let mut altered_miners = chain.state().miners().clone();
     altered_miners.get_mut(&miner).unwrap().stake += 1;
-    assert_ne!(miner_root(&chain.state.miners), miner_root(&altered_miners));
+    assert_ne!(
+        miner_root(chain.state().miners()),
+        miner_root(&altered_miners)
+    );
 
-    let mut altered_receipts = chain.state.receipts.clone();
+    let mut altered_receipts = chain.state().receipts().clone();
     match altered_receipts.get_mut(&receipt.receipt_id).unwrap() {
         ReceiptState::TensorOp(receipt) => receipt.execution_time_ms += 1,
         ReceiptState::LinearTrainingStep(_) => unreachable!("test inserts tensor op receipt"),
     }
     assert_ne!(
-        receipt_root(&chain.state.receipts),
+        receipt_root(chain.state().receipts()),
         receipt_root(&altered_receipts)
     );
 }

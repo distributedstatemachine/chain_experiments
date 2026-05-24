@@ -8,13 +8,13 @@ fn miner_root_commits_to_operator_identity() {
     chain
         .register_miner_with_operator(
             miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             address(b"operator-root-a"),
         )
         .unwrap();
 
-    let original_root = miner_root(&chain.state.miners);
-    let mut changed_miners = chain.state.miners.clone();
+    let original_root = miner_root(chain.state().miners());
+    let mut changed_miners = chain.state().miners().clone();
     changed_miners.get_mut(&miner).unwrap().operator_id = address(b"operator-root-b");
 
     assert_ne!(original_root, miner_root(&changed_miners));

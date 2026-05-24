@@ -994,6 +994,8 @@ spaghetti around.
   `Chain`/`ChainState` accessors and used the existing model optimizer test helper for setup.
 - Iteration 409 moved attestation tests off direct `ChainState` and `ChainParams` field reads,
   using the existing state and params accessors throughout the suite.
+- Iteration 410 moved root-hash and block root/height assertions onto the existing chain
+  accessors, removing another cluster of direct test reads from `Chain` internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
