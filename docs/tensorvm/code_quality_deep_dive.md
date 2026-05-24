@@ -397,6 +397,9 @@ spaghetti around.
 - Iteration 156 rewrote the local `tvmd` clap argument model around shared runtime argument groups,
   parse-time socket/multiaddr validation, and env/default-backed operator settings, so role and service
   commands no longer require every runtime flag on every invocation.
+- Iteration 157 moved the CLI network-observation address-filter test into
+  `cli/tests/network_observation.rs`, starting the split of the large CLI test module along focused
+  behavior-family boundaries.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
