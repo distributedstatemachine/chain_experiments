@@ -1,19 +1,27 @@
-use super::{CommandFixture, execute_command_fixture, parse_test_cli};
+use super::{execute_test_cli_command, parse_test_cli};
 use libp2p::PeerId;
+
+fn execute_cli(args: &[&str]) -> crate::error::Result<String> {
+    let command = parse_test_cli(args).expect("fixture CLI args must parse");
+    execute_test_cli_command(&command)
+}
 
 #[test]
 fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
-    let cuda_start = CommandFixture::MinerStart {
-        wallet: "miner.key".to_owned(),
-        device: "cuda:0".to_owned(),
-        node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-    };
-
     #[cfg(not(feature = "cuda-kernels"))]
     assert_eq!(
-        execute_command_fixture(&cuda_start)
-            .unwrap_err()
-            .to_string(),
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            "miner.key",
+            "--device",
+            "cuda:0",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
+        .unwrap_err()
+        .to_string(),
         "invalid receipt: cuda kernels not compiled"
     );
 
@@ -21,7 +29,17 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
     {
         let device_count = crate::runtime::cuda_device_count().unwrap_or(0);
         if device_count > 0 {
-            let report = execute_command_fixture(&cuda_start).unwrap();
+            let report = execute_cli(&[
+                "miner",
+                "check",
+                "--wallet",
+                "miner.key",
+                "--device",
+                "cuda:0",
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+            ])
+            .unwrap();
             let device_count_field = device_count.to_string();
             super::assert_report_fields(
                 &report,
@@ -36,12 +54,18 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
                 ],
             );
         }
+        let unavailable_device = format!("cuda:{device_count}");
         assert!(
-            execute_command_fixture(&CommandFixture::MinerStart {
-                wallet: "miner.key".to_owned(),
-                device: format!("cuda:{device_count}"),
-                node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            })
+            execute_cli(&[
+                "miner",
+                "check",
+                "--wallet",
+                "miner.key",
+                "--device",
+                &unavailable_device,
+                "--node",
+                "/ip4/127.0.0.1/tcp/4001",
+            ])
             .is_err()
         );
     }
@@ -49,46 +73,71 @@ fn miner_start_requires_real_cuda_readiness_for_cuda_devices() {
 
 #[test]
 fn execute_command_fixture_rejects_invalid_local_args() {
-    assert!(execute_command_fixture(&CommandFixture::MinerRegister { stake: 99 }).is_err());
-    assert!(execute_command_fixture(&CommandFixture::ValidatorRegister { stake: 9_999 }).is_err());
+    assert!(execute_cli(&["miner", "register", "--stake", "99"]).is_err());
+    assert!(execute_cli(&["validator", "register", "--stake", "9999"]).is_err());
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: " ".to_owned(),
-            device: "cpu".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        })
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            " ",
+            "--device",
+            "cpu",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
-            device: "gpu0".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        })
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            "miner.key",
+            "--device",
+            "gpu0",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
-            device: "cuda:abc".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        })
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            "miner.key",
+            "--device",
+            "cuda:abc",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
-            device: "cuda:".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        })
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            "miner.key",
+            "--device",
+            "cuda:",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::MinerStart {
-            wallet: "miner.key".to_owned(),
-            device: " ".to_owned(),
-            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-        })
+        execute_cli(&[
+            "miner",
+            "check",
+            "--wallet",
+            "miner.key",
+            "--device",
+            " ",
+            "--node",
+            "/ip4/127.0.0.1/tcp/4001",
+        ])
         .is_err()
     );
     assert!(
@@ -115,12 +164,7 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         ])
         .is_err()
     );
-    assert!(
-        execute_command_fixture(&CommandFixture::ServiceInit {
-            data_dir: " ".to_owned(),
-        })
-        .is_err()
-    );
+    assert!(execute_cli(&["node", "init", "--data-dir", " "]).is_err());
     assert!(
         parse_test_cli(&[
             "node",
@@ -151,12 +195,19 @@ fn execute_command_fixture_rejects_invalid_local_args() {
     );
     let peer_a = PeerId::random();
     let peer_b = PeerId::random();
+    let mismatched_peer_address = format!("/dns/bootstrap.tensorvm.net/tcp/4001/p2p/{peer_b}");
     assert!(
-        execute_command_fixture(&CommandFixture::ServicePeerAdd {
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            peer_id: peer_a.to_string(),
-            address: format!("/dns/bootstrap.tensorvm.net/tcp/4001/p2p/{peer_b}"),
-        })
+        execute_cli(&[
+            "node",
+            "peer",
+            "add",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--peer-id",
+            &peer_a.to_string(),
+            "--address",
+            &mismatched_peer_address,
+        ])
         .is_err()
     );
     assert!(
@@ -186,11 +237,14 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceReadiness {
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: " ".to_owned(),
-            identity_seed: None,
-        })
+        execute_cli(&[
+            "node",
+            "check",
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/4001",
+            "--data-dir",
+            " ",
+        ])
         .is_err()
     );
     assert!(
@@ -209,25 +263,33 @@ fn execute_command_fixture_rejects_invalid_local_args() {
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceServe {
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: " ".to_owned(),
-            identity_seed: None,
-            auth_token: "secret".to_owned(),
-            max_requests: 0,
-        })
+        execute_cli(&[
+            "node",
+            "serve",
+            "--listen",
+            "127.0.0.1:8545",
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/4001",
+            "--data-dir",
+            " ",
+            "--auth-token",
+            "secret",
+        ])
         .is_err()
     );
     assert!(
-        execute_command_fixture(&CommandFixture::ServiceServe {
-            listen: "127.0.0.1:8545".to_owned(),
-            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
-            data_dir: "/var/lib/tensorvm".to_owned(),
-            identity_seed: None,
-            auth_token: " ".to_owned(),
-            max_requests: 0,
-        })
+        execute_cli(&[
+            "node",
+            "serve",
+            "--listen",
+            "127.0.0.1:8545",
+            "--p2p-listen",
+            "/ip4/127.0.0.1/tcp/4001",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--auth-token",
+            " ",
+        ])
         .is_err()
     );
     assert!(

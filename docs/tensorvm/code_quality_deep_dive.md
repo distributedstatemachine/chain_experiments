@@ -926,6 +926,8 @@ spaghetti around.
   migrate off the parallel `CommandFixture` model incrementally.
 - Iteration 377 migrated local CLI execution report tests to execute clap-parsed commands directly,
   removing the now-dead local CPU verify fixture variant.
+- Iteration 378 migrated local CLI validation tests to execute clap-parsed commands directly instead
+  of constructing local `CommandFixture` variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
