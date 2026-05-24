@@ -10,13 +10,13 @@ fn chain_rejects_registration_profile_and_transfer_edges() {
 
     assert_eq!(chain.proposer_for_next_epoch(&beacon), None);
     assert_eq!(
-        chain.register_miner(miner, chain.params.miner_min_stake - 1),
+        chain.register_miner(miner, chain.params().miner_min_stake - 1),
         Err(TvmError::InsufficientStake)
     );
     assert_eq!(
         chain.register_miner_with_profile(
             miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             HardwareClass::ConsumerGpu,
             10_001,
         ),
@@ -25,7 +25,7 @@ fn chain_rejects_registration_profile_and_transfer_edges() {
     assert_eq!(
         chain.register_miner_with_profile(
             miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             HardwareClass::Other,
             1,
         ),
@@ -36,12 +36,12 @@ fn chain_rejects_registration_profile_and_transfer_edges() {
     chain
         .register_miner_with_profile(
             miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             HardwareClass::DatacenterGpu,
             9_000,
         )
         .unwrap();
-    let registered_miner = chain.state.miners.get(&miner).unwrap();
+    let registered_miner = chain.state().miners().get(&miner).unwrap();
     assert_eq!(registered_miner.operator_id, miner);
     assert_eq!(
         registered_miner.hardware_class,
@@ -52,15 +52,20 @@ fn chain_rejects_registration_profile_and_transfer_edges() {
     chain
         .register_miner_with_operator(
             explicit_miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             explicit_operator,
         )
         .unwrap();
     assert_eq!(
-        chain.state.miners.get(&explicit_miner).unwrap().operator_id,
+        chain
+            .state()
+            .miners()
+            .get(&explicit_miner)
+            .unwrap()
+            .operator_id,
         explicit_operator
     );
-    assert_ne!(miner_root(&chain.state.miners), [0; 32]);
+    assert_ne!(miner_root(chain.state().miners()), [0; 32]);
     assert_eq!(
         [HardwareClass::Cpu.tag(), HardwareClass::ConsumerGpu.tag()],
         [1, 2]
@@ -69,11 +74,11 @@ fn chain_rejects_registration_profile_and_transfer_edges() {
     assert!(HardwareClass::DatacenterGpu.is_gpu());
 
     assert_eq!(
-        chain.register_validator(validator, chain.params.validator_min_stake - 1),
+        chain.register_validator(validator, chain.params().validator_min_stake - 1),
         Err(TvmError::InsufficientStake)
     );
     chain
-        .register_validator(validator, chain.params.validator_min_stake)
+        .register_validator(validator, chain.params().validator_min_stake)
         .unwrap();
 
     assert_eq!(
@@ -104,7 +109,7 @@ fn chain_rejects_receipt_boundary_errors() {
     chain
         .register_miner_with_profile(
             miner,
-            chain.params.miner_min_stake,
+            chain.params().miner_min_stake,
             HardwareClass::DatacenterGpu,
             9_000,
         )
@@ -156,8 +161,8 @@ fn chain_rejects_receipt_boundary_errors() {
     ));
     assert_eq!(
         chain
-            .state
-            .receipts
+            .state()
+            .receipts()
             .get(&linear_receipt.receipt_id)
             .unwrap()
             .receipt_id(),
@@ -176,10 +181,10 @@ fn chain_rejects_attestation_boundary_errors() {
     let miner = address(b"boundary-miner");
     let validator = address(b"boundary-validator");
     chain
-        .register_miner(miner, chain.params.miner_min_stake)
+        .register_miner(miner, chain.params().miner_min_stake)
         .unwrap();
     chain
-        .register_validator(validator, chain.params.validator_min_stake)
+        .register_validator(validator, chain.params().validator_min_stake)
         .unwrap();
 
     let job = MatmulJob::synthetic(0, 77, 2, 2, 2, &beacon, 10);
@@ -197,13 +202,13 @@ fn chain_rejects_attestation_boundary_errors() {
     assert_eq!(
         chain.submit_attestation(ValidatorAttestation::new(
             address(b"unknown-validator"),
-            chain.params.validator_min_stake,
+            chain.params().validator_min_stake,
             statement.clone(),
         )),
         Err(TvmError::UnknownValidator)
     );
     let mut bad_signature =
-        ValidatorAttestation::new(validator, chain.params.validator_min_stake, statement);
+        ValidatorAttestation::new(validator, chain.params().validator_min_stake, statement);
     bad_signature.signature = [9; 32];
     assert_eq!(
         chain.submit_attestation(bad_signature),
@@ -212,7 +217,7 @@ fn chain_rejects_attestation_boundary_errors() {
     assert_eq!(
         chain.submit_attestation(ValidatorAttestation::new(
             validator,
-            chain.params.validator_min_stake,
+            chain.params().validator_min_stake,
             AttestationStatement {
                 receipt_id: hash_bytes(b"test", &[b"unknown-receipt"]),
                 job_id: receipt.job_id,
@@ -232,7 +237,7 @@ fn chain_rejects_block_vote_boundary_errors() {
     let mut chain = Chain::new(beacon);
     let validator = address(b"boundary-validator");
     chain
-        .register_validator(validator, chain.params.validator_min_stake)
+        .register_validator(validator, chain.params().validator_min_stake)
         .unwrap();
 
     let block = chain.produce_block(validator, 1_000).unwrap();
@@ -244,7 +249,7 @@ fn chain_rejects_block_vote_boundary_errors() {
         )),
         Err(TvmError::UnknownValidator)
     );
-    let mut bad_vote = BlockVote::new(validator, chain.params.validator_min_stake, &block);
+    let mut bad_vote = BlockVote::new(validator, chain.params().validator_min_stake, &block);
     bad_vote.signature = [7; 32];
     assert_eq!(
         chain.submit_block_vote(bad_vote),
@@ -255,7 +260,7 @@ fn chain_rejects_block_vote_boundary_errors() {
     assert_eq!(
         chain.submit_block_vote(BlockVote::new(
             validator,
-            chain.params.validator_min_stake,
+            chain.params().validator_min_stake,
             &orphan,
         )),
         Err(TvmError::InvalidReceipt("unknown block"))
@@ -268,7 +273,7 @@ fn chain_rejects_model_and_challenge_boundary_errors() {
     let mut chain = Chain::new(beacon);
     let validator = address(b"boundary-validator");
     chain
-        .register_validator(validator, chain.params.validator_min_stake)
+        .register_validator(validator, chain.params().validator_min_stake)
         .unwrap();
 
     let weights = Tensor::from_vec(vec![2, 2], DType::FieldElement, vec![1, 2, 3, 4]).unwrap();
@@ -300,7 +305,7 @@ fn chain_rejects_model_and_challenge_boundary_errors() {
         Ok(())
     );
     assert_eq!(
-        chain.state.validators.get(&validator).unwrap().stake,
-        chain.params.validator_min_stake - 100
+        chain.state().validators().get(&validator).unwrap().stake,
+        chain.params().validator_min_stake - 100
     );
 }

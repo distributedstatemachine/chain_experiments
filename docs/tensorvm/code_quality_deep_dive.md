@@ -996,6 +996,8 @@ spaghetti around.
   using the existing state and params accessors throughout the suite.
 - Iteration 410 moved root-hash and block root/height assertions onto the existing chain
   accessors, removing another cluster of direct test reads from `Chain` internals.
+- Iteration 411 moved boundary tests onto `Chain`/`ChainState`/`ChainParams` accessors so the
+  last chain-test suite with broad direct field reads follows the same encapsulation boundary.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
