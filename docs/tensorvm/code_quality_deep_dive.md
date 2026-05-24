@@ -1085,6 +1085,9 @@ spaghetti around.
 - Iteration 445 split public service health/content Clap parser coverage into
   `cli/tests/public_evidence_service_parser.rs`, leaving the mixed public parser suite focused on
   manifest, network, and record command families.
+- Iteration 446 split public network observation and service-log Clap parser coverage into
+  `cli/tests/public_evidence_network_parser.rs`, leaving the mixed public parser suite focused on
+  manifest and supporting-record command families.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
