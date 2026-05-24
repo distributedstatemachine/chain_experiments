@@ -7,13 +7,9 @@ pub(super) fn assert_tensor_count(node: &RpcNode, expected: usize) {
         body: Vec::new(),
     });
     assert_eq!(response.status, 200);
-    assert!(
-        response
-            .body
-            .contains(&format!("\"tensor_count\":{expected}")),
-        "unexpected tensor latest response: {}",
-        response.body
-    );
+    let body: serde_json::Value =
+        serde_json::from_str(&response.body).expect("tensor latest response body must be JSON");
+    assert_eq!(body["tensor_count"].as_u64(), Some(expected as u64));
 }
 
 pub(super) fn insert_bundle_tensors(node: &mut RpcNode, bundle: &RoleReceiptBundle) {
@@ -34,6 +30,13 @@ pub(super) fn report_u64(report: &str, key: &str) -> u64 {
     report_field(report, key)
         .parse()
         .unwrap_or_else(|_| panic!("expected numeric report field {key}"))
+}
+
+pub(super) fn http_status_line(response: &str) -> &str {
+    response
+        .lines()
+        .next()
+        .expect("HTTP response must include status line")
 }
 
 pub(super) fn register_miner(chain: &mut Chain, miner: tensor_vm::Address) {

@@ -102,24 +102,30 @@ fn role_loop_reports_keep_role_specific_readiness_lines() {
     };
 
     let miner_report = RoleServiceRunner::miner().format_report(config, "service_report=true");
-    assert!(miner_report.contains("command=miner_run"));
-    assert!(miner_report.contains("role=miner"));
-    assert!(miner_report.contains("device=cpu"));
-    assert!(miner_report.contains("role_runtime_ready=true"));
+    assert_eq!(report_field(&miner_report, "command"), "miner_run");
+    assert_eq!(report_field(&miner_report, "role"), "miner");
+    assert_eq!(report_field(&miner_report, "device"), "cpu");
+    assert_eq!(report_field(&miner_report, "role_runtime_ready"), "true");
 
     let validator_report =
         RoleServiceRunner::validator().format_report(config, "service_report=true");
-    assert!(validator_report.contains("command=validator_run"));
-    assert!(validator_report.contains("role=validator"));
-    assert!(validator_report.contains("reference_verifier_ready=true"));
-    assert!(validator_report.contains("role_runtime_ready=true"));
+    assert_eq!(report_field(&validator_report, "command"), "validator_run");
+    assert_eq!(report_field(&validator_report, "role"), "validator");
+    assert_eq!(
+        report_field(&validator_report, "reference_verifier_ready"),
+        "true"
+    );
+    assert_eq!(
+        report_field(&validator_report, "role_runtime_ready"),
+        "true"
+    );
 
     let proposer_report =
         RoleServiceRunner::proposer().format_report(config, "service_report=true");
-    assert!(proposer_report.contains("command=proposer_run"));
-    assert!(proposer_report.contains("role=proposer"));
-    assert!(proposer_report.contains("proposer_ready=true"));
-    assert!(proposer_report.contains("role_runtime_ready=true"));
+    assert_eq!(report_field(&proposer_report, "command"), "proposer_run");
+    assert_eq!(report_field(&proposer_report, "role"), "proposer");
+    assert_eq!(report_field(&proposer_report, "proposer_ready"), "true");
+    assert_eq!(report_field(&proposer_report, "role_runtime_ready"), "true");
 }
 
 #[test]

@@ -26,7 +26,7 @@ fn role_runtime_read_only_rpc_does_not_persist_chain() {
     runtime.serve_rpc_once().unwrap();
     let response = client.join().unwrap();
 
-    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    assert_eq!(http_status_line(&response), "HTTP/1.1 200 OK");
     assert_eq!(
         file_modified_at(store.snapshot_store().path()),
         snapshot_modified
@@ -37,7 +37,7 @@ fn role_runtime_read_only_rpc_does_not_persist_chain() {
     );
     assert_eq!(store.load_chain().unwrap(), chain);
     let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
-    assert!(status.contains("role_served_requests=1"));
+    assert_eq!(report_u64(&status, "role_served_requests"), 1);
 
     drop(runtime);
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
@@ -66,11 +66,11 @@ fn role_runtime_mutating_rpc_persists_chain() {
     runtime.serve_rpc_once().unwrap();
     let response = client.join().unwrap();
 
-    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    assert_eq!(http_status_line(&response), "HTTP/1.1 200 OK");
     let persisted = store.load_chain().unwrap();
     assert_eq!(persisted.state().rewards().balance(&user), 100);
     let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
-    assert!(status.contains("role_served_requests=1"));
+    assert_eq!(report_u64(&status, "role_served_requests"), 1);
 
     drop(runtime);
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
@@ -149,8 +149,14 @@ fn validator_remote_tensor_fetch_status_does_not_persist_chain() {
     );
     assert_eq!(store.load_chain().unwrap(), chain);
     let status = std::fs::read_to_string(data_dir.join("role-runtime.status")).unwrap();
-    assert!(status.contains("validator_remote_tensor_fetch_failures=3"));
-    assert!(status.contains("validator_attestations_submitted=0"));
+    assert_eq!(
+        report_u64(&status, "role_validator_remote_tensor_fetch_failures"),
+        3
+    );
+    assert_eq!(
+        report_u64(&status, "role_validator_attestations_submitted"),
+        0
+    );
 
     drop(runtime);
     std::fs::remove_dir_all(data_dir).expect("test dir must be removed");

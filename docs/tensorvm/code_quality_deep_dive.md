@@ -719,6 +719,8 @@ spaghetti around.
   live service status and JSON substring checks with exact status-line and `serde_json` assertions.
 - Iteration 282 added shared keyed-report parsing to the `tvmd_runtime` integration harness and converted
   service command report checks from substring scans to field-level assertions.
+- Iteration 283 removed the remaining `tvmd_runtime` report/body substring assertions, reusing keyed
+  report parsing, exact HTTP status-line checks, and parsed tensor JSON counts.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
