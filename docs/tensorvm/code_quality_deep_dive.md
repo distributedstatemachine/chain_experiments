@@ -265,6 +265,8 @@ spaghetti around.
   `node.rs` with facade re-exports and the remaining payload processor retry coverage.
 - Iteration 110 moved the chain payload processor retry test into `node/payload_processor.rs`, so
   `node.rs` is now a small public facade over the split node submodules.
+- Iteration 111 moved the large inline CLI test module into `cli/tests.rs`, shrinking `cli.rs`
+  toward parser and reference-command code while preserving private helper coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
