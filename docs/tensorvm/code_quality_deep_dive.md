@@ -545,6 +545,8 @@ spaghetti around.
   consensus-bypass fixture code out of the chain facade while preserving crate-test-only access.
 - Iteration 211 moved the large `ChainCommand`/`ChainEvent` command-boundary test into
   `chain/tests/commands.rs`, starting the chain facade's inline test split around command ownership.
+- Iteration 212 moved settlement, quorum, attestation, and conflicting-linear-root tests into
+  `chain/tests/settlement.rs`, keeping receipt-settlement behavior out of the chain facade test module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
