@@ -3,6 +3,7 @@ use super::arguments::public_node_role_tag;
 use super::commands::PublicTestnetCommand;
 use super::public_evidence_network_descriptions::describe_public_evidence_network_command;
 use super::public_evidence_parser::PublicEvidenceCommand;
+use super::public_evidence_publication_descriptions::describe_public_evidence_publication_command;
 use super::public_evidence_record_descriptions::describe_public_evidence_record_command;
 use super::public_evidence_service_descriptions::describe_public_evidence_service_command;
 use crate::hash::hex;
@@ -27,23 +28,13 @@ fn describe_public_evidence_subcommand(command: &PublicEvidenceCommand) -> Strin
     if let Some(description) = describe_public_evidence_network_command(command) {
         return description;
     }
+    if let Some(description) = describe_public_evidence_publication_command(command) {
+        return description;
+    }
 
     match command {
         PublicEvidenceCommand::Validate(args) => {
             format!("validate public evidence manifest {}", args.manifest)
-        }
-        PublicEvidenceCommand::Publication(args) => {
-            format!(
-                "generate public evidence publication signature public_uri={}",
-                args.public_uri
-            )
-        }
-        PublicEvidenceCommand::AuditorRecord(args) => {
-            format!(
-                "generate public evidence auditor record auditor_id={} audit_uri={}",
-                hex(&args.auditor_id),
-                args.audit_uri
-            )
         }
         PublicEvidenceCommand::RunWindow(args) => {
             format!(

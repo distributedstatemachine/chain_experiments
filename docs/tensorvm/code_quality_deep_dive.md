@@ -364,6 +364,9 @@ spaghetti around.
 - Iteration 146 moved public-evidence network-observation descriptions into
   `cli/public_evidence_network_descriptions.rs`, keeping network CLI text beside the network parser
   and execution command-family modules.
+- Iteration 147 moved public-evidence publication and auditor-record descriptions into
+  `cli/public_evidence_publication_descriptions.rs`, aligning publication CLI text with its parser
+  and execution command-family modules.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
