@@ -672,6 +672,8 @@ spaghetti around.
   substring-heavy status assertion surface with explicit field checks.
 - Iteration 259 reused the parsed CLI report helper for CUDA miner readiness assertions, shrinking the
   remaining generated status substring checks in local CLI validation coverage.
+- Iteration 260 reused the parsed CLI report helper for public-evidence publication output assertions,
+  removing another generated `key=value` substring check from CLI execution coverage.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

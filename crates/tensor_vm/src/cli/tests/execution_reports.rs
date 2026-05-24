@@ -18,21 +18,23 @@ fn execute_command_fixture_reports_public_evidence_outputs() {
         independent_auditor_count: 1,
     })
     .unwrap();
-    assert!(publication.contains(&format!(
-        "bundle_id={}",
-        manifest_hash(b"public-evidence-bundle")
-    )));
-    assert!(publication.contains("public_uri=https://tensorvm.net/tensorvm/public-evidence.json"));
-    assert!(publication.contains(&format!(
-        "manifest_signer={}",
-        manifest_address(b"public-evidence-publisher")
-    )));
-    assert!(publication.contains(&format!(
-        "manifest_signature={}",
-        manifest_publication_signature()
-    )));
-    assert!(publication.contains("manifest_signature_count=1"));
-    assert!(publication.contains("independent_auditor_count=1"));
+    let bundle_id = manifest_hash(b"public-evidence-bundle");
+    let manifest_signer = manifest_address(b"public-evidence-publisher");
+    let manifest_signature = manifest_publication_signature();
+    assert_report_fields(
+        &publication,
+        &[
+            ("bundle_id", bundle_id.as_str()),
+            (
+                "public_uri",
+                "https://tensorvm.net/tensorvm/public-evidence.json",
+            ),
+            ("manifest_signer", manifest_signer.as_str()),
+            ("manifest_signature", manifest_signature.as_str()),
+            ("manifest_signature_count", "1"),
+            ("independent_auditor_count", "1"),
+        ],
+    );
 
     let auditor_record = execute_command_fixture(&CommandFixture::PublicEvidenceAuditorRecord {
         bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
