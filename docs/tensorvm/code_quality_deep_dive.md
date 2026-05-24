@@ -696,6 +696,8 @@ spaghetti around.
   removing the last substring assertion from CLI command description coverage.
 - Iteration 271 converted role-run integration stdout checks to parsed fields, including duplicate command
   handling for the embedded `service_serve` report and numeric runtime/network counters.
+- Iteration 272 added direct `serde_json` test parsing for RPC responses and converted the head, health,
+  RPC health, and block route checks from raw substring matching to typed JSON field assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

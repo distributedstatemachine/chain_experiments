@@ -19,3 +19,6 @@ libp2p = { version = "0.54.1", default-features = false, features = ["dns", "ed2
 serde = { version = "1", features = ["derive"] }
 tensor_vm_explorer = { path = "../tensor_vm_explorer" }
 tokio = { version = "1", features = ["net", "rt", "time"] }
+
+[dev-dependencies]
+serde_json = "1"

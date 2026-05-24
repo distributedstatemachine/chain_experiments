@@ -1,5 +1,18 @@
 use super::*;
 
+fn response_json(response: &RpcResponse) -> serde_json::Value {
+    serde_json::from_str(&response.body).expect("RPC response body must be JSON")
+}
+
+fn json_hex_field<'a>(json: &'a serde_json::Value, field: &str) -> &'a str {
+    let value = json[field]
+        .as_str()
+        .expect("RPC JSON field must be a string");
+    assert_eq!(value.len(), 64);
+    assert!(value.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    value
+}
+
 #[test]
 fn node_rpc_serves_head_and_blocks() {
     let beacon = hash_bytes(b"test", &[b"beacon"]);
@@ -15,9 +28,10 @@ fn node_rpc_serves_head_and_blocks() {
         body: Vec::new(),
     });
     assert_eq!(head.status, 200);
-    assert!(head.body.contains("\"height\":1"));
-    assert!(head.body.contains("\"state_root\""));
-    assert!(head.body.len() >= 64);
+    let head = response_json(&head);
+    assert_eq!(head["height"].as_u64(), Some(1));
+    assert_eq!(head["block_count"].as_u64(), Some(1));
+    json_hex_field(&head, "state_root");
 
     let health = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -25,9 +39,12 @@ fn node_rpc_serves_head_and_blocks() {
         body: Vec::new(),
     });
     assert_eq!(health.status, 200);
-    assert!(health.body.contains("\"status\":\"ok\""));
-    assert!(health.body.contains("\"service\":\"all\""));
-    assert!(health.body.contains("\"block_count\":1"));
+    let health = response_json(&health);
+    assert_eq!(health["status"].as_str(), Some("ok"));
+    assert_eq!(health["service"].as_str(), Some("all"));
+    assert_eq!(health["height"].as_u64(), Some(1));
+    assert_eq!(health["block_count"].as_u64(), Some(1));
+    assert_eq!(health["faucet_configured"].as_bool(), Some(false));
 
     let rpc_health = rpc.handle(&RpcRequest {
         method: "GET".to_owned(),
@@ -35,11 +52,16 @@ fn node_rpc_serves_head_and_blocks() {
         body: Vec::new(),
     });
     assert_eq!(rpc_health.status, 200);
-    assert!(rpc_health.body.contains("\"service\":\"rpc\""));
+    let rpc_health = response_json(&rpc_health);
+    assert_eq!(rpc_health["status"].as_str(), Some("ok"));
+    assert_eq!(rpc_health["service"].as_str(), Some("rpc"));
 
     let block = rpc.handle_http_text("GET /chain/block/0 HTTP/1.1\r\n\r\n");
     assert_eq!(block.status, 200);
-    assert!(block.body.contains("\"height\":0"));
+    let block = response_json(&block);
+    assert_eq!(block["height"].as_u64(), Some(0));
+    assert_eq!(block["epoch"].as_u64(), Some(0));
+    json_hex_field(&block, "hash");
 }
 
 #[test]
