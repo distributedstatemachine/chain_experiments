@@ -889,6 +889,8 @@ spaghetti around.
   expectations, and full-rate basis-point constants into the shared topology script.
 - Iteration 357 removed the last retired preflight and service-run command references from
   operator-facing docs and added a deployment-doc regression against retired top-level CLI families.
+- Iteration 358 changed the local CPU checker's all-operator convergence gates to compare service
+  status against topology-derived seed, operator-count, and settled-receipt expectations.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
