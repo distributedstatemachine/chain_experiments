@@ -35,6 +35,7 @@ EXPECTED_LIVE_RECEIPT_QUERY_LIMIT="$LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT"
 EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH"
 EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT"
 EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT"
+EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -253,7 +254,7 @@ read_service_status() {
   service="$1"
   attempt=0
   while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
+    if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi
@@ -268,7 +269,7 @@ read_service_block() {
   height="$2"
   attempt=0
   while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do
-    if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
+    if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then
       printf '%s\n' "$output" | tr -d '\r'
       return 0
     fi

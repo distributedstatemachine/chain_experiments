@@ -478,6 +478,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"LOCAL_CPU_BLOCK_SCAN_DEPTH=40"#,
             r#"LOCAL_CPU_CHECKER_RETRY_LIMIT=30"#,
             r#"LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT=60"#,
+            r#"LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS=15"#,
         ],
     );
 
@@ -505,6 +506,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"EXPECTED_BLOCK_SCAN_DEPTH="$LOCAL_CPU_BLOCK_SCAN_DEPTH""#,
             r#"EXPECTED_CHECKER_RETRY_LIMIT="$LOCAL_CPU_CHECKER_RETRY_LIMIT""#,
             r#"EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT="$LOCAL_CPU_OPERATOR_CONVERGENCE_RETRY_LIMIT""#,
+            r#"EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS""#,
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
             r#"require_command sort"#,
@@ -612,6 +614,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"BLOCK_SCAN_START=$((LIVE_HEIGHT - 40))"#,
             r#"while [ "$attempt" -lt 30 ]; do"#,
             r#"while [ "$attempt" -lt 60 ]; do"#,
+            r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then"#,
+            r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
             r#"if NETWORK_BLOCK_RAW=$(read_service_block miner-01 "$CANDIDATE_NETWORK_HEAD_HEIGHT"); then"#,
             r#"[ "${LIVE_HEIGHT:-0}" -gt 2 ] || fail "gateway chain head did not advance past seeded height 2""#,
             r#"[ "${LIVE_BLOCK_COUNT:-0}" -gt 2 ] || fail "gateway chain block count did not advance past seeded 2 blocks""#,
@@ -1054,7 +1058,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert_shell_logical_lines(
         &check_script,
         &[
-            r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
+            r#"if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then"#,
+            r#"if output=$(timeout "${EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS}s" docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
             r#"BLOCK_SCAN_START=$((LIVE_HEIGHT - EXPECTED_BLOCK_SCAN_DEPTH))"#,
             r#"while [ "$attempt" -lt "$EXPECTED_CHECKER_RETRY_LIMIT" ]; do"#,
             r#"while [ "$attempt" -lt "$EXPECTED_OPERATOR_CONVERGENCE_RETRY_LIMIT" ]; do"#,
