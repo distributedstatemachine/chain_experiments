@@ -439,6 +439,9 @@ spaghetti around.
 - Iteration 170 moved the public deployment scaffold, runbook, and README assertions into
   `testnet/tests/deployment_docs.rs`, separating deployment artifact documentation checks from the
   preflight manifest parser coverage.
+- Iteration 171 moved the public preflight manifest readiness, pending-example, and malformed-input
+  tests into `testnet/tests/preflight_manifest.rs`, leaving only the short unsigned/short-lived run
+  evidence filter test inline in `testnet.rs`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
