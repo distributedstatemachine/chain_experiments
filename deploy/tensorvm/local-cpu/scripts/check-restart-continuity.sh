@@ -18,6 +18,7 @@ fail() {
 [ -r "$TOPOLOGY_FILE" ] || fail "local CPU topology file is not readable"
 . "$TOPOLOGY_FILE"
 EXPECTED_SERVICES="$LOCAL_CPU_EXPECTED_SERVICES"
+EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT"
 EXPECTED_RESTART_CHECKER_RETRY_LIMIT="$LOCAL_CPU_RESTART_CHECKER_RETRY_LIMIT"
 EXPECTED_DOCKER_EXEC_TIMEOUT_SECONDS="$LOCAL_CPU_DOCKER_EXEC_TIMEOUT_SECONDS"
 EXPECTED_CHECKER_RETRY_SLEEP_SECONDS="$LOCAL_CPU_CHECKER_RETRY_SLEEP_SECONDS"
@@ -126,7 +127,7 @@ capture_snapshot() {
     [ -n "$latest_block_hash" ] || fail "$phase status for $service is missing latest_block_hash"
     [ -n "$state_root" ] || fail "$phase status for $service is missing state_root"
     [ -n "$block_log_root" ] || fail "$phase status for $service is missing block_log_root"
-    [ "$latest_block_height" -gt 2 ] || fail "$phase status for $service latest block did not advance past seed"
+    [ "$latest_block_height" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "$phase status for $service latest block did not advance past seeded height $EXPECTED_SEED_HEIGHT"
     [ "$latest_block_hash" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty latest block hash"
     [ "$state_root" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty state root"
     [ "$block_log_root" != "$ZERO_HASH" ] || fail "$phase status for $service has an empty block-log root"
@@ -145,7 +146,7 @@ capture_snapshot() {
   done
 
   [ -n "$min_height" ] || fail "$phase common head height was not observed"
-  [ "$min_height" -gt 2 ] || fail "$phase common head height did not advance past the seed"
+  [ "$min_height" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "$phase common head height did not advance past seeded height $EXPECTED_SEED_HEIGHT"
   common_state_root=""
   for service in $EXPECTED_SERVICES; do
     BLOCK_STATUS=$(read_service_block "$service" "$min_height") \

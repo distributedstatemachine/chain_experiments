@@ -908,6 +908,8 @@ spaghetti around.
   script.
 - Iteration 368 moved the restart continuity checker's retry sleep interval into the shared topology
   policy script.
+- Iteration 369 moved the restart continuity checker's seeded-height comparisons into the shared
+  topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
