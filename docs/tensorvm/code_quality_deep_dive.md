@@ -942,6 +942,8 @@ spaghetti around.
   direct `TvmdCommand` construction.
 - Iteration 384 moved public network observation parser expectations from `EvidenceFixture` to direct
   `TvmdCommand` construction.
+- Iteration 385 moved public supporting-record parser expectations from `EvidenceFixture` to direct
+  `TvmdCommand` construction and removed the remaining parser fixture equality adapter.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

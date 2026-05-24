@@ -1,18 +1,20 @@
 use super::{
-    AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceFixture,
-    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRunCommand, EvidenceServiceCommand,
+    AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
+    EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
     HashArg, HexBytesArg, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
     NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NodeBlockArgs, NodeCheckArgs,
     NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand,
     NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, ProposerCommand, PublicCommand,
-    PublicEvidenceManifestArgs, PublicNodeRoleArg, PublicServiceKindArg, PublicTestnetManifestArgs,
-    PublicationArgs, RoleRuntimeArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
-    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs, StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand,
-    ValidatorRunArgs, manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
+    PublicEvidenceManifestArgs, PublicEvidenceRecordKindArg, PublicNodeRoleArg,
+    PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs, RecordArtifactArgs,
+    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleRuntimeArgs, RunWindowArgs,
+    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs,
+    TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs, manifest_address,
+    manifest_auditor_uri, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
-use crate::testnet::PublicEvidenceRecordKind;
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;
 use std::net::SocketAddr;
@@ -757,13 +759,15 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        EvidenceFixture::RecordSummary {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
-            record_count: 4,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::Summary(RecordSummaryArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                record_root: hash_arg(hash_bytes(b"test", &[b"network-runtime-root"])),
+                record_count: 4,
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -785,14 +789,16 @@ fn parses_documented_validator_commands() {
             "4",
         ])
         .unwrap(),
-        EvidenceFixture::RecordArtifact {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
-            record_root: hash_bytes(b"test", &[b"network-runtime-root"]),
-            record_count: 4,
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::Artifact(RecordArtifactArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_root: hash_arg(hash_bytes(b"test", &[b"network-runtime-root"])),
+                record_count: 4,
+            }),
+        )))
     );
     let record_roots = format!(
         "{},{}",
@@ -815,15 +821,17 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        EvidenceFixture::RecordSummaryFromRoots {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            record_roots: vec![
-                hash_bytes(b"test", &[b"network-observation-a"]),
-                hash_bytes(b"test", &[b"network-observation-b"]),
-            ],
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                record_roots: vec![
+                    hash_arg(hash_bytes(b"test", &[b"network-observation-a"])),
+                    hash_arg(hash_bytes(b"test", &[b"network-observation-b"])),
+                ],
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -843,16 +851,18 @@ fn parses_documented_validator_commands() {
             &record_roots,
         ])
         .unwrap(),
-        EvidenceFixture::RecordArtifactFromRoots {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
-            record_roots: vec![
-                hash_bytes(b"test", &[b"network-observation-a"]),
-                hash_bytes(b"test", &[b"network-observation-b"]),
-            ],
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_roots: vec![
+                    hash_arg(hash_bytes(b"test", &[b"network-observation-a"])),
+                    hash_arg(hash_bytes(b"test", &[b"network-observation-b"])),
+                ],
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -870,12 +880,14 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        EvidenceFixture::RecordSummaryFromFile {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            record_file: "artifacts/network-runtime.records".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                record_file: path("artifacts/network-runtime.records"),
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -895,13 +907,15 @@ fn parses_documented_validator_commands() {
             "artifacts/network-runtime.records",
         ])
         .unwrap(),
-        EvidenceFixture::RecordArtifactFromFile {
-            kind: PublicEvidenceRecordKind::NetworkRuntimeObservations,
-            bundle_id: hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            manifest_signer: address(b"public-evidence-publisher"),
-            artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
-            record_file: "artifacts/network-runtime.records".to_owned(),
-        }
+        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
+            EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
+                kind: PublicEvidenceRecordKindArg::NetworkRuntime,
+                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
+                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                record_file: path("artifacts/network-runtime.records"),
+            }),
+        )))
     );
     assert_eq!(
         parse_test_cli(&["node", "init", "--data-dir", "/var/lib/tensorvm"]).unwrap(),

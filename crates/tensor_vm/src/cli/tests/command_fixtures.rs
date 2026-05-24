@@ -167,12 +167,6 @@ pub(super) enum EvidenceFixture {
     },
 }
 
-impl PartialEq<EvidenceFixture> for super::TvmdCommand {
-    fn eq(&self, other: &EvidenceFixture) -> bool {
-        self == &other.clone().into_cli_command()
-    }
-}
-
 pub(super) fn execute_evidence_fixture(command: &EvidenceFixture) -> crate::error::Result<String> {
     let cli_command = command.clone().into_cli_command();
     execute_test_cli_command(&cli_command)
