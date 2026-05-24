@@ -67,8 +67,8 @@ pub use descriptions::describe_command;
 pub use execution::execute_reference_cli_command;
 pub use local_parser::{DataDirArgs, LocalCpuCommand, LocalCpuVerifyArgs, LocalTestnetCommand};
 pub use local_role_parser::{
-    MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand, StakeArgs, ValidatorCommand,
-    ValidatorRunArgs, ValidatorStartArgs,
+    MinerCommand, MinerRunArgs, MinerStartArgs, ProposerCommand, RoleRuntimeArgs,
+    ServiceRuntimeArgs, StakeArgs, ValidatorCommand, ValidatorRunArgs, ValidatorStartArgs,
 };
 pub use local_service_parser::{
     ServiceBlockArgs, ServiceCommand, ServicePeerAddArgs, ServicePeerCommand, ServiceReadinessArgs,

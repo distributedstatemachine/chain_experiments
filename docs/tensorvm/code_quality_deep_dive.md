@@ -394,6 +394,9 @@ spaghetti around.
 - Iteration 155 moved local service clap command/argument structs into
   `cli/local_service_parser.rs`, leaving `cli/local_parser.rs` as the compact owner for shared
   local data-dir arguments plus local-testnet/local-cpu clap shape.
+- Iteration 156 rewrote the local `tvmd` clap argument model around shared runtime argument groups,
+  parse-time socket/multiaddr validation, and env/default-backed operator settings, so role and service
+  commands no longer require every runtime flag on every invocation.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

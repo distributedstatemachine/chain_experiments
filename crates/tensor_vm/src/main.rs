@@ -115,48 +115,54 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             command: MinerCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            let runtime = &args.runtime;
+            let service = &runtime.service;
             run_miner_service(RoleServiceConfig {
                 wallet: &args.wallet,
                 device: Some(&args.device),
-                node: &args.node,
-                listen: &args.listen,
-                p2p_listen: &args.p2p_listen,
-                data_dir: &args.data_dir,
-                identity_seed: args.identity_seed,
-                auth_token: &args.auth_token,
-                max_requests: args.max_requests,
+                node: &runtime.node,
+                listen: &service.listen,
+                p2p_listen: &service.p2p_listen,
+                data_dir: &service.data_dir,
+                identity_seed: service.identity_seed,
+                auth_token: &service.auth_token,
+                max_requests: service.max_requests,
             })
         }
         CliCommand::Validator {
             command: ValidatorCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            let runtime = &args.runtime;
+            let service = &runtime.service;
             run_validator_service(RoleServiceConfig {
                 wallet: &args.wallet,
                 device: None,
-                node: &args.node,
-                listen: &args.listen,
-                p2p_listen: &args.p2p_listen,
-                data_dir: &args.data_dir,
-                identity_seed: args.identity_seed,
-                auth_token: &args.auth_token,
-                max_requests: args.max_requests,
+                node: &runtime.node,
+                listen: &service.listen,
+                p2p_listen: &service.p2p_listen,
+                data_dir: &service.data_dir,
+                identity_seed: service.identity_seed,
+                auth_token: &service.auth_token,
+                max_requests: service.max_requests,
             })
         }
         CliCommand::Proposer {
             command: ProposerCommand::Run(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            let runtime = &args.runtime;
+            let service = &runtime.service;
             run_proposer_service(RoleServiceConfig {
                 wallet: &args.wallet,
                 device: None,
-                node: &args.node,
-                listen: &args.listen,
-                p2p_listen: &args.p2p_listen,
-                data_dir: &args.data_dir,
-                identity_seed: args.identity_seed,
-                auth_token: &args.auth_token,
-                max_requests: args.max_requests,
+                node: &runtime.node,
+                listen: &service.listen,
+                p2p_listen: &service.p2p_listen,
+                data_dir: &service.data_dir,
+                identity_seed: service.identity_seed,
+                auth_token: &service.auth_token,
+                max_requests: service.max_requests,
             })
         }
         CliCommand::Service {
@@ -184,13 +190,14 @@ fn execute_command(command: &CliCommand) -> std::result::Result<String, String> 
             command: ServiceCommand::Serve(args),
         } => {
             execute_reference_cli_command(command).map_err(|error| error.to_string())?;
+            let runtime = &args.runtime;
             serve_service(
-                &args.listen,
-                &args.p2p_listen,
-                &args.data_dir,
-                args.identity_seed,
-                &args.auth_token,
-                args.max_requests,
+                &runtime.listen,
+                &runtime.p2p_listen,
+                &runtime.data_dir,
+                runtime.identity_seed,
+                &runtime.auth_token,
+                runtime.max_requests,
             )
         }
         CliCommand::Service {

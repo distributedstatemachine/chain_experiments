@@ -111,27 +111,27 @@ pub const TENSOR_DATA_RPC_ROUTES: &[&str] = &[
 
 pub const MINER_CLI_COMMANDS: &[&str] = &[
     "tvmd miner register --stake <tokens>",
-    "tvmd miner start --wallet <key> --device <device> --node <libp2p-multiaddr>",
-    "tvmd miner run --wallet <key> --device <device> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
+    "tvmd miner start --wallet <key> [--device cpu|cuda:N] [--node <libp2p-multiaddr>]",
+    "tvmd miner run --wallet <key> --auth-token <token> [--device cpu|cuda:N] [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
     "tvmd miner status",
 ];
 
 pub const VALIDATOR_CLI_COMMANDS: &[&str] = &[
     "tvmd validator register --stake <tokens>",
-    "tvmd validator start --wallet <key> --node <libp2p-multiaddr>",
-    "tvmd validator run --wallet <key> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
+    "tvmd validator start --wallet <key> [--node <libp2p-multiaddr>]",
+    "tvmd validator run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
     "tvmd validator status",
 ];
 
 pub const PROPOSER_CLI_COMMANDS: &[&str] = &[
-    "tvmd proposer run --wallet <key> --node <libp2p-multiaddr> --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
+    "tvmd proposer run --wallet <key> --auth-token <token> [--node <libp2p-multiaddr>] [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
 ];
 
 pub const SERVICE_CLI_COMMANDS: &[&str] = &[
-    "tvmd service init --data-dir <path>",
-    "tvmd service peer add --data-dir <path> --peer-id <peer-id> --address <libp2p-multiaddr>",
-    "tvmd service readiness --p2p-listen <libp2p-multiaddr> --data-dir <path>",
-    "tvmd service serve --listen <addr> --p2p-listen <libp2p-multiaddr> --data-dir <path> --auth-token <token> --max-requests <n>",
+    "tvmd service init [--data-dir <path>]",
+    "tvmd service peer add --peer-id <peer-id> --address <libp2p-multiaddr> [--data-dir <path>]",
+    "tvmd service readiness [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>]",
+    "tvmd service serve --auth-token <token> [--listen <addr>] [--p2p-listen <libp2p-multiaddr>] [--data-dir <path>] [--max-requests <n>]",
 ];
 
 pub const PUBLIC_EVIDENCE_CLI_COMMANDS: &[&str] = &[

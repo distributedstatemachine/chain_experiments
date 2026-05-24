@@ -29,14 +29,15 @@ pub(super) fn describe_service_command(command: &ServiceCommand) -> String {
         }
         ServiceCommand::Serve(args) => {
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = identity_description(args.identity_seed);
+            let runtime = &args.runtime;
+            let identity = identity_description(runtime.identity_seed);
             format!(
                 "serve RPC explorer faucet telemetry over mandatory libp2p listen={} p2p_listen={} data_dir={}{} max_requests={} max_transmit_bytes={} request_timeout_seconds={} max_concurrent_streams={} idle_timeout_seconds={}",
-                args.listen,
-                args.p2p_listen,
-                args.data_dir,
+                runtime.listen,
+                runtime.p2p_listen,
+                runtime.data_dir,
                 identity,
-                args.max_requests,
+                runtime.max_requests,
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,

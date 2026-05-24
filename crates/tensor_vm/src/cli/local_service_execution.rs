@@ -42,22 +42,23 @@ pub(super) fn execute_service_command(command: &ServiceCommand) -> Result<String
             ))
         }
         ServiceCommand::Serve(args) => {
-            ensure_listen_addr(&args.listen)?;
-            ensure_libp2p_multiaddr(&args.p2p_listen)?;
-            ensure_data_dir(&args.data_dir)?;
-            ensure_auth_token(&args.auth_token)?;
+            let runtime = &args.runtime;
+            ensure_listen_addr(&runtime.listen)?;
+            ensure_libp2p_multiaddr(&runtime.p2p_listen)?;
+            ensure_data_dir(&runtime.data_dir)?;
+            ensure_auth_token(&runtime.auth_token)?;
             let p2p_config = Libp2pControlPlaneConfig::default();
-            let identity = identity_report(args.identity_seed);
+            let identity = identity_report(runtime.identity_seed);
             Ok(format!(
                 "command=service_serve\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_gossipsub=enabled\np2p_identify=enabled\np2p_kademlia=enabled\np2p_request_response=enabled\n{identity}\np2p_max_transmit_bytes={}\np2p_request_timeout_seconds={}\np2p_max_concurrent_streams={}\np2p_idle_timeout_seconds={}\ndata_dir={}\nauth_enabled=true\nmax_requests={}\nrpc_routes=enabled\nexplorer_routes=enabled\nfaucet_routes=enabled\ntelemetry_routes=enabled\nnode_store_required=true",
-                args.listen,
-                args.p2p_listen,
+                runtime.listen,
+                runtime.p2p_listen,
                 p2p_config.max_gossipsub_transmit_bytes,
                 p2p_config.request_timeout_seconds,
                 p2p_config.max_concurrent_request_streams,
                 p2p_config.idle_connection_timeout_seconds,
-                args.data_dir,
-                args.max_requests
+                runtime.data_dir,
+                runtime.max_requests
             ))
         }
         ServiceCommand::Status(args) => {

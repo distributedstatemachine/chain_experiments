@@ -1,7 +1,10 @@
 use super::local_parser::DataDirArgs;
-use super::parser_values::parse_hash_value;
+use super::local_role_parser::ServiceRuntimeArgs;
+use super::parser_values::{
+    DEFAULT_DATA_DIR, DEFAULT_P2P_LISTEN_ADDR, parse_hash_value, parse_multiaddr_value,
+};
 use crate::types::Hash;
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueHint};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case")]
@@ -25,19 +28,19 @@ pub enum ServicePeerCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServicePeerAddArgs {
-    #[arg(long)]
+    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_hint = ValueHint::DirPath)]
     pub data_dir: String,
     #[arg(long)]
     pub peer_id: String,
-    #[arg(long)]
+    #[arg(long, value_parser = parse_multiaddr_value)]
     pub address: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceReadinessArgs {
-    #[arg(long)]
+    #[arg(long, env = "TVMD_P2P_LISTEN", default_value = DEFAULT_P2P_LISTEN_ADDR, value_parser = parse_multiaddr_value)]
     pub p2p_listen: String,
-    #[arg(long)]
+    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_hint = ValueHint::DirPath)]
     pub data_dir: String,
     #[arg(long, value_parser = parse_hash_value)]
     pub identity_seed: Option<Hash>,
@@ -45,23 +48,13 @@ pub struct ServiceReadinessArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceServeArgs {
-    #[arg(long)]
-    pub listen: String,
-    #[arg(long)]
-    pub p2p_listen: String,
-    #[arg(long)]
-    pub data_dir: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    pub identity_seed: Option<Hash>,
-    #[arg(long)]
-    pub auth_token: String,
-    #[arg(long)]
-    pub max_requests: usize,
+    #[command(flatten)]
+    pub runtime: ServiceRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceBlockArgs {
-    #[arg(long)]
+    #[arg(long, env = "TVMD_DATA_DIR", default_value = DEFAULT_DATA_DIR, value_hint = ValueHint::DirPath)]
     pub data_dir: String,
     #[arg(long)]
     pub height: u64,

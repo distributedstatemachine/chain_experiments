@@ -2,6 +2,13 @@ use super::arguments::{parse_hash_argument, parse_hash_list_argument};
 use crate::testnet::{PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind};
 use crate::types::Hash;
 use clap::ValueEnum;
+use libp2p::Multiaddr;
+use std::net::SocketAddr;
+
+pub(super) const DEFAULT_DATA_DIR: &str = ".tensorvm";
+pub(super) const DEFAULT_LISTEN_ADDR: &str = "127.0.0.1:8545";
+pub(super) const DEFAULT_P2P_LISTEN_ADDR: &str = "/ip4/127.0.0.1/tcp/4001";
+pub(super) const DEFAULT_MAX_REQUESTS: usize = 0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum PublicServiceKindArg {
@@ -71,4 +78,18 @@ pub(super) fn parse_hash_list_value(value: &str) -> std::result::Result<HashList
     parse_hash_list_argument(value)
         .map(HashList)
         .map_err(|error| error.to_string())
+}
+
+pub(super) fn parse_socket_addr_value(value: &str) -> std::result::Result<String, String> {
+    value
+        .parse::<SocketAddr>()
+        .map(|_| value.to_owned())
+        .map_err(|_| "invalid socket address; expected host:port".to_owned())
+}
+
+pub(super) fn parse_multiaddr_value(value: &str) -> std::result::Result<String, String> {
+    value
+        .parse::<Multiaddr>()
+        .map(|_| value.to_owned())
+        .map_err(|_| "invalid libp2p multiaddr".to_owned())
 }

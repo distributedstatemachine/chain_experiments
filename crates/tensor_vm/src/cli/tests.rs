@@ -300,13 +300,17 @@ impl ExpectedCommand {
                 command: MinerCommand::Run(MinerRunArgs {
                     wallet,
                     device,
-                    node,
-                    listen,
-                    p2p_listen,
-                    data_dir,
-                    identity_seed,
-                    auth_token,
-                    max_requests,
+                    runtime: RoleRuntimeArgs {
+                        node,
+                        service: ServiceRuntimeArgs {
+                            listen,
+                            p2p_listen,
+                            data_dir,
+                            identity_seed,
+                            auth_token,
+                            max_requests,
+                        },
+                    },
                 }),
             },
             Self::MinerStatus => super::CliCommand::Miner {
@@ -330,13 +334,17 @@ impl ExpectedCommand {
             } => super::CliCommand::Validator {
                 command: ValidatorCommand::Run(ValidatorRunArgs {
                     wallet,
-                    node,
-                    listen,
-                    p2p_listen,
-                    data_dir,
-                    identity_seed,
-                    auth_token,
-                    max_requests,
+                    runtime: RoleRuntimeArgs {
+                        node,
+                        service: ServiceRuntimeArgs {
+                            listen,
+                            p2p_listen,
+                            data_dir,
+                            identity_seed,
+                            auth_token,
+                            max_requests,
+                        },
+                    },
                 }),
             },
             Self::ValidatorStatus => super::CliCommand::Validator {
@@ -354,13 +362,17 @@ impl ExpectedCommand {
             } => super::CliCommand::Proposer {
                 command: ProposerCommand::Run(ValidatorRunArgs {
                     wallet,
-                    node,
-                    listen,
-                    p2p_listen,
-                    data_dir,
-                    identity_seed,
-                    auth_token,
-                    max_requests,
+                    runtime: RoleRuntimeArgs {
+                        node,
+                        service: ServiceRuntimeArgs {
+                            listen,
+                            p2p_listen,
+                            data_dir,
+                            identity_seed,
+                            auth_token,
+                            max_requests,
+                        },
+                    },
                 }),
             },
             Self::ServiceInit { data_dir } => super::CliCommand::Service {
@@ -399,12 +411,14 @@ impl ExpectedCommand {
                 max_requests,
             } => super::CliCommand::Service {
                 command: ServiceCommand::Serve(ServiceServeArgs {
-                    listen,
-                    p2p_listen,
-                    data_dir,
-                    identity_seed,
-                    auth_token,
-                    max_requests,
+                    runtime: ServiceRuntimeArgs {
+                        listen,
+                        p2p_listen,
+                        data_dir,
+                        identity_seed,
+                        auth_token,
+                        max_requests,
+                    },
                 }),
             },
             Self::ServiceStatus { data_dir } => super::CliCommand::Service {
@@ -772,13 +786,13 @@ impl From<super::CliCommand> for ExpectedCommand {
                 MinerCommand::Run(args) => Self::MinerRun {
                     wallet: args.wallet,
                     device: args.device,
-                    node: args.node,
-                    listen: args.listen,
-                    p2p_listen: args.p2p_listen,
-                    data_dir: args.data_dir,
-                    identity_seed: args.identity_seed,
-                    auth_token: args.auth_token,
-                    max_requests: args.max_requests,
+                    node: args.runtime.node,
+                    listen: args.runtime.service.listen,
+                    p2p_listen: args.runtime.service.p2p_listen,
+                    data_dir: args.runtime.service.data_dir,
+                    identity_seed: args.runtime.service.identity_seed,
+                    auth_token: args.runtime.service.auth_token,
+                    max_requests: args.runtime.service.max_requests,
                 },
                 MinerCommand::Status => Self::MinerStatus,
             },
@@ -790,26 +804,26 @@ impl From<super::CliCommand> for ExpectedCommand {
                 },
                 ValidatorCommand::Run(args) => Self::ValidatorRun {
                     wallet: args.wallet,
-                    node: args.node,
-                    listen: args.listen,
-                    p2p_listen: args.p2p_listen,
-                    data_dir: args.data_dir,
-                    identity_seed: args.identity_seed,
-                    auth_token: args.auth_token,
-                    max_requests: args.max_requests,
+                    node: args.runtime.node,
+                    listen: args.runtime.service.listen,
+                    p2p_listen: args.runtime.service.p2p_listen,
+                    data_dir: args.runtime.service.data_dir,
+                    identity_seed: args.runtime.service.identity_seed,
+                    auth_token: args.runtime.service.auth_token,
+                    max_requests: args.runtime.service.max_requests,
                 },
                 ValidatorCommand::Status => Self::ValidatorStatus,
             },
             super::CliCommand::Proposer { command } => match command {
                 ProposerCommand::Run(args) => Self::ProposerRun {
                     wallet: args.wallet,
-                    node: args.node,
-                    listen: args.listen,
-                    p2p_listen: args.p2p_listen,
-                    data_dir: args.data_dir,
-                    identity_seed: args.identity_seed,
-                    auth_token: args.auth_token,
-                    max_requests: args.max_requests,
+                    node: args.runtime.node,
+                    listen: args.runtime.service.listen,
+                    p2p_listen: args.runtime.service.p2p_listen,
+                    data_dir: args.runtime.service.data_dir,
+                    identity_seed: args.runtime.service.identity_seed,
+                    auth_token: args.runtime.service.auth_token,
+                    max_requests: args.runtime.service.max_requests,
                 },
             },
             super::CliCommand::Service { command } => match command {
@@ -829,12 +843,12 @@ impl From<super::CliCommand> for ExpectedCommand {
                     identity_seed: args.identity_seed,
                 },
                 ServiceCommand::Serve(args) => Self::ServiceServe {
-                    listen: args.listen,
-                    p2p_listen: args.p2p_listen,
-                    data_dir: args.data_dir,
-                    identity_seed: args.identity_seed,
-                    auth_token: args.auth_token,
-                    max_requests: args.max_requests,
+                    listen: args.runtime.listen,
+                    p2p_listen: args.runtime.p2p_listen,
+                    data_dir: args.runtime.data_dir,
+                    identity_seed: args.runtime.identity_seed,
+                    auth_token: args.runtime.auth_token,
+                    max_requests: args.runtime.max_requests,
                 },
                 ServiceCommand::Status(args) => Self::ServiceStatus {
                     data_dir: args.data_dir,
@@ -2568,6 +2582,81 @@ fn parses_documented_proposer_commands() {
 fn rejects_invalid_cli() {
     assert!(parse_test_cli(&["miner", "register"]).is_err());
     assert!(parse_test_cli(&["validator", "register", "--stake", "abc"]).is_err());
+    assert!(
+        parse_test_cli(&[
+            "service",
+            "serve",
+            "--listen",
+            "not-a-socket",
+            "--auth-token",
+            "secret"
+        ])
+        .is_err()
+    );
+    assert!(
+        parse_test_cli(&[
+            "miner",
+            "run",
+            "--wallet",
+            "miner.key",
+            "--node",
+            "not-a-multiaddr",
+            "--auth-token",
+            "secret"
+        ])
+        .is_err()
+    );
+}
+
+#[test]
+fn clap_cli_defaults_runtime_arguments() {
+    assert_eq!(
+        parse_test_cli(&["miner", "start", "--wallet", "miner.key"]).unwrap(),
+        ExpectedCommand::MinerStart {
+            wallet: "miner.key".to_owned(),
+            device: "cpu".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+        }
+    );
+    assert_eq!(
+        parse_test_cli(&[
+            "miner",
+            "run",
+            "--wallet",
+            "miner.key",
+            "--auth-token",
+            "secret"
+        ])
+        .unwrap(),
+        ExpectedCommand::MinerRun {
+            wallet: "miner.key".to_owned(),
+            device: "cpu".to_owned(),
+            node: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            listen: "127.0.0.1:8545".to_owned(),
+            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            data_dir: ".tensorvm".to_owned(),
+            identity_seed: None,
+            auth_token: "secret".to_owned(),
+            max_requests: 0,
+        }
+    );
+    assert_eq!(
+        parse_test_cli(&["service", "serve", "--auth-token", "secret"]).unwrap(),
+        ExpectedCommand::ServiceServe {
+            listen: "127.0.0.1:8545".to_owned(),
+            p2p_listen: "/ip4/127.0.0.1/tcp/4001".to_owned(),
+            data_dir: ".tensorvm".to_owned(),
+            identity_seed: None,
+            auth_token: "secret".to_owned(),
+            max_requests: 0,
+        }
+    );
+    assert_eq!(
+        parse_test_cli(&["service", "init"]).unwrap(),
+        ExpectedCommand::ServiceInit {
+            data_dir: ".tensorvm".to_owned(),
+        }
+    );
 }
 
 #[test]
