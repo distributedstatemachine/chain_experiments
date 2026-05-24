@@ -674,7 +674,7 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         let data_dir = unique_test_dir(&format!("{role}-run"));
         let data_dir_text = data_dir.to_string_lossy().into_owned();
         let seed = run_tvmd(&["testnet", "seed", "--data-dir", &data_dir_text]);
-        assert!(seed.contains("command=local_testnet_seed"));
+        assert_eq!(stdout_value(&seed, "command"), "local_testnet_seed");
 
         let rpc_port = free_local_port();
         let listen = format!("127.0.0.1:{rpc_port}");
@@ -836,67 +836,128 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
         assert_eq!(stdout_u64(&stdout, "network_invalid_events"), 0);
 
         let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
-        assert!(status.contains(&format!("role_runtime_command={role}_run")));
-        assert!(status.contains(&format!("role_loop_role={role}")));
-        assert!(status.contains("role_loop_ready=true"));
-        assert!(status.contains("role_chain_profile=local_cpu"));
-        assert!(status.contains(&format!(
-            "role_can_produce_blocks={role_can_produce_blocks}"
-        )));
-        assert!(status.contains(&format!("role_wallet_address={wallet_address}")));
-        assert!(status.contains(&format!("role_wallet_registration={expected_registration}")));
-        assert!(status.contains("role_wallet_registered=true"));
-        assert!(status.contains("role_miner_work_ready="));
-        assert!(status.contains("role_miner_assigned_jobs_seen="));
-        assert!(status.contains("role_miner_unreceipted_jobs="));
-        assert!(status.contains("role_miner_receipts_submitted="));
-        assert!(status.contains("role_miner_tensors_inserted="));
-        assert!(status.contains("role_validator_work_ready="));
-        assert!(status.contains("role_validator_assigned_receipts_seen="));
-        assert!(status.contains("role_validator_unattested_receipts="));
-        assert!(status.contains("role_validator_artifact_ready_receipts="));
-        assert!(status.contains("role_validator_artifact_missing_receipts="));
-        assert!(status.contains("role_validator_remote_tensor_fetch_attempts="));
-        assert!(status.contains("role_validator_remote_tensor_fetch_successes="));
-        assert!(status.contains("role_validator_remote_tensor_fetch_failures="));
-        assert!(status.contains("role_validator_remote_tensor_fetch_bytes="));
-        assert!(status.contains("role_validator_remote_tensors_inserted="));
-        assert!(status.contains("role_validator_attestations_submitted="));
-        assert!(status.contains("role_validator_block_votes_submitted="));
-        assert!(status.contains("role_local_producer=false"));
-        assert!(status.contains("role_served_requests=1"));
-        assert!(status.contains("role_network_applied_blocks=0"));
-        assert!(status.contains("role_network_events_ingested=0"));
-        assert!(status.contains("role_network_block_events_ingested=0"));
-        assert!(status.contains("role_network_block_headers_ingested=0"));
-        assert!(status.contains("role_network_block_payloads_ingested=0"));
-        assert!(status.contains("role_network_block_payloads_applied=0"));
-        assert!(status.contains("role_network_block_votes_ingested=0"));
-        assert!(status.contains("role_network_block_votes_applied=0"));
-        assert!(status.contains("role_network_job_events_ingested=0"));
-        assert!(status.contains("role_network_job_payloads_ingested=0"));
-        assert!(status.contains("role_network_job_payloads_applied=0"));
-        assert!(status.contains("role_network_receipt_payloads_ingested=0"));
-        assert!(status.contains("role_network_receipt_payloads_applied=0"));
-        assert!(status.contains("role_network_attestation_payloads_ingested=0"));
-        assert!(status.contains("role_network_attestation_payloads_applied=0"));
-        assert!(status.contains("role_network_receipt_events_ingested=0"));
-        assert!(status.contains("role_network_attestation_events_ingested=0"));
-        assert!(status.contains("role_network_peer_events_ingested=0"));
-        assert!(status.contains("role_network_invalid_events=0"));
-        assert!(status.contains("role_p2p_connected_peers="));
-        assert!(status.contains("role_p2p_observed_blocks="));
-        assert!(status.contains("role_p2p_observed_block_payloads="));
-        assert!(status.contains("role_p2p_observed_block_votes="));
-        assert!(status.contains("role_p2p_observed_jobs="));
-        assert!(status.contains("role_p2p_observed_receipts="));
-        assert!(status.contains("role_p2p_observed_attestations="));
-        assert!(status.contains("role_p2p_latest_observed_block_height="));
-        assert!(status.contains("role_p2p_latest_observed_block_hash="));
-        assert!(status.contains("role_p2p_observed_block_hashes="));
-        assert!(status.contains("role_p2p_latest_observed_block_payload_height="));
-        assert!(status.contains("role_p2p_latest_observed_block_payload_hash="));
-        assert!(status.contains("role_p2p_observed_block_payload_hashes="));
+        assert_eq!(
+            stdout_value(&status, "role_runtime_command"),
+            format!("{role}_run")
+        );
+        assert_eq!(stdout_value(&status, "role_loop_role"), role);
+        assert_eq!(stdout_value(&status, "role_loop_ready"), "true");
+        assert_eq!(stdout_value(&status, "role_chain_profile"), "local_cpu");
+        assert_eq!(
+            stdout_value(&status, "role_can_produce_blocks"),
+            role_can_produce_blocks
+        );
+        assert_eq!(stdout_value(&status, "role_wallet_address"), wallet_address);
+        assert_eq!(
+            stdout_value(&status, "role_wallet_registration"),
+            expected_registration
+        );
+        assert_eq!(stdout_value(&status, "role_wallet_registered"), "true");
+        assert!(matches!(
+            stdout_value(&status, "role_miner_work_ready"),
+            "true" | "false"
+        ));
+        assert!(stdout_u64(&status, "role_miner_assigned_jobs_seen") <= 10);
+        assert!(stdout_u64(&status, "role_miner_unreceipted_jobs") <= 10);
+        assert!(stdout_u64(&status, "role_miner_receipts_submitted") <= 10);
+        assert!(stdout_u64(&status, "role_miner_tensors_inserted") <= 20);
+        assert!(matches!(
+            stdout_value(&status, "role_validator_work_ready"),
+            "true" | "false"
+        ));
+        assert!(stdout_u64(&status, "role_validator_assigned_receipts_seen") <= 10);
+        assert!(stdout_u64(&status, "role_validator_unattested_receipts") <= 10);
+        assert!(stdout_u64(&status, "role_validator_artifact_ready_receipts") <= 10);
+        assert!(stdout_u64(&status, "role_validator_artifact_missing_receipts") <= 10);
+        assert!(stdout_u64(&status, "role_validator_remote_tensor_fetch_attempts") <= 10);
+        assert!(stdout_u64(&status, "role_validator_remote_tensor_fetch_successes") <= 10);
+        assert!(stdout_u64(&status, "role_validator_remote_tensor_fetch_failures") <= 10);
+        assert!(stdout_u64(&status, "role_validator_remote_tensor_fetch_bytes") <= 1_000_000);
+        assert!(stdout_u64(&status, "role_validator_remote_tensors_inserted") <= 20);
+        assert!(stdout_u64(&status, "role_validator_attestations_submitted") <= 10);
+        assert_eq!(
+            stdout_u64(&status, "role_validator_block_votes_submitted"),
+            0
+        );
+        assert_eq!(stdout_value(&status, "role_local_producer"), "false");
+        assert_eq!(stdout_u64(&status, "role_served_requests"), 1);
+        assert_eq!(stdout_u64(&status, "role_network_applied_blocks"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_events_ingested"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_block_events_ingested"), 0);
+        assert_eq!(
+            stdout_u64(&status, "role_network_block_headers_ingested"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_block_payloads_ingested"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_block_payloads_applied"),
+            0
+        );
+        assert_eq!(stdout_u64(&status, "role_network_block_votes_ingested"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_block_votes_applied"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_job_events_ingested"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_job_payloads_ingested"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_job_payloads_applied"), 0);
+        assert_eq!(
+            stdout_u64(&status, "role_network_receipt_payloads_ingested"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_receipt_payloads_applied"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_attestation_payloads_ingested"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_attestation_payloads_applied"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_receipt_events_ingested"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_network_attestation_events_ingested"),
+            0
+        );
+        assert_eq!(stdout_u64(&status, "role_network_peer_events_ingested"), 0);
+        assert_eq!(stdout_u64(&status, "role_network_invalid_events"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_connected_peers"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_blocks"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_block_payloads"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_block_votes"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_jobs"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_receipts"), 0);
+        assert_eq!(stdout_u64(&status, "role_p2p_observed_attestations"), 0);
+        assert_eq!(
+            stdout_u64(&status, "role_p2p_latest_observed_block_height"),
+            0
+        );
+        assert_eq!(
+            stdout_value(&status, "role_p2p_latest_observed_block_hash"),
+            zero_hash
+        );
+        assert_eq!(
+            stdout_value(&status, "role_p2p_observed_block_hashes"),
+            "none"
+        );
+        assert_eq!(
+            stdout_u64(&status, "role_p2p_latest_observed_block_payload_height"),
+            0
+        );
+        assert_eq!(
+            stdout_value(&status, "role_p2p_latest_observed_block_payload_hash"),
+            zero_hash
+        );
+        assert_eq!(
+            stdout_value(&status, "role_p2p_observed_block_payload_hashes"),
+            "none"
+        );
 
         std::fs::remove_dir_all(data_dir).expect("test dir must be removed");
     }

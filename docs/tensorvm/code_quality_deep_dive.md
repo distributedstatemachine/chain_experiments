@@ -721,6 +721,8 @@ spaghetti around.
   service command report checks from substring scans to field-level assertions.
 - Iteration 283 removed the remaining `tvmd_runtime` report/body substring assertions, reusing keyed
   report parsing, exact HTTP status-line checks, and parsed tensor JSON counts.
+- Iteration 284 converted the `tvmd_cli` role-run service-status checks from broad `role_*` substring
+  scans to keyed field, numeric, boolean, hash, and list assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
