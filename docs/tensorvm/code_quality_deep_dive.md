@@ -243,6 +243,9 @@ spaghetti around.
 - Iteration 101 split `NetworkEventIngest` and `NodeRuntimeState` into
   `node/runtime_state.rs`, keeping the public `node` re-exports unchanged while separating runtime
   counters from network payload application.
+- Iteration 102 split `PendingNetworkPayloads` queue and retry bookkeeping into
+  `node/pending_payloads.rs`, keeping the same public `node` re-export while shrinking the network
+  ingestion module toward payload application only.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
