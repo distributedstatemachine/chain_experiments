@@ -312,6 +312,8 @@ spaghetti around.
 - Iteration 128 moved local miner, validator, proposer, service, local-testnet, and local-cpu
   reference command execution into `cli/local_execution.rs`, leaving `cli/execution.rs` focused on
   dispatch plus public-evidence evidence generation.
+- Iteration 129 moved public-evidence and public-testnet reference command execution into
+  `cli/public_evidence_execution.rs`, making `cli/execution.rs` a small command-family dispatcher.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
