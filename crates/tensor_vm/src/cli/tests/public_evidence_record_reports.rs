@@ -3,19 +3,21 @@ use super::*;
 #[test]
 fn execute_evidence_fixture_reports_public_evidence_record_outputs() {
     let peer_id = PeerId::random().to_string();
-    let network_observation = execute_evidence_fixture(&EvidenceFixture::NetworkObservation {
-        operator_id: hash_bytes(b"test", &[b"network-operator"]),
-        peer_id: peer_id.clone(),
-        listen_address: "/dns/node-a.tensorvm.net/tcp/4001".to_owned(),
-        observed_at_unix_seconds: 1_700_000_000,
-        gossip_topic_count: 5,
-        request_response_protocol_count: 4,
-        bootstrap_peer_count: 2,
-        max_transmit_bytes: 1_048_576,
-        request_timeout_seconds: 10,
-        max_concurrent_streams: 128,
-        idle_connection_timeout_seconds: 60,
-    })
+    let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
+        EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+            peer_id: peer_id.parse().expect("fixture peer ID must parse"),
+            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
+            observed_at: 1_700_000_000,
+            gossip_topics: 5,
+            request_response_protocols: 4,
+            bootstrap_peers: 2,
+            max_transmit_bytes: 1_048_576,
+            request_timeout_seconds: 10,
+            max_concurrent_streams: 128,
+            idle_timeout_seconds: 60,
+        }),
+    ))
     .unwrap();
     let observation_input = NetworkObservationEvidenceLine {
         operator_id: hash_bytes(b"test", &[b"network-operator"]),
