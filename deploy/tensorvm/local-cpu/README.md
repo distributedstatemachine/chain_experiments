@@ -30,7 +30,7 @@ Miner containers also run the CPU miner readiness command with `--device cpu`; v
 readiness command. Every operator seeds the same deterministic local CPU chain and keeps producing live
 synthetic CPU jobs from that shared base, while `miner-00` exposes the host-facing gateway routes.
 
-The standalone explorer is served by `tensorvm-explorer`. It polls `miner-00` through
+The standalone explorer is served by `tensorvm-explorer serve`. It polls `miner-00` through
 `ws://127.0.0.1:8545/explorer/ws?token=local-cpu-testnet-token` for live chain data.
 If `8080` is already in use, set `TENSORVM_LOCAL_CPU_EXPLORER_PORT` before running Compose and the check
 script.

@@ -85,6 +85,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
     assert!(compose.contains("  explorer:"));
     assert!(compose.contains("127.0.0.1:${TENSORVM_LOCAL_CPU_EXPLORER_PORT:-8080}:8080"));
     assert!(compose.contains("/usr/local/bin/tensorvm-explorer"));
+    assert!(compose.contains("entrypoint: [\"/usr/local/bin/tensorvm-explorer\", \"serve\"]"));
+    assert!(compose.contains("health-check"));
     assert!(compose.contains("TENSORVM_EXPLORER_WS_URL"));
     assert!(compose.contains("/explorer/ws?token=local-cpu-testnet-token"));
     assert!(compose.contains("condition: service_healthy"));

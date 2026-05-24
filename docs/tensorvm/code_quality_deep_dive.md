@@ -320,6 +320,9 @@ spaghetti around.
 - Iteration 131 moved public-evidence service health/content clap argument structs and command
   conversion into `cli/public_evidence_service_parser.rs`, narrowing `cli/public_evidence_parser.rs`
   toward public-evidence family routing.
+- Iteration 132 moved public-evidence record summary/artifact clap argument structs and command
+  conversion into `cli/public_evidence_record_parser.rs`, and replaced the standalone explorer's
+  hand-rolled argv scanner with explicit `tensorvm-explorer serve` and `health-check` clap commands.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -485,27 +488,58 @@ Fix:
 - Make public write paths return typed events/effects.
 - Remove or implement transaction variants that currently lie about behavior.
 
-### 3. Runtime Adapters Still Own Consensus Behavior
+### 3. `main.rs` Should Be Only An Entrypoint
 
-`crates/tensor_vm/src/main.rs` and `crates/tensor_vm/src/node.rs` contain runtime orchestration, network
-ingest, role work, status writes, local production, and chain mutation glue.
+`main.rs` should not be a module family. The binary target should be a tiny process adapter: parse CLI,
+call library code, print output, convert errors to exit codes.
 
-The recent refactor moved some behavior toward chain-owned helpers, but the structural smell remains:
-runtime code still knows too much about assignment, chain state shape, block publication, role counters,
-and persistence.
+Target shape:
+
+```rust
+use clap::Parser;
+use tensor_vm::{app, cli::TvmdCli};
+
+fn main() {
+    let cli = TvmdCli::parse();
+    match app::run(cli) {
+        Ok(output) => println!("{output}"),
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(error.exit_code());
+        }
+    }
+}
+```
+
+The current `crates/tensor_vm/src/main/` module split improved file size, but it keeps too much
+application logic conceptually owned by the binary. That is the wrong ownership boundary. Runtime,
+service, status, command dispatch, local CPU verification, miner/validator workers, network glue, and
+synthetic production should be library modules callable from tests and any future binary.
 
 Fix:
 
-- Extract a `service/` or `node_runtime/` module:
-  - runtime loop
-  - miner worker
-  - validator worker
-  - proposer worker
-  - status snapshot writer
-- Keep `main.rs` as a thin binary entrypoint.
+- Delete the `main` module concept as an application framework.
+- Move command dispatch into `app.rs` or `tvmd.rs`.
+- Move long-running service code into `service/`.
+- Move miner/validator/proposer workers into `service/roles/` or `node/roles/`.
+- Move status snapshots and renderers into `service/status.rs` or `status.rs`.
+- Move local CPU verification into a library-owned verifier module.
+- Keep `src/main.rs` as a 10-20 line process entrypoint.
 - Keep consensus decisions in `chain/*`, not runtime loops.
 
-### 4. Finality And Block Admission Need A Harder Boundary
+### 4. Runtime Adapters Still Own Consensus Behavior
+
+Runtime and node adapter code still knows too much about assignment, chain state shape, block publication,
+role counters, persistence, and local production. Moving files under `src/main/` reduced the size of
+`main.rs`, but it did not fully fix the ownership problem.
+
+Fix:
+
+- Treat runtime code as adapters around library-owned services.
+- Make `app::run` and service modules testable without going through the binary.
+- Keep process concerns in `main.rs`; keep domain behavior in library modules.
+
+### 5. Finality And Block Admission Need A Harder Boundary
 
 The code now has a typed `BlockAdmission` direction, which is good. The next step is making finality
 fully vote-driven in every runtime path.
@@ -526,7 +560,7 @@ Fix:
 - Add block-vote gossip/RPC coverage as a first-class network event.
 - Keep local auto-finalization only in clearly named pure test helpers.
 
-### 5. Shell Scripts Encode Protocol Policy
+### 6. Shell Scripts Encode Protocol Policy
 
 `deploy/tensorvm/local-cpu/scripts/check-local-testnet.sh` is a large shell policy engine. It verifies
 protocol claims by grepping status strings, parsing JSON with `sed`, and duplicating service lists.
@@ -541,7 +575,7 @@ Fix:
 - Make the checker consume typed JSON, not scattered `key=value` strings.
 - Remove cargo test execution from deployment scripts; CI should own unit tests.
 
-### 6. Status Surfaces Are Duplicated And Stringly
+### 7. Status Surfaces Are Duplicated And Stringly
 
 There are multiple overlapping status emitters:
 
@@ -563,7 +597,7 @@ Fix:
 - Add a schema version.
 - Make tests parse the schema instead of checking substring inventories.
 
-### 7. Duplicate Codecs Are A Drift Risk
+### 8. Duplicate Codecs Are A Drift Risk
 
 `p2p.rs` and `storage.rs` both encode domain objects manually, including block payloads. The layouts are
 similar enough to suggest shared intent, but separate enough to drift.
@@ -585,7 +619,7 @@ Fix:
 - Add golden, roundtrip, malformed, trailing-byte, and max-size tests.
 - Keep storage-specific wrappers separate from payload encoding.
 
-### 8. Manual Parsing Is Overused
+### 9. Manual Parsing Is Overused
 
 Parsing appears in many forms:
 
@@ -659,7 +693,7 @@ Then convert `TvmdCommand` into the internal command enum if a separate internal
 useful. The parser should be generated by `clap`; validation and execution should live in typed handlers,
 not in parser match arms.
 
-### 9. `TvmError` Is Too Stringly
+### 10. `TvmError` Is Too Stringly
 
 `TvmError::InvalidReceipt(&'static str)` carries many unrelated failures:
 
@@ -683,7 +717,7 @@ Fix:
 - Keep `TvmError` as a top-level wrapper.
 - Avoid string matching in retry/admission logic.
 
-### 10. Error Paths Have Hidden Side Effects
+### 11. Error Paths Have Hidden Side Effects
 
 `validation.rs::submit_attestation` can penalize a validator while returning `Err`.
 
@@ -697,7 +731,7 @@ Fix:
 - If rejected attestations slash or penalize, return a typed event/effect.
 - Make side-effecting rejection explicit in `ChainEvent`.
 
-### 11. `Chain::clone()` Is Too Easy
+### 12. `Chain::clone()` Is Too Easy
 
 `Chain` is deeply cloneable. That encourages speculative mutation by cloning the whole chain and
 replacing it on success.
@@ -710,7 +744,7 @@ Fix:
 - Avoid cloning `ChainState` to reconstruct parent views.
 - Consider removing or narrowing `Clone` for `Chain` outside tests.
 
-### 12. God Modules Hide Ownership
+### 13. God Modules Hide Ownership
 
 Several files are far past a healthy size boundary:
 
@@ -719,7 +753,7 @@ Several files are far past a healthy size boundary:
 | `crates/tensor_vm/src/cli.rs` | CLI parsing, validation, public evidence, docs tests, string output |
 | `crates/tensor_vm/src/testnet.rs` | testnet orchestration, manifests, public evidence, validation |
 | `crates/tensor_vm/src/p2p.rs` | p2p public configuration facade and integration-style tests |
-| `crates/tensor_vm/src/main.rs` | binary dispatch, runtime loop, role logic, status, network glue |
+| `crates/tensor_vm/src/main.rs` and `crates/tensor_vm/src/main/*` | binary dispatch and application/service framework logic that should live in library modules |
 | `crates/tensor_vm/src/rpc.rs` | HTTP parsing, routing, explorer, websocket, chain reads |
 | `crates/tensor_vm/src/storage.rs` | snapshots, block log, state codec, recovery |
 | `crates/tensor_vm/src/node.rs` | network ingest, payload apply, pending queues, runtime counters |
@@ -727,6 +761,7 @@ Several files are far past a healthy size boundary:
 Fix after boundaries are cleaner:
 
 - `p2p/{service,codec,peer_book,request_response}.rs`
+- `app.rs` or `tvmd.rs` for command dispatch
 - `service/{runtime,roles,status}.rs`
 - `rpc/{server,routes,explorer,websocket}.rs`
 - `storage/{snapshot,block_log,chain_state,codec}.rs`
@@ -740,7 +775,7 @@ Do not split files first. Split after the canonical owners are clear.
 
 Weak in:
 
-- `main.rs`
+- `main.rs` and `main/*`
 - `cli.rs`
 - `p2p.rs`
 - `rpc.rs`
@@ -904,9 +939,11 @@ Fix:
 7. Replace hand-rolled CLI parsing with `clap`.
 8. Stop persisting chain state on read-only runtime activity. Read-only RPC was completed in Iteration 5,
    and validator remote tensor-fetch status bookkeeping was completed in Iteration 10.
-9. Split `main.rs`, `cli.rs`, `p2p.rs`, `rpc.rs`, and `storage.rs` by ownership.
-10. Replace stringly errors with typed domain errors.
-11. Move large inline tests into focused module or integration test files.
+9. Collapse `main.rs` to a thin binary entrypoint and move `src/main/*` application logic into library-owned
+   `app`/`service` modules.
+10. Split `cli.rs`, `p2p.rs`, `rpc.rs`, and `storage.rs` by ownership.
+11. Replace stringly errors with typed domain errors.
+12. Move large inline tests into focused module or integration test files.
 
 ## Positive Notes
 

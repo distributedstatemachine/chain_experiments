@@ -1,7 +1,8 @@
 use super::CliCommand;
-use super::parser_values::{
-    HashList, PublicEvidenceRecordKindArg, PublicNodeRoleArg, parse_hash_list_value,
-    parse_hash_value,
+use super::parser_values::{PublicNodeRoleArg, parse_hash_value};
+use super::public_evidence_record_parser::{
+    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
 use super::public_evidence_service_parser::{
     ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceHealthArgs,
@@ -46,57 +47,12 @@ impl PublicEvidenceCommand {
             PublicEvidenceCommand::ServiceContent(args) => args.into_command(),
             PublicEvidenceCommand::ServiceContentFromBytes(args) => args.into_command(),
             PublicEvidenceCommand::ServiceContentFromFile(args) => args.into_command(),
-            PublicEvidenceCommand::RecordSummary(args) => CliCommand::PublicEvidenceRecordSummary {
-                kind: args.kind.into(),
-                bundle_id: args.bundle_id,
-                manifest_signer: args.manifest_signer,
-                record_root: args.record_root,
-                record_count: args.record_count,
-            },
-            PublicEvidenceCommand::RecordArtifact(args) => {
-                CliCommand::PublicEvidenceRecordArtifact {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    artifact_uri: args.artifact_uri,
-                    record_root: args.record_root,
-                    record_count: args.record_count,
-                }
-            }
-            PublicEvidenceCommand::RecordArtifactFromRoots(args) => {
-                CliCommand::PublicEvidenceRecordArtifactFromRoots {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    artifact_uri: args.artifact_uri,
-                    record_roots: args.record_roots.0,
-                }
-            }
-            PublicEvidenceCommand::RecordArtifactFromFile(args) => {
-                CliCommand::PublicEvidenceRecordArtifactFromFile {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    artifact_uri: args.artifact_uri,
-                    record_file: args.record_file,
-                }
-            }
-            PublicEvidenceCommand::RecordSummaryFromRoots(args) => {
-                CliCommand::PublicEvidenceRecordSummaryFromRoots {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    record_roots: args.record_roots.0,
-                }
-            }
-            PublicEvidenceCommand::RecordSummaryFromFile(args) => {
-                CliCommand::PublicEvidenceRecordSummaryFromFile {
-                    kind: args.kind.into(),
-                    bundle_id: args.bundle_id,
-                    manifest_signer: args.manifest_signer,
-                    record_file: args.record_file,
-                }
-            }
+            PublicEvidenceCommand::RecordSummary(args) => args.into_command(),
+            PublicEvidenceCommand::RecordArtifact(args) => args.into_command(),
+            PublicEvidenceCommand::RecordArtifactFromRoots(args) => args.into_command(),
+            PublicEvidenceCommand::RecordArtifactFromFile(args) => args.into_command(),
+            PublicEvidenceCommand::RecordSummaryFromRoots(args) => args.into_command(),
+            PublicEvidenceCommand::RecordSummaryFromFile(args) => args.into_command(),
             PublicEvidenceCommand::NetworkObservation(args) => {
                 CliCommand::PublicEvidenceNetworkObservation {
                     operator_id: args.operator_id,
@@ -181,88 +137,6 @@ impl PublicEvidenceCommand {
 pub(super) struct ManifestArgs {
     #[arg(long)]
     manifest: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordSummaryArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long, value_parser = parse_hash_value)]
-    record_root: Hash,
-    #[arg(long)]
-    record_count: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordArtifactArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    artifact_uri: String,
-    #[arg(long, value_parser = parse_hash_value)]
-    record_root: Hash,
-    #[arg(long)]
-    record_count: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordArtifactFromRootsArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    artifact_uri: String,
-    #[arg(long, value_parser = parse_hash_list_value)]
-    record_roots: HashList,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordArtifactFromFileArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    artifact_uri: String,
-    #[arg(long)]
-    record_file: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordSummaryFromRootsArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long, value_parser = parse_hash_list_value)]
-    record_roots: HashList,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub(super) struct RecordSummaryFromFileArgs {
-    #[arg(long)]
-    kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_parser = parse_hash_value)]
-    bundle_id: Hash,
-    #[arg(long, value_parser = parse_hash_value)]
-    manifest_signer: Address,
-    #[arg(long)]
-    record_file: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

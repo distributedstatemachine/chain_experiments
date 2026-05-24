@@ -283,7 +283,7 @@ services:
 
   explorer:
     image: tensorvm-local-cpu:latest
-    entrypoint: ["/usr/local/bin/tensorvm-explorer"]
+    entrypoint: ["/usr/local/bin/tensorvm-explorer", "serve"]
     hostname: explorer
     environment:
       TENSORVM_EXPLORER_LISTEN: 0.0.0.0:8080
@@ -300,7 +300,7 @@ services:
         [
           "CMD",
           "/usr/local/bin/tensorvm-explorer",
-          "healthcheck",
+          "health-check",
           "--addr",
           "127.0.0.1:8080",
         ]

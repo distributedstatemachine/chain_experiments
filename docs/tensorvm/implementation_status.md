@@ -327,8 +327,9 @@ zero-receipt skip fallback, and live validator proposer/block-assembly networkin
 
 ## Implemented In `crates/tensor_vm_explorer`
 
-- Standalone `tensorvm-explorer` binary that serves the browser explorer from `TENSORVM_EXPLORER_LISTEN`
-  and publishes the TensorVM WebSocket URL configured by `TENSORVM_EXPLORER_WS_URL`
+- Standalone `tensorvm-explorer serve` clap command that serves the browser explorer from
+  `TENSORVM_EXPLORER_LISTEN` and publishes the TensorVM WebSocket URL configured by
+  `TENSORVM_EXPLORER_WS_URL`; `tensorvm-explorer health-check` validates the running service
 - Default terminal-style explorer UI shell, Ratzilla/Ratatui WASM entry point, and JSON view models for
   overview metrics, latest blocks, account lookup, miners, validators, receipts, and jobs
 - Local CPU Compose integration on `127.0.0.1:8080`, configured to poll `miner-00` through
