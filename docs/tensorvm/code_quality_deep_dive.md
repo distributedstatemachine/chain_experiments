@@ -296,6 +296,8 @@ spaghetti around.
 - Iteration 122 extracted CLI command description rendering into `cli/descriptions.rs`, preserving
   the public `describe_command` export while reducing the parent CLI module to parser and dispatch
   orchestration.
+- Iteration 123 extracted reference CLI command execution into `cli/execution.rs`, moving status and
+  public-evidence output dispatch out of the parser module while preserving the public execution API.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
