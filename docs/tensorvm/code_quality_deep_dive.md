@@ -735,6 +735,8 @@ spaghetti around.
   entrypoint substring checks with exact command/readiness-line assertions.
 - Iteration 290 reused the shell logical-line assertions for restart and rolling-restart deployment
   scripts, replacing fragment inventories with exact continuity command and status-output checks.
+- Iteration 291 moved the local CPU check script setup and seeded-state gate assertions to exact
+  shell logical lines, shrinking the remaining broad inventory to live/status-network checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
