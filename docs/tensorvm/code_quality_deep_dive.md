@@ -448,6 +448,9 @@ spaghetti around.
 - Iteration 173 renamed the clap command surface to `TvmdCli`/`TvmdCommand`, replaced the
   legacy `execute_reference_cli_command` export with `execute_cli_command`, and renamed CLI test
   adapters to explicit command fixtures instead of preserving the old reference-command terminology.
+- Iteration 174 moved public HTTPS endpoint, content-addressed evidence URI, and public network
+  multiaddr validation helpers into `testnet/public_urls.rs`, separating public-address policy from
+  the remaining public-testnet evidence and manifest orchestration code.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
