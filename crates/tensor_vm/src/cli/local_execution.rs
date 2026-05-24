@@ -6,14 +6,12 @@ use super::local_role_execution::{
 use super::local_service_execution::execute_node_command;
 use super::validation::{ensure_data_dir, path_argument};
 use crate::app::KeyValueReportWriter;
-use crate::chain::ChainParams;
 use crate::error::Result;
 
 pub(super) fn execute_local_cli_command(command: &TvmdCommand) -> Result<String> {
-    let params = ChainParams::default();
     match command {
-        TvmdCommand::Miner(command) => execute_miner_command(command, &params),
-        TvmdCommand::Validator(command) => execute_validator_command(command, &params),
+        TvmdCommand::Miner(command) => execute_miner_command(command),
+        TvmdCommand::Validator(command) => execute_validator_command(command),
         TvmdCommand::Proposer(command) => execute_proposer_command(command),
         TvmdCommand::Node(command) => execute_node_command(command),
         TvmdCommand::Localnet(command) => execute_localnet_command(command),

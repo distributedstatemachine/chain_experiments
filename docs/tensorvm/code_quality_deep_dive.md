@@ -916,6 +916,8 @@ spaghetti around.
   topology policy script.
 - Iteration 372 moved the restart continuity checker's default restart service set into the shared
   topology policy script.
+- Iteration 373 routed test-only CLI operator check fixtures through the production operator-check
+  helpers instead of duplicating register/check/status report construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -10,14 +10,6 @@ use crate::runtime::cuda_kernels_compiled;
 use crate::types::address;
 use std::path::Path;
 
-#[cfg(test)]
-pub(super) fn ensure_minimum_stake(stake: u64, minimum: u64) -> Result<()> {
-    if stake < minimum {
-        return Err(TvmError::InsufficientStake);
-    }
-    Ok(())
-}
-
 pub(super) fn path_argument(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }

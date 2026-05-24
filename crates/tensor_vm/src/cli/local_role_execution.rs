@@ -1,41 +1,23 @@
 use super::commands::{MinerCommand, ProposerCommand, ValidatorCommand, ValidatorRunArgs};
 use super::validation::{
-    ensure_auth_token, ensure_data_dir, ensure_minimum_stake, miner_device_readiness,
-    path_argument, wallet_address_hex,
+    ensure_auth_token, ensure_data_dir, miner_device_readiness, path_argument, wallet_address_hex,
 };
-use crate::app::{KeyValueReportWriter, p2p_identity_report};
-use crate::chain::ChainParams;
-use crate::error::Result;
+use crate::app::{
+    KeyValueReportWriter, check_miner_registration, check_miner_start,
+    check_validator_registration, check_validator_start, miner_status, p2p_identity_report,
+    validator_status,
+};
+use crate::error::{Result, TvmError};
 use crate::p2p::Libp2pControlPlaneConfig;
 
-pub(super) fn execute_miner_command(
-    command: &MinerCommand,
-    params: &ChainParams,
-) -> Result<String> {
+pub(super) fn execute_miner_command(command: &MinerCommand) -> Result<String> {
     match command {
-        MinerCommand::Register(args) => {
-            ensure_minimum_stake(args.stake, params.miner_min_stake)?;
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "miner_register");
-            report.field("stake", args.stake);
-            report.field("min_stake", params.miner_min_stake);
-            report.field("stake_sufficient", true);
-            Ok(report.finish())
-        }
-        MinerCommand::Check(args) => {
-            let address = wallet_address_hex(&args.wallet)?;
-            let device_readiness = miner_device_readiness(&args.device)?;
-            let wallet = path_argument(&args.wallet);
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "miner_start");
-            report.field("wallet", wallet);
-            report.field("address", address);
-            report.field("device", &args.device);
-            report.field("node", &args.node);
-            report.append_report(&device_readiness.report());
-            report.field("reference_backend_ready", true);
-            Ok(report.finish())
-        }
+        MinerCommand::Register(args) => operator_check_result(check_miner_registration(args.stake)),
+        MinerCommand::Check(args) => operator_check_result(check_miner_start(
+            &path_argument(&args.wallet),
+            &args.device,
+            &args.node.to_string(),
+        )),
         MinerCommand::Run(args) => {
             let runtime = &args.runtime;
             let node_runtime = &runtime.node_runtime;
@@ -67,51 +49,21 @@ pub(super) fn execute_miner_command(
             report.field("role_runtime_ready", true);
             Ok(report.finish())
         }
-        MinerCommand::Status => {
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "miner_status");
-            report.field("min_stake", params.miner_min_stake);
-            report.field("reference_backend_ready", true);
-            report.field("status_source", "rpc_or_node_store_required");
-            Ok(report.finish())
-        }
+        MinerCommand::Status => Ok(miner_status()),
     }
 }
 
-pub(super) fn execute_validator_command(
-    command: &ValidatorCommand,
-    params: &ChainParams,
-) -> Result<String> {
+pub(super) fn execute_validator_command(command: &ValidatorCommand) -> Result<String> {
     match command {
         ValidatorCommand::Register(args) => {
-            ensure_minimum_stake(args.stake, params.validator_min_stake)?;
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "validator_register");
-            report.field("stake", args.stake);
-            report.field("min_stake", params.validator_min_stake);
-            report.field("stake_sufficient", true);
-            Ok(report.finish())
+            operator_check_result(check_validator_registration(args.stake))
         }
-        ValidatorCommand::Check(args) => {
-            let address = wallet_address_hex(&args.wallet)?;
-            let wallet = path_argument(&args.wallet);
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "validator_start");
-            report.field("wallet", wallet);
-            report.field("address", address);
-            report.field("node", &args.node);
-            report.field("reference_verifier_ready", true);
-            Ok(report.finish())
-        }
+        ValidatorCommand::Check(args) => operator_check_result(check_validator_start(
+            &path_argument(&args.wallet),
+            &args.node.to_string(),
+        )),
         ValidatorCommand::Run(args) => execute_validator_run("validator", args),
-        ValidatorCommand::Status => {
-            let mut report = KeyValueReportWriter::new();
-            report.field("command", "validator_status");
-            report.field("min_stake", params.validator_min_stake);
-            report.field("reference_verifier_ready", true);
-            report.field("status_source", "rpc_or_node_store_required");
-            Ok(report.finish())
-        }
+        ValidatorCommand::Status => Ok(validator_status()),
     }
 }
 
@@ -206,4 +158,21 @@ fn write_libp2p_limit_fields(
         "p2p_idle_timeout_seconds",
         p2p_config.idle_connection_timeout_seconds,
     );
+}
+
+fn operator_check_result(result: std::result::Result<String, String>) -> Result<String> {
+    result.map_err(operator_check_error)
+}
+
+fn operator_check_error(error: String) -> TvmError {
+    match error.as_str() {
+        "insufficient stake" => TvmError::InsufficientStake,
+        "wallet argument is empty" => TvmError::InvalidReceipt("wallet argument is empty"),
+        "device argument is empty" => TvmError::InvalidReceipt("device argument is empty"),
+        "unsupported miner device" => TvmError::InvalidReceipt("unsupported miner device"),
+        "invalid cuda device" => TvmError::InvalidReceipt("invalid cuda device"),
+        "cuda kernels not compiled" => TvmError::InvalidReceipt("cuda kernels not compiled"),
+        "cuda device unavailable" => TvmError::InvalidReceipt("cuda device unavailable"),
+        _ => TvmError::InvalidReceipt("operator check failed"),
+    }
 }
