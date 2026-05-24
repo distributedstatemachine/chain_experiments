@@ -30,6 +30,7 @@ EXPECTED_NETWORK_OBSERVER_SERVICE="$LOCAL_CPU_NETWORK_OBSERVER_SERVICE"
 EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT"
 EXPECTED_SEED_BLOCKS="$LOCAL_CPU_SEED_BLOCKS"
 EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS"
+EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -443,8 +444,8 @@ while [ "$attempt" -lt 30 ]; do
     && [ "${LIVE_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
     && [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
     && [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] \
-    && [ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] \
-    && [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] \
+    && [ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] \
+    && [ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] \
     && [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ]; then
     break
   fi
@@ -460,8 +461,8 @@ done
 [ "${LIVE_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not produce additional receipts"
 [ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not settle additional receipts"
 [ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "live receipt details did not include validator attestations"
-[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts"
-[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
+[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] || fail "live receipt details did not include post-seed TensorOp receipts"
+[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts"
 [ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards"
 
 LIVE_TENSOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")

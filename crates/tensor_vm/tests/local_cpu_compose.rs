@@ -473,6 +473,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"LOCAL_CPU_SEED_HEIGHT=2"#,
             r#"LOCAL_CPU_SEED_BLOCKS=2"#,
             r#"LOCAL_CPU_FULL_RATE_BPS=10000"#,
+            r#"LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR=5"#,
         ],
     );
 
@@ -495,6 +496,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT""#,
             r#"EXPECTED_SEED_BLOCKS="$LOCAL_CPU_SEED_BLOCKS""#,
             r#"EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS""#,
+            r#"EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR""#,
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
             r#"require_command sort"#,
@@ -606,6 +608,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"[ "${LIVE_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not produce additional receipts""#,
             r#"[ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "synthetic jobs did not settle additional receipts""#,
             r#"[ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "live receipt details did not include validator attestations""#,
+            r#"[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts""#,
+            r#"[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts""#,
             concat!(
                 r#"if [ "$SERVICE_HEIGHT" -le 2 ] "#,
                 r#"|| [ "$SERVICE_BLOCK_COUNT" -le 2 ] "#,
@@ -708,8 +712,8 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"[ "${LIVE_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not produce additional receipts""#,
             r#"[ "${LIVE_SETTLED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "synthetic jobs did not settle additional receipts""#,
             r#"[ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt "$EXPECTED_SETTLED_RECEIPTS" ] || fail "live receipt details did not include validator attestations""#,
-            r#"[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts""#,
-            r#"[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts""#,
+            r#"[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] || fail "live receipt details did not include post-seed TensorOp receipts""#,
+            r#"[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt "$EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR" ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts""#,
             r#"[ "${LIVE_TOTAL_REWARD_BALANCE:-0}" -gt "$SEED_TOTAL_REWARD_BALANCE" ] || fail "live synthetic jobs did not add rewards""#,
             r#"LIVE_TENSOR=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/tensor/latest")"#,
             r#"LIVE_TENSOR_ID=$(json_string tensor_id "$LIVE_TENSOR")"#,

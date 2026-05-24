@@ -891,6 +891,8 @@ spaghetti around.
   operator-facing docs and added a deployment-doc regression against retired top-level CLI families.
 - Iteration 358 changed the local CPU checker's all-operator convergence gates to compare service
   status against topology-derived seed, operator-count, and settled-receipt expectations.
+- Iteration 359 moved the local CPU checker's live TensorOp and LinearTrainingStep receipt evidence
+  floor into the shared topology policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
