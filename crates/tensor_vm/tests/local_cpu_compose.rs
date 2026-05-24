@@ -474,6 +474,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"LOCAL_CPU_SEED_BLOCKS=2"#,
             r#"LOCAL_CPU_FULL_RATE_BPS=10000"#,
             r#"LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR=5"#,
+            r#"LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT=500"#,
         ],
     );
 
@@ -497,6 +498,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"EXPECTED_SEED_BLOCKS="$LOCAL_CPU_SEED_BLOCKS""#,
             r#"EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS""#,
             r#"EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR""#,
+            r#"EXPECTED_LIVE_RECEIPT_QUERY_LIMIT="$LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT""#,
             r#"docker compose -f "$COMPOSE_FILE" "$@" < /dev/null"#,
             r#"require_command docker"#,
             r#"require_command sort"#,
@@ -610,6 +612,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"[ "${LIVE_ATTESTED_RECEIPT_COUNT:-0}" -gt 10 ] || fail "live receipt details did not include validator attestations""#,
             r#"[ "${LIVE_TENSOR_OP_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed TensorOp receipts""#,
             r#"[ "${LIVE_LINEAR_TRAINING_RECEIPT_COUNT:-0}" -gt 5 ] || fail "live receipt details did not include post-seed LinearTrainingStep receipts""#,
+            r#"LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/500")"#,
             concat!(
                 r#"if [ "$SERVICE_HEIGHT" -le 2 ] "#,
                 r#"|| [ "$SERVICE_BLOCK_COUNT" -le 2 ] "#,
@@ -704,6 +707,7 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"text_contains "$EXPLORER_PAGE" 'data-ui="ratzilla-tui"' || fail "standalone explorer page is not the default Ratzilla-style TUI""#,
             r#"text_contains "$EXPLORER_PAGE" "new WebSocket" || fail "standalone explorer page does not poll TensorVM over websocket""#,
             r#"LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")"#,
+            r#"LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/${EXPECTED_LIVE_RECEIPT_QUERY_LIMIT}")"#,
             r#"[ "${LIVE_HEIGHT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "gateway chain head did not advance past seeded height $EXPECTED_SEED_HEIGHT""#,
             r#"[ "${LIVE_BLOCK_COUNT:-0}" -gt "$EXPECTED_SEED_BLOCKS" ] || fail "gateway chain block count did not advance past seeded $EXPECTED_SEED_BLOCKS blocks""#,
             r#"[ "${LIVE_JOB_COUNT:-0}" -gt "$EXPECTED_SEED_HEIGHT" ] || fail "protocol did not generate synthetic jobs after seed""#,

@@ -31,6 +31,7 @@ EXPECTED_SEED_HEIGHT="$LOCAL_CPU_SEED_HEIGHT"
 EXPECTED_SEED_BLOCKS="$LOCAL_CPU_SEED_BLOCKS"
 EXPECTED_FULL_RATE_BPS="$LOCAL_CPU_FULL_RATE_BPS"
 EXPECTED_LIVE_PRIMITIVE_RECEIPT_FLOOR="$LOCAL_CPU_LIVE_PRIMITIVE_RECEIPT_FLOOR"
+EXPECTED_LIVE_RECEIPT_QUERY_LIMIT="$LOCAL_CPU_LIVE_RECEIPT_QUERY_LIMIT"
 
 compose() {
   docker compose -f "$COMPOSE_FILE" "$@" < /dev/null
@@ -432,7 +433,7 @@ while [ "$attempt" -lt 30 ]; do
   LIVE_RECEIPT_COUNT=$(json_number receipt_count "$LIVE_OVERVIEW")
   LIVE_SETTLED_RECEIPT_COUNT=$(json_number settled_receipt_count "$LIVE_OVERVIEW")
   LIVE_TOTAL_REWARD_BALANCE=$(json_number total_reward_balance "$LIVE_OVERVIEW")
-  LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/500")
+  LIVE_RECEIPTS=$(curl -fsS --max-time 15 -H "Authorization: Bearer ${AUTH_TOKEN}" "http://127.0.0.1:${RPC_PORT}/explorer/receipts/latest/${EXPECTED_LIVE_RECEIPT_QUERY_LIMIT}")
   LIVE_ATTESTED_RECEIPT_COUNT=$(json_positive_field_count attestation_count "$LIVE_RECEIPTS")
   LIVE_TENSOR_OP_RECEIPT_COUNT=$(json_string_field_count primitive_type tensor_op "$LIVE_RECEIPTS")
   LIVE_LINEAR_TRAINING_RECEIPT_COUNT=$(json_string_field_count primitive_type linear_training_step "$LIVE_RECEIPTS")

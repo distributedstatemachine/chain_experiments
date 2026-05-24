@@ -893,6 +893,8 @@ spaghetti around.
   status against topology-derived seed, operator-count, and settled-receipt expectations.
 - Iteration 359 moved the local CPU checker's live TensorOp and LinearTrainingStep receipt evidence
   floor into the shared topology policy script.
+- Iteration 360 moved the local CPU checker's live receipt query page limit into the shared topology
+  policy script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
