@@ -521,6 +521,8 @@ spaghetti around.
   route helpers into `rpc/read_routes.rs`, narrowing `rpc.rs` toward dispatch and shared response helpers.
 - Iteration 199 moved explorer account/latest collection routes and explorer websocket command
   handling into `rpc/explorer_routes.rs`, keeping explorer transport responses out of the RPC facade.
+- Iteration 200 moved RPC hash/address parsing helpers into `rpc/parse.rs`, so route modules no
+  longer depend on utility code living in the main RPC facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
