@@ -391,6 +391,9 @@ spaghetti around.
   `cli/local_role_parser.rs`, aligning role parsing with the existing role description and
   execution modules while narrowing `cli/local_parser.rs` toward service/local-testnet/local-cpu
   clap shape.
+- Iteration 155 moved local service clap command/argument structs into
+  `cli/local_service_parser.rs`, leaving `cli/local_parser.rs` as the compact owner for shared
+  local data-dir arguments plus local-testnet/local-cpu clap shape.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

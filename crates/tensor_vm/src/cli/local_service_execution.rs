@@ -1,5 +1,5 @@
 use super::local_execution_values::identity_report;
-use super::local_parser::{ServiceCommand, ServicePeerCommand};
+use super::local_service_parser::{ServiceCommand, ServicePeerCommand};
 use super::validation::{
     ensure_auth_token, ensure_data_dir, ensure_libp2p_multiaddr, ensure_listen_addr,
 };
