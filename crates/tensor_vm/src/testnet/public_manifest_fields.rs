@@ -1,5 +1,6 @@
 use super::PublicServiceKind;
 use crate::error::{Result, TvmError};
+use crate::record_fields::exact_comma_fields as exact_record_fields;
 use crate::types::{Hash, HashHexParseError, parse_hash_hex as parse_typed_hash_hex};
 use std::collections::BTreeSet;
 
@@ -46,15 +47,7 @@ pub(super) fn exact_manifest_record_fields<'a>(
     expected_fields: usize,
     error: &'static str,
 ) -> Result<Vec<&'a str>> {
-    let fields: Vec<&str> = value.split(',').collect();
-    if fields.len() != expected_fields
-        || fields
-            .iter()
-            .any(|field| field.is_empty() || field.trim() != *field)
-    {
-        return Err(TvmError::InvalidReceipt(error));
-    }
-    Ok(fields)
+    exact_record_fields(value, expected_fields).ok_or(TvmError::InvalidReceipt(error))
 }
 
 pub(super) fn exact_manifest_scalar(value: &str) -> Result<&str> {

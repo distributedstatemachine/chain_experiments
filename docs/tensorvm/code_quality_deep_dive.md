@@ -824,6 +824,8 @@ spaghetti around.
   retired top-level command families.
 - Iteration 328 centralized HTTPS authority slicing for public URL validation, so host extraction and
   authority comparison share the same scheme, control-character, and path-boundary handling.
+- Iteration 329 extracted strict comma-field record parsing into a crate-private helper shared by CLI
+  evidence readers and public manifest readers, removing another duplicated CSV-like validation loop.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

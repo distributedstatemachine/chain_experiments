@@ -24,6 +24,7 @@ pub mod node;
 pub mod oracle;
 pub mod p2p;
 pub mod profile;
+mod record_fields;
 pub mod roles;
 pub mod rpc;
 pub mod runtime;
