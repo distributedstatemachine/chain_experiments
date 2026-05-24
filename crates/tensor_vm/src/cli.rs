@@ -7,8 +7,7 @@ use crate::runtime::cuda_device_count;
 #[cfg(test)]
 use crate::runtime::cuda_kernels_compiled;
 use crate::testnet::{
-    PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
-    PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
+    PublicEvidenceRecordKind, PublicEvidenceSupportingArtifact, PublicNodeEvidence, PublicNodeRole,
     PublicOperatorIdentityAttestation, PublicServiceKind, sign_public_evidence_record,
     sign_public_run_window,
 };
@@ -18,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod arguments;
 mod network_observation;
+mod publication_evidence;
 mod reports;
 mod service_evidence;
 mod validation;
@@ -31,6 +31,7 @@ use arguments::{
 use network_observation::network_observation_multiaddr_is_public;
 #[cfg(test)]
 use network_observation::{public_dns_host, public_dns_host_is_well_formed};
+use publication_evidence::{auditor_record_evidence_line, publication_evidence_lines};
 pub use reports::{validate_public_evidence_manifest, validate_public_testnet_preflight_manifest};
 use service_evidence::{
     ServiceHealthEvidenceLine, service_content_evidence_line,
@@ -1917,64 +1918,6 @@ pub fn execute_reference_cli_command(command: &CliCommand) -> Result<String> {
             Ok(describe_command(command))
         }
     }
-}
-
-fn publication_evidence_lines(
-    bundle_id: Hash,
-    public_uri: &str,
-    manifest_signer: Address,
-    manifest_signature_count: u64,
-    independent_auditor_count: u64,
-) -> Result<String> {
-    let publication = PublicEvidencePublication::new(
-        bundle_id,
-        public_uri.to_owned(),
-        manifest_signer,
-        manifest_signature_count,
-        independent_auditor_count,
-    );
-    if !publication.is_published_and_independently_checkable() {
-        return Err(TvmError::InvalidReceipt(
-            "invalid public evidence publication",
-        ));
-    }
-    Ok(format!(
-        "bundle_id={}\npublic_uri={}\nmanifest_signer={}\nmanifest_signature={}\nmanifest_signature_count={}\nindependent_auditor_count={}",
-        hex(&publication.bundle_id),
-        publication.public_uri,
-        hex(&publication.manifest_signer),
-        hex(&publication.manifest_signature),
-        publication.manifest_signature_count,
-        publication.independent_auditor_count
-    ))
-}
-
-fn auditor_record_evidence_line(
-    bundle_id: Hash,
-    public_uri: &str,
-    auditor_id: Address,
-    audit_uri: &str,
-    observed_at_unix_seconds: u64,
-) -> Result<String> {
-    let auditor = PublicEvidenceAuditorRecord::new(
-        &bundle_id,
-        public_uri,
-        auditor_id,
-        audit_uri.to_owned(),
-        observed_at_unix_seconds,
-    );
-    if !auditor.has_external_auditor_proof(&bundle_id, public_uri) {
-        return Err(TvmError::InvalidReceipt(
-            "invalid public evidence auditor record",
-        ));
-    }
-    Ok(format!(
-        "auditor={},{},{},{}",
-        hex(&auditor.auditor_id),
-        auditor.audit_uri,
-        auditor.observed_at_unix_seconds,
-        hex(&auditor.auditor_signature)
-    ))
 }
 
 fn run_window_evidence_line(

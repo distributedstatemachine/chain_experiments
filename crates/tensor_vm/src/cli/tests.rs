@@ -2,10 +2,11 @@ use super::*;
 use crate::hash::hex;
 use crate::testnet::{
     PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
-    PublicEvidencePublication, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
-    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation,
-    PublicServiceContentEvidence, PublicServiceEndpoint, PublicServiceEvidence, PublicServiceKind,
-    PublicTestnetEvidenceBundle, PublicTestnetRunEvidence, aggregate_public_evidence_record_roots,
+    PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordSummaries,
+    PublicNetworkRuntimeEvidence, PublicNodeEvidence, PublicNodeRole,
+    PublicOperatorIdentityAttestation, PublicServiceContentEvidence, PublicServiceEndpoint,
+    PublicServiceEvidence, PublicServiceKind, PublicTestnetEvidenceBundle,
+    PublicTestnetRunEvidence, aggregate_public_evidence_record_roots,
     public_network_runtime_observations_for_run,
 };
 use crate::types::{Hash, address, hash_bytes};

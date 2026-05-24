@@ -280,6 +280,8 @@ spaghetti around.
 - Iteration 116 extracted CLI public service health and content evidence builders into
   `cli/service_evidence.rs`, keeping service observation parsing and content-root generation out
   of the parent CLI module.
+- Iteration 117 extracted CLI public evidence publication and auditor record builders into
+  `cli/publication_evidence.rs`, separating publication proof formatting from command dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
