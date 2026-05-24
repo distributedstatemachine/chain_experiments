@@ -694,6 +694,8 @@ spaghetti around.
   including produced-block counters.
 - Iteration 270 made the service peer command description test exact by formatting the generated peer ID,
   removing the last substring assertion from CLI command description coverage.
+- Iteration 271 converted role-run integration stdout checks to parsed fields, including duplicate command
+  handling for the embedded `service_serve` report and numeric runtime/network counters.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

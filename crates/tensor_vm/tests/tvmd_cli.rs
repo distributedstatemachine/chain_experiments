@@ -165,6 +165,14 @@ fn stdout_value<'a>(stdout: &'a str, key: &str) -> &'a str {
         .expect("expected service stdout field")
 }
 
+fn stdout_values<'a>(stdout: &'a str, key: &str) -> Vec<&'a str> {
+    stdout
+        .lines()
+        .filter_map(|line| line.strip_prefix(key))
+        .filter_map(|value| value.strip_prefix('='))
+        .collect()
+}
+
 fn stdout_u64(stdout: &str, key: &str) -> u64 {
     stdout_value(stdout, key)
         .parse()
@@ -708,64 +716,101 @@ fn role_run_commands_serve_through_role_specific_surfaces() {
             String::from_utf8_lossy(&output.stderr)
         );
         let stdout = String::from_utf8(output.stdout).expect("role stdout must be utf8");
-        assert!(stdout.contains(&format!("command={role}_run")));
-        assert!(stdout.contains(&format!("role={role}")));
-        assert!(stdout.contains("role_runtime_ready=true"));
+        assert_eq!(
+            stdout_values(&stdout, "command"),
+            [format!("{role}_run").as_str(), "service_serve"]
+        );
+        assert_eq!(stdout_value(&stdout, "role"), role);
+        assert_eq!(stdout_value(&stdout, "role_runtime_ready"), "true");
         if role == "proposer" {
-            assert!(stdout.contains("proposer_ready=true"));
+            assert_eq!(stdout_value(&stdout, "proposer_ready"), "true");
         }
-        assert!(stdout.contains("command=service_serve"));
-        assert!(stdout.contains("role_loop_ready=true"));
-        assert!(stdout.contains(&format!("runtime_command={role}_run")));
-        assert!(stdout.contains("chain_profile=local_cpu"));
+        assert_eq!(stdout_value(&stdout, "role_loop_ready"), "true");
+        assert_eq!(
+            stdout_value(&stdout, "runtime_command"),
+            format!("{role}_run")
+        );
+        assert_eq!(stdout_value(&stdout, "chain_profile"), "local_cpu");
         let role_can_produce_blocks = if role == "validator" { "true" } else { "false" };
         let wallet_address = hex(&address(wallet.as_bytes()));
-        assert!(stdout.contains(&format!(
-            "role_can_produce_blocks={role_can_produce_blocks}"
-        )));
-        assert!(stdout.contains(&format!("role_wallet_address={wallet_address}")));
-        assert!(stdout.contains(&format!("role_wallet_registration={expected_registration}")));
-        assert!(stdout.contains("role_wallet_registered=true"));
-        assert!(stdout.contains("miner_work_ready="));
-        assert!(stdout.contains("miner_assigned_jobs_seen="));
-        assert!(stdout.contains("miner_unreceipted_jobs="));
-        assert!(stdout.contains("miner_receipts_submitted="));
-        assert!(stdout.contains("miner_tensors_inserted="));
-        assert!(stdout.contains("validator_work_ready="));
-        assert!(stdout.contains("validator_assigned_receipts_seen="));
-        assert!(stdout.contains("validator_unattested_receipts="));
-        assert!(stdout.contains("validator_artifact_ready_receipts="));
-        assert!(stdout.contains("validator_artifact_missing_receipts="));
-        assert!(stdout.contains("validator_remote_tensor_fetch_attempts="));
-        assert!(stdout.contains("validator_remote_tensor_fetch_successes="));
-        assert!(stdout.contains("validator_remote_tensor_fetch_failures="));
-        assert!(stdout.contains("validator_remote_tensor_fetch_bytes="));
-        assert!(stdout.contains("validator_remote_tensors_inserted="));
-        assert!(stdout.contains("validator_attestations_submitted="));
-        assert!(stdout.contains("validator_block_votes_submitted="));
-        assert!(stdout.contains("local_producer=false"));
-        assert!(stdout.contains("p2p_runtime=libp2p"));
-        assert!(stdout.contains("p2p_connected_peers="));
-        assert!(stdout.contains("p2p_observed_block_gossip_count="));
-        assert!(stdout.contains("p2p_observed_block_payload_gossip_count="));
-        assert!(stdout.contains("p2p_observed_block_vote_gossip_count="));
-        assert!(stdout.contains("p2p_observed_job_gossip_count="));
-        assert!(stdout.contains("p2p_observed_receipt_gossip_count="));
-        assert!(stdout.contains("p2p_observed_attestation_gossip_count="));
-        assert!(stdout.contains("p2p_latest_observed_block_height="));
-        assert!(stdout.contains("p2p_latest_observed_block_hash="));
-        assert!(stdout.contains("p2p_observed_block_hashes="));
-        assert!(stdout.contains("p2p_latest_observed_block_payload_height="));
-        assert!(stdout.contains("p2p_latest_observed_block_payload_hash="));
-        assert!(stdout.contains("p2p_observed_block_payload_hashes="));
-        assert!(stdout.contains("served_requests=1"));
-        assert!(stdout.contains("network_applied_blocks=0"));
-        assert!(stdout.contains("network_events_ingested=0"));
-        assert!(stdout.contains("network_block_payloads_ingested=0"));
-        assert!(stdout.contains("network_block_payloads_applied=0"));
-        assert!(stdout.contains("network_block_votes_ingested=0"));
-        assert!(stdout.contains("network_block_votes_applied=0"));
-        assert!(stdout.contains("network_invalid_events=0"));
+        assert_eq!(
+            stdout_value(&stdout, "role_can_produce_blocks"),
+            role_can_produce_blocks
+        );
+        assert_eq!(stdout_value(&stdout, "role_wallet_address"), wallet_address);
+        assert_eq!(
+            stdout_value(&stdout, "role_wallet_registration"),
+            expected_registration
+        );
+        assert_eq!(stdout_value(&stdout, "role_wallet_registered"), "true");
+        assert!(matches!(
+            stdout_value(&stdout, "miner_work_ready"),
+            "true" | "false"
+        ));
+        assert!(stdout_u64(&stdout, "miner_assigned_jobs_seen") <= 10);
+        assert!(stdout_u64(&stdout, "miner_unreceipted_jobs") <= 10);
+        assert!(stdout_u64(&stdout, "miner_receipts_submitted") <= 10);
+        assert!(stdout_u64(&stdout, "miner_tensors_inserted") <= 20);
+        assert!(matches!(
+            stdout_value(&stdout, "validator_work_ready"),
+            "true" | "false"
+        ));
+        assert!(stdout_u64(&stdout, "validator_assigned_receipts_seen") <= 10);
+        assert!(stdout_u64(&stdout, "validator_unattested_receipts") <= 10);
+        assert!(stdout_u64(&stdout, "validator_artifact_ready_receipts") <= 10);
+        assert!(stdout_u64(&stdout, "validator_artifact_missing_receipts") <= 10);
+        assert!(stdout_u64(&stdout, "validator_remote_tensor_fetch_attempts") <= 10);
+        assert!(stdout_u64(&stdout, "validator_remote_tensor_fetch_successes") <= 10);
+        assert!(stdout_u64(&stdout, "validator_remote_tensor_fetch_failures") <= 10);
+        assert!(stdout_u64(&stdout, "validator_remote_tensor_fetch_bytes") <= 1_000_000);
+        assert!(stdout_u64(&stdout, "validator_remote_tensors_inserted") <= 20);
+        assert!(stdout_u64(&stdout, "validator_attestations_submitted") <= 10);
+        assert_eq!(stdout_u64(&stdout, "validator_block_votes_submitted"), 0);
+        assert_eq!(stdout_value(&stdout, "local_producer"), "false");
+        assert_eq!(stdout_value(&stdout, "p2p_runtime"), "libp2p");
+        assert_eq!(stdout_u64(&stdout, "p2p_connected_peers"), 0);
+        assert_eq!(stdout_u64(&stdout, "p2p_observed_block_gossip_count"), 0);
+        assert_eq!(
+            stdout_u64(&stdout, "p2p_observed_block_payload_gossip_count"),
+            0
+        );
+        assert_eq!(
+            stdout_u64(&stdout, "p2p_observed_block_vote_gossip_count"),
+            0
+        );
+        assert_eq!(stdout_u64(&stdout, "p2p_observed_job_gossip_count"), 0);
+        assert_eq!(stdout_u64(&stdout, "p2p_observed_receipt_gossip_count"), 0);
+        assert_eq!(
+            stdout_u64(&stdout, "p2p_observed_attestation_gossip_count"),
+            0
+        );
+        let zero_hash = hex(&[0u8; 32]);
+        assert_eq!(stdout_u64(&stdout, "p2p_latest_observed_block_height"), 0);
+        assert_eq!(
+            stdout_value(&stdout, "p2p_latest_observed_block_hash"),
+            zero_hash
+        );
+        assert_eq!(stdout_value(&stdout, "p2p_observed_block_hashes"), "none");
+        assert_eq!(
+            stdout_u64(&stdout, "p2p_latest_observed_block_payload_height"),
+            0
+        );
+        assert_eq!(
+            stdout_value(&stdout, "p2p_latest_observed_block_payload_hash"),
+            zero_hash
+        );
+        assert_eq!(
+            stdout_value(&stdout, "p2p_observed_block_payload_hashes"),
+            "none"
+        );
+        assert_eq!(stdout_u64(&stdout, "served_requests"), 1);
+        assert_eq!(stdout_u64(&stdout, "network_applied_blocks"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_events_ingested"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_block_payloads_ingested"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_block_payloads_applied"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_block_votes_ingested"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_block_votes_applied"), 0);
+        assert_eq!(stdout_u64(&stdout, "network_invalid_events"), 0);
 
         let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
         assert!(status.contains(&format!("role_runtime_command={role}_run")));
