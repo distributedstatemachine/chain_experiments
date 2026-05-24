@@ -427,6 +427,9 @@ spaghetti around.
 - Iteration 166 moved the public-run independent external operator criteria test into
   `testnet/tests/run_evidence.rs`, further separating public evidence rule coverage from the shared
   testnet fixture module.
+- Iteration 167 moved the public-run deployed service and production runtime criteria test into
+  `testnet/tests/run_services.rs`, keeping service-reachability rule coverage out of the shared
+  fixture module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
