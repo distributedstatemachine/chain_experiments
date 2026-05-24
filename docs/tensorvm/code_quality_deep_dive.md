@@ -904,6 +904,8 @@ spaghetti around.
 - Iteration 365 moved the local CPU checker's curl HTTP timeout into the shared topology policy script.
 - Iteration 366 moved the restart continuity checker's Docker exec timeout into the shared topology
   policy script.
+- Iteration 367 moved the restart continuity checker's retry limit into the shared topology policy
+  script.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
