@@ -128,12 +128,8 @@ fn role_wallet_registration_matches_loaded_chain_role() {
     let miner = address(b"runtime-wallet-miner");
     let validator = address(b"runtime-wallet-validator");
     let unknown = address(b"runtime-wallet-unknown");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, validator);
 
     assert_eq!(
         runtime_role_wallet_registration(RuntimeRole::Miner, Some(miner), &chain),

@@ -63,12 +63,8 @@ fn service_init_recovers_torn_snapshot_and_block_log_from_chain_state() {
     let store = NodeStore::open(data_dir.clone());
     let mut chain = Chain::new(hash_bytes(b"test", &[b"service-init-recovery"]));
     let miner = address(b"service-init-recovery-miner");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(miner, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, miner);
     chain.produce_block(miner, 1_000).unwrap();
     chain.produce_block(miner, 1_006).unwrap();
     store.persist_chain(&chain).unwrap();

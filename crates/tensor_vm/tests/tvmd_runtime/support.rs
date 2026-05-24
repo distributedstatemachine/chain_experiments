@@ -22,6 +22,26 @@ pub(super) fn insert_bundle_tensors(node: &mut RpcNode, bundle: &RoleReceiptBund
     }
 }
 
+pub(super) fn register_miner(chain: &mut Chain, miner: tensor_vm::Address) {
+    let stake = chain.params().miner_min_stake;
+    chain
+        .apply_command(ChainCommand::RegisterMiner {
+            address: miner,
+            stake,
+        })
+        .unwrap();
+}
+
+pub(super) fn register_validator(chain: &mut Chain, validator: tensor_vm::Address) {
+    let stake = chain.params().validator_min_stake;
+    chain
+        .apply_command(ChainCommand::RegisterValidator {
+            address: validator,
+            stake,
+        })
+        .unwrap();
+}
+
 pub(super) fn unique_temp_data_dir(name: &str) -> std::path::PathBuf {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

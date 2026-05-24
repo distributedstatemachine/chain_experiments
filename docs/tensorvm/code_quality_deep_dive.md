@@ -643,6 +643,9 @@ spaghetti around.
 - Iteration 247 moved the remaining `tvmd` runtime harness out of the binary unit-test module and into a
   `tvmd_runtime` integration-test target, removing the final `main.rs` module hook now that the runtime
   surface is library-owned.
+- Iteration 248 routed `tvmd_runtime` miner and validator registration setup through `ChainCommand`
+  helpers, removing another runtime-facing integration-test dependency on direct `Chain::register_*`
+  mutation methods outside the chain module.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

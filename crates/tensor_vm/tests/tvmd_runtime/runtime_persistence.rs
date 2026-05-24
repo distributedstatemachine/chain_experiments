@@ -93,12 +93,8 @@ fn validator_remote_tensor_fetch_status_does_not_persist_chain() {
         hash_bytes(b"test", &[b"validator-fetch-no-persist"]),
     );
     let miner = address(b"validator-fetch-no-persist-miner");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, validator);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),

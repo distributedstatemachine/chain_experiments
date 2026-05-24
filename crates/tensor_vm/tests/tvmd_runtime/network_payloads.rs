@@ -11,12 +11,8 @@ fn chain_with_network_participants(
     attestation: &ValidatorAttestation,
 ) -> Chain {
     let mut chain = Chain::new(local_cpu_seed_beacon());
-    chain
-        .register_miner(receipt.miner(), chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(attestation.validator, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, receipt.miner());
+    register_validator(&mut chain, attestation.validator);
     chain
 }
 

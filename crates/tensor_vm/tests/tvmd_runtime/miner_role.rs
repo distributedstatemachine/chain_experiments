@@ -7,9 +7,7 @@ use tensor_vm::app::{
 fn miner_role_work_observation_tracks_assigned_unreceipted_jobs() {
     let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-work-observation"]));
     let miner = address(b"miner-work-observation-miner");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
@@ -47,9 +45,7 @@ fn miner_role_work_observation_ignores_unassigned_miners() {
     let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-work-unassigned"]));
     let miner = address(b"miner-work-assigned");
     let unassigned = address(b"miner-work-unassigned");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
@@ -74,9 +70,7 @@ fn miner_role_work_observation_ignores_unassigned_miners() {
 fn miner_role_submits_assigned_unreceipted_tensor_op_once() {
     let mut chain = Chain::new(hash_bytes(b"test", &[b"miner-receipt-submit"]));
     let miner = address(b"miner-receipt-submit-miner");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
@@ -125,12 +119,8 @@ fn miner_role_receipt_submission_skips_duplicate_unregistered_and_unassigned_wor
     let miner_a = address(b"miner-receipt-skip-a");
     let miner_b = address(b"miner-receipt-skip-b");
     let unknown = address(b"miner-receipt-skip-unknown");
-    chain
-        .register_miner(miner_a, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_miner(miner_b, chain.params().miner_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner_a);
+    register_miner(&mut chain, miner_b);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),

@@ -10,12 +10,8 @@ fn validator_role_work_observation_tracks_assigned_unattested_receipts() {
     let mut chain = Chain::new(hash_bytes(b"test", &[b"validator-work-observation"]));
     let miner = address(b"validator-work-miner");
     let validator = address(b"validator-work-validator");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, validator);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
@@ -82,15 +78,9 @@ fn validator_role_attestation_submission_skips_missing_unregistered_unassigned_a
     let validator_a = address(b"validator-attestation-a");
     let validator_b = address(b"validator-attestation-b");
     let unknown = address(b"validator-attestation-unknown");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator_a, chain.params().validator_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator_b, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, validator_a);
+    register_validator(&mut chain, validator_b);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
@@ -177,9 +167,7 @@ fn validator_role_block_vote_submission_finalizes_only_through_votes() {
         address(b"validator-block-vote-c"),
     ];
     for validator in validators {
-        chain
-            .register_validator(validator, chain.params().validator_min_stake)
-            .unwrap();
+        register_validator(&mut chain, validator);
     }
     let block = chain.produce_block(validators[0], 1_000).unwrap();
     let block_hash = block.hash();
@@ -292,12 +280,8 @@ fn validator_role_fetches_remote_tensors_before_attesting() {
     let mut chain = Chain::with_params(params, hash_bytes(b"test", &[b"validator-remote-fetch"]));
     let miner = address(b"validator-remote-fetch-miner");
     let validator = address(b"validator-remote-fetch-validator");
-    chain
-        .register_miner(miner, chain.params().miner_min_stake)
-        .unwrap();
-    chain
-        .register_validator(validator, chain.params().validator_min_stake)
-        .unwrap();
+    register_miner(&mut chain, miner);
+    register_validator(&mut chain, validator);
     let scheduler = JobScheduler::with_small_shape((2, 2, 2));
     let job = scheduler.generate_small_matmul(
         chain.state().epoch(),
