@@ -974,6 +974,10 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"CHECK_SCRIPT="$SCRIPT_DIR/check-local-testnet.sh""#,
             r#"EXPECTED_SERVICES="miner-00 miner-01 miner-02 miner-03 miner-04 miner-05 miner-06 miner-07 miner-08 miner-09 validator-00 validator-01 validator-02 validator-03 validator-04""#,
             r#"RESTART_SERVICES="${*:-miner-03 validator-02}""#,
+            r#"while IFS= read -r line || [ -n "$line" ]; do"#,
+            r#"printf '%s\n' "${line#"$prefix"}""#,
+            r#"key_value_from_stdin "$key" <<EOF"#,
+            r#"key_value_from_stdin "$key" < "$file""#,
             r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node status --data-dir /var/lib/tensorvm 2>/dev/null < /dev/null); then"#,
             r#"if output=$(timeout 15s docker compose -f "$COMPOSE_FILE" exec -T "$service" tvmd node block --data-dir /var/lib/tensorvm --height "$height" 2>/dev/null < /dev/null); then"#,
             r#"[ -x "$CHECK_SCRIPT" ] || fail "check-local-testnet.sh is not executable""#,
@@ -1000,6 +1004,13 @@ fn local_cpu_compose_bundle_matches_spec_artifact_shape() {
             r#"restart_previous_common_state_root_preserved=true"#,
             r#"restart_blocks_continue=true"#,
             r#"restart_common_head_convergence=true"#,
+        ],
+    );
+    assert_lacks_shell_logical_lines(
+        &restart_script,
+        &[
+            r#"printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'"#,
+            r#"sed -n "s/^${key}=//p" "$file" | sed -n '1p'"#,
         ],
     );
 

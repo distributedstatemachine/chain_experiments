@@ -20,16 +20,32 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
 }
 
+key_value_from_stdin() {
+  key="$1"
+  prefix="${key}="
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      "$prefix"*)
+        printf '%s\n' "${line#"$prefix"}"
+        return 0
+        ;;
+    esac
+  done
+  printf '\n'
+}
+
 status_value() {
   key="$1"
   document="$2"
-  printf '%s\n' "$document" | sed -n "s/^${key}=//p" | sed -n '1p'
+  key_value_from_stdin "$key" <<EOF
+$document
+EOF
 }
 
 file_value() {
   key="$1"
   file="$2"
-  sed -n "s/^${key}=//p" "$file" | sed -n '1p'
+  key_value_from_stdin "$key" < "$file"
 }
 
 service_is_expected() {
