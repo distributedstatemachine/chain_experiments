@@ -579,6 +579,9 @@ spaghetti around.
   malformed-record report assertions into `cli/tests/public_evidence_record_reports.rs`, leaving
   `cli/tests/execution_reports.rs` focused on publication, run-window, node, service, and network output
   assertions.
+- Iteration 227 moved `tvmd` public-testnet preflight and public-evidence manifest integration tests into
+  `tests/tvmd_cli/public_evidence.rs`, leaving `tests/tvmd_cli.rs` focused on local service and role-runtime
+  process flows plus shared integration helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
