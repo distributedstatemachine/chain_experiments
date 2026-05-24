@@ -403,20 +403,20 @@ fn local_testnet_service_gateway_does_not_produce_local_blocks() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout).expect("service stdout must be utf8");
-    assert!(stdout.contains("command=service_serve"));
-    assert!(stdout.contains("chain_profile=local_cpu"));
-    assert!(stdout.contains("role_can_produce_blocks=false"));
-    assert!(stdout.contains("local_producer=false"));
-    assert!(stdout.contains("served_requests=4"));
+    assert_eq!(stdout_value(&stdout, "command"), "service_serve");
+    assert_eq!(stdout_value(&stdout, "chain_profile"), "local_cpu");
+    assert_eq!(stdout_value(&stdout, "role_can_produce_blocks"), "false");
+    assert_eq!(stdout_value(&stdout, "local_producer"), "false");
+    assert_eq!(stdout_u64(&stdout, "served_requests"), 4);
     assert_eq!(stdout_value(&stdout, "produced_blocks"), "0");
 
     let status = run_tvmd(&["service", "status", "--data-dir", &data_dir_text]);
-    assert!(status.contains("command=service_status"));
-    assert!(status.contains("node_store_ready=true"));
-    assert!(status.contains("status_source=node_store"));
-    assert!(status.contains("operator_name=unknown"));
-    assert!(status.contains("role=unknown"));
-    assert!(status.contains("role_chain_profile=local_cpu"));
+    assert_eq!(stdout_value(&status, "command"), "service_status");
+    assert_eq!(stdout_value(&status, "node_store_ready"), "true");
+    assert_eq!(stdout_value(&status, "status_source"), "node_store");
+    assert_eq!(stdout_value(&status, "operator_name"), "unknown");
+    assert_eq!(stdout_value(&status, "role"), "unknown");
+    assert_eq!(stdout_value(&status, "role_chain_profile"), "local_cpu");
     assert_eq!(stdout_value(&status, "role_can_produce_blocks"), "false");
     assert_eq!(stdout_value(&status, "role_local_producer"), "false");
     assert_eq!(stdout_value(&status, "role_produced_blocks"), "0");

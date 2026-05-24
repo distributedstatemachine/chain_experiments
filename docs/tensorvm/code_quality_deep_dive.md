@@ -688,6 +688,8 @@ spaghetti around.
   stdout assertions with numeric parsing for counters and libp2p limits.
 - Iteration 267 added comma-record parsing to the `tvmd_cli` integration harness and used it for public
   service health/content evidence generated from live service responses.
+- Iteration 268 converted local service gateway serve/status integration checks to parsed stdout fields,
+  replacing another cluster of `key=value` substring assertions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
