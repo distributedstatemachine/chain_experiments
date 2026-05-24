@@ -1,7 +1,7 @@
-use super::super::miner_role::{
+use super::*;
+use tensor_vm::app::{
     MinerRoleWorkObservation, miner_role_work_observation, submit_miner_role_receipt,
 };
-use super::*;
 
 #[test]
 fn miner_role_work_observation_tracks_assigned_unreceipted_jobs() {

@@ -622,6 +622,9 @@ spaghetti around.
 - Iteration 240 moved validator role observation/submission helpers and remote tensor-fetch helpers into the
   library-owned `app` module, leaving the validator runtime worker to orchestrate app-level validator role
   APIs instead of owning validator-specific helper modules in the binary tree.
+- Iteration 241 moved miner role work observation, receipt submission, and miner runtime ticking into the
+  library-owned `app` module, removing another binary-private role worker while keeping `tvmd` runtime-loop
+  code focused on orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

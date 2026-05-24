@@ -1,5 +1,6 @@
 mod block_status;
 mod commands;
+mod miner_role;
 mod network;
 mod runtime_config;
 mod runtime_network;
@@ -17,6 +18,10 @@ pub use block_status::service_block_status;
 pub use commands::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
     verify_local_cpu_store,
+};
+pub use miner_role::{
+    MinerRoleReceiptSubmission, MinerRoleWorkObservation, miner_role_work_observation,
+    submit_miner_role_receipt, tick_miner_role_work_once,
 };
 pub use network::{
     ChainAnnouncementCheckpoint, chain_announcement_checkpoint, ingest_network_events,

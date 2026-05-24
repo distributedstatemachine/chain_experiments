@@ -12,9 +12,6 @@ use tensor_vm::{
     },
 };
 
-#[path = "main/miner_role.rs"]
-mod miner_role;
-
 #[path = "main/runtime.rs"]
 mod runtime;
 

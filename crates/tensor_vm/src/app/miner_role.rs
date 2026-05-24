@@ -1,27 +1,25 @@
 use std::collections::BTreeSet;
 
-use tensor_vm::{
+use crate::{
     Chain, ChainCommand, ChainEngine, JobScheduler, NodeRuntimeState, NodeStore, RpcHttpServer,
     RpcNode, Tensor, TensorVmLibp2pService,
-    app::{
-        ServiceRuntimeConfig, chain_announcement_checkpoint, publish_new_chain_announcements,
-        runtime_role_wallet_registration,
-    },
     hash::hex,
     roles::CpuReferenceMinerRole,
     types::{Address, Hash},
 };
 
+use super::{
+    ServiceRuntimeConfig, chain_announcement_checkpoint, publish_new_chain_announcements,
+    runtime_role_wallet_registration,
+};
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(super) struct MinerRoleWorkObservation {
-    pub(super) assigned_jobs: BTreeSet<Hash>,
-    pub(super) unreceipted_jobs: BTreeSet<Hash>,
+pub struct MinerRoleWorkObservation {
+    pub assigned_jobs: BTreeSet<Hash>,
+    pub unreceipted_jobs: BTreeSet<Hash>,
 }
 
-pub(super) fn miner_role_work_observation(
-    chain: &Chain,
-    miner: Address,
-) -> MinerRoleWorkObservation {
+pub fn miner_role_work_observation(chain: &Chain, miner: Address) -> MinerRoleWorkObservation {
     let scheduler = JobScheduler::with_small_shape((8, 8, 8));
     let assignment_seed = chain.state().finalized_randomness();
     let mut observation = MinerRoleWorkObservation::default();
@@ -47,13 +45,13 @@ fn miner_has_receipt_for_job(chain: &Chain, miner: Address, job_id: Hash) -> boo
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(super) struct MinerRoleReceiptSubmission {
-    pub(super) receipts_submitted: usize,
-    pub(super) tensors_inserted: usize,
-    pub(super) served_tensors: Vec<Tensor>,
+pub struct MinerRoleReceiptSubmission {
+    pub receipts_submitted: usize,
+    pub tensors_inserted: usize,
+    pub served_tensors: Vec<Tensor>,
 }
 
-pub(super) fn submit_miner_role_receipt(
+pub fn submit_miner_role_receipt(
     node: &mut RpcNode,
     miner: Address,
     job_id: Hash,
@@ -101,7 +99,7 @@ pub(super) fn submit_miner_role_receipt(
     }))
 }
 
-pub(super) fn tick_miner_role_work_once(
+pub fn tick_miner_role_work_once(
     config: &ServiceRuntimeConfig,
     store: &NodeStore,
     server: &mut RpcHttpServer,
