@@ -1045,6 +1045,8 @@ spaghetti around.
   command parsing and global retired-family rejection.
 - Iteration 430 renamed the remaining public-focused clap parser suite to
   `cli/tests/public_parser.rs`, removing the last generic parser test module name after the local split.
+- Iteration 431 moved the shared comma-record assertion helper out of the public evidence execution report
+  suite and into `cli/tests/report_fields.rs`, preparing that oversized report test for family-level splits.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
