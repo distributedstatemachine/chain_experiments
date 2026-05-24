@@ -601,6 +601,9 @@ spaghetti around.
 - Iteration 233 moved service/testnet command helpers and shared local CPU identity/seed helpers out of the
   binary-only `src/main/*` module tree into a library-owned `app` module, starting the `main.rs` collapse
   without mixing that ownership change with the larger runtime loop migration.
+- Iteration 234 moved service status and block-status report builders into the same library-owned `app`
+  module, leaving the binary to call application reporting APIs instead of owning the status formatter
+  modules directly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,7 +1,8 @@
 use std::{collections::BTreeMap, path::Path};
-use tensor_vm::{NodeStore, hash::hex};
 
-pub(super) fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
+use crate::{NodeStore, hash::hex};
+
+pub fn hex_hash_list(hashes: &[[u8; 32]]) -> String {
     if hashes.is_empty() {
         return "none".to_owned();
     }
@@ -45,7 +46,7 @@ fn status_file_fields(contents: &str) -> BTreeMap<String, String> {
     fields
 }
 
-pub(super) fn service_status(data_dir: &str) -> std::result::Result<String, String> {
+pub fn service_status(data_dir: &str) -> std::result::Result<String, String> {
     let store = NodeStore::open(data_dir);
     let chain = store
         .load_chain()

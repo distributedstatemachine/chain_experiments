@@ -3,7 +3,7 @@ use tensor_vm::{
     TvmdCli, TvmdCommand,
     app::{
         add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,
-        verify_local_cpu_store,
+        service_block_status, service_status, verify_local_cpu_store,
     },
     cli::{
         EvidenceCommand, MinerCommand, ProposerCommand, ServiceCommand, ServicePeerCommand,
@@ -11,9 +11,6 @@ use tensor_vm::{
         validate_public_testnet_preflight_manifest,
     },
 };
-
-#[path = "main/block_status.rs"]
-mod block_status;
 
 #[path = "main/miner_role.rs"]
 mod miner_role;
@@ -54,20 +51,15 @@ mod runtime_status_snapshot;
 #[path = "main/runtime_validator.rs"]
 mod runtime_validator;
 
-#[path = "main/status.rs"]
-mod status;
-
 #[path = "main/validator_fetch.rs"]
 mod validator_fetch;
 
 #[path = "main/validator_role.rs"]
 mod validator_role;
 
-use block_status::service_block_status;
 use runtime::serve_service;
 use runtime_commands::{run_miner_service, run_proposer_service, run_validator_service};
 use runtime_config::RoleServiceConfig;
-use status::service_status;
 
 fn path_arg(path: &std::path::Path) -> String {
     path.to_string_lossy().into_owned()

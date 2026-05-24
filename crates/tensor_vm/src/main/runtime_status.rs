@@ -1,9 +1,6 @@
+use super::runtime_config::{ServiceRuntimeConfig, runtime_role_wallet_address_text};
 pub(super) use super::runtime_status_snapshot::{RuntimeP2pReport, RuntimeStatusSnapshot};
-use super::{
-    runtime_config::{ServiceRuntimeConfig, runtime_role_wallet_address_text},
-    status::hex_hash_list,
-};
-use tensor_vm::hash::hex;
+use tensor_vm::{app::hex_hash_list, hash::hex};
 
 pub(super) fn format_role_runtime_report(
     config: &ServiceRuntimeConfig,

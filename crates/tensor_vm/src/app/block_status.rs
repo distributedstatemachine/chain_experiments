@@ -1,11 +1,9 @@
 use super::status::hex_hash_list;
 use std::collections::BTreeSet;
-use tensor_vm::{Chain, NodeStore, PrimitiveType, hash::hex};
 
-pub(super) fn service_block_status(
-    data_dir: &str,
-    height: u64,
-) -> std::result::Result<String, String> {
+use crate::{Chain, NodeStore, PrimitiveType, hash::hex};
+
+pub fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<String, String> {
     let store = NodeStore::open(data_dir);
     let chain = store
         .load_chain()
