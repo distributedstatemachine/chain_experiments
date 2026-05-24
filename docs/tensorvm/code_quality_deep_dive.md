@@ -498,6 +498,9 @@ spaghetti around.
 - Iteration 189 moved shared public run, service, network-observation, and evidence-bundle fixture
   constructors into `testnet/tests/run_fixtures.rs`, leaving `testnet.rs` with production types,
   shared helpers, and test module declarations.
+- Iteration 190 split the `tvmd` clap command definitions into `cli/local_commands.rs`,
+  `cli/public_evidence_commands.rs`, and `cli/command_values.rs`, leaving `cli/commands.rs` as the
+  top-level `TvmdCli`/`TvmdCommand` facade.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
