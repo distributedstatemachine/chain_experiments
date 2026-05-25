@@ -1,6 +1,7 @@
 mod block_status;
 mod commands;
 mod key_value_report;
+mod miner_device_readiness;
 mod miner_role;
 mod network;
 mod operator_checks;

@@ -1145,6 +1145,9 @@ spaghetti around.
 - Iteration 466 split preflight manifest rendering into `cli/tests/manifest_preflight_fixtures.rs`,
   leaving `cli/tests/manifest_fixtures.rs` focused on public evidence manifest rendering and shared
   manifest hash/address helpers.
+- Iteration 467 split miner device readiness parsing and readiness report fields into
+  `app/miner_device_readiness.rs`, leaving `app/operator_checks.rs` focused on stake, wallet, and
+  role/service validation orchestration.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
