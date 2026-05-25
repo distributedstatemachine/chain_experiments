@@ -1142,6 +1142,9 @@ spaghetti around.
   supporting-record fixture formatting.
 - Iteration 465 split `manifest_bundle()` construction into `cli/tests/manifest_bundle_fixtures.rs`,
   leaving `cli/tests/manifest_fixtures.rs` focused on rendering full evidence and preflight manifest text.
+- Iteration 466 split preflight manifest rendering into `cli/tests/manifest_preflight_fixtures.rs`,
+  leaving `cli/tests/manifest_fixtures.rs` focused on public evidence manifest rendering and shared
+  manifest hash/address helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
