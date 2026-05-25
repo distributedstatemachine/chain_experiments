@@ -1364,6 +1364,9 @@ spaghetti around.
 - Iteration 557 split top-level `tvmd` app dispatch into command-family handlers for miner, validator,
   proposer, public, node, and localnet commands, shrinking the remaining catch-all match while preserving
   the Clap command tree as the execution boundary.
+- Iteration 558 split local node and localnet app dispatch into focused handlers for node init, peer add,
+  readiness, serving, status, block lookup, seed, and verify flows, keeping validation at the app boundary
+  while shrinking the remaining nested node command match.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
