@@ -1,5 +1,6 @@
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::public_evidence_operator_commands::OperatorIdArgs;
+use crate::types::Hash;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
 use std::path::{Path, PathBuf};
@@ -44,8 +45,20 @@ pub struct NetworkObservationArgs {
 }
 
 impl NetworkObservationArgs {
+    pub fn operator_id(&self) -> Hash {
+        self.target.operator_id()
+    }
+
     pub fn peer_id(&self) -> &PeerId {
         &self.peer_id
+    }
+
+    pub fn listen_address(&self) -> &Multiaddr {
+        self.target.listen_address()
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.target.observed_at()
     }
 
     pub fn gossip_topic_count(&self) -> u64 {
@@ -91,6 +104,18 @@ pub struct NetworkObservationFromServiceLogArgs {
 }
 
 impl NetworkObservationFromServiceLogArgs {
+    pub fn operator_id(&self) -> Hash {
+        self.target.operator_id()
+    }
+
+    pub fn listen_address(&self) -> &Multiaddr {
+        self.target.listen_address()
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.target.observed_at()
+    }
+
     pub fn service_log(&self) -> &Path {
         &self.service_log
     }
@@ -111,7 +136,7 @@ pub struct NetworkObservationTargetArgs {
 }
 
 impl NetworkObservationTargetArgs {
-    pub fn operator_id(&self) -> crate::types::Hash {
+    pub fn operator_id(&self) -> Hash {
         self.operator.id()
     }
 
