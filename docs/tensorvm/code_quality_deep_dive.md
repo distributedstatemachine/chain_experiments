@@ -1165,6 +1165,9 @@ spaghetti around.
   focused on aggregate roots, record files, and top-level record-line routing.
 - Iteration 473 split local testnet seeding into `app/local_testnet_seed.rs`, leaving
   `app/commands.rs` focused on node-store initialization, peer-book updates, and libp2p readiness checks.
+- Iteration 474 split artifact-specific public evidence record Clap arguments into
+  `cli/public_evidence_record_artifact_commands.rs`, leaving `cli/public_evidence_record_commands.rs`
+  focused on the record command enum, summary arguments, and record-kind value enum.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

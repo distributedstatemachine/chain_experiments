@@ -19,6 +19,7 @@ mod public_evidence_node_commands;
 mod public_evidence_node_execution;
 mod public_evidence_publication_commands;
 mod public_evidence_publication_execution;
+mod public_evidence_record_artifact_commands;
 mod public_evidence_record_commands;
 mod public_evidence_record_execution;
 mod public_evidence_run_window_commands;

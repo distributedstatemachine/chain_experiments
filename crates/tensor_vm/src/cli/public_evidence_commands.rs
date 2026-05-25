@@ -6,9 +6,11 @@ pub use super::public_evidence_node_commands::{
     PublicNodeRoleArg,
 };
 pub use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
+pub use super::public_evidence_record_artifact_commands::{
+    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
+};
 pub use super::public_evidence_record_commands::{
-    EvidenceRecordCommand, PublicEvidenceRecordKindArg, RecordArtifactArgs,
-    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
+    EvidenceRecordCommand, PublicEvidenceRecordKindArg, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
 pub use super::public_evidence_run_window_commands::{
