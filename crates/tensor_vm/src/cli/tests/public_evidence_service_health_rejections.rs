@@ -10,34 +10,57 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         "https://rpc.tensorvm.net/health#probe",
         "https://rpc.tensorvm.net/wrong",
     ] {
-        let mut args = valid_service_health_args();
-        args.endpoint.public_url = public_url.to_owned();
         assert!(
-            execute_service_health(args).is_err(),
+            execute_service_health(service_health_args(
+                service_health_endpoint_args(public_url),
+                service_health_path_args("/health"),
+                block_height_window_args(0, 9),
+                10,
+                10,
+            ))
+            .is_err(),
             "public URL {public_url:?} should be rejected"
         );
     }
     assert!(
-        execute_service_health(ServiceHealthArgs {
-            health: service_health_path_args("health"),
-            ..valid_service_health_args()
-        })
+        execute_service_health(service_health_args(
+            valid_service_health_endpoint_args(),
+            service_health_path_args("health"),
+            block_height_window_args(0, 9),
+            10,
+            10,
+        ))
         .is_err()
     );
-    let mut invalid_window = valid_service_health_args();
-    invalid_window.window = block_height_window_args(10, 9);
-    assert!(execute_service_health(invalid_window).is_err());
-    let mut args = valid_service_health_args();
-    args.endpoint.endpoint_id = hash_arg([0; 32]);
     assert!(
-        execute_service_health(args).is_err(),
+        execute_service_health(service_health_args(
+            valid_service_health_endpoint_args(),
+            service_health_path_args("/health"),
+            block_height_window_args(10, 9),
+            10,
+            10,
+        ))
+        .is_err()
+    );
+    assert!(
+        execute_service_health(service_health_args(
+            service_health_endpoint_args_from_id([0; 32]),
+            service_health_path_args("/health"),
+            block_height_window_args(0, 9),
+            10,
+            10,
+        ))
+        .is_err(),
         "zero endpoint id should be rejected"
     );
     assert!(
-        execute_service_health(ServiceHealthArgs {
-            reachable_count: 0,
-            ..valid_service_health_args()
-        })
+        execute_service_health(service_health_args(
+            valid_service_health_endpoint_args(),
+            service_health_path_args("/health"),
+            block_height_window_args(0, 9),
+            0,
+            10,
+        ))
         .is_err()
     );
 
@@ -62,38 +85,52 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_service_health_file(ServiceHealthFromFileArgs {
-            observation_file: missing_temp_file("service-health", "records"),
-            ..valid_service_health_file_args()
-        })
+        execute_service_health_file(ServiceHealthFromFileArgs::new(
+            valid_service_health_endpoint_args(),
+            service_health_path_args("/health"),
+            missing_temp_file("service-health", "records"),
+        ))
         .is_err()
     );
 }
 
-fn valid_service_health_args() -> ServiceHealthArgs {
-    ServiceHealthArgs {
-        endpoint: valid_service_health_endpoint_args(),
-        health: service_health_path_args("/health"),
-        window: block_height_window_args(0, 9),
-        reachable_count: 10,
-        signed_health_check_count: 10,
-    }
-}
-
-fn valid_service_health_file_args() -> ServiceHealthFromFileArgs {
-    ServiceHealthFromFileArgs {
-        endpoint: valid_service_health_endpoint_args(),
-        health: service_health_path_args("/health"),
-        observation_file: missing_temp_file("unused-service-health", "records"),
-    }
-}
-
 fn valid_service_health_endpoint_args() -> PublicServiceEndpointArgs {
+    service_health_endpoint_args("https://rpc.tensorvm.net/health")
+}
+
+fn service_health_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
+    service_health_endpoint_args_from(hash_bytes(b"test", &[b"rpc-service"]), public_url)
+}
+
+fn service_health_endpoint_args_from_id(endpoint_id: [u8; 32]) -> PublicServiceEndpointArgs {
+    service_health_endpoint_args_from(endpoint_id, "https://rpc.tensorvm.net/health")
+}
+
+fn service_health_endpoint_args_from(
+    endpoint_id: [u8; 32],
+    public_url: &str,
+) -> PublicServiceEndpointArgs {
     PublicServiceEndpointArgs {
         kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        endpoint_id: hash_arg(endpoint_id),
+        public_url: public_url.to_owned(),
     }
+}
+
+fn service_health_args(
+    endpoint: PublicServiceEndpointArgs,
+    health: ServiceHealthPathArgs,
+    window: BlockHeightWindowArgs,
+    reachable_count: u64,
+    signed_health_check_count: u64,
+) -> ServiceHealthArgs {
+    ServiceHealthArgs::new(
+        endpoint,
+        health,
+        window,
+        reachable_count,
+        signed_health_check_count,
+    )
 }
 
 fn execute_service_health(args: ServiceHealthArgs) -> crate::error::Result<String> {

@@ -1296,6 +1296,8 @@ spaghetti around.
   bundle publication URIs, manifest signature counts, auditor IDs, audit URIs, and observation times out of public parser internals.
 - Iteration 527 hid public supporting-record Clap group fields behind constructors and accessors, keeping
   record context, root, roots, file, and artifact locator groups out of public parser internals.
+- Iteration 528 hid public service-health Clap fields behind constructors and accessors, keeping
+  endpoint/path/window groups, reachability counters, signed-check counters, and observation files out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

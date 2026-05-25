@@ -146,9 +146,7 @@ pub(super) fn record_context_args_from(
 }
 
 pub(super) fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {
-    ServiceHealthPathArgs {
-        health_path: health_path.to_owned(),
-    }
+    ServiceHealthPathArgs::new(health_path)
 }
 
 pub(super) fn service_kind_arg(kind: PublicServiceKind) -> PublicServiceKindArg {

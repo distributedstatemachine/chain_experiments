@@ -37,13 +37,13 @@ fn parses_service_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
-            EvidenceServiceCommand::Health(ServiceHealthArgs {
-                endpoint: service_endpoint_args("https://rpc.tensorvm.net/health"),
-                health: service_health_path_args("/health"),
-                window: block_height_window_args(0, 9),
-                reachable_count: 10,
-                signed_health_check_count: 10,
-            }),
+            EvidenceServiceCommand::Health(ServiceHealthArgs::new(
+                service_endpoint_args("https://rpc.tensorvm.net/health"),
+                service_health_path_args("/health"),
+                block_height_window_args(0, 9),
+                10,
+                10,
+            )),
         )))
     );
 
@@ -66,11 +66,11 @@ fn parses_service_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
-            EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
-                endpoint: service_endpoint_args("https://rpc.tensorvm.net/health"),
-                health: service_health_path_args("/health"),
-                observation_file: path("artifacts/rpc-health.records"),
-            }),
+            EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs::new(
+                service_endpoint_args("https://rpc.tensorvm.net/health"),
+                service_health_path_args("/health"),
+                path("artifacts/rpc-health.records"),
+            )),
         )))
     );
 
@@ -182,9 +182,7 @@ fn service_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
 }
 
 fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {
-    ServiceHealthPathArgs {
-        health_path: health_path.to_owned(),
-    }
+    ServiceHealthPathArgs::new(health_path)
 }
 
 fn service_content_target_args(public_url: &str, content_path: &str) -> ServiceContentTargetArgs {

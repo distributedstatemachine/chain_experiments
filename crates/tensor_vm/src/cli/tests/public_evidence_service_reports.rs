@@ -3,17 +3,17 @@ use super::*;
 #[test]
 fn execute_service_evidence_reports_outputs() {
     let service_health = execute_public_evidence_command(&EvidenceCommand::Service(
-        EvidenceServiceCommand::Health(ServiceHealthArgs {
-            endpoint: service_endpoint_args(
+        EvidenceServiceCommand::Health(ServiceHealthArgs::new(
+            service_endpoint_args(
                 PublicServiceKind::Rpc,
                 b"rpc-service",
                 "https://rpc.tensorvm.net/health",
             ),
-            health: service_health_path_args("/health"),
-            window: block_height_window_args(0, 9),
-            reachable_count: 10,
-            signed_health_check_count: 10,
-        }),
+            service_health_path_args("/health"),
+            block_height_window_args(0, 9),
+            10,
+            10,
+        )),
     ))
     .unwrap();
     let rpc_service_id = manifest_hash(b"rpc-service");
@@ -43,15 +43,15 @@ fn execute_service_evidence_reports_outputs() {
         .join("\n");
     std::fs::write(&health_observation_file, health_observations).unwrap();
     let service_health_from_file = execute_public_evidence_command(&EvidenceCommand::Service(
-        EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
-            endpoint: service_endpoint_args(
+        EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs::new(
+            service_endpoint_args(
                 PublicServiceKind::Rpc,
                 b"rpc-service",
                 "https://rpc.tensorvm.net/health",
             ),
-            health: service_health_path_args("/health"),
-            observation_file: health_observation_file.clone(),
-        }),
+            service_health_path_args("/health"),
+            health_observation_file.clone(),
+        )),
     ))
     .unwrap();
     std::fs::remove_file(&health_observation_file).unwrap();
@@ -67,13 +67,13 @@ fn execute_service_evidence_reports_outputs() {
     ];
     for (kind, label, tag) in additional_service_cases {
         let line = execute_public_evidence_command(&EvidenceCommand::Service(
-            EvidenceServiceCommand::Health(ServiceHealthArgs {
-                endpoint: service_endpoint_args(kind, label, public_service_url(kind)),
-                health: service_health_path_args("/health"),
-                window: block_height_window_args(0, 9),
-                reachable_count: 10,
-                signed_health_check_count: 10,
-            }),
+            EvidenceServiceCommand::Health(ServiceHealthArgs::new(
+                service_endpoint_args(kind, label, public_service_url(kind)),
+                service_health_path_args("/health"),
+                block_height_window_args(0, 9),
+                10,
+                10,
+            )),
         ))
         .unwrap();
         let endpoint_id = manifest_hash(label);

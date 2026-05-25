@@ -24,26 +24,42 @@ pub enum EvidenceServiceCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthArgs {
     #[command(flatten)]
-    pub endpoint: PublicServiceEndpointArgs,
+    endpoint: PublicServiceEndpointArgs,
     #[command(flatten)]
-    pub health: ServiceHealthPathArgs,
+    health: ServiceHealthPathArgs,
     #[command(flatten)]
-    pub window: BlockHeightWindowArgs,
+    window: BlockHeightWindowArgs,
     #[arg(
         long,
         value_name = "N",
         help = "Successful public reachability observations."
     )]
-    pub reachable_count: u64,
+    reachable_count: u64,
     #[arg(
         long,
         value_name = "N",
         help = "Signed health checks included in the evidence."
     )]
-    pub signed_health_check_count: u64,
+    signed_health_check_count: u64,
 }
 
 impl ServiceHealthArgs {
+    pub fn new(
+        endpoint: PublicServiceEndpointArgs,
+        health: ServiceHealthPathArgs,
+        window: BlockHeightWindowArgs,
+        reachable_count: u64,
+        signed_health_check_count: u64,
+    ) -> Self {
+        Self {
+            endpoint,
+            health,
+            window,
+            reachable_count,
+            signed_health_check_count,
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.endpoint.kind()
     }
@@ -80,19 +96,31 @@ impl ServiceHealthArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthFromFileArgs {
     #[command(flatten)]
-    pub endpoint: PublicServiceEndpointArgs,
+    endpoint: PublicServiceEndpointArgs,
     #[command(flatten)]
-    pub health: ServiceHealthPathArgs,
+    health: ServiceHealthPathArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "Captured health-observation record file."
     )]
-    pub observation_file: PathBuf,
+    observation_file: PathBuf,
 }
 
 impl ServiceHealthFromFileArgs {
+    pub fn new(
+        endpoint: PublicServiceEndpointArgs,
+        health: ServiceHealthPathArgs,
+        observation_file: PathBuf,
+    ) -> Self {
+        Self {
+            endpoint,
+            health,
+            observation_file,
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.endpoint.kind()
     }
@@ -121,10 +149,16 @@ pub struct ServiceHealthPathArgs {
         value_name = "PATH",
         help = "Health-check path observed on the public service."
     )]
-    pub health_path: String,
+    health_path: String,
 }
 
 impl ServiceHealthPathArgs {
+    pub fn new(health_path: impl Into<String>) -> Self {
+        Self {
+            health_path: health_path.into(),
+        }
+    }
+
     pub fn path(&self) -> &str {
         &self.health_path
     }
