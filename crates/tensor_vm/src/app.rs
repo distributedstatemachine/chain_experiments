@@ -6,6 +6,7 @@ mod miner_device_readiness;
 mod miner_role;
 mod network;
 mod operator_checks;
+mod operator_validation;
 mod role_services;
 mod runtime_config;
 mod runtime_loop;

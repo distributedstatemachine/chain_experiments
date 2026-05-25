@@ -1157,6 +1157,9 @@ spaghetti around.
 - Iteration 470 split node and localnet app command dispatch into `app/tvmd_node_dispatch.rs`
   and shared path rendering into `app/tvmd_path.rs`, leaving `app/tvmd_dispatch.rs` focused on
   top-level command-family routing and role/public evidence dispatch.
+- Iteration 471 split shared operator wallet, runtime, and data-dir validation into
+  `app/operator_validation.rs`, leaving `app/operator_checks.rs` focused on registration, start,
+  and status report rendering.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -1,6 +1,6 @@
 use crate::cli::{LocalnetCommand, NodeCommand, NodePeerCommand};
 
-use super::operator_checks::{validate_data_dir, validate_service_runtime};
+use super::operator_validation::{validate_data_dir, validate_service_runtime};
 use super::tvmd_path::path_arg;
 use super::{
     add_service_peer, check_service_readiness, init_service_store, seed_local_testnet,

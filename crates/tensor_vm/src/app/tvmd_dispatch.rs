@@ -8,9 +8,9 @@ use crate::cli::{
 
 use super::operator_checks::{
     check_miner_registration, check_miner_start, check_validator_registration,
-    check_validator_start, miner_status, validate_miner_runtime, validate_role_runtime,
-    validator_status,
+    check_validator_start, miner_status, validator_status,
 };
+use super::operator_validation::{validate_miner_runtime, validate_role_runtime};
 use super::tvmd_node_dispatch::{execute_localnet_command, execute_node_command};
 use super::tvmd_path::path_arg;
 use super::{RoleServiceConfig, run_miner_service, run_proposer_service, run_validator_service};
