@@ -41,12 +41,12 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
         }
         TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
         TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
-            &path_arg(&args.wallet),
+            &path_arg(args.wallet.path()),
             args.device.as_str(),
             &args.node.to_string(),
         ),
         TvmdCommand::Miner(MinerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
             validate_miner_runtime(
                 &config.wallet,
                 args.device.as_str(),
@@ -60,16 +60,16 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             check_validator_registration(args.stake)
         }
         TvmdCommand::Validator(ValidatorCommand::Check(args)) => {
-            check_validator_start(&path_arg(&args.wallet), &args.node.to_string())
+            check_validator_start(&path_arg(args.wallet.path()), &args.node.to_string())
         }
         TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_validator_service(config.as_role_service_config(None))
         }
         TvmdCommand::Validator(ValidatorCommand::Status) => Ok(validator_status()),
         TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(&args.wallet, &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_proposer_service(config.as_role_service_config(None))
         }

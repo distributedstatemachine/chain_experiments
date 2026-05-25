@@ -1,4 +1,4 @@
-use super::parser_support::{multiaddr, path, role_runtime_args};
+use super::parser_support::{multiaddr, role_runtime_args, role_wallet_args};
 use super::{
     StakeArgs, TvmdCommand, ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs, parse_test_cli,
 };
@@ -20,7 +20,7 @@ fn parses_documented_validator_commands() {
         ])
         .unwrap(),
         TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
-            wallet: path("validator.key"),
+            wallet: role_wallet_args("validator.key"),
             node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
         }))
     );
@@ -49,7 +49,7 @@ fn parses_documented_validator_commands() {
         ])
         .unwrap(),
         TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
-            wallet: path("validator.key"),
+            wallet: role_wallet_args("validator.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
@@ -85,7 +85,7 @@ fn parses_documented_validator_commands() {
         ])
         .unwrap(),
         TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
-            wallet: path("validator.key"),
+            wallet: role_wallet_args("validator.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",

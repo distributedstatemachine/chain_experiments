@@ -1,7 +1,7 @@
 pub use super::local_commands::{
     DataDirArgs, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs,
     NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs,
-    NodeServeArgs, ProposerCommand, RoleRuntimeArgs, StakeArgs, ValidatorCheckArgs,
+    NodeServeArgs, ProposerCommand, RoleRuntimeArgs, RoleWalletArgs, StakeArgs, ValidatorCheckArgs,
     ValidatorCommand, ValidatorRunArgs,
 };
 pub use super::public_evidence_commands::{

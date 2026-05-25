@@ -1,4 +1,7 @@
-use super::{AddressArg, DataDirArgs, HashArg, MinerDeviceArg, NodeRuntimeArgs, RoleRuntimeArgs};
+use super::{
+    AddressArg, DataDirArgs, HashArg, MinerDeviceArg, NodeRuntimeArgs, RoleRuntimeArgs,
+    RoleWalletArgs,
+};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
@@ -21,6 +24,12 @@ pub(super) fn miner_device(value: &str) -> MinerDeviceArg {
 pub(super) fn data_dir_args(data_dir: &str) -> DataDirArgs {
     DataDirArgs {
         data_dir: path(data_dir),
+    }
+}
+
+pub(super) fn role_wallet_args(wallet: &str) -> RoleWalletArgs {
+    RoleWalletArgs {
+        wallet: path(wallet),
     }
 }
 

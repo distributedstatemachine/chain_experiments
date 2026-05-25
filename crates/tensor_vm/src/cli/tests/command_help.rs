@@ -54,7 +54,7 @@ fn clap_help_exposes_the_tvmd_command_tree() {
             "miner run help should list {argument}"
         );
     }
-    assert!(miner_run.contains("Path to the miner wallet key."));
+    assert!(miner_run.contains("Path to the role wallet key."));
     assert!(miner_run.contains("Bearer token required by local RPC"));
 
     let evidence = clap_help(&["public", "evidence", "--help"]);

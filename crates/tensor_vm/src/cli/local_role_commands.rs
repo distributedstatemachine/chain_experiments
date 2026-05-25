@@ -2,7 +2,7 @@ use super::local_runtime_args::{NodeRuntimeArgs, default_p2p_listen_addr};
 use super::value_types::MinerDeviceArg;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::Multiaddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -49,8 +49,8 @@ pub struct StakeArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerCheckArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the miner wallet key.")]
-    pub wallet: PathBuf,
+    #[command(flatten)]
+    pub wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
@@ -69,8 +69,8 @@ pub struct MinerCheckArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerRunArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the miner wallet key.")]
-    pub wallet: PathBuf,
+    #[command(flatten)]
+    pub wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
@@ -84,8 +84,8 @@ pub struct MinerRunArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorCheckArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the validator wallet key.")]
-    pub wallet: PathBuf,
+    #[command(flatten)]
+    pub wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = default_p2p_listen_addr(),
@@ -97,10 +97,27 @@ pub struct ValidatorCheckArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorRunArgs {
-    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath, help = "Path to the wallet key for the role.")]
-    pub wallet: PathBuf,
+    #[command(flatten)]
+    pub wallet: RoleWalletArgs,
     #[command(flatten)]
     pub runtime: RoleRuntimeArgs,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RoleWalletArgs {
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "Path to the role wallet key."
+    )]
+    pub wallet: PathBuf,
+}
+
+impl RoleWalletArgs {
+    pub fn path(&self) -> &Path {
+        &self.wallet
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

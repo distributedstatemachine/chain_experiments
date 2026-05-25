@@ -1,4 +1,4 @@
-use super::parser_support::{path, role_runtime_args};
+use super::parser_support::{role_runtime_args, role_wallet_args};
 use super::{ProposerCommand, TvmdCommand, ValidatorRunArgs, parse_test_cli};
 
 #[test]
@@ -24,7 +24,7 @@ fn parses_documented_proposer_commands() {
         ])
         .unwrap(),
         TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: path("proposer.key"),
+            wallet: role_wallet_args("proposer.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
@@ -60,7 +60,7 @@ fn parses_documented_proposer_commands() {
         ])
         .unwrap(),
         TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: path("proposer.key"),
+            wallet: role_wallet_args("proposer.key"),
             runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",

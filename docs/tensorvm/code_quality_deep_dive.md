@@ -1180,6 +1180,9 @@ spaghetti around.
 - Iteration 478 flattened repeated public network operator-id, listen-address, and observed-at Clap
   arguments into `NetworkObservationTargetArgs`, keeping direct and service-log network observation
   commands on one canonical typed target model while preserving the existing flags.
+- Iteration 479 flattened repeated miner, validator, and proposer wallet-path Clap arguments into
+  `RoleWalletArgs`, keeping local role check/run commands on one canonical typed wallet model while
+  preserving the existing `--wallet` flag.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
