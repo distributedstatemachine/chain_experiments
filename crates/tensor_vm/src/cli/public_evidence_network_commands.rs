@@ -14,26 +14,10 @@ pub enum EvidenceNetworkCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationArgs {
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Operator identifier for the observed node."
-    )]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub target: NetworkObservationTargetArgs,
     #[arg(long, value_name = "PEER_ID", help = "Observed libp2p peer ID.")]
     pub peer_id: PeerId,
-    #[arg(
-        long,
-        value_name = "MULTIADDR",
-        help = "Public libp2p listen multiaddress."
-    )]
-    pub listen_address: Multiaddr,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
     #[arg(long, value_name = "N", help = "Number of active gossipsub topics.")]
     pub gossip_topics: u64,
     #[arg(long, value_name = "N", help = "Number of request-response protocols.")]
@@ -60,6 +44,19 @@ pub struct NetworkObservationArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationFromServiceLogArgs {
+    #[command(flatten)]
+    pub target: NetworkObservationTargetArgs,
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "Captured node service log."
+    )]
+    pub service_log: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct NetworkObservationTargetArgs {
     #[arg(
         long,
         value_name = "HEX",
@@ -78,11 +75,4 @@ pub struct NetworkObservationFromServiceLogArgs {
         help = "Unix timestamp for the observation."
     )]
     pub observed_at: u64,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "Captured node service log."
-    )]
-    pub service_log: PathBuf,
 }

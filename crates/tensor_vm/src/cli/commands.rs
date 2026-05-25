@@ -7,8 +7,8 @@ pub use super::local_commands::{
 pub use super::public_evidence_commands::{
     AuditorRecordArgs, EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand,
     EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
+    NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
     PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
     PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,

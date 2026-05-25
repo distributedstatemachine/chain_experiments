@@ -1,5 +1,6 @@
 pub use super::public_evidence_network_commands::{
     EvidenceNetworkCommand, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+    NetworkObservationTargetArgs,
 };
 pub use super::public_evidence_node_commands::{
     EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,

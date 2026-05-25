@@ -1,8 +1,8 @@
 use super::parser_support::{hash_arg, multiaddr, path};
 use super::{
     EvidenceCommand, EvidenceNetworkCommand, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, PublicCommand, TvmdCommand, manifest_hash,
-    parse_test_cli,
+    NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, PublicCommand, TvmdCommand,
+    manifest_hash, parse_test_cli,
 };
 use crate::types::hash_bytes;
 use libp2p::PeerId;
@@ -42,10 +42,8 @@ fn parses_network_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
             EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+                target: network_observation_target_args(),
                 peer_id: peer_id.parse().expect("test peer ID must parse"),
-                listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
-                observed_at: 1_700_000_000,
                 gossip_topics: 5,
                 request_response_protocols: 4,
                 bootstrap_peers: 2,
@@ -75,11 +73,17 @@ fn parses_network_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
             EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
-                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
-                listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
-                observed_at: 1_700_000_000,
+                target: network_observation_target_args(),
                 service_log: path("artifacts/node-a-service.log"),
             }),
         )))
     );
+}
+
+fn network_observation_target_args() -> NetworkObservationTargetArgs {
+    NetworkObservationTargetArgs {
+        operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+        listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
+        observed_at: 1_700_000_000,
+    }
 }

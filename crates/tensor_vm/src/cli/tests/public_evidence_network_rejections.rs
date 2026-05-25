@@ -160,10 +160,8 @@ fn execute_network_observation(
     let (gossip_topics, request_response_protocols, bootstrap_peers, max_transmit_bytes) = counts;
     execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-            operator_id: hash_arg(operator_id),
+            target: network_observation_target_args(operator_id, listen_address, observed_at),
             peer_id: peer_id.parse().expect("test peer ID must parse"),
-            listen_address: multiaddr_arg(listen_address.to_owned()),
-            observed_at,
             gossip_topics,
             request_response_protocols,
             bootstrap_peers,

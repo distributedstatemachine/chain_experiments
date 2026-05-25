@@ -5,10 +5,12 @@ fn execute_public_evidence_record_file_reports_outputs() {
     let peer_id = PeerId::random().to_string();
     let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+            target: network_observation_target_args(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+            ),
             peer_id: peer_id.parse().expect("test peer ID must parse"),
-            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
-            observed_at: 1_700_000_000,
             gossip_topics: 5,
             request_response_protocols: 4,
             bootstrap_peers: 2,

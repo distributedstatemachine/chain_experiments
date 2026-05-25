@@ -5,10 +5,12 @@ fn execute_network_evidence_reports_outputs() {
     let peer_id = PeerId::random().to_string();
     let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+            target: network_observation_target_args(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+            ),
             peer_id: peer_id.parse().expect("test peer ID must parse"),
-            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
-            observed_at: 1_700_000_000,
             gossip_topics: 5,
             request_response_protocols: 4,
             bootstrap_peers: 2,
@@ -187,9 +189,11 @@ p2p_idle_timeout_seconds=60
     std::fs::write(&service_log_file, &service_log).unwrap();
     let network_observation_from_file = execute_public_evidence_command(&EvidenceCommand::Network(
         EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
-            operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
-            listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
-            observed_at: 1_700_000_000,
+            target: network_observation_target_args(
+                hash_bytes(b"test", &[b"network-operator"]),
+                "/dns/node-a.tensorvm.net/tcp/4001",
+                1_700_000_000,
+            ),
             service_log: service_log_file.clone(),
         }),
     ))
@@ -200,9 +204,11 @@ p2p_idle_timeout_seconds=60
     assert_eq!(
         execute_public_evidence_command(&EvidenceCommand::Network(
             EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
-                operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
-                listen_address: multiaddr_arg("/dns/node-a.tensorvm.net/tcp/4001".to_owned()),
-                observed_at: 1_700_000_000,
+                target: network_observation_target_args(
+                    hash_bytes(b"test", &[b"network-operator"]),
+                    "/dns/node-a.tensorvm.net/tcp/4001",
+                    1_700_000_000,
+                ),
                 service_log: service_log_file.clone(),
             }),
         ))

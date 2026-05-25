@@ -1177,6 +1177,9 @@ spaghetti around.
 - Iteration 477 flattened repeated public evidence record kind, bundle-id, and manifest-signer Clap
   arguments into `PublicEvidenceRecordContextArgs`, keeping summary and artifact record commands on
   one canonical typed context model across direct, roots, and file-backed inputs.
+- Iteration 478 flattened repeated public network operator-id, listen-address, and observed-at Clap
+  arguments into `NetworkObservationTargetArgs`, keeping direct and service-log network observation
+  commands on one canonical typed target model while preserving the existing flags.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -39,6 +39,18 @@ pub(super) fn hash_args(values: Vec<Hash>) -> Vec<HashArg> {
     values.into_iter().map(HashArg::new).collect()
 }
 
+pub(super) fn network_observation_target_args(
+    operator_id: Hash,
+    listen_address: &str,
+    observed_at: u64,
+) -> NetworkObservationTargetArgs {
+    NetworkObservationTargetArgs {
+        operator_id: hash_arg(operator_id),
+        listen_address: multiaddr_arg(listen_address.to_owned()),
+        observed_at,
+    }
+}
+
 pub(super) fn record_context_args(
     kind: PublicEvidenceRecordKind,
 ) -> PublicEvidenceRecordContextArgs {
