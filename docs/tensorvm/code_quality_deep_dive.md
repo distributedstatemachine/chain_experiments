@@ -1318,6 +1318,8 @@ spaghetti around.
   root and into `cli/tests.rs`, keeping the production Clap module boundary focused on runtime exports.
 - Iteration 538 moved node init, peer-add, and readiness report rendering onto `KeyValueReportWriter`,
   including production subreport appends for shared libp2p identity fields.
+- Iteration 539 moved local-testnet seed report rendering onto `KeyValueReportWriter`, keeping seeded
+  chain metrics parseable through the same app-owned key-value report path.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
