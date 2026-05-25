@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceNodeCommand {
+pub(crate) enum EvidenceNodeCommand {
     #[command(about = "Generate public node heartbeat evidence.")]
     Heartbeat(NodeHeartbeatArgs),
     #[command(about = "Generate public node heartbeat evidence from a file.")]

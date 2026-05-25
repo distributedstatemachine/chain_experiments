@@ -4,7 +4,7 @@ use libp2p::{Multiaddr, PeerId};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum NodeCommand {
+pub(crate) enum NodeCommand {
     #[command(about = "Initialize the service node store.")]
     Init(DataDirArgs),
     #[command(about = "Manage libp2p peers.")]
@@ -22,7 +22,7 @@ pub enum NodeCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum NodePeerCommand {
+pub(crate) enum NodePeerCommand {
     #[command(about = "Add a libp2p bootstrap peer to the node store.")]
     Add(NodePeerAddArgs),
 }

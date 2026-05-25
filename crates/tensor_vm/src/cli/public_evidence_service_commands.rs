@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceServiceCommand {
+pub(crate) enum EvidenceServiceCommand {
     #[command(about = "Generate service health evidence.")]
     Health(ServiceHealthArgs),
     #[command(about = "Generate service health evidence from captured observations.")]

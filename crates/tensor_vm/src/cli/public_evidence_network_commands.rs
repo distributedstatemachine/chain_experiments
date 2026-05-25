@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceNetworkCommand {
+pub(crate) enum EvidenceNetworkCommand {
     #[command(about = "Generate public libp2p network runtime evidence.")]
     Observation(NetworkObservationArgs),
     #[command(about = "Generate public libp2p network runtime evidence from a service log.")]

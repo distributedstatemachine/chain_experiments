@@ -37,7 +37,7 @@ impl TvmdCli {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum TvmdCommand {
+pub(crate) enum TvmdCommand {
     #[command(about = "Manage a TensorVM node store, RPC service, and libp2p peers.")]
     #[command(subcommand)]
     Node(NodeCommand),

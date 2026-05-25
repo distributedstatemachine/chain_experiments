@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum MinerCommand {
+pub(crate) enum MinerCommand {
     #[command(about = "Check miner registration stake requirements.")]
     Register(StakeArgs),
     #[command(about = "Check miner runtime inputs without running the role.")]
@@ -19,7 +19,7 @@ pub enum MinerCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum ValidatorCommand {
+pub(crate) enum ValidatorCommand {
     #[command(about = "Check validator registration stake requirements.")]
     Register(StakeArgs),
     #[command(about = "Check validator runtime inputs without running the role.")]
@@ -32,7 +32,7 @@ pub enum ValidatorCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum ProposerCommand {
+pub(crate) enum ProposerCommand {
     #[command(about = "Run a proposer service.")]
     Run(ValidatorRunArgs),
 }

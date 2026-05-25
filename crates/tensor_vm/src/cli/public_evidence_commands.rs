@@ -1,58 +1,58 @@
 #[cfg(test)]
-pub use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
+pub(crate) use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 #[cfg(test)]
-pub use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
-pub use super::public_evidence_network_commands::EvidenceNetworkCommand;
+pub(crate) use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
+pub(crate) use super::public_evidence_network_commands::EvidenceNetworkCommand;
 #[cfg(test)]
-pub use super::public_evidence_network_commands::{
+pub(crate) use super::public_evidence_network_commands::{
     NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
     NetworkObservationProtocolCountsArgs, NetworkObservationTargetArgs,
     NetworkObservationTransportLimitsArgs,
 };
-pub use super::public_evidence_node_commands::EvidenceNodeCommand;
+pub(crate) use super::public_evidence_node_commands::EvidenceNodeCommand;
 #[cfg(test)]
-pub use super::public_evidence_node_commands::{
+pub(crate) use super::public_evidence_node_commands::{
     NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicNodeIdentityArgs,
     PublicNodeRoleArg,
 };
 #[cfg(test)]
-pub use super::public_evidence_observation_commands::ObservationTimestampArgs;
+pub(crate) use super::public_evidence_observation_commands::ObservationTimestampArgs;
 #[cfg(test)]
-pub use super::public_evidence_operator_commands::OperatorIdArgs;
+pub(crate) use super::public_evidence_operator_commands::OperatorIdArgs;
 #[cfg(test)]
-pub use super::public_evidence_publication_commands::PublicationBundleArgs;
-pub use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
+pub(crate) use super::public_evidence_publication_commands::PublicationBundleArgs;
+pub(crate) use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
 #[cfg(test)]
-pub use super::public_evidence_record_artifact_commands::{
+pub(crate) use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
     RecordArtifactLocatorArgs,
 };
-pub use super::public_evidence_record_commands::EvidenceRecordCommand;
+pub(crate) use super::public_evidence_record_commands::EvidenceRecordCommand;
 #[cfg(test)]
-pub use super::public_evidence_record_commands::{
+pub(crate) use super::public_evidence_record_commands::{
     PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, RecordFileArgs, RecordRootArgs,
     RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
-pub use super::public_evidence_run_window_commands::EvidenceRunCommand;
+pub(crate) use super::public_evidence_run_window_commands::EvidenceRunCommand;
 #[cfg(test)]
-pub use super::public_evidence_run_window_commands::{
+pub(crate) use super::public_evidence_run_window_commands::{
     RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
 };
-pub use super::public_evidence_service_commands::EvidenceServiceCommand;
+pub(crate) use super::public_evidence_service_commands::EvidenceServiceCommand;
 #[cfg(test)]
-pub use super::public_evidence_service_commands::{
+pub(crate) use super::public_evidence_service_commands::{
     PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
     ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
 #[cfg(test)]
-pub use super::public_evidence_signing_commands::ManifestSignerArgs;
+pub(crate) use super::public_evidence_signing_commands::ManifestSignerArgs;
 use clap::{Args, Subcommand, ValueHint};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum PublicCommand {
+pub(crate) enum PublicCommand {
     #[command(about = "Validate a public-testnet preflight manifest.")]
     Preflight(PublicTestnetManifestArgs),
     #[command(about = "Generate or validate public-testnet evidence.")]
@@ -62,7 +62,7 @@ pub enum PublicCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceCommand {
+pub(crate) enum EvidenceCommand {
     #[command(about = "Validate a public-testnet evidence manifest.")]
     Validate(PublicEvidenceManifestArgs),
     #[command(about = "Generate publication evidence for an evidence bundle.")]

@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
-pub enum EvidenceRecordCommand {
+pub(crate) enum EvidenceRecordCommand {
     #[command(about = "Generate a supporting-record summary.")]
     Summary(RecordSummaryArgs),
     #[command(about = "Generate a supporting-record artifact locator.")]

@@ -1302,6 +1302,8 @@ spaghetti around.
   endpoint triples, content targets, content roots, byte payloads, content files, and minimum byte counts out of public parser internals.
 - Iteration 530 tightened the public Clap boundary so external callers keep `TvmdCli` plus `app::run`
   while direct `TvmdCommand` execution, parsed command extraction, and argument payload types remain crate-internal.
+- Iteration 531 made the parsed Clap command enums and command-family re-exports crate-private, leaving
+  `TvmdCli` as the only public parser entrypoint while preserving internal typed dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
