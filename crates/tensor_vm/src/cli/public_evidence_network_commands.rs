@@ -17,34 +17,68 @@ pub enum EvidenceNetworkCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationArgs {
     #[command(flatten)]
-    pub target: NetworkObservationTargetArgs,
+    target: NetworkObservationTargetArgs,
     #[arg(long, value_name = "PEER_ID", help = "Observed libp2p peer ID.")]
-    pub peer_id: PeerId,
-    #[arg(long, value_name = "N", help = "Number of active gossipsub topics.")]
-    pub gossip_topics: u64,
-    #[arg(long, value_name = "N", help = "Number of request-response protocols.")]
-    pub request_response_protocols: u64,
+    peer_id: PeerId,
+    #[command(flatten)]
+    protocol_counts: NetworkObservationProtocolCountsArgs,
+    #[command(flatten)]
+    transport_limits: NetworkObservationTransportLimitsArgs,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct NetworkObservationProtocolCountsArgs {
     #[arg(
-        long,
+        long = "gossip-topics",
+        value_name = "N",
+        help = "Number of active gossipsub topics."
+    )]
+    gossip_topic_count: u64,
+    #[arg(
+        long = "request-response-protocols",
+        value_name = "N",
+        help = "Number of request-response protocols."
+    )]
+    request_response_protocol_count: u64,
+    #[arg(
+        long = "bootstrap-peers",
         value_name = "N",
         help = "Bootstrap peers configured by the node."
     )]
-    pub bootstrap_peers: u64,
+    bootstrap_peer_count: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct NetworkObservationTransportLimitsArgs {
     #[arg(
         long,
         value_name = "BYTES",
         help = "Maximum request-response transmit size."
     )]
-    pub max_transmit_bytes: u64,
+    max_transmit_bytes: u64,
     #[arg(long, value_name = "SECONDS", help = "Request-response timeout.")]
-    pub request_timeout_seconds: u64,
+    request_timeout_seconds: u64,
     #[arg(long, value_name = "N", help = "Maximum concurrent libp2p streams.")]
-    pub max_concurrent_streams: u64,
+    max_concurrent_streams: u64,
     #[arg(long, value_name = "SECONDS", help = "Idle connection timeout.")]
-    pub idle_timeout_seconds: u64,
+    idle_timeout_seconds: u64,
 }
 
 impl NetworkObservationArgs {
+    pub fn new(
+        target: NetworkObservationTargetArgs,
+        peer_id: PeerId,
+        protocol_counts: NetworkObservationProtocolCountsArgs,
+        transport_limits: NetworkObservationTransportLimitsArgs,
+    ) -> Self {
+        Self {
+            target,
+            peer_id,
+            protocol_counts,
+            transport_limits,
+        }
+    }
+
     pub fn operator_id(&self) -> Hash {
         self.target.operator_id()
     }
@@ -62,15 +96,73 @@ impl NetworkObservationArgs {
     }
 
     pub fn gossip_topic_count(&self) -> u64 {
-        self.gossip_topics
+        self.protocol_counts.gossip_topic_count()
     }
 
     pub fn request_response_protocol_count(&self) -> u64 {
-        self.request_response_protocols
+        self.protocol_counts.request_response_protocol_count()
     }
 
     pub fn bootstrap_peer_count(&self) -> u64 {
-        self.bootstrap_peers
+        self.protocol_counts.bootstrap_peer_count()
+    }
+
+    pub fn max_transmit_bytes(&self) -> u64 {
+        self.transport_limits.max_transmit_bytes()
+    }
+
+    pub fn request_timeout_seconds(&self) -> u64 {
+        self.transport_limits.request_timeout_seconds()
+    }
+
+    pub fn max_concurrent_streams(&self) -> u64 {
+        self.transport_limits.max_concurrent_streams()
+    }
+
+    pub fn idle_timeout_seconds(&self) -> u64 {
+        self.transport_limits.idle_timeout_seconds()
+    }
+}
+
+impl NetworkObservationProtocolCountsArgs {
+    pub fn new(
+        gossip_topic_count: u64,
+        request_response_protocol_count: u64,
+        bootstrap_peer_count: u64,
+    ) -> Self {
+        Self {
+            gossip_topic_count,
+            request_response_protocol_count,
+            bootstrap_peer_count,
+        }
+    }
+
+    pub fn gossip_topic_count(&self) -> u64 {
+        self.gossip_topic_count
+    }
+
+    pub fn request_response_protocol_count(&self) -> u64 {
+        self.request_response_protocol_count
+    }
+
+    pub fn bootstrap_peer_count(&self) -> u64 {
+        self.bootstrap_peer_count
+    }
+}
+
+impl NetworkObservationTransportLimitsArgs {
+    pub fn new(
+        max_transmit_bytes: u64,
+        request_timeout_seconds: u64,
+        max_concurrent_streams: u64,
+        idle_timeout_seconds: u64,
+    ) -> Self {
+        Self {
+            max_transmit_bytes,
+            request_timeout_seconds,
+            max_concurrent_streams,
+            idle_timeout_seconds,
+        }
     }
 
     pub fn max_transmit_bytes(&self) -> u64 {
@@ -93,17 +185,24 @@ impl NetworkObservationArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationFromServiceLogArgs {
     #[command(flatten)]
-    pub target: NetworkObservationTargetArgs,
+    target: NetworkObservationTargetArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "Captured node service log."
     )]
-    pub service_log: PathBuf,
+    service_log: PathBuf,
 }
 
 impl NetworkObservationFromServiceLogArgs {
+    pub fn new(target: NetworkObservationTargetArgs, service_log: PathBuf) -> Self {
+        Self {
+            target,
+            service_log,
+        }
+    }
+
     pub fn operator_id(&self) -> Hash {
         self.target.operator_id()
     }
@@ -124,18 +223,30 @@ impl NetworkObservationFromServiceLogArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationTargetArgs {
     #[command(flatten)]
-    pub operator: OperatorIdArgs,
+    operator: OperatorIdArgs,
     #[arg(
         long,
         value_name = "MULTIADDR",
         help = "Public libp2p listen multiaddress."
     )]
-    pub listen_address: Multiaddr,
+    listen_address: Multiaddr,
     #[command(flatten)]
-    pub observation: ObservationTimestampArgs,
+    observation: ObservationTimestampArgs,
 }
 
 impl NetworkObservationTargetArgs {
+    pub fn new(
+        operator: OperatorIdArgs,
+        listen_address: Multiaddr,
+        observation: ObservationTimestampArgs,
+    ) -> Self {
+        Self {
+            operator,
+            listen_address,
+            observation,
+        }
+    }
+
     pub fn operator_id(&self) -> Hash {
         self.operator.id()
     }

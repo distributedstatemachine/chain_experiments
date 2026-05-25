@@ -2,7 +2,8 @@ pub use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 pub use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 pub use super::public_evidence_network_commands::{
     EvidenceNetworkCommand, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
-    NetworkObservationTargetArgs,
+    NetworkObservationProtocolCountsArgs, NetworkObservationTargetArgs,
+    NetworkObservationTransportLimitsArgs,
 };
 pub use super::public_evidence_node_commands::{
     EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,

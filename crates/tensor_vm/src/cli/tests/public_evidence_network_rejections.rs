@@ -159,16 +159,15 @@ fn execute_network_observation(
 ) -> crate::error::Result<String> {
     let (gossip_topics, request_response_protocols, bootstrap_peers, max_transmit_bytes) = counts;
     execute_public_evidence_command(&EvidenceCommand::Network(
-        EvidenceNetworkCommand::Observation(NetworkObservationArgs {
-            target: network_observation_target_args(operator_id, listen_address, observed_at),
-            peer_id: peer_id.parse().expect("test peer ID must parse"),
-            gossip_topics,
-            request_response_protocols,
-            bootstrap_peers,
-            max_transmit_bytes,
-            request_timeout_seconds: 10,
-            max_concurrent_streams: 128,
-            idle_timeout_seconds: 60,
-        }),
+        EvidenceNetworkCommand::Observation(NetworkObservationArgs::new(
+            network_observation_target_args(operator_id, listen_address, observed_at),
+            peer_id.parse().expect("test peer ID must parse"),
+            network_observation_protocol_counts_args(
+                gossip_topics,
+                request_response_protocols,
+                bootstrap_peers,
+            ),
+            network_observation_transport_limits_args(max_transmit_bytes, 10, 128, 60),
+        )),
     ))
 }

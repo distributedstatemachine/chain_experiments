@@ -60,11 +60,37 @@ pub(super) fn network_observation_target_args(
     listen_address: &str,
     observed_at: u64,
 ) -> NetworkObservationTargetArgs {
-    NetworkObservationTargetArgs {
-        operator: operator_id_args(operator_id),
-        listen_address: multiaddr_arg(listen_address.to_owned()),
-        observation: observation_timestamp_args(observed_at),
-    }
+    NetworkObservationTargetArgs::new(
+        operator_id_args(operator_id),
+        multiaddr_arg(listen_address.to_owned()),
+        observation_timestamp_args(observed_at),
+    )
+}
+
+pub(super) fn network_observation_protocol_counts_args(
+    gossip_topic_count: u64,
+    request_response_protocol_count: u64,
+    bootstrap_peer_count: u64,
+) -> NetworkObservationProtocolCountsArgs {
+    NetworkObservationProtocolCountsArgs::new(
+        gossip_topic_count,
+        request_response_protocol_count,
+        bootstrap_peer_count,
+    )
+}
+
+pub(super) fn network_observation_transport_limits_args(
+    max_transmit_bytes: u64,
+    request_timeout_seconds: u64,
+    max_concurrent_streams: u64,
+    idle_timeout_seconds: u64,
+) -> NetworkObservationTransportLimitsArgs {
+    NetworkObservationTransportLimitsArgs::new(
+        max_transmit_bytes,
+        request_timeout_seconds,
+        max_concurrent_streams,
+        idle_timeout_seconds,
+    )
 }
 
 pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> PublicationBundleArgs {

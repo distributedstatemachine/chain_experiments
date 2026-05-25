@@ -1288,6 +1288,8 @@ spaghetti around.
   accessors, keeping manifest paths and block-height bounds out of public parser internals.
 - Iteration 523 hid public run-window Clap fields behind constructors and accessors, keeping direct
   window timestamps, observed-block counts, file inputs, and bundle/signer context out of public parser internals.
+- Iteration 524 hid public network observation Clap fields behind constructors and accessors, grouping
+  protocol counts and transport limits into typed argument owners while keeping service logs and observation targets out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
