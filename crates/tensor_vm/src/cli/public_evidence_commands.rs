@@ -10,8 +10,8 @@ pub use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
 };
 pub use super::public_evidence_record_commands::{
-    EvidenceRecordCommand, PublicEvidenceRecordKindArg, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
+    EvidenceRecordCommand, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
+    RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
 pub use super::public_evidence_run_window_commands::{
     EvidenceRunCommand, RunWindowArgs, RunWindowFromFileArgs,

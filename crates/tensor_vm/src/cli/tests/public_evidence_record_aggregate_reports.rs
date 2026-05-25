@@ -20,9 +20,7 @@ fn execute_public_evidence_record_aggregate_reports_outputs() {
     );
     let aggregate_line = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             record_roots: hash_args(roots.clone()),
         }),
     ))
@@ -47,9 +45,7 @@ fn execute_public_evidence_record_aggregate_reports_outputs() {
     );
     let aggregate_artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             artifact_uri: aggregate_artifact_uri.to_owned(),
             record_roots: hash_args(roots),
         }),

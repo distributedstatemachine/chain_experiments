@@ -58,9 +58,7 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
         let manifest_signer = address(b"public-evidence-publisher");
         let line = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::Summary(RecordSummaryArgs {
-                kind: record_kind_arg(kind),
-                bundle_id: hash_arg(bundle_id),
-                manifest_signer: address_arg(manifest_signer),
+                context: record_context_args_from(kind, bundle_id, manifest_signer),
                 record_root: hash_arg(record_root),
                 record_count: count,
             }),
@@ -88,9 +86,7 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
         );
         let artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::Artifact(RecordArtifactArgs {
-                kind: record_kind_arg(kind),
-                bundle_id: hash_arg(bundle_id),
-                manifest_signer: address_arg(manifest_signer),
+                context: record_context_args_from(kind, bundle_id, manifest_signer),
                 artifact_uri: artifact_uri.clone(),
                 record_root: hash_arg(record_root),
                 record_count: count,

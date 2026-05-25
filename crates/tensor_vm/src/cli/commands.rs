@@ -9,12 +9,13 @@ pub use super::public_evidence_commands::{
     EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
-    PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
-    PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
-    RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs,
-    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs,
-    ServiceContentTargetArgs, ServiceHealthArgs, ServiceHealthFromFileArgs,
+    PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
+    PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
+    PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
+    RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs,
+    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs,
 };
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};

@@ -1174,6 +1174,9 @@ spaghetti around.
 - Iteration 476 flattened repeated public node role, address, and operator-id Clap arguments into
   `PublicNodeIdentityArgs`, keeping node heartbeat, heartbeat-file, and operator-attestation commands
   on one canonical typed identity model while preserving the existing flags.
+- Iteration 477 flattened repeated public evidence record kind, bundle-id, and manifest-signer Clap
+  arguments into `PublicEvidenceRecordContextArgs`, keeping summary and artifact record commands on
+  one canonical typed context model across direct, roots, and file-backed inputs.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

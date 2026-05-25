@@ -1,20 +1,12 @@
-use super::public_evidence_record_commands::PublicEvidenceRecordKindArg;
-use super::value_types::{AddressArg, HashArg};
+use super::public_evidence_record_commands::PublicEvidenceRecordContextArgs;
+use super::value_types::HashArg;
 use clap::{Args, ValueHint};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactArgs {
-    #[arg(long, help = "Supporting-record class being published.")]
-    pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
     #[arg(
         long,
         value_name = "URI",
@@ -38,16 +30,8 @@ pub struct RecordArtifactArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromRootsArgs {
-    #[arg(long, help = "Supporting-record class being published.")]
-    pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
     #[arg(
         long,
         value_name = "URI",
@@ -67,16 +51,8 @@ pub struct RecordArtifactFromRootsArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromFileArgs {
-    #[arg(long, help = "Supporting-record class being published.")]
-    pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
     #[arg(
         long,
         value_name = "URI",

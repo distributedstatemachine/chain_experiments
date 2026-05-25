@@ -62,9 +62,11 @@ fn execute_record_summary(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(EvidenceRecordCommand::Summary(
         RecordSummaryArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(bundle_id),
-            manifest_signer: address_arg(manifest_signer),
+            context: record_context_args_from(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id,
+                manifest_signer,
+            ),
             record_root: hash_arg(record_root),
             record_count,
         },
@@ -80,9 +82,11 @@ fn execute_record_artifact(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(EvidenceRecordCommand::Artifact(
         RecordArtifactArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(bundle_id),
-            manifest_signer: address_arg(manifest_signer),
+            context: record_context_args_from(
+                PublicEvidenceRecordKind::NetworkRuntimeObservations,
+                bundle_id,
+                manifest_signer,
+            ),
             artifact_uri: artifact_uri.to_owned(),
             record_root: hash_arg(record_root),
             record_count,
@@ -93,9 +97,7 @@ fn execute_record_artifact(
 fn execute_record_summary_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             record_roots: hash_args(record_roots),
         }),
     ))
@@ -104,9 +106,7 @@ fn execute_record_summary_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Re
 fn execute_record_artifact_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
             record_roots: hash_args(record_roots),
         }),

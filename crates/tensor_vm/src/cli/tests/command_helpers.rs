@@ -39,6 +39,28 @@ pub(super) fn hash_args(values: Vec<Hash>) -> Vec<HashArg> {
     values.into_iter().map(HashArg::new).collect()
 }
 
+pub(super) fn record_context_args(
+    kind: PublicEvidenceRecordKind,
+) -> PublicEvidenceRecordContextArgs {
+    record_context_args_from(
+        kind,
+        crate::types::hash_bytes(b"test", &[b"public-evidence-bundle"]),
+        crate::types::address(b"public-evidence-publisher"),
+    )
+}
+
+pub(super) fn record_context_args_from(
+    kind: PublicEvidenceRecordKind,
+    bundle_id: Hash,
+    manifest_signer: Address,
+) -> PublicEvidenceRecordContextArgs {
+    PublicEvidenceRecordContextArgs {
+        kind: record_kind_arg(kind),
+        bundle_id: hash_arg(bundle_id),
+        manifest_signer: address_arg(manifest_signer),
+    }
+}
+
 pub(super) fn service_kind_arg(kind: PublicServiceKind) -> PublicServiceKindArg {
     match kind {
         PublicServiceKind::Rpc => PublicServiceKindArg::Rpc,

@@ -25,16 +25,8 @@ pub enum EvidenceRecordCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryArgs {
-    #[arg(long, help = "Supporting-record class being summarized.")]
-    pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
     #[arg(
         long,
         value_name = "HEX",
@@ -51,16 +43,8 @@ pub struct RecordSummaryArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromRootsArgs {
-    #[arg(long, help = "Supporting-record class being summarized.")]
-    pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
     #[arg(
         long,
         value_name = "HEX[,HEX...]",
@@ -73,7 +57,20 @@ pub struct RecordSummaryFromRootsArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromFileArgs {
-    #[arg(long, help = "Supporting-record class being summarized.")]
+    #[command(flatten)]
+    pub context: PublicEvidenceRecordContextArgs,
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "File containing supporting records to summarize."
+    )]
+    pub record_file: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct PublicEvidenceRecordContextArgs {
+    #[arg(long, help = "Supporting-record class.")]
     pub kind: PublicEvidenceRecordKindArg,
     #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
@@ -83,13 +80,6 @@ pub struct RecordSummaryFromFileArgs {
         help = "Address signing the evidence manifest."
     )]
     pub manifest_signer: AddressArg,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "File containing supporting records to summarize."
-    )]
-    pub record_file: PathBuf,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

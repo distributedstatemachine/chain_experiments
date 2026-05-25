@@ -69,9 +69,7 @@ fn execute_public_evidence_record_file_reports_outputs() {
     assert_eq!(record_file_roots_from_disk, record_file_roots);
     let record_file_summary = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             record_file: record_file.clone(),
         }),
     ))
@@ -94,9 +92,7 @@ fn execute_public_evidence_record_file_reports_outputs() {
     let aggregate_artifact_uri = "https://evidence.tensorvm.net/network-runtime.json";
     let record_file_artifact = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
-            kind: record_kind_arg(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             artifact_uri: aggregate_artifact_uri.to_owned(),
             record_file: record_file.clone(),
         }),

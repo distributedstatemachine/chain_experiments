@@ -69,9 +69,7 @@ fn execute_public_evidence_record_reports_outputs() {
         );
         let summary = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
-                kind: record_kind_arg(kind),
-                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                context: record_context_args(kind),
                 record_file: raw_record_file.clone(),
             }),
         ))
@@ -97,9 +95,7 @@ fn execute_public_evidence_record_reports_outputs() {
         );
         let artifact = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
-                kind: record_kind_arg(kind),
-                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                context: record_context_args(kind),
                 artifact_uri: artifact_uri.clone(),
                 record_file: raw_record_file.clone(),
             }),
