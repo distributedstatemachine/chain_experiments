@@ -1,6 +1,7 @@
 use super::evidence_fields::{
     public_evidence_record_field_prefix, public_evidence_record_kind_tag,
 };
+use crate::app::KeyValueReportWriter;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
@@ -37,11 +38,11 @@ pub(super) fn record_summary_evidence_lines(
         &record_root,
         record_count,
     );
-    Ok(format!(
-        "{field_prefix}_records={record_count}\n{field_prefix}_root={}\n{field_prefix}_signature={}",
-        hex(&record_root),
-        hex(&signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(&format!("{field_prefix}_records"), record_count);
+    report.field(&format!("{field_prefix}_root"), hex(&record_root));
+    report.field(&format!("{field_prefix}_signature"), hex(&signature));
+    Ok(report.finish())
 }
 
 pub(super) fn record_artifact_evidence_line(
@@ -77,12 +78,17 @@ pub(super) fn record_artifact_evidence_line(
     if !artifact.is_public_and_signed(&bundle_id, &manifest_signer) {
         return Err(TvmError::InvalidReceipt("invalid public evidence artifact"));
     }
-    Ok(format!(
-        "record_artifact={},{},{},{},{}",
-        public_evidence_record_kind_tag(kind),
-        artifact.artifact_uri,
-        hex(&artifact.record_root),
-        artifact.record_count,
-        hex(&artifact.artifact_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "record_artifact",
+        format!(
+            "{},{},{},{},{}",
+            public_evidence_record_kind_tag(kind),
+            artifact.artifact_uri,
+            hex(&artifact.record_root),
+            artifact.record_count,
+            hex(&artifact.artifact_signature)
+        ),
+    );
+    Ok(report.finish())
 }
