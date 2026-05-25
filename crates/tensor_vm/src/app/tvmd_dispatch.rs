@@ -22,19 +22,19 @@ pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
 pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Validate(args))) => {
-            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
+            let contents = std::fs::read_to_string(args.path()).map_err(|error| {
                 format!(
                     "failed to read evidence manifest {}: {error}",
-                    path_arg(&args.manifest)
+                    path_arg(args.path())
                 )
             })?;
             validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
         }
         TvmdCommand::Public(PublicCommand::Preflight(args)) => {
-            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
+            let contents = std::fs::read_to_string(args.path()).map_err(|error| {
                 format!(
                     "failed to read preflight manifest {}: {error}",
-                    path_arg(&args.manifest)
+                    path_arg(args.path())
                 )
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())

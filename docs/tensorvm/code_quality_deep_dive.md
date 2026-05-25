@@ -1250,6 +1250,8 @@ spaghetti around.
   keeping record evidence execution out of repeated raw `context.kind` conversions.
 - Iteration 504 routed public auditor and service-content observation timestamps through typed
   owner accessors, keeping evidence execution out of nested raw observation fields.
+- Iteration 505 routed top-level public preflight/evidence manifest Clap paths through typed path
+  accessors, keeping app dispatch out of raw manifest path fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

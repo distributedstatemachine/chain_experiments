@@ -32,7 +32,7 @@ pub use super::public_evidence_service_commands::{
 };
 pub use super::public_evidence_signing_commands::ManifestSignerArgs;
 use clap::{Args, Subcommand, ValueHint};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -76,8 +76,20 @@ pub struct PublicTestnetManifestArgs {
     pub manifest: PathBuf,
 }
 
+impl PublicTestnetManifestArgs {
+    pub fn path(&self) -> &Path {
+        &self.manifest
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet evidence manifest to validate.")]
     pub manifest: PathBuf,
+}
+
+impl PublicEvidenceManifestArgs {
+    pub fn path(&self) -> &Path {
+        &self.manifest
+    }
 }
