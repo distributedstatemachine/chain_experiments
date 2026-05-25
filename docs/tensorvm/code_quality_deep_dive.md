@@ -1328,6 +1328,8 @@ spaghetti around.
   role runtime report surfaces now share validated app-owned key-value assembly.
 - Iteration 543 moved public evidence and public preflight manifest validation reports onto
   `KeyValueReportWriter`, keeping the Clap-facing manifest validators on the shared key-value report path.
+- Iteration 544 moved public publication and auditor evidence outputs onto `KeyValueReportWriter`,
+  preserving their comma-record payloads inside validated key-value report fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

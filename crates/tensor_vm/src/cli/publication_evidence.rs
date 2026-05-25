@@ -1,3 +1,4 @@
+use crate::app::KeyValueReportWriter;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{PublicEvidenceAuditorRecord, PublicEvidencePublication};
@@ -22,15 +23,20 @@ pub(super) fn publication_evidence_lines(
             "invalid public evidence publication",
         ));
     }
-    Ok(format!(
-        "bundle_id={}\npublic_uri={}\nmanifest_signer={}\nmanifest_signature={}\nmanifest_signature_count={}\nindependent_auditor_count={}",
-        hex(&publication.bundle_id),
-        publication.public_uri,
-        hex(&publication.manifest_signer),
-        hex(&publication.manifest_signature),
+    let mut report = KeyValueReportWriter::new();
+    report.field("bundle_id", hex(&publication.bundle_id));
+    report.field("public_uri", publication.public_uri);
+    report.field("manifest_signer", hex(&publication.manifest_signer));
+    report.field("manifest_signature", hex(&publication.manifest_signature));
+    report.field(
+        "manifest_signature_count",
         publication.manifest_signature_count,
-        publication.independent_auditor_count
-    ))
+    );
+    report.field(
+        "independent_auditor_count",
+        publication.independent_auditor_count,
+    );
+    Ok(report.finish())
 }
 
 pub(super) fn auditor_record_evidence_line(
@@ -52,11 +58,16 @@ pub(super) fn auditor_record_evidence_line(
             "invalid public evidence auditor record",
         ));
     }
-    Ok(format!(
-        "auditor={},{},{},{}",
-        hex(&auditor.auditor_id),
-        auditor.audit_uri,
-        auditor.observed_at_unix_seconds,
-        hex(&auditor.auditor_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "auditor",
+        format!(
+            "{},{},{},{}",
+            hex(&auditor.auditor_id),
+            auditor.audit_uri,
+            auditor.observed_at_unix_seconds,
+            hex(&auditor.auditor_signature)
+        ),
+    );
+    Ok(report.finish())
 }
