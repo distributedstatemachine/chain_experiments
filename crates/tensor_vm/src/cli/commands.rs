@@ -17,7 +17,7 @@ pub use super::public_evidence_commands::{
     RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs,
     RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs,
+    ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};

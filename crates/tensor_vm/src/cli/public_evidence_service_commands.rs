@@ -22,12 +22,8 @@ pub enum EvidenceServiceCommand {
 pub struct ServiceHealthArgs {
     #[command(flatten)]
     pub endpoint: PublicServiceEndpointArgs,
-    #[arg(
-        long,
-        value_name = "PATH",
-        help = "Health-check path observed on the public service."
-    )]
-    pub health_path: String,
+    #[command(flatten)]
+    pub health: ServiceHealthPathArgs,
     #[arg(
         long,
         value_name = "HEIGHT",
@@ -58,12 +54,8 @@ pub struct ServiceHealthArgs {
 pub struct ServiceHealthFromFileArgs {
     #[command(flatten)]
     pub endpoint: PublicServiceEndpointArgs,
-    #[arg(
-        long,
-        value_name = "PATH",
-        help = "Health-check path observed on the public service."
-    )]
-    pub health_path: String,
+    #[command(flatten)]
+    pub health: ServiceHealthPathArgs,
     #[arg(
         long,
         value_name = "PATH",
@@ -71,6 +63,22 @@ pub struct ServiceHealthFromFileArgs {
         help = "Captured health-observation record file."
     )]
     pub observation_file: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct ServiceHealthPathArgs {
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Health-check path observed on the public service."
+    )]
+    pub health_path: String,
+}
+
+impl ServiceHealthPathArgs {
+    pub fn path(&self) -> &str {
+        &self.health_path
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

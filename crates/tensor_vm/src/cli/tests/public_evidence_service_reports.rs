@@ -9,7 +9,7 @@ fn execute_service_evidence_reports_outputs() {
                 b"rpc-service",
                 "https://rpc.tensorvm.net/health",
             ),
-            health_path: "/health".to_owned(),
+            health: service_health_path_args("/health"),
             first_block: 0,
             last_block: 9,
             reachable_count: 10,
@@ -50,7 +50,7 @@ fn execute_service_evidence_reports_outputs() {
                 b"rpc-service",
                 "https://rpc.tensorvm.net/health",
             ),
-            health_path: "/health".to_owned(),
+            health: service_health_path_args("/health"),
             observation_file: health_observation_file.clone(),
         }),
     ))
@@ -70,7 +70,7 @@ fn execute_service_evidence_reports_outputs() {
         let line = execute_public_evidence_command(&EvidenceCommand::Service(
             EvidenceServiceCommand::Health(ServiceHealthArgs {
                 endpoint: service_endpoint_args(kind, label, public_service_url(kind)),
-                health_path: "/health".to_owned(),
+                health: service_health_path_args("/health"),
                 first_block: 0,
                 last_block: 9,
                 reachable_count: 10,

@@ -1207,6 +1207,9 @@ spaghetti around.
 - Iteration 487 flattened repeated supporting-record `--record-roots` Clap arguments into
   `RecordRootsArgs`, keeping summary-roots and artifact-roots evidence on one canonical aggregate
   roots model.
+- Iteration 488 flattened repeated service `--health-path` Clap arguments into
+  `ServiceHealthPathArgs`, keeping direct and file-backed service health evidence on one canonical
+  observed health path model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -19,7 +19,7 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
     }
     assert!(
         execute_service_health(ServiceHealthArgs {
-            health_path: "health".to_owned(),
+            health: service_health_path_args("health"),
             ..valid_service_health_args()
         })
         .is_err()
@@ -77,7 +77,7 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
 fn valid_service_health_args() -> ServiceHealthArgs {
     ServiceHealthArgs {
         endpoint: valid_service_health_endpoint_args(),
-        health_path: "/health".to_owned(),
+        health: service_health_path_args("/health"),
         first_block: 0,
         last_block: 9,
         reachable_count: 10,
@@ -88,7 +88,7 @@ fn valid_service_health_args() -> ServiceHealthArgs {
 fn valid_service_health_file_args() -> ServiceHealthFromFileArgs {
     ServiceHealthFromFileArgs {
         endpoint: valid_service_health_endpoint_args(),
-        health_path: "/health".to_owned(),
+        health: service_health_path_args("/health"),
         observation_file: missing_temp_file("unused-service-health", "records"),
     }
 }

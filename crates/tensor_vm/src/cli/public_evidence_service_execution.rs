@@ -16,7 +16,7 @@ pub(super) fn execute_public_evidence_service_command(
                 kind: args.endpoint.kind.into(),
                 endpoint_id: args.endpoint.endpoint_id.into_hash(),
                 public_url: &args.endpoint.public_url,
-                health_path: &args.health_path,
+                health_path: args.health.path(),
                 first_seen_block: args.first_block,
                 last_seen_block: args.last_block,
                 reachable_observation_count: args.reachable_count,
@@ -27,7 +27,7 @@ pub(super) fn execute_public_evidence_service_command(
             args.endpoint.kind.into(),
             args.endpoint.endpoint_id.into_hash(),
             &args.endpoint.public_url,
-            &args.health_path,
+            args.health.path(),
             &path_argument(&args.observation_file),
         ),
         EvidenceServiceCommand::Content(args) => service_content_evidence_line(

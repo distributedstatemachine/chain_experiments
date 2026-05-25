@@ -24,7 +24,7 @@ pub use super::public_evidence_run_window_commands::{
 pub use super::public_evidence_service_commands::{
     EvidenceServiceCommand, PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
-    ServiceHealthArgs, ServiceHealthFromFileArgs,
+    ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;

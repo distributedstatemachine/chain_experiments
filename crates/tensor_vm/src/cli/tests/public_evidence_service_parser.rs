@@ -3,7 +3,7 @@ use super::{
     EvidenceCommand, EvidenceServiceCommand, HexBytesArg, PublicCommand, PublicServiceEndpointArgs,
     PublicServiceKindArg, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs, TvmdCommand, manifest_hash, parse_test_cli,
+    ServiceHealthFromFileArgs, ServiceHealthPathArgs, TvmdCommand, manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
 use crate::types::hash_bytes;
@@ -38,7 +38,7 @@ fn parses_service_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
             EvidenceServiceCommand::Health(ServiceHealthArgs {
                 endpoint: service_endpoint_args("https://rpc.tensorvm.net/health"),
-                health_path: "/health".to_owned(),
+                health: service_health_path_args("/health"),
                 first_block: 0,
                 last_block: 9,
                 reachable_count: 10,
@@ -68,7 +68,7 @@ fn parses_service_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
             EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
                 endpoint: service_endpoint_args("https://rpc.tensorvm.net/health"),
-                health_path: "/health".to_owned(),
+                health: service_health_path_args("/health"),
                 observation_file: path("artifacts/rpc-health.records"),
             }),
         )))
@@ -178,6 +178,12 @@ fn service_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
         kind: PublicServiceKindArg::Rpc,
         endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
         public_url: public_url.to_owned(),
+    }
+}
+
+fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {
+    ServiceHealthPathArgs {
+        health_path: health_path.to_owned(),
     }
 }
 
