@@ -26,6 +26,18 @@ pub struct PublicationArgs {
 }
 
 impl PublicationArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.bundle.bundle_id()
+    }
+
+    pub fn public_uri(&self) -> &str {
+        self.bundle.public_uri()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.signer.signer()
+    }
+
     pub fn manifest_signature_count(&self) -> u64 {
         self.manifest_signature_count
     }
@@ -57,6 +69,14 @@ pub struct AuditorRecordArgs {
 }
 
 impl AuditorRecordArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.bundle.bundle_id()
+    }
+
+    pub fn public_uri(&self) -> &str {
+        self.bundle.public_uri()
+    }
+
     pub fn auditor_id(&self) -> Address {
         self.auditor_id.into_address()
     }

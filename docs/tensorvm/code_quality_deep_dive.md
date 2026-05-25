@@ -1260,6 +1260,8 @@ spaghetti around.
   and parser tests on the typed Clap root boundary instead of reaching into parser internals.
 - Iteration 509 routed public node evidence execution through owning command accessors, keeping the
   generator out of nested identity and block-window parser groups.
+- Iteration 510 routed public publication evidence execution through owning command accessors,
+  keeping the generator out of nested bundle and signer parser groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
