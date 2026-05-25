@@ -1,16 +1,18 @@
-use super::*;
 use crate::hash::hex;
 use crate::testnet::{
     PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
-    PublicEvidenceAuditorRecord, PublicEvidencePublication, PublicEvidenceRecordKind,
-    PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence, PublicNodeEvidence,
-    PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
+    PublicEvidenceRecordKind, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
+    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
     PublicServiceEvidence, PublicServiceKind, PublicTestnetEvidenceBundle,
     PublicTestnetRunEvidence, aggregate_public_evidence_record_roots,
     public_network_runtime_observations_for_run,
 };
 use crate::types::{Hash, address, hash_bytes};
 
+use super::manifest_publication_fixtures::{
+    manifest_artifact_line, manifest_artifact_line_for_root, manifest_auditor_signature,
+    manifest_auditor_uri, manifest_publication, manifest_publication_signature,
+};
 use super::manifest_service_fixtures::{
     manifest_service_content_line, manifest_service_signature, public_service_content,
     public_service_url,
@@ -59,83 +61,6 @@ pub(super) fn manifest_operator_signature(
         1_700_000_000,
     );
     hex(&attestation.operator_signature)
-}
-
-pub(super) fn manifest_publication_signature() -> String {
-    let publication = PublicEvidencePublication::new(
-        hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
-        address(b"public-evidence-publisher"),
-        1,
-        1,
-    );
-    hex(&publication.manifest_signature)
-}
-
-pub(super) fn manifest_publication() -> PublicEvidencePublication {
-    PublicEvidencePublication::new(
-        hash_bytes(b"test", &[b"public-evidence-bundle"]),
-        String::from("https://tensorvm.net/tensorvm/public-evidence.json"),
-        address(b"public-evidence-publisher"),
-        1,
-        1,
-    )
-}
-
-pub(super) fn manifest_auditor_uri() -> String {
-    format!(
-        "https://auditors.tensorvm.net/{}/0",
-        manifest_hash(b"public-evidence-bundle")
-    )
-}
-
-pub(super) fn manifest_auditor_signature() -> String {
-    let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
-    let record = PublicEvidenceAuditorRecord::new(
-        &bundle_id,
-        "https://tensorvm.net/tensorvm/public-evidence.json",
-        address(b"public-evidence-auditor-0"),
-        manifest_auditor_uri(),
-        1_700_000_060,
-    );
-    hex(&record.auditor_signature)
-}
-
-pub(super) fn manifest_artifact_line(
-    kind: PublicEvidenceRecordKind,
-    root_label: &[u8],
-    record_count: u64,
-) -> String {
-    manifest_artifact_line_for_root(kind, hash_bytes(b"test", &[root_label]), record_count)
-}
-
-pub(super) fn manifest_artifact_line_for_root(
-    kind: PublicEvidenceRecordKind,
-    record_root: Hash,
-    record_count: u64,
-) -> String {
-    let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
-    let artifact_uri = format!(
-        "https://evidence.tensorvm.net/{}/{}.json",
-        manifest_hash(b"public-evidence-bundle"),
-        public_evidence_record_kind_tag(kind)
-    );
-    let signature = crate::testnet::sign_public_evidence_artifact(
-        &address(b"public-evidence-publisher"),
-        &bundle_id,
-        kind,
-        &artifact_uri,
-        &record_root,
-        record_count,
-    );
-    format!(
-        "record_artifact={},{},{},{},{}",
-        public_evidence_record_kind_tag(kind),
-        artifact_uri,
-        hex(&record_root),
-        record_count,
-        hex(&signature)
-    )
 }
 
 pub(super) fn network_runtime_root_for_run(run: &PublicTestnetRunEvidence) -> Hash {

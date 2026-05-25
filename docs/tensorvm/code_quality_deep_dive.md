@@ -1131,6 +1131,9 @@ spaghetti around.
 - Iteration 461 split public service manifest fixture helpers into
   `cli/tests/manifest_service_fixtures.rs`, leaving `cli/tests/manifest_fixtures.rs` focused on full
   preflight/evidence manifest assembly and shared hashes/signatures.
+- Iteration 462 split publication, auditor, and supporting-artifact manifest helpers into
+  `cli/tests/manifest_publication_fixtures.rs`, further narrowing the full manifest fixture module to
+  bundle construction and manifest text assembly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
