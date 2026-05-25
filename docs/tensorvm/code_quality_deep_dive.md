@@ -1379,6 +1379,9 @@ spaghetti around.
 - Iteration 562 consolidated public node evidence execution around a typed node identity context, removing
   repeated role, address, and operator-id extraction from heartbeat, heartbeat-file, and operator-attestation
   command variants.
+- Iteration 563 consolidated public run-window evidence execution around a typed bundle/signer context,
+  removing repeated bundle-id and manifest-signer extraction from direct and file-backed run-window command
+  variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
