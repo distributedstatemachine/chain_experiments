@@ -68,10 +68,10 @@ fn execute_public_evidence_record_reports_outputs() {
             roots
         );
         let summary = execute_public_evidence_command(&EvidenceCommand::Record(
-            EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs::new(
-                record_context_args(kind),
-                record_file_args(raw_record_file.clone()),
-            )),
+            EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
+                context: record_context_args(kind),
+                file: record_file_args(raw_record_file.clone()),
+            }),
         ))
         .unwrap();
         let signature = sign_public_evidence_record(
@@ -94,11 +94,11 @@ fn execute_public_evidence_record_reports_outputs() {
             public_evidence_record_kind_tag(kind)
         );
         let artifact = execute_public_evidence_command(&EvidenceCommand::Record(
-            EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs::new(
-                record_context_args(kind),
-                record_artifact_locator_args(&artifact_uri),
-                record_file_args(raw_record_file.clone()),
-            )),
+            EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
+                context: record_context_args(kind),
+                artifact: record_artifact_locator_args(&artifact_uri),
+                file: record_file_args(raw_record_file.clone()),
+            }),
         ))
         .unwrap();
         let artifact_signature = crate::testnet::sign_public_evidence_artifact(

@@ -120,19 +120,26 @@ pub(super) fn run_window_context_args(
 }
 
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
-    RecordArtifactLocatorArgs::new(artifact_uri)
+    RecordArtifactLocatorArgs {
+        artifact_uri: artifact_uri.to_owned(),
+    }
 }
 
 pub(super) fn record_file_args(record_file: std::path::PathBuf) -> RecordFileArgs {
-    RecordFileArgs::new(record_file)
+    RecordFileArgs { record_file }
 }
 
 pub(super) fn record_root_args(record_root: Hash, record_count: u64) -> RecordRootArgs {
-    RecordRootArgs::new(record_root, record_count)
+    RecordRootArgs {
+        record_root: HashArg::new(record_root),
+        record_count,
+    }
 }
 
 pub(super) fn record_roots_args(record_roots: Vec<Hash>) -> RecordRootsArgs {
-    RecordRootsArgs::new(record_roots)
+    RecordRootsArgs {
+        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
+    }
 }
 
 pub(super) fn record_context_args(
@@ -150,11 +157,11 @@ pub(super) fn record_context_args_from(
     bundle_id: Hash,
     manifest_signer: Address,
 ) -> PublicEvidenceRecordContextArgs {
-    PublicEvidenceRecordContextArgs::new(
-        record_kind_arg(kind),
-        evidence_bundle_id_args(bundle_id),
-        manifest_signer_args(manifest_signer),
-    )
+    PublicEvidenceRecordContextArgs {
+        kind: record_kind_arg(kind),
+        bundle: evidence_bundle_id_args(bundle_id),
+        signer: manifest_signer_args(manifest_signer),
+    }
 }
 
 pub(super) fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {

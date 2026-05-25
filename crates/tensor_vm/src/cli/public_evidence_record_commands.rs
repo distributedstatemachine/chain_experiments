@@ -5,7 +5,6 @@ use super::public_evidence_record_artifact_commands::{
 use super::public_evidence_signing_commands::ManifestSignerArgs;
 use super::value_types::HashArg;
 use crate::testnet::PublicEvidenceRecordKind;
-use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
 use std::path::PathBuf;
 
@@ -29,135 +28,35 @@ pub(crate) enum EvidenceRecordCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RecordSummaryArgs {
     #[command(flatten)]
-    context: PublicEvidenceRecordContextArgs,
+    pub(crate) context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    root: RecordRootArgs,
-}
-
-impl RecordSummaryArgs {
-    #[cfg(test)]
-    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, root: RecordRootArgs) -> Self {
-        Self { context, root }
-    }
-
-    pub fn kind(&self) -> PublicEvidenceRecordKind {
-        self.context.kind()
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.context.bundle_id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.context.manifest_signer()
-    }
-
-    pub fn root(&self) -> Hash {
-        self.root.root()
-    }
-
-    pub fn count(&self) -> u64 {
-        self.root.count()
-    }
+    pub(crate) root: RecordRootArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RecordSummaryFromRootsArgs {
     #[command(flatten)]
-    context: PublicEvidenceRecordContextArgs,
+    pub(crate) context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    roots: RecordRootsArgs,
-}
-
-impl RecordSummaryFromRootsArgs {
-    #[cfg(test)]
-    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, roots: RecordRootsArgs) -> Self {
-        Self { context, roots }
-    }
-
-    pub fn kind(&self) -> PublicEvidenceRecordKind {
-        self.context.kind()
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.context.bundle_id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.context.manifest_signer()
-    }
-
-    pub fn roots(&self) -> Vec<Hash> {
-        self.roots.roots()
-    }
+    pub(crate) roots: RecordRootsArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RecordSummaryFromFileArgs {
     #[command(flatten)]
-    context: PublicEvidenceRecordContextArgs,
+    pub(crate) context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    file: RecordFileArgs,
-}
-
-impl RecordSummaryFromFileArgs {
-    #[cfg(test)]
-    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, file: RecordFileArgs) -> Self {
-        Self { context, file }
-    }
-
-    pub fn kind(&self) -> PublicEvidenceRecordKind {
-        self.context.kind()
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.context.bundle_id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.context.manifest_signer()
-    }
-
-    pub fn file_path(&self) -> &std::path::Path {
-        self.file.path()
-    }
+    pub(crate) file: RecordFileArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct PublicEvidenceRecordContextArgs {
     #[arg(long, help = "Supporting-record class.")]
-    kind: PublicEvidenceRecordKindArg,
+    pub(crate) kind: PublicEvidenceRecordKindArg,
     #[command(flatten)]
-    bundle: EvidenceBundleIdArgs,
+    pub(crate) bundle: EvidenceBundleIdArgs,
     #[command(flatten)]
-    signer: ManifestSignerArgs,
-}
-
-impl PublicEvidenceRecordContextArgs {
-    #[cfg(test)]
-    pub(crate) fn new(
-        kind: PublicEvidenceRecordKindArg,
-        bundle: EvidenceBundleIdArgs,
-        signer: ManifestSignerArgs,
-    ) -> Self {
-        Self {
-            kind,
-            bundle,
-            signer,
-        }
-    }
-
-    pub fn kind(&self) -> PublicEvidenceRecordKind {
-        self.kind.into()
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.bundle.bundle_id.into_hash()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.signer.manifest_signer.into_address()
-    }
+    pub(crate) signer: ManifestSignerArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -167,31 +66,13 @@ pub(crate) struct RecordRootArgs {
         value_name = "HEX",
         help = "Root hash of the supporting-record set."
     )]
-    record_root: HashArg,
+    pub(crate) record_root: HashArg,
     #[arg(
         long,
         value_name = "N",
         help = "Number of records covered by the root."
     )]
-    record_count: u64,
-}
-
-impl RecordRootArgs {
-    #[cfg(test)]
-    pub(crate) fn new(record_root: Hash, record_count: u64) -> Self {
-        Self {
-            record_root: HashArg::new(record_root),
-            record_count,
-        }
-    }
-
-    pub fn root(&self) -> Hash {
-        self.record_root.into_hash()
-    }
-
-    pub fn count(&self) -> u64 {
-        self.record_count
-    }
+    pub(crate) record_count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -203,24 +84,7 @@ pub(crate) struct RecordRootsArgs {
         num_args = 1..,
         help = "Comma-delimited record roots to aggregate."
     )]
-    record_roots: Vec<HashArg>,
-}
-
-impl RecordRootsArgs {
-    #[cfg(test)]
-    pub(crate) fn new(record_roots: Vec<Hash>) -> Self {
-        Self {
-            record_roots: record_roots.into_iter().map(HashArg::new).collect(),
-        }
-    }
-
-    pub fn roots(&self) -> Vec<Hash> {
-        self.record_roots
-            .iter()
-            .copied()
-            .map(HashArg::into_hash)
-            .collect()
-    }
+    pub(crate) record_roots: Vec<HashArg>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -231,18 +95,7 @@ pub(crate) struct RecordFileArgs {
         value_hint = ValueHint::FilePath,
         help = "File containing supporting records to summarize."
     )]
-    record_file: PathBuf,
-}
-
-impl RecordFileArgs {
-    #[cfg(test)]
-    pub(crate) fn new(record_file: PathBuf) -> Self {
-        Self { record_file }
-    }
-
-    pub fn path(&self) -> &std::path::Path {
-        &self.record_file
-    }
+    pub(crate) record_file: PathBuf,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

@@ -90,19 +90,28 @@ pub(super) fn run_window_context_args(
 }
 
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
-    RecordArtifactLocatorArgs::new(artifact_uri)
+    RecordArtifactLocatorArgs {
+        artifact_uri: artifact_uri.to_owned(),
+    }
 }
 
 pub(super) fn record_file_args(record_file: &str) -> RecordFileArgs {
-    RecordFileArgs::new(path(record_file))
+    RecordFileArgs {
+        record_file: path(record_file),
+    }
 }
 
 pub(super) fn record_root_args(record_root: [u8; 32], record_count: u64) -> RecordRootArgs {
-    RecordRootArgs::new(record_root, record_count)
+    RecordRootArgs {
+        record_root: HashArg::new(record_root),
+        record_count,
+    }
 }
 
 pub(super) fn record_roots_args(record_roots: Vec<[u8; 32]>) -> RecordRootsArgs {
-    RecordRootsArgs::new(record_roots)
+    RecordRootsArgs {
+        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
+    }
 }
 
 pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {

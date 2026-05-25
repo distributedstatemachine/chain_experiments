@@ -1355,6 +1355,9 @@ spaghetti around.
 - Iteration 554 moved public service evidence Clap payloads to direct fields, removing service endpoint,
   health, content, byte-content, file-content, and target getter constructors while keeping service evidence
   execution on the typed command tree.
+- Iteration 555 moved public supporting-record Clap payloads to direct fields, removing summary, artifact,
+  aggregate-root, file, locator, and record-context getter constructors while keeping record evidence
+  execution on the typed command tree.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

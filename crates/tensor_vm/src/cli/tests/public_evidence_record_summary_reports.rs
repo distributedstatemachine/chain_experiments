@@ -57,10 +57,10 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
         let bundle_id = hash_bytes(b"test", &[b"public-evidence-bundle"]);
         let manifest_signer = address(b"public-evidence-publisher");
         let line = execute_public_evidence_command(&EvidenceCommand::Record(
-            EvidenceRecordCommand::Summary(RecordSummaryArgs::new(
-                record_context_args_from(kind, bundle_id, manifest_signer),
-                record_root_args(record_root, count),
-            )),
+            EvidenceRecordCommand::Summary(RecordSummaryArgs {
+                context: record_context_args_from(kind, bundle_id, manifest_signer),
+                root: record_root_args(record_root, count),
+            }),
         ))
         .unwrap();
         assert_eq!(
@@ -84,11 +84,11 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
             count,
         );
         let artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
-            EvidenceRecordCommand::Artifact(RecordArtifactArgs::new(
-                record_context_args_from(kind, bundle_id, manifest_signer),
-                record_artifact_locator_args(&artifact_uri),
-                record_root_args(record_root, count),
-            )),
+            EvidenceRecordCommand::Artifact(RecordArtifactArgs {
+                context: record_context_args_from(kind, bundle_id, manifest_signer),
+                artifact: record_artifact_locator_args(&artifact_uri),
+                root: record_root_args(record_root, count),
+            }),
         ))
         .unwrap();
         assert_eq!(
