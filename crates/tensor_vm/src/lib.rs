@@ -10,7 +10,7 @@ pub mod api;
 pub mod app;
 pub mod chain;
 pub mod challenge;
-pub mod cli;
+mod cli;
 mod codec;
 pub mod error;
 pub mod faucet;

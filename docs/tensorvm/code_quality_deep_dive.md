@@ -1306,6 +1306,8 @@ spaghetti around.
   `TvmdCli` as the only public parser entrypoint while preserving internal typed dispatch.
 - Iteration 532 made Clap-only argument payload structs and value wrappers crate-private, keeping
   `TvmdCli` public while preventing parser internals from becoming a library API by accident.
+- Iteration 533 made the `cli` module internal and kept only the root `TvmdCli` and manifest validators
+  public, so the Clap command tree is an implementation detail behind `app::run`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
@@ -1480,7 +1482,7 @@ Target shape:
 
 ```rust
 use clap::Parser;
-use tensor_vm::{app, cli::TvmdCli};
+use tensor_vm::{app, TvmdCli};
 
 fn main() {
     let cli = TvmdCli::parse();
@@ -1624,22 +1626,23 @@ Fix:
 - Use the `csv` crate or a simpler line format that rejects ambiguous characters explicitly.
 - Replace `stdout.contains(...)` tests with parsed assertions.
 
-The CLI should not regress to a giant string-slice match. The current `tvmd` surface is the Clap command
-tree, with no preserved legacy top-level `role`, `public-evidence`, `public-testnet`, `local-testnet`,
+The CLI should not regress to a giant string-slice match. The current public `tvmd` parser surface is the
+root `TvmdCli` plus `app::run`; the parsed command tree and Clap argument payloads are crate-internal.
+There are no preserved legacy top-level `role`, `public-evidence`, `public-testnet`, `local-testnet`,
 or `local-cpu` command families:
 
 ```rust
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(name = "tvmd")]
 pub struct TvmdCli {
     #[command(subcommand)]
-    pub command: TvmdCommand,
+    command: TvmdCommand,
 }
 
 #[derive(Subcommand, Debug)]
-pub enum TvmdCommand {
+pub(crate) enum TvmdCommand {
     Node(NodeCommand),
     Miner(MinerCommand),
     Validator(ValidatorCommand),
@@ -1649,7 +1652,7 @@ pub enum TvmdCommand {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum NodeCommand {
+pub(crate) enum NodeCommand {
     Init(DataDirArgs),
     Peer(NodePeerCommand),
     Check(NodeCheckArgs),
@@ -1659,13 +1662,13 @@ pub enum NodeCommand {
 }
 
 #[derive(Args, Debug)]
-pub struct DataDirArgs {
+pub(crate) struct DataDirArgs {
     #[arg(long)]
-    pub data_dir: String,
+    data_dir: PathBuf,
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ChainProfileArg {
+pub(crate) enum ChainProfileArg {
     LocalCpu,
     PublicTestnet,
     Mainnet,
