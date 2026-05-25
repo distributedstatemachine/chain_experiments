@@ -16,7 +16,7 @@ use super::tvmd_path::path_arg;
 use super::{RoleServiceConfig, run_miner_service, run_proposer_service, run_validator_service};
 
 pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
-    execute_tvmd_command(&cli.command)
+    execute_tvmd_command(cli.tvmd_command())
 }
 
 pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {

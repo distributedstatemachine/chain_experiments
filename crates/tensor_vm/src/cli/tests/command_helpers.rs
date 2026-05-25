@@ -9,7 +9,7 @@ pub(super) fn parse_test_cli(
     let mut argv = Vec::with_capacity(args.len() + 1);
     argv.push("tvmd");
     argv.extend_from_slice(args);
-    TvmdCli::try_parse_from(argv).map(|cli| cli.command)
+    TvmdCli::try_parse_from(argv).map(TvmdCli::into_command)
 }
 
 pub(super) fn execute_test_cli_command(

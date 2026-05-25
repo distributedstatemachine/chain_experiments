@@ -41,7 +41,17 @@ const TVMD_AFTER_HELP: &str = "Examples:
 )]
 pub struct TvmdCli {
     #[command(subcommand)]
-    pub command: TvmdCommand,
+    command: TvmdCommand,
+}
+
+impl TvmdCli {
+    pub fn tvmd_command(&self) -> &TvmdCommand {
+        &self.command
+    }
+
+    pub fn into_command(self) -> TvmdCommand {
+        self.command
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
