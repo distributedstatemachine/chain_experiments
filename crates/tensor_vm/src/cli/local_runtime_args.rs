@@ -23,7 +23,7 @@ pub(super) fn default_p2p_listen_addr() -> Multiaddr {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeRuntimeArgs {
+pub(crate) struct NodeRuntimeArgs {
     #[arg(
         long,
         env = "TVMD_LISTEN",
@@ -102,7 +102,7 @@ impl NodeRuntimeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct DataDirArgs {
+pub(crate) struct DataDirArgs {
     #[arg(
         long,
         env = "TVMD_DATA_DIR",
@@ -126,7 +126,7 @@ impl DataDirArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct P2pListenArgs {
+pub(crate) struct P2pListenArgs {
     #[arg(
         long,
         env = "TVMD_P2P_LISTEN",
@@ -149,7 +149,7 @@ impl P2pListenArgs {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Args)]
-pub struct IdentitySeedArgs {
+pub(crate) struct IdentitySeedArgs {
     #[arg(
         long,
         value_name = "HEX",

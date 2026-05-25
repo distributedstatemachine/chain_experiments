@@ -1304,6 +1304,8 @@ spaghetti around.
   while direct `TvmdCommand` execution, parsed command extraction, and argument payload types remain crate-internal.
 - Iteration 531 made the parsed Clap command enums and command-family re-exports crate-private, leaving
   `TvmdCli` as the only public parser entrypoint while preserving internal typed dispatch.
+- Iteration 532 made Clap-only argument payload structs and value wrappers crate-private, keeping
+  `TvmdCli` public while preventing parser internals from becoming a library API by accident.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

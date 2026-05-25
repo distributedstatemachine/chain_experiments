@@ -22,7 +22,7 @@ pub(crate) enum EvidenceServiceCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceHealthArgs {
+pub(crate) struct ServiceHealthArgs {
     #[command(flatten)]
     endpoint: PublicServiceEndpointArgs,
     #[command(flatten)]
@@ -95,7 +95,7 @@ impl ServiceHealthArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceHealthFromFileArgs {
+pub(crate) struct ServiceHealthFromFileArgs {
     #[command(flatten)]
     endpoint: PublicServiceEndpointArgs,
     #[command(flatten)]
@@ -145,7 +145,7 @@ impl ServiceHealthFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceHealthPathArgs {
+pub(crate) struct ServiceHealthPathArgs {
     #[arg(
         long,
         value_name = "PATH",
@@ -168,7 +168,7 @@ impl ServiceHealthPathArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceContentArgs {
+pub(crate) struct ServiceContentArgs {
     #[command(flatten)]
     target: ServiceContentTargetArgs,
     #[arg(
@@ -229,7 +229,7 @@ impl ServiceContentArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceContentFromBytesArgs {
+pub(crate) struct ServiceContentFromBytesArgs {
     #[command(flatten)]
     target: ServiceContentTargetArgs,
     #[arg(
@@ -272,7 +272,7 @@ impl ServiceContentFromBytesArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceContentFromFileArgs {
+pub(crate) struct ServiceContentFromFileArgs {
     #[command(flatten)]
     target: ServiceContentTargetArgs,
     #[arg(
@@ -319,7 +319,7 @@ impl ServiceContentFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ServiceContentTargetArgs {
+pub(crate) struct ServiceContentTargetArgs {
     #[command(flatten)]
     endpoint: PublicServiceEndpointArgs,
     #[arg(
@@ -368,7 +368,7 @@ impl ServiceContentTargetArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct PublicServiceEndpointArgs {
+pub(crate) struct PublicServiceEndpointArgs {
     #[arg(long, help = "Public service being observed.")]
     kind: PublicServiceKindArg,
     #[arg(
@@ -415,7 +415,7 @@ impl PublicServiceEndpointArgs {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-pub enum PublicServiceKindArg {
+pub(crate) enum PublicServiceKindArg {
     Rpc,
     Explorer,
     Faucet,

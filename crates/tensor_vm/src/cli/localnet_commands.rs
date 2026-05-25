@@ -11,7 +11,7 @@ pub(crate) enum LocalnetCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct LocalCpuVerifyArgs {
+pub(crate) struct LocalCpuVerifyArgs {
     #[command(flatten)]
     data_dir: DataDirArgs,
     #[arg(long, help = "Emit the verification report as JSON.")]

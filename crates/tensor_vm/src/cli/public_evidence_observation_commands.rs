@@ -1,7 +1,7 @@
 use clap::Args;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ObservationTimestampArgs {
+pub(crate) struct ObservationTimestampArgs {
     #[arg(
         long,
         value_name = "UNIX_SECONDS",

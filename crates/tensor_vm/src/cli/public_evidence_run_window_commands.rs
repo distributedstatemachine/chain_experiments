@@ -14,7 +14,7 @@ pub(crate) enum EvidenceRunCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RunWindowArgs {
+pub(crate) struct RunWindowArgs {
     #[command(flatten)]
     context: RunWindowContextArgs,
     #[arg(
@@ -75,7 +75,7 @@ impl RunWindowArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RunWindowFromFileArgs {
+pub(crate) struct RunWindowFromFileArgs {
     #[command(flatten)]
     context: RunWindowContextArgs,
     #[arg(
@@ -110,7 +110,7 @@ impl RunWindowFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RunWindowContextArgs {
+pub(crate) struct RunWindowContextArgs {
     #[command(flatten)]
     bundle: EvidenceBundleIdArgs,
     #[command(flatten)]

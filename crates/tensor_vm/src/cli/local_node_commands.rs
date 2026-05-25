@@ -28,7 +28,7 @@ pub(crate) enum NodePeerCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodePeerAddArgs {
+pub(crate) struct NodePeerAddArgs {
     #[command(flatten)]
     data_dir: DataDirArgs,
     #[command(flatten)]
@@ -54,7 +54,7 @@ impl NodePeerAddArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct BootstrapPeerArgs {
+pub(crate) struct BootstrapPeerArgs {
     #[arg(
         long,
         value_name = "PEER_ID",
@@ -85,7 +85,7 @@ impl BootstrapPeerArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeCheckArgs {
+pub(crate) struct NodeCheckArgs {
     #[command(flatten)]
     p2p_listen: P2pListenArgs,
     #[command(flatten)]
@@ -122,7 +122,7 @@ impl NodeCheckArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeServeArgs {
+pub(crate) struct NodeServeArgs {
     #[command(flatten)]
     runtime: NodeRuntimeArgs,
 }
@@ -139,7 +139,7 @@ impl NodeServeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeBlockArgs {
+pub(crate) struct NodeBlockArgs {
     #[command(flatten)]
     data_dir: DataDirArgs,
     #[arg(

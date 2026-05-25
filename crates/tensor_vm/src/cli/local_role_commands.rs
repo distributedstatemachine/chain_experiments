@@ -38,7 +38,7 @@ pub(crate) enum ProposerCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct StakeArgs {
+pub(crate) struct StakeArgs {
     #[arg(
         long,
         value_name = "TOKENS",
@@ -59,7 +59,7 @@ impl StakeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct MinerCheckArgs {
+pub(crate) struct MinerCheckArgs {
     #[command(flatten)]
     wallet: RoleWalletArgs,
     #[arg(
@@ -97,7 +97,7 @@ impl MinerCheckArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct MinerRunArgs {
+pub(crate) struct MinerRunArgs {
     #[command(flatten)]
     wallet: RoleWalletArgs,
     #[arg(
@@ -139,7 +139,7 @@ impl MinerRunArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ValidatorCheckArgs {
+pub(crate) struct ValidatorCheckArgs {
     #[command(flatten)]
     wallet: RoleWalletArgs,
     #[command(flatten)]
@@ -162,7 +162,7 @@ impl ValidatorCheckArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ValidatorRunArgs {
+pub(crate) struct ValidatorRunArgs {
     #[command(flatten)]
     wallet: RoleWalletArgs,
     #[command(flatten)]
@@ -185,7 +185,7 @@ impl ValidatorRunArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RoleWalletArgs {
+pub(crate) struct RoleWalletArgs {
     #[arg(
         long,
         value_name = "PATH",
@@ -207,7 +207,7 @@ impl RoleWalletArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RoleNodeArgs {
+pub(crate) struct RoleNodeArgs {
     #[arg(
         long,
         default_value_t = default_p2p_listen_addr(),
@@ -229,7 +229,7 @@ impl RoleNodeArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RoleRuntimeArgs {
+pub(crate) struct RoleRuntimeArgs {
     #[command(flatten)]
     node: RoleNodeArgs,
     #[command(flatten)]

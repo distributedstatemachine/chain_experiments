@@ -7,7 +7,7 @@ use clap::{Args, ValueHint};
 use std::path::Path;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordArtifactArgs {
+pub(crate) struct RecordArtifactArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -56,7 +56,7 @@ impl RecordArtifactArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordArtifactFromRootsArgs {
+pub(crate) struct RecordArtifactFromRootsArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -101,7 +101,7 @@ impl RecordArtifactFromRootsArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordArtifactFromFileArgs {
+pub(crate) struct RecordArtifactFromFileArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -146,7 +146,7 @@ impl RecordArtifactFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordArtifactLocatorArgs {
+pub(crate) struct RecordArtifactLocatorArgs {
     #[arg(
         long,
         value_name = "URI",

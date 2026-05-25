@@ -5,7 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct HashArg(Hash);
+pub(crate) struct HashArg(Hash);
 
 impl HashArg {
     #[cfg(test)]
@@ -29,7 +29,7 @@ impl FromStr for HashArg {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct AddressArg(Address);
+pub(crate) struct AddressArg(Address);
 
 impl AddressArg {
     #[cfg(test)]
@@ -53,7 +53,7 @@ impl FromStr for AddressArg {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HexBytesArg {
+pub(crate) struct HexBytesArg {
     bytes: Vec<u8>,
 }
 
@@ -79,7 +79,7 @@ impl FromStr for HexBytesArg {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MinerDeviceArg(String);
+pub(crate) struct MinerDeviceArg(String);
 
 impl MinerDeviceArg {
     pub fn as_str(&self) -> &str {

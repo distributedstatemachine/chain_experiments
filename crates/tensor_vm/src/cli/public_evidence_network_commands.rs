@@ -15,7 +15,7 @@ pub(crate) enum EvidenceNetworkCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationArgs {
+pub(crate) struct NetworkObservationArgs {
     #[command(flatten)]
     target: NetworkObservationTargetArgs,
     #[arg(long, value_name = "PEER_ID", help = "Observed libp2p peer ID.")]
@@ -27,7 +27,7 @@ pub struct NetworkObservationArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationProtocolCountsArgs {
+pub(crate) struct NetworkObservationProtocolCountsArgs {
     #[arg(
         long = "gossip-topics",
         value_name = "N",
@@ -49,7 +49,7 @@ pub struct NetworkObservationProtocolCountsArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationTransportLimitsArgs {
+pub(crate) struct NetworkObservationTransportLimitsArgs {
     #[arg(
         long,
         value_name = "BYTES",
@@ -186,7 +186,7 @@ impl NetworkObservationTransportLimitsArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationFromServiceLogArgs {
+pub(crate) struct NetworkObservationFromServiceLogArgs {
     #[command(flatten)]
     target: NetworkObservationTargetArgs,
     #[arg(
@@ -225,7 +225,7 @@ impl NetworkObservationFromServiceLogArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NetworkObservationTargetArgs {
+pub(crate) struct NetworkObservationTargetArgs {
     #[command(flatten)]
     operator: OperatorIdArgs,
     #[arg(

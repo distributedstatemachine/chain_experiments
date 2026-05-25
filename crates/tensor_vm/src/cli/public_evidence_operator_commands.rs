@@ -3,7 +3,7 @@ use crate::types::Hash;
 use clap::Args;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Args)]
-pub struct OperatorIdArgs {
+pub(crate) struct OperatorIdArgs {
     #[arg(long, value_name = "HEX", help = "Public operator identifier.")]
     operator_id: HashArg,
 }

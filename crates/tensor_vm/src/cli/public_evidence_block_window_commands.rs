@@ -1,7 +1,7 @@
 use clap::Args;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct BlockHeightWindowArgs {
+pub(crate) struct BlockHeightWindowArgs {
     #[arg(
         long,
         value_name = "HEIGHT",

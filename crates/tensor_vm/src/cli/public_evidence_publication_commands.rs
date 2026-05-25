@@ -6,7 +6,7 @@ use crate::types::{Address, Hash};
 use clap::{Args, ValueHint};
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct PublicationArgs {
+pub(crate) struct PublicationArgs {
     #[command(flatten)]
     bundle: PublicationBundleArgs,
     #[command(flatten)]
@@ -63,7 +63,7 @@ impl PublicationArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct AuditorRecordArgs {
+pub(crate) struct AuditorRecordArgs {
     #[command(flatten)]
     bundle: PublicationBundleArgs,
     #[arg(
@@ -121,7 +121,7 @@ impl AuditorRecordArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct PublicationBundleArgs {
+pub(crate) struct PublicationBundleArgs {
     #[command(flatten)]
     bundle: EvidenceBundleIdArgs,
     #[arg(

@@ -3,7 +3,7 @@ use crate::types::Address;
 use clap::Args;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct ManifestSignerArgs {
+pub(crate) struct ManifestSignerArgs {
     #[arg(
         long,
         value_name = "HEX",

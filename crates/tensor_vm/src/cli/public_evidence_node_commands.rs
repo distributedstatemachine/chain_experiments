@@ -19,7 +19,7 @@ pub(crate) enum EvidenceNodeCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeHeartbeatArgs {
+pub(crate) struct NodeHeartbeatArgs {
     #[command(flatten)]
     node: PublicNodeIdentityArgs,
     #[command(flatten)]
@@ -72,7 +72,7 @@ impl NodeHeartbeatArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct NodeHeartbeatFromFileArgs {
+pub(crate) struct NodeHeartbeatFromFileArgs {
     #[command(flatten)]
     node: PublicNodeIdentityArgs,
     #[arg(
@@ -111,7 +111,7 @@ impl NodeHeartbeatFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct OperatorAttestationArgs {
+pub(crate) struct OperatorAttestationArgs {
     #[command(flatten)]
     node: PublicNodeIdentityArgs,
     #[arg(
@@ -161,7 +161,7 @@ impl OperatorAttestationArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct PublicNodeIdentityArgs {
+pub(crate) struct PublicNodeIdentityArgs {
     #[arg(long, help = "Public node role.")]
     role: PublicNodeRoleArg,
     #[arg(long, value_name = "HEX", help = "Node account address.")]
@@ -199,7 +199,7 @@ impl PublicNodeIdentityArgs {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-pub enum PublicNodeRoleArg {
+pub(crate) enum PublicNodeRoleArg {
     Miner,
     Validator,
 }

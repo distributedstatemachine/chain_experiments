@@ -27,7 +27,7 @@ pub(crate) enum EvidenceRecordCommand {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordSummaryArgs {
+pub(crate) struct RecordSummaryArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -62,7 +62,7 @@ impl RecordSummaryArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordSummaryFromRootsArgs {
+pub(crate) struct RecordSummaryFromRootsArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -93,7 +93,7 @@ impl RecordSummaryFromRootsArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordSummaryFromFileArgs {
+pub(crate) struct RecordSummaryFromFileArgs {
     #[command(flatten)]
     context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
@@ -124,7 +124,7 @@ impl RecordSummaryFromFileArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct PublicEvidenceRecordContextArgs {
+pub(crate) struct PublicEvidenceRecordContextArgs {
     #[arg(long, help = "Supporting-record class.")]
     kind: PublicEvidenceRecordKindArg,
     #[command(flatten)]
@@ -161,7 +161,7 @@ impl PublicEvidenceRecordContextArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordRootArgs {
+pub(crate) struct RecordRootArgs {
     #[arg(
         long,
         value_name = "HEX",
@@ -195,7 +195,7 @@ impl RecordRootArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordRootsArgs {
+pub(crate) struct RecordRootsArgs {
     #[arg(
         long,
         value_name = "HEX[,HEX...]",
@@ -224,7 +224,7 @@ impl RecordRootsArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RecordFileArgs {
+pub(crate) struct RecordFileArgs {
     #[arg(
         long,
         value_name = "PATH",
@@ -247,7 +247,7 @@ impl RecordFileArgs {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-pub enum PublicEvidenceRecordKindArg {
+pub(crate) enum PublicEvidenceRecordKindArg {
     BlockHistory,
     FinalityHistory,
     NetworkRuntime,

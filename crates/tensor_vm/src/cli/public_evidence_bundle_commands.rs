@@ -3,7 +3,7 @@ use crate::types::Hash;
 use clap::Args;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct EvidenceBundleIdArgs {
+pub(crate) struct EvidenceBundleIdArgs {
     #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     bundle_id: HashArg,
 }
