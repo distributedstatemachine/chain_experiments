@@ -94,10 +94,7 @@ pub(super) fn network_observation_transport_limits_args(
 }
 
 pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> PublicationBundleArgs {
-    PublicationBundleArgs {
-        bundle: evidence_bundle_id_args(bundle_id),
-        public_uri: public_uri.to_owned(),
-    }
+    PublicationBundleArgs::new(evidence_bundle_id_args(bundle_id), public_uri)
 }
 
 pub(super) fn run_window_context_args(

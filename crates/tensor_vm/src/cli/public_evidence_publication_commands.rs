@@ -8,24 +8,38 @@ use clap::{Args, ValueHint};
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicationArgs {
     #[command(flatten)]
-    pub bundle: PublicationBundleArgs,
+    bundle: PublicationBundleArgs,
     #[command(flatten)]
-    pub signer: ManifestSignerArgs,
+    signer: ManifestSignerArgs,
     #[arg(
         long,
         value_name = "N",
         help = "Number of manifest signatures included."
     )]
-    pub manifest_signature_count: u64,
+    manifest_signature_count: u64,
     #[arg(
         long,
         value_name = "N",
         help = "Number of independent auditor records included."
     )]
-    pub independent_auditor_count: u64,
+    independent_auditor_count: u64,
 }
 
 impl PublicationArgs {
+    pub fn new(
+        bundle: PublicationBundleArgs,
+        signer: ManifestSignerArgs,
+        manifest_signature_count: u64,
+        independent_auditor_count: u64,
+    ) -> Self {
+        Self {
+            bundle,
+            signer,
+            manifest_signature_count,
+            independent_auditor_count,
+        }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.bundle.bundle_id()
     }
@@ -50,25 +64,39 @@ impl PublicationArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct AuditorRecordArgs {
     #[command(flatten)]
-    pub bundle: PublicationBundleArgs,
+    bundle: PublicationBundleArgs,
     #[arg(
         long,
         value_name = "HEX",
         help = "Address or identifier of the independent auditor."
     )]
-    pub auditor_id: AddressArg,
+    auditor_id: AddressArg,
     #[arg(
         long,
         value_name = "URI",
         value_hint = ValueHint::Url,
         help = "Public URI for the auditor's review artifact."
     )]
-    pub audit_uri: String,
+    audit_uri: String,
     #[command(flatten)]
-    pub observation: ObservationTimestampArgs,
+    observation: ObservationTimestampArgs,
 }
 
 impl AuditorRecordArgs {
+    pub fn new(
+        bundle: PublicationBundleArgs,
+        auditor_id: AddressArg,
+        audit_uri: impl Into<String>,
+        observation: ObservationTimestampArgs,
+    ) -> Self {
+        Self {
+            bundle,
+            auditor_id,
+            audit_uri: audit_uri.into(),
+            observation,
+        }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.bundle.bundle_id()
     }
@@ -93,17 +121,24 @@ impl AuditorRecordArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicationBundleArgs {
     #[command(flatten)]
-    pub bundle: EvidenceBundleIdArgs,
+    bundle: EvidenceBundleIdArgs,
     #[arg(
         long,
         value_name = "URI",
         value_hint = ValueHint::Url,
         help = "Public URI where the evidence bundle is published."
     )]
-    pub public_uri: String,
+    public_uri: String,
 }
 
 impl PublicationBundleArgs {
+    pub fn new(bundle: EvidenceBundleIdArgs, public_uri: impl Into<String>) -> Self {
+        Self {
+            bundle,
+            public_uri: public_uri.into(),
+        }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.bundle.id()
     }

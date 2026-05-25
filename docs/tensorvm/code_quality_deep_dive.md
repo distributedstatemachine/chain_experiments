@@ -1292,6 +1292,8 @@ spaghetti around.
   protocol counts and transport limits into typed argument owners while keeping service logs and observation targets out of public parser internals.
 - Iteration 525 hid public node/operator Clap fields behind constructors and accessors, keeping
   heartbeat windows, heartbeat files, identity URIs, and node identity triples out of public parser internals.
+- Iteration 526 hid public publication/auditor Clap fields behind constructors and accessors, keeping
+  bundle publication URIs, manifest signature counts, auditor IDs, audit URIs, and observation times out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

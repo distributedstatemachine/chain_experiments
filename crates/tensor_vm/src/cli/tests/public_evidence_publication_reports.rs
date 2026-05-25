@@ -2,16 +2,17 @@ use super::*;
 
 #[test]
 fn execute_publication_evidence_reports_outputs() {
-    let publication = execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
-        bundle: publication_bundle_args(
-            hash_bytes(b"test", &[b"public-evidence-bundle"]),
-            "https://tensorvm.net/tensorvm/public-evidence.json",
-        ),
-        signer: manifest_signer_args(address(b"public-evidence-publisher")),
-        manifest_signature_count: 1,
-        independent_auditor_count: 1,
-    }))
-    .unwrap();
+    let publication =
+        execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs::new(
+            publication_bundle_args(
+                hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                "https://tensorvm.net/tensorvm/public-evidence.json",
+            ),
+            manifest_signer_args(address(b"public-evidence-publisher")),
+            1,
+            1,
+        )))
+        .unwrap();
     let bundle_id = manifest_hash(b"public-evidence-bundle");
     let manifest_signer = manifest_address(b"public-evidence-publisher");
     let manifest_signature = manifest_publication_signature();
@@ -31,15 +32,15 @@ fn execute_publication_evidence_reports_outputs() {
     );
 
     let auditor_record =
-        execute_public_evidence_command(&EvidenceCommand::Audit(AuditorRecordArgs {
-            bundle: publication_bundle_args(
+        execute_public_evidence_command(&EvidenceCommand::Audit(AuditorRecordArgs::new(
+            publication_bundle_args(
                 hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 "https://tensorvm.net/tensorvm/public-evidence.json",
             ),
-            auditor_id: address_arg(address(b"public-evidence-auditor-0")),
-            audit_uri: manifest_auditor_uri(),
-            observation: observation_timestamp_args(1_700_000_060),
-        }))
+            address_arg(address(b"public-evidence-auditor-0")),
+            manifest_auditor_uri(),
+            observation_timestamp_args(1_700_000_060),
+        )))
         .unwrap();
     assert_eq!(
         auditor_record,
