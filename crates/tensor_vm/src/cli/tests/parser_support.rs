@@ -24,9 +24,7 @@ pub(super) fn miner_device(value: &str) -> MinerDeviceArg {
 }
 
 pub(super) fn data_dir_args(data_dir: &str) -> DataDirArgs {
-    DataDirArgs {
-        data_dir: path(data_dir),
-    }
+    DataDirArgs::new(path(data_dir))
 }
 
 pub(super) fn role_wallet_args(wallet: &str) -> RoleWalletArgs {
@@ -38,9 +36,7 @@ pub(super) fn role_node_args(node: &str) -> RoleNodeArgs {
 }
 
 pub(super) fn p2p_listen_args(p2p_listen: &str) -> P2pListenArgs {
-    P2pListenArgs {
-        p2p_listen: multiaddr(p2p_listen),
-    }
+    P2pListenArgs::new(multiaddr(p2p_listen))
 }
 
 pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
@@ -48,9 +44,7 @@ pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
 }
 
 pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySeedArgs {
-    IdentitySeedArgs {
-        identity_seed: identity_seed.map(HashArg::new),
-    }
+    IdentitySeedArgs::new(identity_seed.map(HashArg::new))
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {

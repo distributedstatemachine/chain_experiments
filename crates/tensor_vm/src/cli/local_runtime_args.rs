@@ -92,10 +92,14 @@ pub struct DataDirArgs {
         value_hint = ValueHint::DirPath,
         help = "Node store directory."
     )]
-    pub data_dir: PathBuf,
+    data_dir: PathBuf,
 }
 
 impl DataDirArgs {
+    pub fn new(data_dir: PathBuf) -> Self {
+        Self { data_dir }
+    }
+
     pub fn path(&self) -> &Path {
         &self.data_dir
     }
@@ -110,10 +114,14 @@ pub struct P2pListenArgs {
         value_name = "MULTIADDR",
         help = "libp2p listen multiaddress."
     )]
-    pub p2p_listen: Multiaddr,
+    p2p_listen: Multiaddr,
 }
 
 impl P2pListenArgs {
+    pub fn new(p2p_listen: Multiaddr) -> Self {
+        Self { p2p_listen }
+    }
+
     pub fn multiaddr(&self) -> &Multiaddr {
         &self.p2p_listen
     }
@@ -126,10 +134,14 @@ pub struct IdentitySeedArgs {
         value_name = "HEX",
         help = "Deterministic 32-byte seed for the libp2p identity."
     )]
-    pub identity_seed: Option<HashArg>,
+    identity_seed: Option<HashArg>,
 }
 
 impl IdentitySeedArgs {
+    pub fn new(identity_seed: Option<HashArg>) -> Self {
+        Self { identity_seed }
+    }
+
     pub fn hash(&self) -> Option<Hash> {
         self.identity_seed.map(HashArg::into_hash)
     }
