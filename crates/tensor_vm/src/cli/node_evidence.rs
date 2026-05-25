@@ -2,6 +2,7 @@ use super::evidence_fields::{
     exact_comma_fields, parse_hash_field, parse_public_node_role, parse_u64_field,
     public_node_role_tag,
 };
+use crate::app::KeyValueReportWriter;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation};
@@ -43,16 +44,21 @@ pub(super) fn node_heartbeat_evidence_line(
     if !node.has_external_operator_proof() {
         return Err(TvmError::InvalidReceipt("invalid node heartbeat evidence"));
     }
-    Ok(format!(
-        "node={},{},{},{},{},{},{}",
-        public_node_role_tag(node.role),
-        hex(&node.address),
-        hex(&node.operator_id),
-        node.first_seen_block,
-        node.last_seen_block,
-        node.signed_heartbeat_count,
-        hex(&node.heartbeat_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "node",
+        format!(
+            "{},{},{},{},{},{},{}",
+            public_node_role_tag(node.role),
+            hex(&node.address),
+            hex(&node.operator_id),
+            node.first_seen_block,
+            node.last_seen_block,
+            node.signed_heartbeat_count,
+            hex(&node.heartbeat_signature)
+        ),
+    );
+    Ok(report.finish())
 }
 
 pub(super) struct NodeHeartbeatObservationSummary {
@@ -174,13 +180,18 @@ pub(super) fn operator_identity_attestation_evidence_line(
             "invalid operator identity attestation",
         ));
     }
-    Ok(format!(
-        "operator={},{},{},{},{},{}",
-        public_node_role_tag(attestation.role),
-        hex(&attestation.address),
-        hex(&attestation.operator_id),
-        attestation.identity_uri,
-        attestation.observed_at_unix_seconds,
-        hex(&attestation.operator_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "operator",
+        format!(
+            "{},{},{},{},{},{}",
+            public_node_role_tag(attestation.role),
+            hex(&attestation.address),
+            hex(&attestation.operator_id),
+            attestation.identity_uri,
+            attestation.observed_at_unix_seconds,
+            hex(&attestation.operator_signature)
+        ),
+    );
+    Ok(report.finish())
 }

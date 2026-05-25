@@ -1334,6 +1334,8 @@ spaghetti around.
   run-window fields validated through the shared report assembler.
 - Iteration 546 moved supporting-record summary and artifact evidence outputs onto
   `KeyValueReportWriter`, preserving dynamic record prefixes and artifact comma payloads in validated fields.
+- Iteration 547 moved public node heartbeat and operator-attestation evidence outputs onto
+  `KeyValueReportWriter`, keeping node/operator comma payloads inside validated report fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
