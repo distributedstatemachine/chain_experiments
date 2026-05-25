@@ -1266,6 +1266,8 @@ spaghetti around.
   health and content generators out of nested endpoint, path, window, and target parser groups.
 - Iteration 512 routed public network evidence execution through owning command accessors, keeping
   runtime and service-log generators out of the nested observation target parser group.
+- Iteration 513 routed public run-window evidence execution through owning command accessors, keeping
+  direct and file-backed generators out of the nested bundle/signer context parser group.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

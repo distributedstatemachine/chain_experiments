@@ -38,6 +38,14 @@ pub struct RunWindowArgs {
 }
 
 impl RunWindowArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.context.bundle_id()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.context.manifest_signer()
+    }
+
     pub fn started_at(&self) -> u64 {
         self.started_at
     }
@@ -65,6 +73,14 @@ pub struct RunWindowFromFileArgs {
 }
 
 impl RunWindowFromFileArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.context.bundle_id()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.context.manifest_signer()
+    }
+
     pub fn block_observation_file(&self) -> &Path {
         &self.block_observation_file
     }
