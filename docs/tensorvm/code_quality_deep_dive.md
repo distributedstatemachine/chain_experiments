@@ -1244,6 +1244,8 @@ spaghetti around.
 - Iteration 501 routed public node/operator evidence Clap parsing through typed accessors, keeping
   node evidence execution out of raw role, heartbeat-count, heartbeat-file, identity-URI, and
   observation fields.
+- Iteration 502 routed public service health observation counters through typed Clap accessors,
+  keeping service health execution out of raw reachability and signed-check count fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

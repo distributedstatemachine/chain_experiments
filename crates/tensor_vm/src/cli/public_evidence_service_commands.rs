@@ -43,6 +43,16 @@ pub struct ServiceHealthArgs {
     pub signed_health_check_count: u64,
 }
 
+impl ServiceHealthArgs {
+    pub fn reachable_count(&self) -> u64 {
+        self.reachable_count
+    }
+
+    pub fn signed_health_check_count(&self) -> u64 {
+        self.signed_health_check_count
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthFromFileArgs {
     #[command(flatten)]

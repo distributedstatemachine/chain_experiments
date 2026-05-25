@@ -19,8 +19,8 @@ pub(super) fn execute_public_evidence_service_command(
                 health_path: args.health.path(),
                 first_seen_block: args.window.first_block(),
                 last_seen_block: args.window.last_block(),
-                reachable_observation_count: args.reachable_count,
-                signed_health_check_count: args.signed_health_check_count,
+                reachable_observation_count: args.reachable_count(),
+                signed_health_check_count: args.signed_health_check_count(),
             })
         }
         EvidenceServiceCommand::HealthFile(args) => service_health_evidence_line_from_file(
