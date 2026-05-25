@@ -178,6 +178,6 @@ fn public_node_identity_args(address: [u8; 32], operator_id: [u8; 32]) -> Public
     PublicNodeIdentityArgs {
         role: node_role_arg(PublicNodeRole::Miner),
         address: address_arg(address),
-        operator_id: hash_arg(operator_id),
+        operator: operator_id_args(operator_id),
     }
 }

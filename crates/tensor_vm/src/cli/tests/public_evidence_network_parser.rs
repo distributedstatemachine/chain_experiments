@@ -1,4 +1,4 @@
-use super::parser_support::{hash_arg, multiaddr, path};
+use super::parser_support::{multiaddr, operator_id_args, path};
 use super::{
     EvidenceCommand, EvidenceNetworkCommand, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, PublicCommand, TvmdCommand,
@@ -82,7 +82,7 @@ fn parses_network_evidence_commands() {
 
 fn network_observation_target_args() -> NetworkObservationTargetArgs {
     NetworkObservationTargetArgs {
-        operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
+        operator: operator_id_args(hash_bytes(b"test", &[b"network-operator"])),
         listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
         observation: observation_timestamp_args(1_700_000_000),
     }

@@ -1,6 +1,7 @@
 use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
-use super::value_types::{AddressArg, HashArg};
+use super::public_evidence_operator_commands::OperatorIdArgs;
+use super::value_types::AddressArg;
 use crate::testnet::PublicNodeRole;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
 use std::path::PathBuf;
@@ -64,8 +65,18 @@ pub struct PublicNodeIdentityArgs {
     pub role: PublicNodeRoleArg,
     #[arg(long, value_name = "HEX", help = "Node account address.")]
     pub address: AddressArg,
-    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub operator: OperatorIdArgs,
+}
+
+impl PublicNodeIdentityArgs {
+    pub fn address(&self) -> crate::types::Address {
+        self.address.into_address()
+    }
+
+    pub fn operator_id(&self) -> crate::types::Hash {
+        self.operator.id()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

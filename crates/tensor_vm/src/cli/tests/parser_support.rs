@@ -1,6 +1,6 @@
 use super::{
     AddressArg, DataDirArgs, EvidenceBundleIdArgs, HashArg, IdentitySeedArgs, ManifestSignerArgs,
-    MinerDeviceArg, NodeRuntimeArgs, P2pListenArgs, PublicationBundleArgs,
+    MinerDeviceArg, NodeRuntimeArgs, OperatorIdArgs, P2pListenArgs, PublicationBundleArgs,
     RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs, RecordRootsArgs, RoleNodeArgs,
     RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
 };
@@ -60,6 +60,12 @@ pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySee
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
     EvidenceBundleIdArgs {
         bundle_id: hash_arg(bundle_id),
+    }
+}
+
+pub(super) fn operator_id_args(operator_id: [u8; 32]) -> OperatorIdArgs {
+    OperatorIdArgs {
+        operator_id: hash_arg(operator_id),
     }
 }
 

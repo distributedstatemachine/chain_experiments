@@ -44,6 +44,12 @@ pub(super) fn evidence_bundle_id_args(bundle_id: Hash) -> EvidenceBundleIdArgs {
     }
 }
 
+pub(super) fn operator_id_args(operator_id: Hash) -> OperatorIdArgs {
+    OperatorIdArgs {
+        operator_id: hash_arg(operator_id),
+    }
+}
+
 pub(super) fn address_arg(value: Address) -> AddressArg {
     AddressArg::new(value)
 }
@@ -64,7 +70,7 @@ pub(super) fn network_observation_target_args(
     observed_at: u64,
 ) -> NetworkObservationTargetArgs {
     NetworkObservationTargetArgs {
-        operator_id: hash_arg(operator_id),
+        operator: operator_id_args(operator_id),
         listen_address: multiaddr_arg(listen_address.to_owned()),
         observation: observation_timestamp_args(observed_at),
     }

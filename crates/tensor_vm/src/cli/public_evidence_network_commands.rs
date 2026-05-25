@@ -1,5 +1,5 @@
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
-use super::value_types::HashArg;
+use super::public_evidence_operator_commands::OperatorIdArgs;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
 use std::path::PathBuf;
@@ -58,12 +58,8 @@ pub struct NetworkObservationFromServiceLogArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NetworkObservationTargetArgs {
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Operator identifier for the observed node."
-    )]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub operator: OperatorIdArgs,
     #[arg(
         long,
         value_name = "MULTIADDR",
@@ -72,4 +68,14 @@ pub struct NetworkObservationTargetArgs {
     pub listen_address: Multiaddr,
     #[command(flatten)]
     pub observation: ObservationTimestampArgs,
+}
+
+impl NetworkObservationTargetArgs {
+    pub fn operator_id(&self) -> crate::types::Hash {
+        self.operator.id()
+    }
+
+    pub fn listen_address(&self) -> &Multiaddr {
+        &self.listen_address
+    }
 }

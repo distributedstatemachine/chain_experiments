@@ -95,6 +95,6 @@ fn public_node_identity_args(
     PublicNodeIdentityArgs {
         role: node_role_arg(role),
         address: address_arg(address(address_label)),
-        operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+        operator: operator_id_args(hash_bytes(b"test", &[operator_label])),
     }
 }

@@ -1,4 +1,4 @@
-use super::parser_support::{address_arg, hash_arg, path};
+use super::parser_support::{address_arg, operator_id_args, path};
 use super::{
     EvidenceCommand, EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, PublicCommand, PublicNodeIdentityArgs, PublicNodeRoleArg, TvmdCommand,
@@ -94,6 +94,6 @@ fn miner_node_identity_args() -> PublicNodeIdentityArgs {
     PublicNodeIdentityArgs {
         role: PublicNodeRoleArg::Miner,
         address: address_arg(address(b"miner-a")),
-        operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+        operator: operator_id_args(hash_bytes(b"test", &[b"miner-a-operator"])),
     }
 }

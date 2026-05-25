@@ -20,6 +20,7 @@ mod public_evidence_network_execution;
 mod public_evidence_node_commands;
 mod public_evidence_node_execution;
 mod public_evidence_observation_commands;
+mod public_evidence_operator_commands;
 mod public_evidence_publication_commands;
 mod public_evidence_publication_execution;
 mod public_evidence_record_artifact_commands;
@@ -49,7 +50,7 @@ pub use commands::{
     NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, NodeBlockArgs,
     NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs,
     NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, ObservationTimestampArgs,
-    OperatorAttestationArgs, P2pListenArgs, ProposerCommand, PublicCommand,
+    OperatorAttestationArgs, OperatorIdArgs, P2pListenArgs, ProposerCommand, PublicCommand,
     PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
     PublicNodeIdentityArgs, PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg,
     PublicTestnetManifestArgs, PublicationArgs, PublicationBundleArgs, RecordArtifactArgs,
