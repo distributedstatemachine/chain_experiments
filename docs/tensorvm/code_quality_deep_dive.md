@@ -1361,6 +1361,9 @@ spaghetti around.
 - Iteration 556 removed the final CLI compatibility shims from value-parser test construction and identity
   seed dispatch, so Clap payload structs remain the command data boundary instead of delegating through
   legacy-style helper constructors and getters.
+- Iteration 557 split top-level `tvmd` app dispatch into command-family handlers for miner, validator,
+  proposer, public, node, and localnet commands, shrinking the remaining catch-all match while preserving
+  the Clap command tree as the execution boundary.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

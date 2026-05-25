@@ -21,31 +21,24 @@ pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
 
 pub(crate) fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {
-        TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Validate(args))) => {
-            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
-                format!(
-                    "failed to read evidence manifest {}: {error}",
-                    path_arg(&args.manifest)
-                )
-            })?;
-            validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
-        }
-        TvmdCommand::Public(PublicCommand::Preflight(args)) => {
-            let contents = std::fs::read_to_string(&args.manifest).map_err(|error| {
-                format!(
-                    "failed to read preflight manifest {}: {error}",
-                    path_arg(&args.manifest)
-                )
-            })?;
-            validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
-        }
-        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
-        TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
+        TvmdCommand::Node(command) => execute_node_command(command),
+        TvmdCommand::Miner(command) => execute_miner_command(command),
+        TvmdCommand::Validator(command) => execute_validator_command(command),
+        TvmdCommand::Proposer(command) => execute_proposer_command(command),
+        TvmdCommand::Localnet(command) => execute_localnet_command(command),
+        TvmdCommand::Public(command) => execute_public_command(command),
+    }
+}
+
+fn execute_miner_command(command: &MinerCommand) -> std::result::Result<String, String> {
+    match command {
+        MinerCommand::Register(args) => check_miner_registration(args.stake),
+        MinerCommand::Check(args) => check_miner_start(
             &path_arg(&args.wallet.wallet),
             args.device.as_str(),
             &args.node.node.to_string(),
         ),
-        TvmdCommand::Miner(MinerCommand::Run(args)) => {
+        MinerCommand::Run(args) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_miner_runtime(
                 &config.wallet,
@@ -55,30 +48,58 @@ pub(crate) fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result
             )?;
             run_miner_service(config.as_role_service_config(Some(args.device.as_str())))
         }
-        TvmdCommand::Miner(MinerCommand::Status) => Ok(miner_status()),
-        TvmdCommand::Validator(ValidatorCommand::Register(args)) => {
-            check_validator_registration(args.stake)
-        }
-        TvmdCommand::Validator(ValidatorCommand::Check(args)) => {
+        MinerCommand::Status => Ok(miner_status()),
+    }
+}
+
+fn execute_validator_command(command: &ValidatorCommand) -> std::result::Result<String, String> {
+    match command {
+        ValidatorCommand::Register(args) => check_validator_registration(args.stake),
+        ValidatorCommand::Check(args) => {
             check_validator_start(&path_arg(&args.wallet.wallet), &args.node.node.to_string())
         }
-        TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
+        ValidatorCommand::Run(args) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_validator_service(config.as_role_service_config(None))
         }
-        TvmdCommand::Validator(ValidatorCommand::Status) => Ok(validator_status()),
-        TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
+        ValidatorCommand::Status => Ok(validator_status()),
+    }
+}
+
+fn execute_proposer_command(command: &ProposerCommand) -> std::result::Result<String, String> {
+    match command {
+        ProposerCommand::Run(args) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_proposer_service(config.as_role_service_config(None))
         }
-        TvmdCommand::Node(command) => execute_node_command(command),
-        TvmdCommand::Localnet(command) => execute_localnet_command(command),
-        TvmdCommand::Public(PublicCommand::Evidence(command)) => {
-            execute_public_evidence_command(command).map_err(|error| error.to_string())
-        }
     }
+}
+
+fn execute_public_command(command: &PublicCommand) -> std::result::Result<String, String> {
+    match command {
+        PublicCommand::Preflight(args) => {
+            let contents = read_manifest_file(&args.manifest, "preflight manifest")?;
+            validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
+        }
+        PublicCommand::Evidence(command) => execute_evidence_command(command),
+    }
+}
+
+fn execute_evidence_command(command: &EvidenceCommand) -> std::result::Result<String, String> {
+    match command {
+        EvidenceCommand::Validate(args) => {
+            let contents = read_manifest_file(&args.manifest, "evidence manifest")?;
+            validate_public_evidence_manifest(&contents).map_err(|error| error.to_string())
+        }
+        command => execute_public_evidence_command(command).map_err(|error| error.to_string()),
+    }
+}
+
+fn read_manifest_file(path: &Path, kind: &str) -> std::result::Result<String, String> {
+    std::fs::read_to_string(path)
+        .map_err(|error| format!("failed to read {kind} {}: {error}", path_arg(path)))
 }
 
 struct RoleServiceDispatchConfig {
