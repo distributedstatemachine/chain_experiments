@@ -1137,6 +1137,9 @@ spaghetti around.
 - Iteration 463 split node heartbeat and operator-identity manifest helpers into
   `cli/tests/manifest_node_fixtures.rs`, leaving the full manifest fixture module to compose node
   fixture lines instead of owning their signature construction.
+- Iteration 464 split network-runtime root aggregation and observation-line rendering into
+  `cli/tests/manifest_network_fixtures.rs`, keeping full manifest assembly separate from network
+  supporting-record fixture formatting.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

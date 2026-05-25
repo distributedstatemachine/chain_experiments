@@ -4,10 +4,12 @@ use crate::testnet::{
     PublicEvidenceRecordKind, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
     PublicNodeEvidence, PublicNodeRole, PublicServiceEndpoint, PublicServiceEvidence,
     PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
-    aggregate_public_evidence_record_roots, public_network_runtime_observations_for_run,
 };
-use crate::types::{Hash, address, hash_bytes};
+use crate::types::{address, hash_bytes};
 
+use super::manifest_network_fixtures::{
+    manifest_network_observation_lines_for_run, network_runtime_root_for_run,
+};
 use super::manifest_node_fixtures::{
     manifest_node_signature, manifest_operator_identity_uri, manifest_operator_signature,
 };
@@ -26,43 +28,6 @@ pub(super) fn manifest_hash(label: &[u8]) -> String {
 
 pub(super) fn manifest_address(label: &[u8]) -> String {
     hex(&address(label))
-}
-
-pub(super) fn network_runtime_root_for_run(run: &PublicTestnetRunEvidence) -> Hash {
-    let record_roots = public_network_runtime_observations_for_run(run)
-        .iter()
-        .map(|observation| observation.record_root)
-        .collect::<Vec<_>>();
-    aggregate_public_evidence_record_roots(
-        PublicEvidenceRecordKind::NetworkRuntimeObservations,
-        &record_roots,
-    )
-    .expect("generated network observation roots should aggregate")
-}
-
-pub(super) fn manifest_network_observation_lines() -> String {
-    public_network_runtime_observations_for_run(&manifest_bundle().run)
-        .iter()
-        .map(|observation| {
-            format!(
-                "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
-                hex(&observation.operator_id),
-                observation.peer_id,
-                observation.listen_address,
-                observation.observed_at_unix_seconds,
-                observation.gossip_topic_count,
-                observation.request_response_protocol_count,
-                observation.bootstrap_peer_count,
-                observation.max_transmit_bytes,
-                observation.request_timeout_seconds,
-                observation.max_concurrent_streams,
-                observation.idle_connection_timeout_seconds,
-                hex(&observation.record_root),
-                hex(&observation.observation_signature)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 pub(super) fn manifest_bundle() -> PublicTestnetEvidenceBundle {
@@ -306,7 +271,7 @@ service=telemetry,{},https://telemetry.tensorvm.net/health,/health,0,9,10,10,{}
             b"validator-a",
             b"validator-a-operator"
         ),
-        manifest_network_observation_lines(),
+        manifest_network_observation_lines_for_run(&manifest_bundle().run),
         hex(&manifest_bundle().network_runtime_observation_root),
         hex(&manifest_bundle().network_runtime_observation_signature),
         manifest_hash(b"data-availability-root"),

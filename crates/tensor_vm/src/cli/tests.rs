@@ -19,6 +19,7 @@ mod local_role_parser;
 mod local_validation;
 mod local_validator_parser;
 mod manifest_fixtures;
+mod manifest_network_fixtures;
 mod manifest_node_fixtures;
 mod manifest_publication_fixtures;
 mod manifest_reports;
