@@ -1,6 +1,7 @@
 use super::public_evidence_commands::EvidenceServiceCommand;
 use super::public_evidence_service_commands::{
-    PublicServiceEndpointArgs, ServiceContentTargetArgs,
+    PublicServiceEndpointArgs, ServiceContentTargetArgs, ServiceHealthArgs,
+    ServiceHealthFromFileArgs,
 };
 use super::service_evidence::{
     ServiceHealthEvidenceLine, service_content_evidence_line,
@@ -16,29 +17,8 @@ pub(super) fn execute_public_evidence_service_command(
     command: &EvidenceServiceCommand,
 ) -> Result<String> {
     match command {
-        EvidenceServiceCommand::Health(args) => {
-            let endpoint = service_endpoint(&args.endpoint);
-            service_health_evidence_line(ServiceHealthEvidenceLine {
-                kind: endpoint.kind,
-                endpoint_id: endpoint.endpoint_id,
-                public_url: endpoint.public_url,
-                health_path: &args.health.health_path,
-                first_seen_block: args.window.first_block,
-                last_seen_block: args.window.last_block,
-                reachable_observation_count: args.reachable_count,
-                signed_health_check_count: args.signed_health_check_count,
-            })
-        }
-        EvidenceServiceCommand::HealthFile(args) => {
-            let endpoint = service_endpoint(&args.endpoint);
-            service_health_evidence_line_from_file(
-                endpoint.kind,
-                endpoint.endpoint_id,
-                endpoint.public_url,
-                &args.health.health_path,
-                &path_argument(&args.observation_file),
-            )
-        }
+        EvidenceServiceCommand::Health(args) => service_health_from_counts(args),
+        EvidenceServiceCommand::HealthFile(args) => service_health_from_file(args),
         EvidenceServiceCommand::Content(args) => service_content_from_root(
             service_content_target(&args.target),
             args.content_root.into_hash(),
@@ -53,6 +33,31 @@ pub(super) fn execute_public_evidence_service_command(
             &path_argument(&args.content_file),
         ),
     }
+}
+
+fn service_health_from_counts(args: &ServiceHealthArgs) -> Result<String> {
+    let endpoint = service_endpoint(&args.endpoint);
+    service_health_evidence_line(ServiceHealthEvidenceLine {
+        kind: endpoint.kind,
+        endpoint_id: endpoint.endpoint_id,
+        public_url: endpoint.public_url,
+        health_path: &args.health.health_path,
+        first_seen_block: args.window.first_block,
+        last_seen_block: args.window.last_block,
+        reachable_observation_count: args.reachable_count,
+        signed_health_check_count: args.signed_health_check_count,
+    })
+}
+
+fn service_health_from_file(args: &ServiceHealthFromFileArgs) -> Result<String> {
+    let endpoint = service_endpoint(&args.endpoint);
+    service_health_evidence_line_from_file(
+        endpoint.kind,
+        endpoint.endpoint_id,
+        endpoint.public_url,
+        &args.health.health_path,
+        &path_argument(&args.observation_file),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

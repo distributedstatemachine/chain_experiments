@@ -1405,6 +1405,8 @@ spaghetti around.
   helpers, keeping fixed read routes out of a single mixed service match.
 - Iteration 572 split mutable RPC dispatch into method-first routing and a POST-only mutation helper,
   removing the repeated POST guard from transaction, receipt, attestation, and faucet-claim routing.
+- Iteration 573 split public service health evidence execution out of the service command match, keeping
+  direct health counts and file-backed health observations behind focused helper paths.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
