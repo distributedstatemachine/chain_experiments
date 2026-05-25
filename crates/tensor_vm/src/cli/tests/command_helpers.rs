@@ -38,6 +38,12 @@ pub(super) fn hash_arg(value: Hash) -> HashArg {
     HashArg::new(value)
 }
 
+pub(super) fn evidence_bundle_id_args(bundle_id: Hash) -> EvidenceBundleIdArgs {
+    EvidenceBundleIdArgs {
+        bundle_id: hash_arg(bundle_id),
+    }
+}
+
 pub(super) fn address_arg(value: Address) -> AddressArg {
     AddressArg::new(value)
 }
@@ -66,7 +72,7 @@ pub(super) fn network_observation_target_args(
 
 pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> PublicationBundleArgs {
     PublicationBundleArgs {
-        bundle_id: hash_arg(bundle_id),
+        bundle: evidence_bundle_id_args(bundle_id),
         public_uri: public_uri.to_owned(),
     }
 }
@@ -76,7 +82,7 @@ pub(super) fn run_window_context_args(
     manifest_signer: Address,
 ) -> RunWindowContextArgs {
     RunWindowContextArgs {
-        bundle_id: hash_arg(bundle_id),
+        bundle: evidence_bundle_id_args(bundle_id),
         signer: manifest_signer_args(manifest_signer),
     }
 }
@@ -121,7 +127,7 @@ pub(super) fn record_context_args_from(
 ) -> PublicEvidenceRecordContextArgs {
     PublicEvidenceRecordContextArgs {
         kind: record_kind_arg(kind),
-        bundle_id: hash_arg(bundle_id),
+        bundle: evidence_bundle_id_args(bundle_id),
         signer: manifest_signer_args(manifest_signer),
     }
 }

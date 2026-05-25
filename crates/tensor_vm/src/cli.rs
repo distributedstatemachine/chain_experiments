@@ -12,6 +12,7 @@ mod localnet_commands;
 mod network_evidence;
 mod node_evidence;
 mod public_evidence_block_window_commands;
+mod public_evidence_bundle_commands;
 mod public_evidence_commands;
 mod public_evidence_execution;
 mod public_evidence_network_commands;
@@ -40,11 +41,11 @@ mod validation;
 mod value_types;
 
 pub use commands::{
-    AddressArg, AuditorRecordArgs, BlockHeightWindowArgs, DataDirArgs, EvidenceCommand,
-    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
-    EvidenceServiceCommand, HashArg, HexBytesArg, IdentitySeedArgs, LocalCpuVerifyArgs,
-    LocalnetCommand, ManifestSignerArgs, MinerCheckArgs, MinerCommand, MinerDeviceArg,
-    MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+    AddressArg, AuditorRecordArgs, BlockHeightWindowArgs, DataDirArgs, EvidenceBundleIdArgs,
+    EvidenceCommand, EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand,
+    EvidenceRunCommand, EvidenceServiceCommand, HashArg, HexBytesArg, IdentitySeedArgs,
+    LocalCpuVerifyArgs, LocalnetCommand, ManifestSignerArgs, MinerCheckArgs, MinerCommand,
+    MinerDeviceArg, MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
     NetworkObservationTargetArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs,
     NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs,
     ObservationTimestampArgs, OperatorAttestationArgs, P2pListenArgs, ProposerCommand,

@@ -1,3 +1,4 @@
+use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
 };
@@ -53,13 +54,17 @@ pub struct RecordSummaryFromFileArgs {
 pub struct PublicEvidenceRecordContextArgs {
     #[arg(long, help = "Supporting-record class.")]
     pub kind: PublicEvidenceRecordKindArg,
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
+    #[command(flatten)]
+    pub bundle: EvidenceBundleIdArgs,
     #[command(flatten)]
     pub signer: ManifestSignerArgs,
 }
 
 impl PublicEvidenceRecordContextArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.bundle.id()
+    }
+
     pub fn manifest_signer(&self) -> Address {
         self.signer.signer()
     }

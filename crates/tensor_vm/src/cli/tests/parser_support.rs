@@ -1,8 +1,8 @@
 use super::{
-    AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, ManifestSignerArgs, MinerDeviceArg,
-    NodeRuntimeArgs, P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs,
-    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
-    RunWindowContextArgs,
+    AddressArg, DataDirArgs, EvidenceBundleIdArgs, HashArg, IdentitySeedArgs, ManifestSignerArgs,
+    MinerDeviceArg, NodeRuntimeArgs, P2pListenArgs, PublicationBundleArgs,
+    RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs, RecordRootsArgs, RoleNodeArgs,
+    RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -57,12 +57,18 @@ pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySee
     }
 }
 
+pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
+    EvidenceBundleIdArgs {
+        bundle_id: hash_arg(bundle_id),
+    }
+}
+
 pub(super) fn publication_bundle_args(
     bundle_id: [u8; 32],
     public_uri: &str,
 ) -> PublicationBundleArgs {
     PublicationBundleArgs {
-        bundle_id: hash_arg(bundle_id),
+        bundle: evidence_bundle_id_args(bundle_id),
         public_uri: public_uri.to_owned(),
     }
 }
@@ -72,7 +78,7 @@ pub(super) fn run_window_context_args(
     manifest_signer: [u8; 32],
 ) -> RunWindowContextArgs {
     RunWindowContextArgs {
-        bundle_id: hash_arg(bundle_id),
+        bundle: evidence_bundle_id_args(bundle_id),
         signer: manifest_signer_args(manifest_signer),
     }
 }

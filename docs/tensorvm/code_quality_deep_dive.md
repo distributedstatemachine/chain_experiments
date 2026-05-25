@@ -1222,6 +1222,9 @@ spaghetti around.
 - Iteration 492 flattened repeated public evidence `--manifest-signer` Clap arguments into
   `ManifestSignerArgs`, keeping publication, run-window, and supporting-record evidence on one
   canonical manifest signer model.
+- Iteration 493 flattened repeated public evidence `--bundle-id` Clap arguments into
+  `EvidenceBundleIdArgs`, keeping publication bundles, run-window contexts, and supporting-record
+  contexts on one canonical evidence bundle identifier model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

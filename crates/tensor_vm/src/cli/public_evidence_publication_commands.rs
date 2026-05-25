@@ -1,6 +1,7 @@
+use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::public_evidence_signing_commands::ManifestSignerArgs;
-use super::value_types::{AddressArg, HashArg};
+use super::value_types::AddressArg;
 use crate::types::Hash;
 use clap::{Args, ValueHint};
 
@@ -47,8 +48,8 @@ pub struct AuditorRecordArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicationBundleArgs {
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
+    #[command(flatten)]
+    pub bundle: EvidenceBundleIdArgs,
     #[arg(
         long,
         value_name = "URI",
@@ -60,7 +61,7 @@ pub struct PublicationBundleArgs {
 
 impl PublicationBundleArgs {
     pub fn bundle_id(&self) -> Hash {
-        self.bundle_id.into_hash()
+        self.bundle.id()
     }
 
     pub fn public_uri(&self) -> &str {

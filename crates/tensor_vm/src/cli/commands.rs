@@ -6,19 +6,19 @@ pub use super::local_commands::{
     ValidatorRunArgs,
 };
 pub use super::public_evidence_commands::{
-    AuditorRecordArgs, BlockHeightWindowArgs, EvidenceCommand, EvidenceNetworkCommand,
-    EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
-    ManifestSignerArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
-    NetworkObservationTargetArgs, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    ObservationTimestampArgs, OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
-    PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
-    PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
-    PublicationArgs, PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
-    RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
-    RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs,
-    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
-    ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
+    AuditorRecordArgs, BlockHeightWindowArgs, EvidenceBundleIdArgs, EvidenceCommand,
+    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
+    EvidenceServiceCommand, ManifestSignerArgs, NetworkObservationArgs,
+    NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, ObservationTimestampArgs, OperatorAttestationArgs, PublicCommand,
+    PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
+    PublicNodeIdentityArgs, PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg,
+    PublicTestnetManifestArgs, PublicationArgs, PublicationBundleArgs, RecordArtifactArgs,
+    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs,
+    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
+    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs,
+    ServiceContentTargetArgs, ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};
