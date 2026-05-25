@@ -39,38 +39,38 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
+        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.amount()),
         TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
-            &path_arg(args.wallet.path()),
-            args.device.as_str(),
-            &args.node.multiaddr().to_string(),
+            &path_arg(args.wallet().path()),
+            args.device().as_str(),
+            &args.node().multiaddr().to_string(),
         ),
         TvmdCommand::Miner(MinerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
             validate_miner_runtime(
                 &config.wallet,
-                args.device.as_str(),
+                args.device().as_str(),
                 &config.data_dir,
                 &config.auth_token,
             )?;
-            run_miner_service(config.as_role_service_config(Some(args.device.as_str())))
+            run_miner_service(config.as_role_service_config(Some(args.device().as_str())))
         }
         TvmdCommand::Miner(MinerCommand::Status) => Ok(miner_status()),
         TvmdCommand::Validator(ValidatorCommand::Register(args)) => {
-            check_validator_registration(args.stake)
+            check_validator_registration(args.amount())
         }
         TvmdCommand::Validator(ValidatorCommand::Check(args)) => check_validator_start(
-            &path_arg(args.wallet.path()),
-            &args.node.multiaddr().to_string(),
+            &path_arg(args.wallet().path()),
+            &args.node().multiaddr().to_string(),
         ),
         TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_validator_service(config.as_role_service_config(None))
         }
         TvmdCommand::Validator(ValidatorCommand::Status) => Ok(validator_status()),
         TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
+            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_proposer_service(config.as_role_service_config(None))
         }

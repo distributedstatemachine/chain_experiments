@@ -47,6 +47,12 @@ pub struct StakeArgs {
     pub stake: u64,
 }
 
+impl StakeArgs {
+    pub fn amount(&self) -> u64 {
+        self.stake
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerCheckArgs {
     #[command(flatten)]
@@ -60,6 +66,20 @@ pub struct MinerCheckArgs {
     pub device: MinerDeviceArg,
     #[command(flatten)]
     pub node: RoleNodeArgs,
+}
+
+impl MinerCheckArgs {
+    pub fn wallet(&self) -> &RoleWalletArgs {
+        &self.wallet
+    }
+
+    pub fn device(&self) -> &MinerDeviceArg {
+        &self.device
+    }
+
+    pub fn node(&self) -> &RoleNodeArgs {
+        &self.node
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -77,6 +97,20 @@ pub struct MinerRunArgs {
     pub runtime: RoleRuntimeArgs,
 }
 
+impl MinerRunArgs {
+    pub fn wallet(&self) -> &RoleWalletArgs {
+        &self.wallet
+    }
+
+    pub fn device(&self) -> &MinerDeviceArg {
+        &self.device
+    }
+
+    pub fn runtime(&self) -> &RoleRuntimeArgs {
+        &self.runtime
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorCheckArgs {
     #[command(flatten)]
@@ -85,12 +119,32 @@ pub struct ValidatorCheckArgs {
     pub node: RoleNodeArgs,
 }
 
+impl ValidatorCheckArgs {
+    pub fn wallet(&self) -> &RoleWalletArgs {
+        &self.wallet
+    }
+
+    pub fn node(&self) -> &RoleNodeArgs {
+        &self.node
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorRunArgs {
     #[command(flatten)]
     pub wallet: RoleWalletArgs,
     #[command(flatten)]
     pub runtime: RoleRuntimeArgs,
+}
+
+impl ValidatorRunArgs {
+    pub fn wallet(&self) -> &RoleWalletArgs {
+        &self.wallet
+    }
+
+    pub fn runtime(&self) -> &RoleRuntimeArgs {
+        &self.runtime
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

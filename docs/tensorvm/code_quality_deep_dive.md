@@ -1254,6 +1254,8 @@ spaghetti around.
   accessors, keeping app dispatch out of raw manifest path fields.
 - Iteration 506 routed local node/localnet runtime dispatch through typed Clap accessors, keeping
   service dispatch out of raw runtime, peer, block-height, and JSON-mode fields.
+- Iteration 507 routed local role command dispatch through typed Clap accessors, keeping miner,
+  validator, and proposer paths out of raw stake, wallet, device, node, and runtime fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
