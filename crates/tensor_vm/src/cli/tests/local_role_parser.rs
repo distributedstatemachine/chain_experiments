@@ -23,9 +23,9 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: role_wallet_args("proposer.key"),
-            runtime: role_runtime_args(
+        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs::new(
+            role_wallet_args("proposer.key"),
+            role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -34,7 +34,7 @@ fn parses_documented_proposer_commands() {
                 "secret",
                 7,
             ),
-        }))
+        )))
     );
     let identity_seed = "33".repeat(32);
     assert_eq!(
@@ -59,9 +59,9 @@ fn parses_documented_proposer_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs {
-            wallet: role_wallet_args("proposer.key"),
-            runtime: role_runtime_args(
+        TvmdCommand::Proposer(ProposerCommand::Run(ValidatorRunArgs::new(
+            role_wallet_args("proposer.key"),
+            role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -70,6 +70,6 @@ fn parses_documented_proposer_commands() {
                 "secret",
                 7,
             ),
-        }))
+        )))
     );
 }

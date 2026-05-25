@@ -1282,6 +1282,8 @@ spaghetti around.
   node and role runtime groups out of public parser internals.
 - Iteration 520 hid local node/localnet Clap fields behind constructors and accessors, keeping
   peer-add, bootstrap-peer, node-check, node-serve, block, and verify args out of public parser internals.
+- Iteration 521 hid local role command Clap fields behind constructors and accessors, keeping miner,
+  validator, and proposer check/run groups out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -60,19 +60,27 @@ impl StakeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerCheckArgs {
     #[command(flatten)]
-    pub wallet: RoleWalletArgs,
+    wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
         value_name = "DEVICE",
         help = "Miner backend: cpu or cuda:N"
     )]
-    pub device: MinerDeviceArg,
+    device: MinerDeviceArg,
     #[command(flatten)]
-    pub node: RoleNodeArgs,
+    node: RoleNodeArgs,
 }
 
 impl MinerCheckArgs {
+    pub fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, node: RoleNodeArgs) -> Self {
+        Self {
+            wallet,
+            device,
+            node,
+        }
+    }
+
     pub fn wallet(&self) -> &RoleWalletArgs {
         &self.wallet
     }
@@ -89,19 +97,27 @@ impl MinerCheckArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct MinerRunArgs {
     #[command(flatten)]
-    pub wallet: RoleWalletArgs,
+    wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
         value_name = "DEVICE",
         help = "Miner backend: cpu or cuda:N"
     )]
-    pub device: MinerDeviceArg,
+    device: MinerDeviceArg,
     #[command(flatten)]
-    pub runtime: RoleRuntimeArgs,
+    runtime: RoleRuntimeArgs,
 }
 
 impl MinerRunArgs {
+    pub fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, runtime: RoleRuntimeArgs) -> Self {
+        Self {
+            wallet,
+            device,
+            runtime,
+        }
+    }
+
     pub fn wallet(&self) -> &RoleWalletArgs {
         &self.wallet
     }
@@ -118,12 +134,16 @@ impl MinerRunArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorCheckArgs {
     #[command(flatten)]
-    pub wallet: RoleWalletArgs,
+    wallet: RoleWalletArgs,
     #[command(flatten)]
-    pub node: RoleNodeArgs,
+    node: RoleNodeArgs,
 }
 
 impl ValidatorCheckArgs {
+    pub fn new(wallet: RoleWalletArgs, node: RoleNodeArgs) -> Self {
+        Self { wallet, node }
+    }
+
     pub fn wallet(&self) -> &RoleWalletArgs {
         &self.wallet
     }
@@ -136,12 +156,16 @@ impl ValidatorCheckArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ValidatorRunArgs {
     #[command(flatten)]
-    pub wallet: RoleWalletArgs,
+    wallet: RoleWalletArgs,
     #[command(flatten)]
-    pub runtime: RoleRuntimeArgs,
+    runtime: RoleRuntimeArgs,
 }
 
 impl ValidatorRunArgs {
+    pub fn new(wallet: RoleWalletArgs, runtime: RoleRuntimeArgs) -> Self {
+        Self { wallet, runtime }
+    }
+
     pub fn wallet(&self) -> &RoleWalletArgs {
         &self.wallet
     }
