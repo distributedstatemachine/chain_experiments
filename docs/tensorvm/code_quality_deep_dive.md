@@ -1373,6 +1373,9 @@ spaghetti around.
 - Iteration 560 consolidated public service evidence execution around typed endpoint and content-target
   contexts, so health, health-file, content-root, content-bytes, and content-file variants no longer repeat
   the same Clap-field extraction before calling the service evidence builders.
+- Iteration 561 consolidated public network evidence execution around typed target, protocol-count, and
+  transport-limit contexts, keeping observation and service-log variants from duplicating libp2p operator,
+  listen address, timestamp, and runtime-limit extraction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
