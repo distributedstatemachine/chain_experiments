@@ -16,7 +16,7 @@ use super::tvmd_path::path_arg;
 use super::{RoleServiceConfig, run_miner_service, run_proposer_service, run_validator_service};
 
 pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
-    execute_tvmd_command(cli.tvmd_command())
+    execute_tvmd_command(&cli.command)
 }
 
 pub(crate) fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
@@ -39,38 +39,37 @@ pub(crate) fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result
             })?;
             validate_public_testnet_preflight_manifest(&contents).map_err(|error| error.to_string())
         }
-        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.amount()),
+        TvmdCommand::Miner(MinerCommand::Register(args)) => check_miner_registration(args.stake),
         TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
-            &path_arg(args.wallet().path()),
-            args.device().as_str(),
-            &args.node().multiaddr().to_string(),
+            &path_arg(&args.wallet.wallet),
+            args.device.as_str(),
+            &args.node.node.to_string(),
         ),
         TvmdCommand::Miner(MinerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_miner_runtime(
                 &config.wallet,
-                args.device().as_str(),
+                args.device.as_str(),
                 &config.data_dir,
                 &config.auth_token,
             )?;
-            run_miner_service(config.as_role_service_config(Some(args.device().as_str())))
+            run_miner_service(config.as_role_service_config(Some(args.device.as_str())))
         }
         TvmdCommand::Miner(MinerCommand::Status) => Ok(miner_status()),
         TvmdCommand::Validator(ValidatorCommand::Register(args)) => {
-            check_validator_registration(args.amount())
+            check_validator_registration(args.stake)
         }
-        TvmdCommand::Validator(ValidatorCommand::Check(args)) => check_validator_start(
-            &path_arg(args.wallet().path()),
-            &args.node().multiaddr().to_string(),
-        ),
+        TvmdCommand::Validator(ValidatorCommand::Check(args)) => {
+            check_validator_start(&path_arg(&args.wallet.wallet), &args.node.node.to_string())
+        }
         TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_validator_service(config.as_role_service_config(None))
         }
         TvmdCommand::Validator(ValidatorCommand::Status) => Ok(validator_status()),
         TvmdCommand::Proposer(ProposerCommand::Run(args)) => {
-            let config = RoleServiceDispatchConfig::from_args(args.wallet().path(), args.runtime());
+            let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
             run_proposer_service(config.as_role_service_config(None))
         }
@@ -95,16 +94,16 @@ struct RoleServiceDispatchConfig {
 
 impl RoleServiceDispatchConfig {
     fn from_args(wallet: &Path, runtime: &RoleRuntimeArgs) -> Self {
-        let node_runtime = runtime.node_runtime();
+        let node_runtime = &runtime.node_runtime;
         Self {
             wallet: path_arg(wallet),
-            node: runtime.node().multiaddr().to_string(),
-            listen: node_runtime.listen().to_string(),
-            p2p_listen: node_runtime.p2p_listen().multiaddr().to_string(),
-            data_dir: path_arg(node_runtime.data_dir().path()),
-            identity_seed: node_runtime.identity_seed(),
-            auth_token: node_runtime.auth_token().to_owned(),
-            max_requests: node_runtime.max_requests(),
+            node: runtime.node.node.to_string(),
+            listen: node_runtime.listen.to_string(),
+            p2p_listen: node_runtime.p2p_listen.p2p_listen.to_string(),
+            data_dir: path_arg(&node_runtime.data_dir.data_dir),
+            identity_seed: node_runtime.identity_seed.hash(),
+            auth_token: node_runtime.auth_token.clone(),
+            max_requests: node_runtime.max_requests,
         }
     }
 

@@ -21,10 +21,10 @@ fn parses_documented_localnet_commands() {
             "--json",
         ])
         .unwrap(),
-        TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs::new(
-            data_dir_args("/var/lib/tensorvm"),
-            true,
-        )))
+        TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs {
+            data_dir: data_dir_args("/var/lib/tensorvm"),
+            json: true,
+        }))
     );
 }
 
@@ -51,11 +51,11 @@ fn rejects_invalid_local_role_cli() {
 fn clap_role_defaults_runtime_arguments() {
     assert_eq!(
         parse_test_cli(&["miner", "check", "--wallet", "miner.key"]).unwrap(),
-        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs::new(
-            role_wallet_args("miner.key"),
-            miner_device("cpu"),
-            role_node_args("/ip4/127.0.0.1/tcp/4001"),
-        )))
+        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
+            wallet: role_wallet_args("miner.key"),
+            device: miner_device("cpu"),
+            node: role_node_args("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -67,10 +67,10 @@ fn clap_role_defaults_runtime_arguments() {
             "secret"
         ])
         .unwrap(),
-        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs::new(
-            role_wallet_args("miner.key"),
-            miner_device("cpu"),
-            role_runtime_args(
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: role_wallet_args("miner.key"),
+            device: miner_device("cpu"),
+            runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/4001",
@@ -79,6 +79,6 @@ fn clap_role_defaults_runtime_arguments() {
                 "secret",
                 0,
             ),
-        )))
+        }))
     );
 }

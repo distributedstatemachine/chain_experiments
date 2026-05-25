@@ -2,7 +2,7 @@ use super::local_runtime_args::{NodeRuntimeArgs, default_p2p_listen_addr};
 use super::value_types::MinerDeviceArg;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::Multiaddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -44,144 +44,53 @@ pub(crate) struct StakeArgs {
         value_name = "TOKENS",
         help = "Stake amount to validate for registration."
     )]
-    stake: u64,
-}
-
-impl StakeArgs {
-    #[cfg(test)]
-    pub(crate) fn new(stake: u64) -> Self {
-        Self { stake }
-    }
-
-    pub fn amount(&self) -> u64 {
-        self.stake
-    }
+    pub(crate) stake: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct MinerCheckArgs {
     #[command(flatten)]
-    wallet: RoleWalletArgs,
+    pub(crate) wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
         value_name = "DEVICE",
         help = "Miner backend: cpu or cuda:N"
     )]
-    device: MinerDeviceArg,
+    pub(crate) device: MinerDeviceArg,
     #[command(flatten)]
-    node: RoleNodeArgs,
-}
-
-impl MinerCheckArgs {
-    #[cfg(test)]
-    pub(crate) fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, node: RoleNodeArgs) -> Self {
-        Self {
-            wallet,
-            device,
-            node,
-        }
-    }
-
-    pub fn wallet(&self) -> &RoleWalletArgs {
-        &self.wallet
-    }
-
-    pub fn device(&self) -> &MinerDeviceArg {
-        &self.device
-    }
-
-    pub fn node(&self) -> &RoleNodeArgs {
-        &self.node
-    }
+    pub(crate) node: RoleNodeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct MinerRunArgs {
     #[command(flatten)]
-    wallet: RoleWalletArgs,
+    pub(crate) wallet: RoleWalletArgs,
     #[arg(
         long,
         default_value_t = MinerDeviceArg::default(),
         value_name = "DEVICE",
         help = "Miner backend: cpu or cuda:N"
     )]
-    device: MinerDeviceArg,
+    pub(crate) device: MinerDeviceArg,
     #[command(flatten)]
-    runtime: RoleRuntimeArgs,
-}
-
-impl MinerRunArgs {
-    #[cfg(test)]
-    pub(crate) fn new(
-        wallet: RoleWalletArgs,
-        device: MinerDeviceArg,
-        runtime: RoleRuntimeArgs,
-    ) -> Self {
-        Self {
-            wallet,
-            device,
-            runtime,
-        }
-    }
-
-    pub fn wallet(&self) -> &RoleWalletArgs {
-        &self.wallet
-    }
-
-    pub fn device(&self) -> &MinerDeviceArg {
-        &self.device
-    }
-
-    pub fn runtime(&self) -> &RoleRuntimeArgs {
-        &self.runtime
-    }
+    pub(crate) runtime: RoleRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct ValidatorCheckArgs {
     #[command(flatten)]
-    wallet: RoleWalletArgs,
+    pub(crate) wallet: RoleWalletArgs,
     #[command(flatten)]
-    node: RoleNodeArgs,
-}
-
-impl ValidatorCheckArgs {
-    #[cfg(test)]
-    pub(crate) fn new(wallet: RoleWalletArgs, node: RoleNodeArgs) -> Self {
-        Self { wallet, node }
-    }
-
-    pub fn wallet(&self) -> &RoleWalletArgs {
-        &self.wallet
-    }
-
-    pub fn node(&self) -> &RoleNodeArgs {
-        &self.node
-    }
+    pub(crate) node: RoleNodeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct ValidatorRunArgs {
     #[command(flatten)]
-    wallet: RoleWalletArgs,
+    pub(crate) wallet: RoleWalletArgs,
     #[command(flatten)]
-    runtime: RoleRuntimeArgs,
-}
-
-impl ValidatorRunArgs {
-    #[cfg(test)]
-    pub(crate) fn new(wallet: RoleWalletArgs, runtime: RoleRuntimeArgs) -> Self {
-        Self { wallet, runtime }
-    }
-
-    pub fn wallet(&self) -> &RoleWalletArgs {
-        &self.wallet
-    }
-
-    pub fn runtime(&self) -> &RoleRuntimeArgs {
-        &self.runtime
-    }
+    pub(crate) runtime: RoleRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -192,18 +101,7 @@ pub(crate) struct RoleWalletArgs {
         value_hint = ValueHint::FilePath,
         help = "Path to the role wallet key."
     )]
-    wallet: PathBuf,
-}
-
-impl RoleWalletArgs {
-    #[cfg(test)]
-    pub(crate) fn new(wallet: PathBuf) -> Self {
-        Self { wallet }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.wallet
-    }
+    pub(crate) wallet: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -214,39 +112,13 @@ pub(crate) struct RoleNodeArgs {
         value_name = "MULTIADDR",
         help = "libp2p address of the TensorVM node to use."
     )]
-    node: Multiaddr,
-}
-
-impl RoleNodeArgs {
-    #[cfg(test)]
-    pub(crate) fn new(node: Multiaddr) -> Self {
-        Self { node }
-    }
-
-    pub fn multiaddr(&self) -> &Multiaddr {
-        &self.node
-    }
+    pub(crate) node: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RoleRuntimeArgs {
     #[command(flatten)]
-    node: RoleNodeArgs,
+    pub(crate) node: RoleNodeArgs,
     #[command(flatten)]
-    node_runtime: NodeRuntimeArgs,
-}
-
-impl RoleRuntimeArgs {
-    #[cfg(test)]
-    pub(crate) fn new(node: RoleNodeArgs, node_runtime: NodeRuntimeArgs) -> Self {
-        Self { node, node_runtime }
-    }
-
-    pub fn node(&self) -> &RoleNodeArgs {
-        &self.node
-    }
-
-    pub fn node_runtime(&self) -> &NodeRuntimeArgs {
-        &self.node_runtime
-    }
+    pub(crate) node_runtime: NodeRuntimeArgs,
 }

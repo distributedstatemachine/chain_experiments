@@ -3,7 +3,7 @@ use crate::types::Hash;
 use clap::{Args, ValueHint};
 use libp2p::Multiaddr;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(super) const DEFAULT_DATA_DIR: &str = ".tensorvm";
 const DEFAULT_LISTEN_ADDR: &str = "127.0.0.1:8545";
@@ -31,13 +31,13 @@ pub(crate) struct NodeRuntimeArgs {
         value_name = "ADDR",
         help = "RPC and service listen address."
     )]
-    listen: SocketAddr,
+    pub(crate) listen: SocketAddr,
     #[command(flatten)]
-    p2p_listen: P2pListenArgs,
+    pub(crate) p2p_listen: P2pListenArgs,
     #[command(flatten)]
-    data_dir: DataDirArgs,
+    pub(crate) data_dir: DataDirArgs,
     #[command(flatten)]
-    identity_seed: IdentitySeedArgs,
+    pub(crate) identity_seed: IdentitySeedArgs,
     #[arg(
         long,
         env = "TVMD_AUTH_TOKEN",
@@ -45,7 +45,7 @@ pub(crate) struct NodeRuntimeArgs {
         hide_env_values = true,
         help = "Bearer token required by local RPC, explorer, faucet, and telemetry endpoints."
     )]
-    auth_token: String,
+    pub(crate) auth_token: String,
     #[arg(
         long,
         env = "TVMD_MAX_REQUESTS",
@@ -53,52 +53,7 @@ pub(crate) struct NodeRuntimeArgs {
         value_name = "N",
         help = "Maximum RPC requests before the service exits; 0 keeps serving."
     )]
-    max_requests: usize,
-}
-
-impl NodeRuntimeArgs {
-    #[cfg(test)]
-    pub(crate) fn new(
-        listen: SocketAddr,
-        p2p_listen: P2pListenArgs,
-        data_dir: DataDirArgs,
-        identity_seed: IdentitySeedArgs,
-        auth_token: String,
-        max_requests: usize,
-    ) -> Self {
-        Self {
-            listen,
-            p2p_listen,
-            data_dir,
-            identity_seed,
-            auth_token,
-            max_requests,
-        }
-    }
-
-    pub fn listen(&self) -> &SocketAddr {
-        &self.listen
-    }
-
-    pub fn p2p_listen(&self) -> &P2pListenArgs {
-        &self.p2p_listen
-    }
-
-    pub fn data_dir(&self) -> &DataDirArgs {
-        &self.data_dir
-    }
-
-    pub fn identity_seed(&self) -> Option<Hash> {
-        self.identity_seed.hash()
-    }
-
-    pub fn auth_token(&self) -> &str {
-        &self.auth_token
-    }
-
-    pub fn max_requests(&self) -> usize {
-        self.max_requests
-    }
+    pub(crate) max_requests: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -111,18 +66,7 @@ pub(crate) struct DataDirArgs {
         value_hint = ValueHint::DirPath,
         help = "Node store directory."
     )]
-    data_dir: PathBuf,
-}
-
-impl DataDirArgs {
-    #[cfg(test)]
-    pub(crate) fn new(data_dir: PathBuf) -> Self {
-        Self { data_dir }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.data_dir
-    }
+    pub(crate) data_dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -134,18 +78,7 @@ pub(crate) struct P2pListenArgs {
         value_name = "MULTIADDR",
         help = "libp2p listen multiaddress."
     )]
-    p2p_listen: Multiaddr,
-}
-
-impl P2pListenArgs {
-    #[cfg(test)]
-    pub(crate) fn new(p2p_listen: Multiaddr) -> Self {
-        Self { p2p_listen }
-    }
-
-    pub fn multiaddr(&self) -> &Multiaddr {
-        &self.p2p_listen
-    }
+    pub(crate) p2p_listen: Multiaddr,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Args)]
@@ -155,16 +88,11 @@ pub(crate) struct IdentitySeedArgs {
         value_name = "HEX",
         help = "Deterministic 32-byte seed for the libp2p identity."
     )]
-    identity_seed: Option<HashArg>,
+    pub(crate) identity_seed: Option<HashArg>,
 }
 
 impl IdentitySeedArgs {
-    #[cfg(test)]
-    pub(crate) fn new(identity_seed: Option<HashArg>) -> Self {
-        Self { identity_seed }
-    }
-
-    pub fn hash(&self) -> Option<Hash> {
+    pub(crate) fn hash(&self) -> Option<Hash> {
         self.identity_seed.map(HashArg::into_hash)
     }
 }

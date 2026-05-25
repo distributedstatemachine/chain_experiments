@@ -7,7 +7,7 @@ use super::{
 fn parses_documented_validator_commands() {
     assert_eq!(
         parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
-        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs::new(10_000)))
+        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake: 10_000 }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -19,10 +19,10 @@ fn parses_documented_validator_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs::new(
-            role_wallet_args("validator.key"),
-            role_node_args("/ip4/127.0.0.1/tcp/4001"),
-        )))
+        TvmdCommand::Validator(ValidatorCommand::Check(ValidatorCheckArgs {
+            wallet: role_wallet_args("validator.key"),
+            node: role_node_args("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["validator", "status"]).unwrap(),
@@ -48,9 +48,9 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs::new(
-            role_wallet_args("validator.key"),
-            role_runtime_args(
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: role_wallet_args("validator.key"),
+            runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -59,7 +59,7 @@ fn parses_documented_validator_commands() {
                 "secret",
                 7,
             ),
-        )))
+        }))
     );
     let identity_seed = "22".repeat(32);
     assert_eq!(
@@ -84,9 +84,9 @@ fn parses_documented_validator_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs::new(
-            role_wallet_args("validator.key"),
-            role_runtime_args(
+        TvmdCommand::Validator(ValidatorCommand::Run(ValidatorRunArgs {
+            wallet: role_wallet_args("validator.key"),
+            runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -95,6 +95,6 @@ fn parses_documented_validator_commands() {
                 "secret",
                 7,
             ),
-        )))
+        }))
     );
 }

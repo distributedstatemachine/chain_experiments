@@ -24,19 +24,27 @@ pub(super) fn miner_device(value: &str) -> MinerDeviceArg {
 }
 
 pub(super) fn data_dir_args(data_dir: &str) -> DataDirArgs {
-    DataDirArgs::new(path(data_dir))
+    DataDirArgs {
+        data_dir: path(data_dir),
+    }
 }
 
 pub(super) fn role_wallet_args(wallet: &str) -> RoleWalletArgs {
-    RoleWalletArgs::new(path(wallet))
+    RoleWalletArgs {
+        wallet: path(wallet),
+    }
 }
 
 pub(super) fn role_node_args(node: &str) -> RoleNodeArgs {
-    RoleNodeArgs::new(multiaddr(node))
+    RoleNodeArgs {
+        node: multiaddr(node),
+    }
 }
 
 pub(super) fn p2p_listen_args(p2p_listen: &str) -> P2pListenArgs {
-    P2pListenArgs::new(multiaddr(p2p_listen))
+    P2pListenArgs {
+        p2p_listen: multiaddr(p2p_listen),
+    }
 }
 
 pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
@@ -44,7 +52,9 @@ pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
 }
 
 pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySeedArgs {
-    IdentitySeedArgs::new(identity_seed.map(HashArg::new))
+    IdentitySeedArgs {
+        identity_seed: identity_seed.map(HashArg::new),
+    }
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
@@ -104,14 +114,14 @@ pub(super) fn node_runtime_args(
     auth_token: &str,
     max_requests: usize,
 ) -> NodeRuntimeArgs {
-    NodeRuntimeArgs::new(
-        socket_addr(listen),
-        p2p_listen_args(p2p_listen),
-        data_dir_args(data_dir),
-        identity_seed_args(identity_seed),
-        auth_token.to_owned(),
+    NodeRuntimeArgs {
+        listen: socket_addr(listen),
+        p2p_listen: p2p_listen_args(p2p_listen),
+        data_dir: data_dir_args(data_dir),
+        identity_seed: identity_seed_args(identity_seed),
+        auth_token: auth_token.to_owned(),
         max_requests,
-    )
+    }
 }
 
 pub(super) fn node_serve_args(
@@ -122,14 +132,16 @@ pub(super) fn node_serve_args(
     auth_token: &str,
     max_requests: usize,
 ) -> NodeServeArgs {
-    NodeServeArgs::new(node_runtime_args(
-        listen,
-        p2p_listen,
-        data_dir,
-        identity_seed,
-        auth_token,
-        max_requests,
-    ))
+    NodeServeArgs {
+        runtime: node_runtime_args(
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        ),
+    }
 }
 
 pub(super) fn role_runtime_args(
@@ -141,9 +153,9 @@ pub(super) fn role_runtime_args(
     auth_token: &str,
     max_requests: usize,
 ) -> RoleRuntimeArgs {
-    RoleRuntimeArgs::new(
-        role_node_args(node),
-        node_runtime_args(
+    RoleRuntimeArgs {
+        node: role_node_args(node),
+        node_runtime: node_runtime_args(
             listen,
             p2p_listen,
             data_dir,
@@ -151,5 +163,5 @@ pub(super) fn role_runtime_args(
             auth_token,
             max_requests,
         ),
-    )
+    }
 }

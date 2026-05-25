@@ -5,7 +5,7 @@ use super::{MinerCheckArgs, MinerCommand, MinerRunArgs, StakeArgs, TvmdCommand, 
 fn parses_documented_miner_commands() {
     assert_eq!(
         parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
-        TvmdCommand::Miner(MinerCommand::Register(StakeArgs::new(100)))
+        TvmdCommand::Miner(MinerCommand::Register(StakeArgs { stake: 100 }))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -19,11 +19,11 @@ fn parses_documented_miner_commands() {
             "/ip4/127.0.0.1/tcp/4001"
         ])
         .unwrap(),
-        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs::new(
-            role_wallet_args("miner.key"),
-            miner_device("cpu"),
-            role_node_args("/ip4/127.0.0.1/tcp/4001"),
-        )))
+        TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
+            wallet: role_wallet_args("miner.key"),
+            device: miner_device("cpu"),
+            node: role_node_args("/ip4/127.0.0.1/tcp/4001"),
+        }))
     );
     assert_eq!(
         parse_test_cli(&["miner", "status"]).unwrap(),
@@ -51,10 +51,10 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs::new(
-            role_wallet_args("miner.key"),
-            miner_device("cpu"),
-            role_runtime_args(
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: role_wallet_args("miner.key"),
+            device: miner_device("cpu"),
+            runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -63,7 +63,7 @@ fn parses_documented_miner_commands() {
                 "secret",
                 7,
             ),
-        )))
+        }))
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
@@ -90,10 +90,10 @@ fn parses_documented_miner_commands() {
             "7",
         ])
         .unwrap(),
-        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs::new(
-            role_wallet_args("miner.key"),
-            miner_device("cpu"),
-            role_runtime_args(
+        TvmdCommand::Miner(MinerCommand::Run(MinerRunArgs {
+            wallet: role_wallet_args("miner.key"),
+            device: miner_device("cpu"),
+            runtime: role_runtime_args(
                 "/ip4/127.0.0.1/tcp/4001",
                 "127.0.0.1:8545",
                 "/ip4/127.0.0.1/tcp/0",
@@ -102,6 +102,6 @@ fn parses_documented_miner_commands() {
                 "secret",
                 7,
             ),
-        )))
+        }))
     );
 }

@@ -30,27 +30,9 @@ pub(crate) enum NodePeerCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct NodePeerAddArgs {
     #[command(flatten)]
-    data_dir: DataDirArgs,
+    pub(crate) data_dir: DataDirArgs,
     #[command(flatten)]
-    bootstrap_peer: BootstrapPeerArgs,
-}
-
-impl NodePeerAddArgs {
-    #[cfg(test)]
-    pub(crate) fn new(data_dir: DataDirArgs, bootstrap_peer: BootstrapPeerArgs) -> Self {
-        Self {
-            data_dir,
-            bootstrap_peer,
-        }
-    }
-
-    pub fn data_dir(&self) -> &DataDirArgs {
-        &self.data_dir
-    }
-
-    pub fn bootstrap_peer(&self) -> &BootstrapPeerArgs {
-        &self.bootstrap_peer
-    }
+    pub(crate) bootstrap_peer: BootstrapPeerArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -60,107 +42,39 @@ pub(crate) struct BootstrapPeerArgs {
         value_name = "PEER_ID",
         help = "Peer ID to persist as a bootstrap peer."
     )]
-    peer_id: PeerId,
+    pub(crate) peer_id: PeerId,
     #[arg(
         long,
         value_name = "MULTIADDR",
         help = "Reachable multiaddress for the peer."
     )]
-    address: Multiaddr,
-}
-
-impl BootstrapPeerArgs {
-    #[cfg(test)]
-    pub(crate) fn new(peer_id: PeerId, address: Multiaddr) -> Self {
-        Self { peer_id, address }
-    }
-
-    pub fn peer_id(&self) -> &PeerId {
-        &self.peer_id
-    }
-
-    pub fn address(&self) -> &Multiaddr {
-        &self.address
-    }
+    pub(crate) address: Multiaddr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct NodeCheckArgs {
     #[command(flatten)]
-    p2p_listen: P2pListenArgs,
+    pub(crate) p2p_listen: P2pListenArgs,
     #[command(flatten)]
-    data_dir: DataDirArgs,
+    pub(crate) data_dir: DataDirArgs,
     #[command(flatten)]
-    identity_seed: IdentitySeedArgs,
-}
-
-impl NodeCheckArgs {
-    #[cfg(test)]
-    pub(crate) fn new(
-        p2p_listen: P2pListenArgs,
-        data_dir: DataDirArgs,
-        identity_seed: IdentitySeedArgs,
-    ) -> Self {
-        Self {
-            p2p_listen,
-            data_dir,
-            identity_seed,
-        }
-    }
-
-    pub fn p2p_listen(&self) -> &P2pListenArgs {
-        &self.p2p_listen
-    }
-
-    pub fn data_dir(&self) -> &DataDirArgs {
-        &self.data_dir
-    }
-
-    pub fn identity_seed(&self) -> &IdentitySeedArgs {
-        &self.identity_seed
-    }
+    pub(crate) identity_seed: IdentitySeedArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct NodeServeArgs {
     #[command(flatten)]
-    runtime: NodeRuntimeArgs,
-}
-
-impl NodeServeArgs {
-    #[cfg(test)]
-    pub(crate) fn new(runtime: NodeRuntimeArgs) -> Self {
-        Self { runtime }
-    }
-
-    pub fn runtime(&self) -> &NodeRuntimeArgs {
-        &self.runtime
-    }
+    pub(crate) runtime: NodeRuntimeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct NodeBlockArgs {
     #[command(flatten)]
-    data_dir: DataDirArgs,
+    pub(crate) data_dir: DataDirArgs,
     #[arg(
         long,
         value_name = "HEIGHT",
         help = "Block height to load from the node store."
     )]
-    height: u64,
-}
-
-impl NodeBlockArgs {
-    #[cfg(test)]
-    pub(crate) fn new(data_dir: DataDirArgs, height: u64) -> Self {
-        Self { data_dir, height }
-    }
-
-    pub fn data_dir(&self) -> &DataDirArgs {
-        &self.data_dir
-    }
-
-    pub fn height(&self) -> u64 {
-        self.height
-    }
+    pub(crate) height: u64,
 }

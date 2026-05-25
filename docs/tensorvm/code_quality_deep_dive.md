@@ -1340,6 +1340,9 @@ spaghetti around.
   keeping service comma payloads inside validated report fields.
 - Iteration 549 moved public network runtime observation evidence output onto `KeyValueReportWriter`,
   keeping the libp2p observation comma payload inside a validated report field.
+- Iteration 550 removed the getter/constructor compatibility layer from the local `tvmd` Clap command
+  payloads, so node, role, localnet, and top-level dispatch now use the typed Clap fields directly instead
+  of treating Clap as a wrapper around an older command API.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
