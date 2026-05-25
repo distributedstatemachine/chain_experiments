@@ -96,7 +96,7 @@ fn execute_record_summary_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Re
     execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            record_roots: hash_args(record_roots),
+            roots: record_roots_args(record_roots),
         }),
     ))
 }
@@ -108,7 +108,7 @@ fn execute_record_artifact_roots(record_roots: Vec<[u8; 32]>) -> crate::error::R
             artifact: record_artifact_locator_args(
                 "https://evidence.tensorvm.net/network-runtime.json",
             ),
-            record_roots: hash_args(record_roots),
+            roots: record_roots_args(record_roots),
         }),
     ))
 }

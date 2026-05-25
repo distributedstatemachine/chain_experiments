@@ -1,5 +1,6 @@
-use super::public_evidence_record_commands::{PublicEvidenceRecordContextArgs, RecordRootArgs};
-use super::value_types::HashArg;
+use super::public_evidence_record_commands::{
+    PublicEvidenceRecordContextArgs, RecordRootArgs, RecordRootsArgs,
+};
 use clap::{Args, ValueHint};
 use std::path::PathBuf;
 
@@ -19,14 +20,8 @@ pub struct RecordArtifactFromRootsArgs {
     pub context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
     pub artifact: RecordArtifactLocatorArgs,
-    #[arg(
-        long,
-        value_name = "HEX[,HEX...]",
-        value_delimiter = ',',
-        num_args = 1..,
-        help = "Comma-delimited record roots to aggregate."
-    )]
-    pub record_roots: Vec<HashArg>,
+    #[command(flatten)]
+    pub roots: RecordRootsArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

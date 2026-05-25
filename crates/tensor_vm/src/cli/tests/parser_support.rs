@@ -1,7 +1,7 @@
 use super::{
     AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
-    P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs, RecordRootArgs, RoleNodeArgs,
-    RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
+    P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs, RecordRootArgs,
+    RecordRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -86,6 +86,12 @@ pub(super) fn record_root_args(record_root: [u8; 32], record_count: u64) -> Reco
     RecordRootArgs {
         record_root: hash_arg(record_root),
         record_count,
+    }
+}
+
+pub(super) fn record_roots_args(record_roots: Vec<[u8; 32]>) -> RecordRootsArgs {
+    RecordRootsArgs {
+        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
     }
 }
 

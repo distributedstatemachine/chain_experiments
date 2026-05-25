@@ -4,7 +4,6 @@ use super::record_evidence_roots::{
     aggregate_public_evidence_record_roots, public_evidence_record_roots_from_file,
 };
 use super::validation::path_argument;
-use super::value_types::HashArg;
 use crate::error::Result;
 use crate::testnet::PublicEvidenceRecordKind;
 use crate::types::{Address, Hash};
@@ -28,13 +27,16 @@ pub(super) fn execute_public_evidence_record_command(
             args.root.root(),
             args.root.count(),
         ),
-        EvidenceRecordCommand::ArtifactRoots(args) => record_artifact_from_roots(
-            args.context.kind.into(),
-            args.context.bundle_id.into_hash(),
-            args.context.manifest_signer.into_address(),
-            args.artifact.uri(),
-            &hash_args(&args.record_roots),
-        ),
+        EvidenceRecordCommand::ArtifactRoots(args) => {
+            let roots = args.roots.roots();
+            record_artifact_from_roots(
+                args.context.kind.into(),
+                args.context.bundle_id.into_hash(),
+                args.context.manifest_signer.into_address(),
+                args.artifact.uri(),
+                &roots,
+            )
+        }
         EvidenceRecordCommand::ArtifactFile(args) => record_artifact_from_file(
             args.context.kind.into(),
             args.context.bundle_id.into_hash(),
@@ -42,12 +44,15 @@ pub(super) fn execute_public_evidence_record_command(
             args.artifact.uri(),
             &path_argument(&args.record_file),
         ),
-        EvidenceRecordCommand::SummaryRoots(args) => record_summary_from_roots(
-            args.context.kind.into(),
-            args.context.bundle_id.into_hash(),
-            args.context.manifest_signer.into_address(),
-            &hash_args(&args.record_roots),
-        ),
+        EvidenceRecordCommand::SummaryRoots(args) => {
+            let roots = args.roots.roots();
+            record_summary_from_roots(
+                args.context.kind.into(),
+                args.context.bundle_id.into_hash(),
+                args.context.manifest_signer.into_address(),
+                &roots,
+            )
+        }
         EvidenceRecordCommand::SummaryFile(args) => record_summary_from_file(
             args.context.kind.into(),
             args.context.bundle_id.into_hash(),
@@ -55,10 +60,6 @@ pub(super) fn execute_public_evidence_record_command(
             &path_argument(&args.record_file),
         ),
     }
-}
-
-fn hash_args(values: &[HashArg]) -> Vec<Hash> {
-    values.iter().copied().map(HashArg::into_hash).collect()
 }
 
 fn record_artifact_from_roots(

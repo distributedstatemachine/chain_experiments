@@ -36,14 +36,8 @@ pub struct RecordSummaryArgs {
 pub struct RecordSummaryFromRootsArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "HEX[,HEX...]",
-        value_delimiter = ',',
-        num_args = 1..,
-        help = "Comma-delimited record roots to aggregate."
-    )]
-    pub record_roots: Vec<HashArg>,
+    #[command(flatten)]
+    pub roots: RecordRootsArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -96,6 +90,28 @@ impl RecordRootArgs {
 
     pub fn count(&self) -> u64 {
         self.record_count
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RecordRootsArgs {
+    #[arg(
+        long,
+        value_name = "HEX[,HEX...]",
+        value_delimiter = ',',
+        num_args = 1..,
+        help = "Comma-delimited record roots to aggregate."
+    )]
+    pub record_roots: Vec<HashArg>,
+}
+
+impl RecordRootsArgs {
+    pub fn roots(&self) -> Vec<Hash> {
+        self.record_roots
+            .iter()
+            .copied()
+            .map(HashArg::into_hash)
+            .collect()
     }
 }
 

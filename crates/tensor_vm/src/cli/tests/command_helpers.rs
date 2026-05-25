@@ -35,10 +35,6 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
     AddressArg::new(value)
 }
 
-pub(super) fn hash_args(values: Vec<Hash>) -> Vec<HashArg> {
-    values.into_iter().map(HashArg::new).collect()
-}
-
 pub(super) fn network_observation_target_args(
     operator_id: Hash,
     listen_address: &str,
@@ -78,6 +74,12 @@ pub(super) fn record_root_args(record_root: Hash, record_count: u64) -> RecordRo
     RecordRootArgs {
         record_root: hash_arg(record_root),
         record_count,
+    }
+}
+
+pub(super) fn record_roots_args(record_roots: Vec<Hash>) -> RecordRootsArgs {
+    RecordRootsArgs {
+        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
     }
 }
 

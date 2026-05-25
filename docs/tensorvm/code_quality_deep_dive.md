@@ -1204,6 +1204,9 @@ spaghetti around.
 - Iteration 486 flattened repeated supporting-record `--record-root` and `--record-count` Clap
   arguments into `RecordRootArgs`, keeping direct summary and direct artifact evidence on one
   canonical record-root model.
+- Iteration 487 flattened repeated supporting-record `--record-roots` Clap arguments into
+  `RecordRootsArgs`, keeping summary-roots and artifact-roots evidence on one canonical aggregate
+  roots model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

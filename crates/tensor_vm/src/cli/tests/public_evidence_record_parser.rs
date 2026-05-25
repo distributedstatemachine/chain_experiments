@@ -1,4 +1,6 @@
-use super::parser_support::{hash_arg, path, record_artifact_locator_args, record_root_args};
+use super::parser_support::{
+    path, record_artifact_locator_args, record_root_args, record_roots_args,
+};
 use super::{
     EvidenceCommand, EvidenceRecordCommand, PublicCommand, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
@@ -95,10 +97,10 @@ fn parses_record_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
             EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
                 context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                record_roots: vec![
-                    hash_arg(hash_bytes(b"test", &[b"network-observation-a"])),
-                    hash_arg(hash_bytes(b"test", &[b"network-observation-b"])),
-                ],
+                roots: record_roots_args(vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ]),
             }),
         )))
     );
@@ -127,10 +129,10 @@ fn parses_record_evidence_commands() {
                 artifact: record_artifact_locator_args(
                     "https://evidence.tensorvm.net/network-runtime.json",
                 ),
-                record_roots: vec![
-                    hash_arg(hash_bytes(b"test", &[b"network-observation-a"])),
-                    hash_arg(hash_bytes(b"test", &[b"network-observation-b"])),
-                ],
+                roots: record_roots_args(vec![
+                    hash_bytes(b"test", &[b"network-observation-a"]),
+                    hash_bytes(b"test", &[b"network-observation-b"]),
+                ]),
             }),
         )))
     );

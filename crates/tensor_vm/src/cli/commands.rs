@@ -13,9 +13,9 @@ pub use super::public_evidence_commands::{
     PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
     PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
     PublicationArgs, PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordRootArgs, RecordSummaryArgs,
-    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowContextArgs,
-    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordRootArgs, RecordRootsArgs,
+    RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs,
+    RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs,
 };
