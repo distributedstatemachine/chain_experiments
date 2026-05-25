@@ -1134,6 +1134,9 @@ spaghetti around.
 - Iteration 462 split publication, auditor, and supporting-artifact manifest helpers into
   `cli/tests/manifest_publication_fixtures.rs`, further narrowing the full manifest fixture module to
   bundle construction and manifest text assembly.
+- Iteration 463 split node heartbeat and operator-identity manifest helpers into
+  `cli/tests/manifest_node_fixtures.rs`, leaving the full manifest fixture module to compose node
+  fixture lines instead of owning their signature construction.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

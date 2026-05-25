@@ -2,13 +2,15 @@ use crate::hash::hex;
 use crate::testnet::{
     PUBLIC_TESTNET_EVIDENCE_MANIFEST_VERSION, PUBLIC_TESTNET_PREFLIGHT_MANIFEST_VERSION,
     PublicEvidenceRecordKind, PublicEvidenceRecordSummaries, PublicNetworkRuntimeEvidence,
-    PublicNodeEvidence, PublicNodeRole, PublicOperatorIdentityAttestation, PublicServiceEndpoint,
-    PublicServiceEvidence, PublicServiceKind, PublicTestnetEvidenceBundle,
-    PublicTestnetRunEvidence, aggregate_public_evidence_record_roots,
-    public_network_runtime_observations_for_run,
+    PublicNodeEvidence, PublicNodeRole, PublicServiceEndpoint, PublicServiceEvidence,
+    PublicServiceKind, PublicTestnetEvidenceBundle, PublicTestnetRunEvidence,
+    aggregate_public_evidence_record_roots, public_network_runtime_observations_for_run,
 };
 use crate::types::{Hash, address, hash_bytes};
 
+use super::manifest_node_fixtures::{
+    manifest_node_signature, manifest_operator_identity_uri, manifest_operator_signature,
+};
 use super::manifest_publication_fixtures::{
     manifest_artifact_line, manifest_artifact_line_for_root, manifest_auditor_signature,
     manifest_auditor_uri, manifest_publication, manifest_publication_signature,
@@ -24,43 +26,6 @@ pub(super) fn manifest_hash(label: &[u8]) -> String {
 
 pub(super) fn manifest_address(label: &[u8]) -> String {
     hex(&address(label))
-}
-
-pub(super) fn manifest_node_signature(
-    role: PublicNodeRole,
-    address_label: &[u8],
-    operator_label: &[u8],
-) -> String {
-    let node_address = address(address_label);
-    let operator_id = hash_bytes(b"test", &[operator_label]);
-    let node = match role {
-        PublicNodeRole::Miner => PublicNodeEvidence::miner(node_address, operator_id, 0, 9, 10),
-        PublicNodeRole::Validator => {
-            PublicNodeEvidence::validator(node_address, operator_id, 0, 9, 10)
-        }
-    };
-    hex(&node.heartbeat_signature)
-}
-
-pub(super) fn manifest_operator_identity_uri(operator_id: &Hash) -> String {
-    format!("https://operators.tensorvm.net/{}", hex(operator_id))
-}
-
-pub(super) fn manifest_operator_signature(
-    role: PublicNodeRole,
-    address_label: &[u8],
-    operator_label: &[u8],
-) -> String {
-    let node_address = address(address_label);
-    let operator_id = hash_bytes(b"test", &[operator_label]);
-    let attestation = PublicOperatorIdentityAttestation::new(
-        role,
-        node_address,
-        operator_id,
-        manifest_operator_identity_uri(&operator_id),
-        1_700_000_000,
-    );
-    hex(&attestation.operator_signature)
 }
 
 pub(super) fn network_runtime_root_for_run(run: &PublicTestnetRunEvidence) -> Hash {
