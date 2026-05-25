@@ -1234,6 +1234,9 @@ spaghetti around.
   keeping service evidence execution out of raw parser fields and one-off hash conversions.
 - Iteration 497 routed public publication and auditor Clap parsing through typed accessors, keeping
   publication evidence execution out of raw count, auditor address, and audit URI fields.
+- Iteration 498 routed public service health/content source Clap parsing through typed accessors,
+  keeping service execution out of raw observation-file, content-root, content-byte, and content-file
+  fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

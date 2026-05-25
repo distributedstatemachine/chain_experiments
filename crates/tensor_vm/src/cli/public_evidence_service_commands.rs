@@ -2,8 +2,9 @@ use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::value_types::{HashArg, HexBytesArg};
 use crate::testnet::PublicServiceKind;
+use crate::types::Hash;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -57,6 +58,12 @@ pub struct ServiceHealthFromFileArgs {
     pub observation_file: PathBuf,
 }
 
+impl ServiceHealthFromFileArgs {
+    pub fn observation_file(&self) -> &Path {
+        &self.observation_file
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthPathArgs {
     #[arg(
@@ -91,6 +98,16 @@ pub struct ServiceContentArgs {
     pub min_content_bytes: u64,
 }
 
+impl ServiceContentArgs {
+    pub fn content_root(&self) -> Hash {
+        self.content_root.into_hash()
+    }
+
+    pub fn min_content_bytes(&self) -> u64 {
+        self.min_content_bytes
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromBytesArgs {
     #[command(flatten)]
@@ -101,6 +118,12 @@ pub struct ServiceContentFromBytesArgs {
         help = "Observed response bytes encoded as hex."
     )]
     pub content: HexBytesArg,
+}
+
+impl ServiceContentFromBytesArgs {
+    pub fn content(&self) -> &[u8] {
+        self.content.as_slice()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -114,6 +137,12 @@ pub struct ServiceContentFromFileArgs {
         help = "File containing observed response bytes."
     )]
     pub content_file: PathBuf,
+}
+
+impl ServiceContentFromFileArgs {
+    pub fn content_file(&self) -> &Path {
+        &self.content_file
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

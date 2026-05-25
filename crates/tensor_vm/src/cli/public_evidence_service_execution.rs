@@ -28,16 +28,16 @@ pub(super) fn execute_public_evidence_service_command(
             args.endpoint.endpoint_id(),
             args.endpoint.public_url(),
             args.health.path(),
-            &path_argument(&args.observation_file),
+            &path_argument(args.observation_file()),
         ),
         EvidenceServiceCommand::Content(args) => service_content_evidence_line(
             args.target.kind(),
             args.target.endpoint_id(),
             args.target.public_url(),
             args.target.content_path(),
-            args.content_root.into_hash(),
+            args.content_root(),
             args.target.observation.observed_at(),
-            args.min_content_bytes,
+            args.min_content_bytes(),
         ),
         EvidenceServiceCommand::ContentBytes(args) => service_content_evidence_line_from_bytes(
             args.target.kind(),
@@ -45,9 +45,9 @@ pub(super) fn execute_public_evidence_service_command(
             args.target.public_url(),
             args.target.content_path(),
             args.target.observation.observed_at(),
-            args.content.as_slice(),
+            args.content(),
         ),
-        EvidenceServiceCommand::ContentFile(args) => std::fs::read(&args.content_file)
+        EvidenceServiceCommand::ContentFile(args) => std::fs::read(args.content_file())
             .map_err(|_| TvmError::Storage("failed to read service content file"))
             .and_then(|content_bytes| {
                 service_content_evidence_line_from_bytes(
