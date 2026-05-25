@@ -1163,6 +1163,8 @@ spaghetti around.
 - Iteration 472 split supporting-record prefixes, payload validation, and supporting-record root
   derivation into `cli/record_supporting_evidence.rs`, leaving `cli/record_evidence_roots.rs`
   focused on aggregate roots, record files, and top-level record-line routing.
+- Iteration 473 split local testnet seeding into `app/local_testnet_seed.rs`, leaving
+  `app/commands.rs` focused on node-store initialization, peer-book updates, and libp2p readiness checks.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
