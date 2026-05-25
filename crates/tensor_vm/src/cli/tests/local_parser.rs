@@ -21,10 +21,10 @@ fn parses_documented_localnet_commands() {
             "--json",
         ])
         .unwrap(),
-        TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs {
-            data_dir: data_dir_args("/var/lib/tensorvm"),
-            json: true,
-        }))
+        TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs::new(
+            data_dir_args("/var/lib/tensorvm"),
+            true,
+        )))
     );
 }
 

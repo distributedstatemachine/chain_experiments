@@ -1,9 +1,9 @@
 use super::parser_support::{
-    data_dir_args, identity_seed_args, multiaddr, node_runtime_args, p2p_listen_args,
+    data_dir_args, identity_seed_args, multiaddr, node_serve_args, p2p_listen_args,
 };
 use super::{
     BootstrapPeerArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand,
-    NodeServeArgs, TvmdCommand, parse_test_cli,
+    TvmdCommand, parse_test_cli,
 };
 use libp2p::PeerId;
 
@@ -27,13 +27,15 @@ fn parses_documented_node_commands() {
             "/dns/bootstrap.tensorvm.net/tcp/4001",
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(NodePeerAddArgs {
-            data_dir: data_dir_args("/var/lib/tensorvm"),
-            bootstrap_peer: BootstrapPeerArgs {
-                peer_id: bootstrap_peer.parse().expect("test peer ID must parse"),
-                address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
-            },
-        })))
+        TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(
+            NodePeerAddArgs::new(
+                data_dir_args("/var/lib/tensorvm"),
+                BootstrapPeerArgs::new(
+                    bootstrap_peer.parse().expect("test peer ID must parse"),
+                    multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
+                ),
+            ),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -45,11 +47,11 @@ fn parses_documented_node_commands() {
             "/var/lib/tensorvm",
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
-            p2p_listen: p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
-            data_dir: data_dir_args("/var/lib/tensorvm"),
-            identity_seed: identity_seed_args(None),
-        }))
+        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs::new(
+            p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
+            data_dir_args("/var/lib/tensorvm"),
+            identity_seed_args(None),
+        )))
     );
     let identity_seed = "11".repeat(32);
     assert_eq!(
@@ -64,11 +66,11 @@ fn parses_documented_node_commands() {
             &identity_seed,
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
-            p2p_listen: p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
-            data_dir: data_dir_args("/var/lib/tensorvm"),
-            identity_seed: identity_seed_args(Some([0x11; 32])),
-        }))
+        TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs::new(
+            p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
+            data_dir_args("/var/lib/tensorvm"),
+            identity_seed_args(Some([0x11; 32])),
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -86,16 +88,14 @@ fn parses_documented_node_commands() {
             "0",
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
-            runtime: node_runtime_args(
-                "0.0.0.0:8545",
-                "/ip4/0.0.0.0/tcp/4001",
-                "/var/lib/tensorvm",
-                None,
-                "secret",
-                0,
-            ),
-        }))
+        TvmdCommand::Node(NodeCommand::Serve(node_serve_args(
+            "0.0.0.0:8545",
+            "/ip4/0.0.0.0/tcp/4001",
+            "/var/lib/tensorvm",
+            None,
+            "secret",
+            0,
+        )))
     );
     assert_eq!(
         parse_test_cli(&[
@@ -115,16 +115,14 @@ fn parses_documented_node_commands() {
             "0",
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
-            runtime: node_runtime_args(
-                "0.0.0.0:8545",
-                "/ip4/0.0.0.0/tcp/4001",
-                "/var/lib/tensorvm",
-                Some([0x11; 32]),
-                "secret",
-                0,
-            ),
-        }))
+        TvmdCommand::Node(NodeCommand::Serve(node_serve_args(
+            "0.0.0.0:8545",
+            "/ip4/0.0.0.0/tcp/4001",
+            "/var/lib/tensorvm",
+            Some([0x11; 32]),
+            "secret",
+            0,
+        )))
     );
     assert_eq!(
         parse_test_cli(&["node", "status", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
@@ -140,10 +138,10 @@ fn parses_documented_node_commands() {
             "3"
         ])
         .unwrap(),
-        TvmdCommand::Node(NodeCommand::Block(NodeBlockArgs {
-            data_dir: data_dir_args("/var/lib/tensorvm"),
-            height: 3,
-        }))
+        TvmdCommand::Node(NodeCommand::Block(NodeBlockArgs::new(
+            data_dir_args("/var/lib/tensorvm"),
+            3,
+        )))
     );
 }
 
@@ -151,16 +149,14 @@ fn parses_documented_node_commands() {
 fn clap_node_defaults_runtime_arguments() {
     assert_eq!(
         parse_test_cli(&["node", "serve", "--auth-token", "secret"]).unwrap(),
-        TvmdCommand::Node(NodeCommand::Serve(NodeServeArgs {
-            runtime: node_runtime_args(
-                "127.0.0.1:8545",
-                "/ip4/127.0.0.1/tcp/4001",
-                ".tensorvm",
-                None,
-                "secret",
-                0,
-            ),
-        }))
+        TvmdCommand::Node(NodeCommand::Serve(node_serve_args(
+            "127.0.0.1:8545",
+            "/ip4/127.0.0.1/tcp/4001",
+            ".tensorvm",
+            None,
+            "secret",
+            0,
+        )))
     );
     assert_eq!(
         parse_test_cli(&["node", "init"]).unwrap(),

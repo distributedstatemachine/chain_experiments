@@ -1280,6 +1280,8 @@ spaghetti around.
   directories, P2P listen addresses, and identity seeds out of public parser internals.
 - Iteration 519 hid local runtime owner Clap fields behind constructors and accessors, keeping
   node and role runtime groups out of public parser internals.
+- Iteration 520 hid local node/localnet Clap fields behind constructors and accessors, keeping
+  peer-add, bootstrap-peer, node-check, node-serve, block, and verify args out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

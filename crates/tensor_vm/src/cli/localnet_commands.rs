@@ -13,12 +13,16 @@ pub enum LocalnetCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct LocalCpuVerifyArgs {
     #[command(flatten)]
-    pub data_dir: DataDirArgs,
+    data_dir: DataDirArgs,
     #[arg(long, help = "Emit the verification report as JSON.")]
-    pub json: bool,
+    json: bool,
 }
 
 impl LocalCpuVerifyArgs {
+    pub fn new(data_dir: DataDirArgs, json: bool) -> Self {
+        Self { data_dir, json }
+    }
+
     pub fn data_dir(&self) -> &DataDirArgs {
         &self.data_dir
     }

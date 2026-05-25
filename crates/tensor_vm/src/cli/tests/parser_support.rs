@@ -1,8 +1,8 @@
 use super::{
     AddressArg, DataDirArgs, EvidenceBundleIdArgs, HashArg, IdentitySeedArgs, ManifestSignerArgs,
-    MinerDeviceArg, NodeRuntimeArgs, OperatorIdArgs, P2pListenArgs, PublicationBundleArgs,
-    RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs, RecordRootsArgs, RoleNodeArgs,
-    RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
+    MinerDeviceArg, NodeRuntimeArgs, NodeServeArgs, OperatorIdArgs, P2pListenArgs,
+    PublicationBundleArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
+    RecordRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -115,6 +115,24 @@ pub(super) fn node_runtime_args(
         auth_token.to_owned(),
         max_requests,
     )
+}
+
+pub(super) fn node_serve_args(
+    listen: &str,
+    p2p_listen: &str,
+    data_dir: &str,
+    identity_seed: Option<[u8; 32]>,
+    auth_token: &str,
+    max_requests: usize,
+) -> NodeServeArgs {
+    NodeServeArgs::new(node_runtime_args(
+        listen,
+        p2p_listen,
+        data_dir,
+        identity_seed,
+        auth_token,
+        max_requests,
+    ))
 }
 
 pub(super) fn role_runtime_args(

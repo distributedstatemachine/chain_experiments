@@ -30,12 +30,19 @@ pub enum NodePeerCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodePeerAddArgs {
     #[command(flatten)]
-    pub data_dir: DataDirArgs,
+    data_dir: DataDirArgs,
     #[command(flatten)]
-    pub bootstrap_peer: BootstrapPeerArgs,
+    bootstrap_peer: BootstrapPeerArgs,
 }
 
 impl NodePeerAddArgs {
+    pub fn new(data_dir: DataDirArgs, bootstrap_peer: BootstrapPeerArgs) -> Self {
+        Self {
+            data_dir,
+            bootstrap_peer,
+        }
+    }
+
     pub fn data_dir(&self) -> &DataDirArgs {
         &self.data_dir
     }
@@ -52,16 +59,20 @@ pub struct BootstrapPeerArgs {
         value_name = "PEER_ID",
         help = "Peer ID to persist as a bootstrap peer."
     )]
-    pub peer_id: PeerId,
+    peer_id: PeerId,
     #[arg(
         long,
         value_name = "MULTIADDR",
         help = "Reachable multiaddress for the peer."
     )]
-    pub address: Multiaddr,
+    address: Multiaddr,
 }
 
 impl BootstrapPeerArgs {
+    pub fn new(peer_id: PeerId, address: Multiaddr) -> Self {
+        Self { peer_id, address }
+    }
+
     pub fn peer_id(&self) -> &PeerId {
         &self.peer_id
     }
@@ -74,14 +85,26 @@ impl BootstrapPeerArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeCheckArgs {
     #[command(flatten)]
-    pub p2p_listen: P2pListenArgs,
+    p2p_listen: P2pListenArgs,
     #[command(flatten)]
-    pub data_dir: DataDirArgs,
+    data_dir: DataDirArgs,
     #[command(flatten)]
-    pub identity_seed: IdentitySeedArgs,
+    identity_seed: IdentitySeedArgs,
 }
 
 impl NodeCheckArgs {
+    pub fn new(
+        p2p_listen: P2pListenArgs,
+        data_dir: DataDirArgs,
+        identity_seed: IdentitySeedArgs,
+    ) -> Self {
+        Self {
+            p2p_listen,
+            data_dir,
+            identity_seed,
+        }
+    }
+
     pub fn p2p_listen(&self) -> &P2pListenArgs {
         &self.p2p_listen
     }
@@ -98,10 +121,14 @@ impl NodeCheckArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeServeArgs {
     #[command(flatten)]
-    pub runtime: NodeRuntimeArgs,
+    runtime: NodeRuntimeArgs,
 }
 
 impl NodeServeArgs {
+    pub fn new(runtime: NodeRuntimeArgs) -> Self {
+        Self { runtime }
+    }
+
     pub fn runtime(&self) -> &NodeRuntimeArgs {
         &self.runtime
     }
@@ -110,16 +137,20 @@ impl NodeServeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeBlockArgs {
     #[command(flatten)]
-    pub data_dir: DataDirArgs,
+    data_dir: DataDirArgs,
     #[arg(
         long,
         value_name = "HEIGHT",
         help = "Block height to load from the node store."
     )]
-    pub height: u64,
+    height: u64,
 }
 
 impl NodeBlockArgs {
+    pub fn new(data_dir: DataDirArgs, height: u64) -> Self {
+        Self { data_dir, height }
+    }
+
     pub fn data_dir(&self) -> &DataDirArgs {
         &self.data_dir
     }
