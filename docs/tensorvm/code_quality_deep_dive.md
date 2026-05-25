@@ -1246,6 +1246,8 @@ spaghetti around.
   observation fields.
 - Iteration 502 routed public service health observation counters through typed Clap accessors,
   keeping service health execution out of raw reachability and signed-check count fields.
+- Iteration 503 routed supporting-record kind Clap parsing through the record context accessor,
+  keeping record evidence execution out of repeated raw `context.kind` conversions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

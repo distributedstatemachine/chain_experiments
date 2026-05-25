@@ -13,14 +13,14 @@ pub(super) fn execute_public_evidence_record_command(
 ) -> Result<String> {
     match command {
         EvidenceRecordCommand::Summary(args) => record_summary_evidence_lines(
-            args.context.kind.into(),
+            args.context.kind(),
             args.context.bundle_id(),
             args.context.manifest_signer(),
             args.root.root(),
             args.root.count(),
         ),
         EvidenceRecordCommand::Artifact(args) => record_artifact_evidence_line(
-            args.context.kind.into(),
+            args.context.kind(),
             args.context.bundle_id(),
             args.context.manifest_signer(),
             args.artifact.uri(),
@@ -30,7 +30,7 @@ pub(super) fn execute_public_evidence_record_command(
         EvidenceRecordCommand::ArtifactRoots(args) => {
             let roots = args.roots.roots();
             record_artifact_from_roots(
-                args.context.kind.into(),
+                args.context.kind(),
                 args.context.bundle_id(),
                 args.context.manifest_signer(),
                 args.artifact.uri(),
@@ -38,7 +38,7 @@ pub(super) fn execute_public_evidence_record_command(
             )
         }
         EvidenceRecordCommand::ArtifactFile(args) => record_artifact_from_file(
-            args.context.kind.into(),
+            args.context.kind(),
             args.context.bundle_id(),
             args.context.manifest_signer(),
             args.artifact.uri(),
@@ -47,14 +47,14 @@ pub(super) fn execute_public_evidence_record_command(
         EvidenceRecordCommand::SummaryRoots(args) => {
             let roots = args.roots.roots();
             record_summary_from_roots(
-                args.context.kind.into(),
+                args.context.kind(),
                 args.context.bundle_id(),
                 args.context.manifest_signer(),
                 &roots,
             )
         }
         EvidenceRecordCommand::SummaryFile(args) => record_summary_from_file(
-            args.context.kind.into(),
+            args.context.kind(),
             args.context.bundle_id(),
             args.context.manifest_signer(),
             &path_argument(args.file.path()),

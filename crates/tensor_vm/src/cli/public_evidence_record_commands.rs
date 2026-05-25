@@ -61,6 +61,10 @@ pub struct PublicEvidenceRecordContextArgs {
 }
 
 impl PublicEvidenceRecordContextArgs {
+    pub fn kind(&self) -> PublicEvidenceRecordKind {
+        self.kind.into()
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.bundle.id()
     }
