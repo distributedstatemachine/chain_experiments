@@ -1407,6 +1407,8 @@ spaghetti around.
   removing the repeated POST guard from transaction, receipt, attestation, and faucet-claim routing.
 - Iteration 573 split public service health evidence execution out of the service command match, keeping
   direct health counts and file-backed health observations behind focused helper paths.
+- Iteration 574 split direct public network observation execution out of the network command match,
+  keeping peer/protocol/transport evidence assembly separate from service-log-backed observation loading.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
