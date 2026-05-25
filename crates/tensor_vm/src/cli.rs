@@ -48,12 +48,12 @@ pub use commands::{
     PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
     PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
     PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
-    RecordSummaryFromRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowArgs,
-    RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
-    ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs, StakeArgs, TvmdCli, TvmdCommand, ValidatorCheckArgs,
-    ValidatorCommand, ValidatorRunArgs,
+    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordSummaryArgs,
+    RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleNodeArgs, RoleRuntimeArgs,
+    RoleWalletArgs, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
+    ServiceHealthArgs, ServiceHealthFromFileArgs, StakeArgs, TvmdCli, TvmdCommand,
+    ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,
 };
 #[cfg(test)]
 use evidence_fields::{public_evidence_record_kind_tag, public_service_kind_tag};

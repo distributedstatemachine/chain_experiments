@@ -87,7 +87,7 @@ fn execute_record_artifact(
                 bundle_id,
                 manifest_signer,
             ),
-            artifact_uri: artifact_uri.to_owned(),
+            artifact: record_artifact_locator_args(artifact_uri),
             record_root: hash_arg(record_root),
             record_count,
         },
@@ -107,7 +107,9 @@ fn execute_record_artifact_roots(record_roots: Vec<[u8; 32]>) -> crate::error::R
     execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+            artifact: record_artifact_locator_args(
+                "https://evidence.tensorvm.net/network-runtime.json",
+            ),
             record_roots: hash_args(record_roots),
         }),
     ))

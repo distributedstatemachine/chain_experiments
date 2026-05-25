@@ -11,6 +11,7 @@ pub use super::public_evidence_publication_commands::{
 };
 pub use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
+    RecordArtifactLocatorArgs,
 };
 pub use super::public_evidence_record_commands::{
     EvidenceRecordCommand, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,

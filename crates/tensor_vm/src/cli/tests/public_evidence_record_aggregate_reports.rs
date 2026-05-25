@@ -46,7 +46,7 @@ fn execute_public_evidence_record_aggregate_reports_outputs() {
     let aggregate_artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact_uri: aggregate_artifact_uri.to_owned(),
+            artifact: record_artifact_locator_args(aggregate_artifact_uri),
             record_roots: hash_args(roots),
         }),
     ))

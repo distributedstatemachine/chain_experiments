@@ -95,7 +95,7 @@ fn execute_public_evidence_record_file_reports_outputs() {
     let record_file_artifact = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact_uri: aggregate_artifact_uri.to_owned(),
+            artifact: record_artifact_locator_args(aggregate_artifact_uri),
             record_file: record_file.clone(),
         }),
     ))

@@ -1198,6 +1198,9 @@ spaghetti around.
 - Iteration 484 flattened repeated public run-window `--bundle-id` and `--manifest-signer` Clap
   arguments into `RunWindowContextArgs`, keeping direct and file-backed run-window evidence on one
   canonical signing context.
+- Iteration 485 flattened repeated supporting-record artifact `--artifact-uri` Clap arguments into
+  `RecordArtifactLocatorArgs`, keeping direct, roots-backed, and file-backed artifact evidence on
+  one canonical locator model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

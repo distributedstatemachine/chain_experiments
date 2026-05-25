@@ -7,13 +7,8 @@ use std::path::PathBuf;
 pub struct RecordArtifactArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "URI",
-        value_hint = ValueHint::Url,
-        help = "Public URI for the supporting-record artifact."
-    )]
-    pub artifact_uri: String,
+    #[command(flatten)]
+    pub artifact: RecordArtifactLocatorArgs,
     #[arg(
         long,
         value_name = "HEX",
@@ -32,13 +27,8 @@ pub struct RecordArtifactArgs {
 pub struct RecordArtifactFromRootsArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "URI",
-        value_hint = ValueHint::Url,
-        help = "Public URI for the supporting-record artifact."
-    )]
-    pub artifact_uri: String,
+    #[command(flatten)]
+    pub artifact: RecordArtifactLocatorArgs,
     #[arg(
         long,
         value_name = "HEX[,HEX...]",
@@ -53,13 +43,8 @@ pub struct RecordArtifactFromRootsArgs {
 pub struct RecordArtifactFromFileArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "URI",
-        value_hint = ValueHint::Url,
-        help = "Public URI for the supporting-record artifact."
-    )]
-    pub artifact_uri: String,
+    #[command(flatten)]
+    pub artifact: RecordArtifactLocatorArgs,
     #[arg(
         long,
         value_name = "PATH",
@@ -67,4 +52,21 @@ pub struct RecordArtifactFromFileArgs {
         help = "File containing supporting records to summarize."
     )]
     pub record_file: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RecordArtifactLocatorArgs {
+    #[arg(
+        long,
+        value_name = "URI",
+        value_hint = ValueHint::Url,
+        help = "Public URI for the supporting-record artifact."
+    )]
+    pub artifact_uri: String,
+}
+
+impl RecordArtifactLocatorArgs {
+    pub fn uri(&self) -> &str {
+        &self.artifact_uri
+    }
 }

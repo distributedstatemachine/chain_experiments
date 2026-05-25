@@ -1,4 +1,4 @@
-use super::parser_support::{hash_arg, path};
+use super::parser_support::{hash_arg, path, record_artifact_locator_args};
 use super::{
     EvidenceCommand, EvidenceRecordCommand, PublicCommand, RecordArtifactArgs,
     RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordSummaryArgs,
@@ -64,7 +64,9 @@ fn parses_record_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
             EvidenceRecordCommand::Artifact(RecordArtifactArgs {
                 context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                artifact: record_artifact_locator_args(
+                    "https://evidence.tensorvm.net/network-runtime.json",
+                ),
                 record_root: hash_arg(hash_bytes(b"test", &[b"network-runtime-root"])),
                 record_count: 4,
             }),
@@ -124,7 +126,9 @@ fn parses_record_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
             EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
                 context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                artifact: record_artifact_locator_args(
+                    "https://evidence.tensorvm.net/network-runtime.json",
+                ),
                 record_roots: vec![
                     hash_arg(hash_bytes(b"test", &[b"network-observation-a"])),
                     hash_arg(hash_bytes(b"test", &[b"network-observation-b"])),
@@ -178,7 +182,9 @@ fn parses_record_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
             EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
                 context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact_uri: "https://evidence.tensorvm.net/network-runtime.json".to_owned(),
+                artifact: record_artifact_locator_args(
+                    "https://evidence.tensorvm.net/network-runtime.json",
+                ),
                 record_file: path("artifacts/network-runtime.records"),
             }),
         )))

@@ -87,7 +87,7 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
         let artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::Artifact(RecordArtifactArgs {
                 context: record_context_args_from(kind, bundle_id, manifest_signer),
-                artifact_uri: artifact_uri.clone(),
+                artifact: record_artifact_locator_args(&artifact_uri),
                 record_root: hash_arg(record_root),
                 record_count: count,
             }),

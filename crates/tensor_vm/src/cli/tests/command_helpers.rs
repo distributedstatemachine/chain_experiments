@@ -68,6 +68,12 @@ pub(super) fn run_window_context_args(
     }
 }
 
+pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
+    RecordArtifactLocatorArgs {
+        artifact_uri: artifact_uri.to_owned(),
+    }
+}
+
 pub(super) fn record_context_args(
     kind: PublicEvidenceRecordKind,
 ) -> PublicEvidenceRecordContextArgs {
