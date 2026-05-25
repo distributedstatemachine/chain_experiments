@@ -16,28 +16,42 @@ pub enum EvidenceRunCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowArgs {
     #[command(flatten)]
-    pub context: RunWindowContextArgs,
+    context: RunWindowContextArgs,
     #[arg(
         long,
         value_name = "UNIX_SECONDS",
         help = "Unix timestamp at run-window start."
     )]
-    pub started_at: u64,
+    started_at: u64,
     #[arg(
         long,
         value_name = "UNIX_SECONDS",
         help = "Unix timestamp at run-window end."
     )]
-    pub ended_at: u64,
+    ended_at: u64,
     #[arg(
         long,
         value_name = "N",
         help = "Blocks observed during the run window."
     )]
-    pub observed_blocks: u64,
+    observed_blocks: u64,
 }
 
 impl RunWindowArgs {
+    pub fn new(
+        context: RunWindowContextArgs,
+        started_at: u64,
+        ended_at: u64,
+        observed_blocks: u64,
+    ) -> Self {
+        Self {
+            context,
+            started_at,
+            ended_at,
+            observed_blocks,
+        }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.context.bundle_id()
     }
@@ -62,17 +76,24 @@ impl RunWindowArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowFromFileArgs {
     #[command(flatten)]
-    pub context: RunWindowContextArgs,
+    context: RunWindowContextArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "File containing observed block records."
     )]
-    pub block_observation_file: PathBuf,
+    block_observation_file: PathBuf,
 }
 
 impl RunWindowFromFileArgs {
+    pub fn new(context: RunWindowContextArgs, block_observation_file: PathBuf) -> Self {
+        Self {
+            context,
+            block_observation_file,
+        }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.context.bundle_id()
     }
@@ -89,12 +110,16 @@ impl RunWindowFromFileArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowContextArgs {
     #[command(flatten)]
-    pub bundle: EvidenceBundleIdArgs,
+    bundle: EvidenceBundleIdArgs,
     #[command(flatten)]
-    pub signer: ManifestSignerArgs,
+    signer: ManifestSignerArgs,
 }
 
 impl RunWindowContextArgs {
+    pub fn new(bundle: EvidenceBundleIdArgs, signer: ManifestSignerArgs) -> Self {
+        Self { bundle, signer }
+    }
+
     pub fn bundle_id(&self) -> Hash {
         self.bundle.id()
     }

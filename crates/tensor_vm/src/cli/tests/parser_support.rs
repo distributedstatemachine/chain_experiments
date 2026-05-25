@@ -69,10 +69,10 @@ pub(super) fn run_window_context_args(
     bundle_id: [u8; 32],
     manifest_signer: [u8; 32],
 ) -> RunWindowContextArgs {
-    RunWindowContextArgs {
-        bundle: evidence_bundle_id_args(bundle_id),
-        signer: manifest_signer_args(manifest_signer),
-    }
+    RunWindowContextArgs::new(
+        evidence_bundle_id_args(bundle_id),
+        manifest_signer_args(manifest_signer),
+    )
 }
 
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
