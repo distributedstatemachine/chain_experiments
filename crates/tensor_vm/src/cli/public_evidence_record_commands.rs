@@ -3,6 +3,7 @@ use super::public_evidence_record_artifact_commands::{
 };
 use super::value_types::{AddressArg, HashArg};
 use crate::testnet::PublicEvidenceRecordKind;
+use crate::types::Hash;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
 use std::path::PathBuf;
 
@@ -27,18 +28,8 @@ pub enum EvidenceRecordCommand {
 pub struct RecordSummaryArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Root hash of the supporting-record set."
-    )]
-    pub record_root: HashArg,
-    #[arg(
-        long,
-        value_name = "N",
-        help = "Number of records covered by the root."
-    )]
-    pub record_count: u64,
+    #[command(flatten)]
+    pub root: RecordRootArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -80,6 +71,32 @@ pub struct PublicEvidenceRecordContextArgs {
         help = "Address signing the evidence manifest."
     )]
     pub manifest_signer: AddressArg,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RecordRootArgs {
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Root hash of the supporting-record set."
+    )]
+    pub record_root: HashArg,
+    #[arg(
+        long,
+        value_name = "N",
+        help = "Number of records covered by the root."
+    )]
+    pub record_count: u64,
+}
+
+impl RecordRootArgs {
+    pub fn root(&self) -> Hash {
+        self.record_root.into_hash()
+    }
+
+    pub fn count(&self) -> u64 {
+        self.record_count
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

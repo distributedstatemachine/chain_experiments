@@ -1201,6 +1201,9 @@ spaghetti around.
 - Iteration 485 flattened repeated supporting-record artifact `--artifact-uri` Clap arguments into
   `RecordArtifactLocatorArgs`, keeping direct, roots-backed, and file-backed artifact evidence on
   one canonical locator model.
+- Iteration 486 flattened repeated supporting-record `--record-root` and `--record-count` Clap
+  arguments into `RecordRootArgs`, keeping direct summary and direct artifact evidence on one
+  canonical record-root model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

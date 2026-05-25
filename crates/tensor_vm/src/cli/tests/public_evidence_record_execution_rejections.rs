@@ -67,8 +67,7 @@ fn execute_record_summary(
                 bundle_id,
                 manifest_signer,
             ),
-            record_root: hash_arg(record_root),
-            record_count,
+            root: record_root_args(record_root, record_count),
         },
     )))
 }
@@ -88,8 +87,7 @@ fn execute_record_artifact(
                 manifest_signer,
             ),
             artifact: record_artifact_locator_args(artifact_uri),
-            record_root: hash_arg(record_root),
-            record_count,
+            root: record_root_args(record_root, record_count),
         },
     )))
 }

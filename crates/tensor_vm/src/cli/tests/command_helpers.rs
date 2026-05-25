@@ -74,6 +74,13 @@ pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifact
     }
 }
 
+pub(super) fn record_root_args(record_root: Hash, record_count: u64) -> RecordRootArgs {
+    RecordRootArgs {
+        record_root: hash_arg(record_root),
+        record_count,
+    }
+}
+
 pub(super) fn record_context_args(
     kind: PublicEvidenceRecordKind,
 ) -> PublicEvidenceRecordContextArgs {

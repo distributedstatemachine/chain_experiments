@@ -1,4 +1,4 @@
-use super::public_evidence_record_commands::PublicEvidenceRecordContextArgs;
+use super::public_evidence_record_commands::{PublicEvidenceRecordContextArgs, RecordRootArgs};
 use super::value_types::HashArg;
 use clap::{Args, ValueHint};
 use std::path::PathBuf;
@@ -9,18 +9,8 @@ pub struct RecordArtifactArgs {
     pub context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
     pub artifact: RecordArtifactLocatorArgs,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Root hash of the supporting-record set."
-    )]
-    pub record_root: HashArg,
-    #[arg(
-        long,
-        value_name = "N",
-        help = "Number of records covered by the artifact."
-    )]
-    pub record_count: u64,
+    #[command(flatten)]
+    pub root: RecordRootArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

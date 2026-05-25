@@ -48,7 +48,7 @@ pub use commands::{
     PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
     PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
     PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordSummaryArgs,
+    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordRootArgs, RecordSummaryArgs,
     RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RoleNodeArgs, RoleRuntimeArgs,
     RoleWalletArgs, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs,
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,

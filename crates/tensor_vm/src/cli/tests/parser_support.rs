@@ -1,7 +1,7 @@
 use super::{
     AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
-    P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs, RoleNodeArgs, RoleRuntimeArgs,
-    RoleWalletArgs, RunWindowContextArgs,
+    P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs, RecordRootArgs, RoleNodeArgs,
+    RoleRuntimeArgs, RoleWalletArgs, RunWindowContextArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -79,6 +79,13 @@ pub(super) fn run_window_context_args(
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
     RecordArtifactLocatorArgs {
         artifact_uri: artifact_uri.to_owned(),
+    }
+}
+
+pub(super) fn record_root_args(record_root: [u8; 32], record_count: u64) -> RecordRootArgs {
+    RecordRootArgs {
+        record_root: hash_arg(record_root),
+        record_count,
     }
 }
 

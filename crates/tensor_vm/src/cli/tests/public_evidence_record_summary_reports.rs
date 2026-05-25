@@ -59,8 +59,7 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
         let line = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::Summary(RecordSummaryArgs {
                 context: record_context_args_from(kind, bundle_id, manifest_signer),
-                record_root: hash_arg(record_root),
-                record_count: count,
+                root: record_root_args(record_root, count),
             }),
         ))
         .unwrap();
@@ -88,8 +87,7 @@ fn execute_public_evidence_record_summary_and_artifact_reports_outputs() {
             EvidenceRecordCommand::Artifact(RecordArtifactArgs {
                 context: record_context_args_from(kind, bundle_id, manifest_signer),
                 artifact: record_artifact_locator_args(&artifact_uri),
-                record_root: hash_arg(record_root),
-                record_count: count,
+                root: record_root_args(record_root, count),
             }),
         ))
         .unwrap();
