@@ -1,7 +1,7 @@
 use super::{
-    AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
-    P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs, RecordFileArgs,
-    RecordRootArgs, RecordRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
+    AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, ManifestSignerArgs, MinerDeviceArg,
+    NodeRuntimeArgs, P2pListenArgs, PublicationBundleArgs, RecordArtifactLocatorArgs,
+    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
     RunWindowContextArgs,
 };
 use std::net::SocketAddr;
@@ -73,7 +73,7 @@ pub(super) fn run_window_context_args(
 ) -> RunWindowContextArgs {
     RunWindowContextArgs {
         bundle_id: hash_arg(bundle_id),
-        manifest_signer: address_arg(manifest_signer),
+        signer: manifest_signer_args(manifest_signer),
     }
 }
 
@@ -104,6 +104,12 @@ pub(super) fn record_roots_args(record_roots: Vec<[u8; 32]>) -> RecordRootsArgs 
 
 pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {
     AddressArg::new(value)
+}
+
+pub(super) fn manifest_signer_args(manifest_signer: [u8; 32]) -> ManifestSignerArgs {
+    ManifestSignerArgs {
+        manifest_signer: address_arg(manifest_signer),
+    }
 }
 
 pub(super) fn node_runtime_args(

@@ -166,7 +166,7 @@ fn execute_publication(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
         bundle: publication_bundle_args(bundle_id, public_uri),
-        manifest_signer: address_arg(manifest_signer),
+        signer: manifest_signer_args(manifest_signer),
         manifest_signature_count,
         independent_auditor_count,
     }))

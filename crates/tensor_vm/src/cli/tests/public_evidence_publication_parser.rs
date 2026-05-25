@@ -1,4 +1,4 @@
-use super::parser_support::{address_arg, publication_bundle_args};
+use super::parser_support::{address_arg, manifest_signer_args, publication_bundle_args};
 use super::{
     AuditorRecordArgs, EvidenceCommand, PublicCommand, PublicationArgs, TvmdCommand,
     manifest_address, manifest_auditor_uri, manifest_hash, observation_timestamp_args,
@@ -34,7 +34,7 @@ fn parses_publication_evidence_commands() {
                     hash_bytes(b"test", &[b"public-evidence-bundle"]),
                     "https://tensorvm.net/tensorvm/public-evidence.json",
                 ),
-                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                signer: manifest_signer_args(address(b"public-evidence-publisher")),
                 manifest_signature_count: 1,
                 independent_auditor_count: 1,
             },

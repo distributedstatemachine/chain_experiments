@@ -1,4 +1,5 @@
-use super::value_types::{AddressArg, HashArg};
+use super::public_evidence_signing_commands::ManifestSignerArgs;
+use super::value_types::HashArg;
 use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;
@@ -53,12 +54,8 @@ pub struct RunWindowFromFileArgs {
 pub struct RunWindowContextArgs {
     #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub signer: ManifestSignerArgs,
 }
 
 impl RunWindowContextArgs {
@@ -67,6 +64,6 @@ impl RunWindowContextArgs {
     }
 
     pub fn manifest_signer(&self) -> Address {
-        self.manifest_signer.into_address()
+        self.signer.signer()
     }
 }

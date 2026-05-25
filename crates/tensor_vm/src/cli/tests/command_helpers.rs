@@ -42,6 +42,12 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
     AddressArg::new(value)
 }
 
+pub(super) fn manifest_signer_args(manifest_signer: Address) -> ManifestSignerArgs {
+    ManifestSignerArgs {
+        manifest_signer: address_arg(manifest_signer),
+    }
+}
+
 pub(super) fn observation_timestamp_args(observed_at: u64) -> ObservationTimestampArgs {
     ObservationTimestampArgs { observed_at }
 }
@@ -71,7 +77,7 @@ pub(super) fn run_window_context_args(
 ) -> RunWindowContextArgs {
     RunWindowContextArgs {
         bundle_id: hash_arg(bundle_id),
-        manifest_signer: address_arg(manifest_signer),
+        signer: manifest_signer_args(manifest_signer),
     }
 }
 
@@ -116,7 +122,7 @@ pub(super) fn record_context_args_from(
     PublicEvidenceRecordContextArgs {
         kind: record_kind_arg(kind),
         bundle_id: hash_arg(bundle_id),
-        manifest_signer: address_arg(manifest_signer),
+        signer: manifest_signer_args(manifest_signer),
     }
 }
 

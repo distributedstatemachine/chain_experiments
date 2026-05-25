@@ -28,6 +28,7 @@ pub use super::public_evidence_service_commands::{
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
     ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
+pub use super::public_evidence_signing_commands::ManifestSignerArgs;
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;
 

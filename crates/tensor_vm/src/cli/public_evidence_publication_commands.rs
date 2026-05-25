@@ -1,4 +1,5 @@
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
+use super::public_evidence_signing_commands::ManifestSignerArgs;
 use super::value_types::{AddressArg, HashArg};
 use crate::types::Hash;
 use clap::{Args, ValueHint};
@@ -7,12 +8,8 @@ use clap::{Args, ValueHint};
 pub struct PublicationArgs {
     #[command(flatten)]
     pub bundle: PublicationBundleArgs,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub signer: ManifestSignerArgs,
     #[arg(
         long,
         value_name = "N",

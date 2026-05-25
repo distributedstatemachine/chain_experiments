@@ -28,6 +28,7 @@ mod public_evidence_run_window_commands;
 mod public_evidence_run_window_execution;
 mod public_evidence_service_commands;
 mod public_evidence_service_execution;
+mod public_evidence_signing_commands;
 mod publication_evidence;
 mod record_evidence;
 mod record_evidence_roots;
@@ -42,18 +43,19 @@ pub use commands::{
     AddressArg, AuditorRecordArgs, BlockHeightWindowArgs, DataDirArgs, EvidenceCommand,
     EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
     EvidenceServiceCommand, HashArg, HexBytesArg, IdentitySeedArgs, LocalCpuVerifyArgs,
-    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerDeviceArg, MinerRunArgs,
-    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs,
-    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, ObservationTimestampArgs,
-    OperatorAttestationArgs, P2pListenArgs, ProposerCommand, PublicCommand,
-    PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
-    PublicNodeIdentityArgs, PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg,
-    PublicTestnetManifestArgs, PublicationArgs, PublicationBundleArgs, RecordArtifactArgs,
-    RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs,
-    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
-    RecordSummaryFromRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowArgs,
-    RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    LocalnetCommand, ManifestSignerArgs, MinerCheckArgs, MinerCommand, MinerDeviceArg,
+    MinerRunArgs, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+    NetworkObservationTargetArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs,
+    ObservationTimestampArgs, OperatorAttestationArgs, P2pListenArgs, ProposerCommand,
+    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs,
+    PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
+    PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
+    PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
+    RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
+    RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowArgs, RunWindowContextArgs,
+    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs, ServiceHealthPathArgs, StakeArgs, TvmdCli, TvmdCommand,
     ValidatorCheckArgs, ValidatorCommand, ValidatorRunArgs,

@@ -7,7 +7,7 @@ fn execute_publication_evidence_reports_outputs() {
             hash_bytes(b"test", &[b"public-evidence-bundle"]),
             "https://tensorvm.net/tensorvm/public-evidence.json",
         ),
-        manifest_signer: address_arg(address(b"public-evidence-publisher")),
+        signer: manifest_signer_args(address(b"public-evidence-publisher")),
         manifest_signature_count: 1,
         independent_auditor_count: 1,
     }))

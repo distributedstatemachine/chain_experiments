@@ -1219,6 +1219,9 @@ spaghetti around.
 - Iteration 491 flattened repeated public evidence `--observed-at` Clap arguments into
   `ObservationTimestampArgs`, keeping network observations, operator attestations, auditor records,
   and service content evidence on one canonical observation timestamp model.
+- Iteration 492 flattened repeated public evidence `--manifest-signer` Clap arguments into
+  `ManifestSignerArgs`, keeping publication, run-window, and supporting-record evidence on one
+  canonical manifest signer model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
