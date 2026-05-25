@@ -28,6 +28,7 @@ mod public_evidence_service_execution;
 mod publication_evidence;
 mod record_evidence;
 mod record_evidence_roots;
+mod record_supporting_evidence;
 mod reports;
 mod run_window_evidence;
 mod service_evidence;
@@ -62,6 +63,9 @@ pub(crate) use public_evidence_execution::execute_public_evidence_command;
 #[cfg(test)]
 use record_evidence_roots::{
     public_evidence_record_root_from_line, public_evidence_record_roots_from_file,
+};
+#[cfg(test)]
+use record_supporting_evidence::{
     supporting_record_line_prefix, supporting_record_root_from_line,
     validate_supporting_record_payload,
 };

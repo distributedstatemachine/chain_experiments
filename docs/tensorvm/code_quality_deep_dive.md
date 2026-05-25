@@ -1160,6 +1160,9 @@ spaghetti around.
 - Iteration 471 split shared operator wallet, runtime, and data-dir validation into
   `app/operator_validation.rs`, leaving `app/operator_checks.rs` focused on registration, start,
   and status report rendering.
+- Iteration 472 split supporting-record prefixes, payload validation, and supporting-record root
+  derivation into `cli/record_supporting_evidence.rs`, leaving `cli/record_evidence_roots.rs`
+  focused on aggregate roots, record files, and top-level record-line routing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

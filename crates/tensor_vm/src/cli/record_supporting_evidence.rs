@@ -1,0 +1,96 @@
+use super::evidence_fields::{
+    exact_comma_fields, parse_hash_field, parse_u64_field, public_evidence_record_kind_tag,
+};
+use crate::error::{Result, TvmError};
+use crate::testnet::PublicEvidenceRecordKind;
+use crate::types::{Hash, hash_bytes};
+
+pub(super) fn supporting_record_line_prefix(
+    kind: PublicEvidenceRecordKind,
+) -> Option<&'static str> {
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => Some("block_history_record="),
+        PublicEvidenceRecordKind::FinalityHistory => Some("finality_history_record="),
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => None,
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+            Some("data_availability_measurement=")
+        }
+        PublicEvidenceRecordKind::InvalidWorkRejections => Some("invalid_work_rejection="),
+        PublicEvidenceRecordKind::RewardSettlements => Some("reward_settlement="),
+    }
+}
+
+pub(super) fn supporting_record_root_from_line(
+    kind: PublicEvidenceRecordKind,
+    line: &str,
+    prefix: &str,
+) -> Result<Hash> {
+    let payload = line.strip_prefix(prefix).ok_or(TvmError::InvalidReceipt(
+        "unsupported public evidence record line",
+    ))?;
+    if payload.is_empty() || payload.trim() != payload {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    validate_supporting_record_payload(kind, payload)?;
+    Ok(hash_bytes(
+        b"tensor-vm-public-evidence-supporting-record-root-v1",
+        &[
+            public_evidence_record_kind_tag(kind).as_bytes(),
+            line.as_bytes(),
+        ],
+    ))
+}
+
+pub(super) fn validate_supporting_record_payload(
+    kind: PublicEvidenceRecordKind,
+    payload: &str,
+) -> Result<()> {
+    const INVALID_SUPPORTING_RECORD: &str = "invalid public evidence supporting record line";
+    match kind {
+        PublicEvidenceRecordKind::BlockHistory => {
+            let fields = exact_comma_fields(payload, 2, INVALID_SUPPORTING_RECORD)?;
+            parse_u64_field(fields[0])?;
+            parse_hash_field(fields[1])?;
+        }
+        PublicEvidenceRecordKind::FinalityHistory => {
+            let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
+            parse_u64_field(fields[0])?;
+            parse_hash_field(fields[1])?;
+            require_supporting_record_status(fields[2], &["finalized", "unfinalized"])?;
+        }
+        PublicEvidenceRecordKind::NetworkRuntimeObservations => {
+            return Err(TvmError::InvalidReceipt(INVALID_SUPPORTING_RECORD));
+        }
+        PublicEvidenceRecordKind::DataAvailabilityMeasurements => {
+            let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
+            parse_hash_field(fields[0])?;
+            require_supporting_record_status(fields[1], &["available", "unavailable"])?;
+            parse_u64_field(fields[2])?;
+        }
+        PublicEvidenceRecordKind::InvalidWorkRejections => {
+            let fields = exact_comma_fields(payload, 3, INVALID_SUPPORTING_RECORD)?;
+            parse_hash_field(fields[0])?;
+            require_supporting_record_status(fields[1], &["rejected"])?;
+            parse_u64_field(fields[2])?;
+        }
+        PublicEvidenceRecordKind::RewardSettlements => {
+            let fields = exact_comma_fields(payload, 4, INVALID_SUPPORTING_RECORD)?;
+            parse_hash_field(fields[0])?;
+            parse_hash_field(fields[1])?;
+            parse_hash_field(fields[2])?;
+            parse_u64_field(fields[3])?;
+        }
+    }
+    Ok(())
+}
+
+fn require_supporting_record_status(status: &str, allowed: &[&str]) -> Result<()> {
+    if !allowed.contains(&status) {
+        return Err(TvmError::InvalidReceipt(
+            "invalid public evidence supporting record line",
+        ));
+    }
+    Ok(())
+}
