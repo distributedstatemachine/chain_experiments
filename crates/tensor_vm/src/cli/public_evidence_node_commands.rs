@@ -59,11 +59,11 @@ impl NodeHeartbeatArgs {
     }
 
     pub fn first_block(&self) -> u64 {
-        self.window.first_block()
+        self.window.first_block
     }
 
     pub fn last_block(&self) -> u64 {
-        self.window.last_block()
+        self.window.last_block
     }
 
     pub fn heartbeat_count(&self) -> u64 {
@@ -156,7 +156,7 @@ impl OperatorAttestationArgs {
     }
 
     pub fn observed_at(&self) -> u64 {
-        self.observation.observed_at()
+        self.observation.observed_at
     }
 }
 

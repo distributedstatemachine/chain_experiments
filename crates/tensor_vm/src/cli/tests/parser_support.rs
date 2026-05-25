@@ -58,7 +58,9 @@ pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySee
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
-    EvidenceBundleIdArgs::new(bundle_id)
+    EvidenceBundleIdArgs {
+        bundle_id: HashArg::new(bundle_id),
+    }
 }
 
 pub(super) fn operator_id_args(operator_id: [u8; 32]) -> OperatorIdArgs {
@@ -69,17 +71,20 @@ pub(super) fn publication_bundle_args(
     bundle_id: [u8; 32],
     public_uri: &str,
 ) -> PublicationBundleArgs {
-    PublicationBundleArgs::new(evidence_bundle_id_args(bundle_id), public_uri)
+    PublicationBundleArgs {
+        bundle: evidence_bundle_id_args(bundle_id),
+        public_uri: public_uri.to_owned(),
+    }
 }
 
 pub(super) fn run_window_context_args(
     bundle_id: [u8; 32],
     manifest_signer: [u8; 32],
 ) -> RunWindowContextArgs {
-    RunWindowContextArgs::new(
-        evidence_bundle_id_args(bundle_id),
-        manifest_signer_args(manifest_signer),
-    )
+    RunWindowContextArgs {
+        bundle: evidence_bundle_id_args(bundle_id),
+        signer: manifest_signer_args(manifest_signer),
+    }
 }
 
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {
@@ -103,7 +108,9 @@ pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: [u8; 32]) -> ManifestSignerArgs {
-    ManifestSignerArgs::new(manifest_signer)
+    ManifestSignerArgs {
+        manifest_signer: AddressArg::new(manifest_signer),
+    }
 }
 
 pub(super) fn node_runtime_args(

@@ -78,11 +78,11 @@ impl ServiceHealthArgs {
     }
 
     pub fn first_seen_block(&self) -> u64 {
-        self.window.first_block()
+        self.window.first_block
     }
 
     pub fn last_seen_block(&self) -> u64 {
-        self.window.last_block()
+        self.window.last_block
     }
 
     pub fn reachable_count(&self) -> u64 {
@@ -363,7 +363,7 @@ impl ServiceContentTargetArgs {
     }
 
     pub fn observed_at(&self) -> u64 {
-        self.observation.observed_at()
+        self.observation.observed_at
     }
 }
 

@@ -261,6 +261,6 @@ impl NetworkObservationTargetArgs {
     }
 
     pub fn observed_at(&self) -> u64 {
-        self.observation.observed_at()
+        self.observation.observed_at
     }
 }

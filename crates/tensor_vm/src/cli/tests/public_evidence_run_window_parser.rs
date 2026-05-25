@@ -29,15 +29,15 @@ fn parses_run_window_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Run(
-            EvidenceRunCommand::Window(RunWindowArgs::new(
-                run_window_context_args(
+            EvidenceRunCommand::Window(RunWindowArgs {
+                context: run_window_context_args(
                     hash_bytes(b"test", &[b"public-evidence-bundle"]),
                     address(b"public-evidence-publisher"),
                 ),
-                1_700_000_000,
-                1_700_000_060,
-                10,
-            )),
+                started_at: 1_700_000_000,
+                ended_at: 1_700_000_060,
+                observed_blocks: 10,
+            }),
         )))
     );
 
@@ -56,13 +56,13 @@ fn parses_run_window_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Run(
-            EvidenceRunCommand::WindowFile(RunWindowFromFileArgs::new(
-                run_window_context_args(
+            EvidenceRunCommand::WindowFile(RunWindowFromFileArgs {
+                context: run_window_context_args(
                     hash_bytes(b"test", &[b"public-evidence-bundle"]),
                     address(b"public-evidence-publisher"),
                 ),
-                path("artifacts/block-observations.records"),
-            )),
+                block_observation_file: path("artifacts/block-observations.records"),
+            }),
         )))
     );
 }

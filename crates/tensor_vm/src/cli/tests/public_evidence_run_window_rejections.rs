@@ -82,12 +82,12 @@ fn execute_run_window(
     observed_blocks: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::Window(
-        RunWindowArgs::new(
-            run_window_context_args(bundle_id, manifest_signer),
+        RunWindowArgs {
+            context: run_window_context_args(bundle_id, manifest_signer),
             started_at,
             ended_at,
             observed_blocks,
-        ),
+        },
     )))
 }
 
@@ -95,12 +95,12 @@ fn execute_run_window_file(
     block_observation_file: std::path::PathBuf,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::WindowFile(
-        RunWindowFromFileArgs::new(
-            run_window_context_args(
+        RunWindowFromFileArgs {
+            context: run_window_context_args(
                 hash_bytes(b"test", &[b"public-evidence-bundle"]),
                 address(b"public-evidence-publisher"),
             ),
             block_observation_file,
-        ),
+        },
     )))
 }

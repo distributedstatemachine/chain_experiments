@@ -1,8 +1,7 @@
 use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 use super::public_evidence_signing_commands::ManifestSignerArgs;
-use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueHint};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -16,118 +15,44 @@ pub(crate) enum EvidenceRunCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RunWindowArgs {
     #[command(flatten)]
-    context: RunWindowContextArgs,
+    pub(crate) context: RunWindowContextArgs,
     #[arg(
         long,
         value_name = "UNIX_SECONDS",
         help = "Unix timestamp at run-window start."
     )]
-    started_at: u64,
+    pub(crate) started_at: u64,
     #[arg(
         long,
         value_name = "UNIX_SECONDS",
         help = "Unix timestamp at run-window end."
     )]
-    ended_at: u64,
+    pub(crate) ended_at: u64,
     #[arg(
         long,
         value_name = "N",
         help = "Blocks observed during the run window."
     )]
-    observed_blocks: u64,
-}
-
-impl RunWindowArgs {
-    #[cfg(test)]
-    pub(crate) fn new(
-        context: RunWindowContextArgs,
-        started_at: u64,
-        ended_at: u64,
-        observed_blocks: u64,
-    ) -> Self {
-        Self {
-            context,
-            started_at,
-            ended_at,
-            observed_blocks,
-        }
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.context.bundle_id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.context.manifest_signer()
-    }
-
-    pub fn started_at(&self) -> u64 {
-        self.started_at
-    }
-
-    pub fn ended_at(&self) -> u64 {
-        self.ended_at
-    }
-
-    pub fn observed_blocks(&self) -> u64 {
-        self.observed_blocks
-    }
+    pub(crate) observed_blocks: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RunWindowFromFileArgs {
     #[command(flatten)]
-    context: RunWindowContextArgs,
+    pub(crate) context: RunWindowContextArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "File containing observed block records."
     )]
-    block_observation_file: PathBuf,
-}
-
-impl RunWindowFromFileArgs {
-    #[cfg(test)]
-    pub(crate) fn new(context: RunWindowContextArgs, block_observation_file: PathBuf) -> Self {
-        Self {
-            context,
-            block_observation_file,
-        }
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.context.bundle_id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.context.manifest_signer()
-    }
-
-    pub fn block_observation_file(&self) -> &Path {
-        &self.block_observation_file
-    }
+    pub(crate) block_observation_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct RunWindowContextArgs {
     #[command(flatten)]
-    bundle: EvidenceBundleIdArgs,
+    pub(crate) bundle: EvidenceBundleIdArgs,
     #[command(flatten)]
-    signer: ManifestSignerArgs,
-}
-
-impl RunWindowContextArgs {
-    #[cfg(test)]
-    pub(crate) fn new(bundle: EvidenceBundleIdArgs, signer: ManifestSignerArgs) -> Self {
-        Self { bundle, signer }
-    }
-
-    pub fn bundle_id(&self) -> Hash {
-        self.bundle.id()
-    }
-
-    pub fn manifest_signer(&self) -> Address {
-        self.signer.signer()
-    }
+    pub(crate) signer: ManifestSignerArgs,
 }

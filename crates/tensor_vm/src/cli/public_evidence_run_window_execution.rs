@@ -8,16 +8,16 @@ pub(super) fn execute_public_evidence_run_window_command(
 ) -> Result<String> {
     match command {
         EvidenceRunCommand::Window(args) => run_window_evidence_line(
-            args.bundle_id(),
-            args.manifest_signer(),
-            args.started_at(),
-            args.ended_at(),
-            args.observed_blocks(),
+            args.context.bundle.bundle_id.into_hash(),
+            args.context.signer.manifest_signer.into_address(),
+            args.started_at,
+            args.ended_at,
+            args.observed_blocks,
         ),
         EvidenceRunCommand::WindowFile(args) => run_window_evidence_line_from_file(
-            args.bundle_id(),
-            args.manifest_signer(),
-            &path_argument(args.block_observation_file()),
+            args.context.bundle.bundle_id.into_hash(),
+            args.context.signer.manifest_signer.into_address(),
+            &path_argument(&args.block_observation_file),
         ),
     }
 }

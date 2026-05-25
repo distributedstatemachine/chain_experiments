@@ -29,15 +29,15 @@ fn parses_publication_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Publish(
-            PublicationArgs::new(
-                publication_bundle_args(
+            PublicationArgs {
+                bundle: publication_bundle_args(
                     hash_bytes(b"test", &[b"public-evidence-bundle"]),
                     "https://tensorvm.net/tensorvm/public-evidence.json",
                 ),
-                manifest_signer_args(address(b"public-evidence-publisher")),
-                1,
-                1,
-            ),
+                signer: manifest_signer_args(address(b"public-evidence-publisher")),
+                manifest_signature_count: 1,
+                independent_auditor_count: 1,
+            },
         )))
     );
 
@@ -59,15 +59,15 @@ fn parses_publication_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Audit(
-            AuditorRecordArgs::new(
-                publication_bundle_args(
+            AuditorRecordArgs {
+                bundle: publication_bundle_args(
                     hash_bytes(b"test", &[b"public-evidence-bundle"]),
                     "https://tensorvm.net/tensorvm/public-evidence.json",
                 ),
-                address_arg(address(b"public-evidence-auditor-0")),
-                manifest_auditor_uri(),
-                observation_timestamp_args(1_700_000_060),
-            ),
+                auditor_id: address_arg(address(b"public-evidence-auditor-0")),
+                audit_uri: manifest_auditor_uri(),
+                observation: observation_timestamp_args(1_700_000_060),
+            },
         )))
     );
 }

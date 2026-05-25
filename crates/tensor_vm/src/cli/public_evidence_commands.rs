@@ -48,7 +48,7 @@ pub(crate) use super::public_evidence_service_commands::{
 #[cfg(test)]
 pub(crate) use super::public_evidence_signing_commands::ManifestSignerArgs;
 use clap::{Args, Subcommand, ValueHint};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -89,33 +89,11 @@ pub(crate) enum EvidenceCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct PublicTestnetManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet preflight manifest to validate.")]
-    manifest: PathBuf,
-}
-
-impl PublicTestnetManifestArgs {
-    #[cfg(test)]
-    pub(crate) fn new(manifest: PathBuf) -> Self {
-        Self { manifest }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.manifest
-    }
+    pub(crate) manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub(crate) struct PublicEvidenceManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet evidence manifest to validate.")]
-    manifest: PathBuf,
-}
-
-impl PublicEvidenceManifestArgs {
-    #[cfg(test)]
-    pub(crate) fn new(manifest: PathBuf) -> Self {
-        Self { manifest }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.manifest
-    }
+    pub(crate) manifest: PathBuf,
 }

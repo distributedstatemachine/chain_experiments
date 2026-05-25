@@ -1343,6 +1343,9 @@ spaghetti around.
 - Iteration 550 removed the getter/constructor compatibility layer from the local `tvmd` Clap command
   payloads, so node, role, localnet, and top-level dispatch now use the typed Clap fields directly instead
   of treating Clap as a wrapper around an older command API.
+- Iteration 551 removed the same compatibility layer from shared public manifest, publication, signing,
+  observation, block-window, and run-window Clap payloads, keeping the public evidence command family on
+  direct typed fields instead of constructor/getter adapters.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

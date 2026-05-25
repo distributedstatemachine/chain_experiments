@@ -24,7 +24,10 @@ pub(super) fn execute_test_cli_args(args: &[&str]) -> std::result::Result<String
 }
 
 pub(super) fn block_height_window_args(first_block: u64, last_block: u64) -> BlockHeightWindowArgs {
-    BlockHeightWindowArgs::new(first_block, last_block)
+    BlockHeightWindowArgs {
+        first_block,
+        last_block,
+    }
 }
 
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
@@ -36,7 +39,9 @@ pub(super) fn hash_arg(value: Hash) -> HashArg {
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: Hash) -> EvidenceBundleIdArgs {
-    EvidenceBundleIdArgs::new(bundle_id)
+    EvidenceBundleIdArgs {
+        bundle_id: HashArg::new(bundle_id),
+    }
 }
 
 pub(super) fn operator_id_args(operator_id: Hash) -> OperatorIdArgs {
@@ -48,11 +53,13 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: Address) -> ManifestSignerArgs {
-    ManifestSignerArgs::new(manifest_signer)
+    ManifestSignerArgs {
+        manifest_signer: AddressArg::new(manifest_signer),
+    }
 }
 
 pub(super) fn observation_timestamp_args(observed_at: u64) -> ObservationTimestampArgs {
-    ObservationTimestampArgs::new(observed_at)
+    ObservationTimestampArgs { observed_at }
 }
 
 pub(super) fn network_observation_target_args(
@@ -94,17 +101,20 @@ pub(super) fn network_observation_transport_limits_args(
 }
 
 pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> PublicationBundleArgs {
-    PublicationBundleArgs::new(evidence_bundle_id_args(bundle_id), public_uri)
+    PublicationBundleArgs {
+        bundle: evidence_bundle_id_args(bundle_id),
+        public_uri: public_uri.to_owned(),
+    }
 }
 
 pub(super) fn run_window_context_args(
     bundle_id: Hash,
     manifest_signer: Address,
 ) -> RunWindowContextArgs {
-    RunWindowContextArgs::new(
-        evidence_bundle_id_args(bundle_id),
-        manifest_signer_args(manifest_signer),
-    )
+    RunWindowContextArgs {
+        bundle: evidence_bundle_id_args(bundle_id),
+        signer: manifest_signer_args(manifest_signer),
+    }
 }
 
 pub(super) fn record_artifact_locator_args(artifact_uri: &str) -> RecordArtifactLocatorArgs {

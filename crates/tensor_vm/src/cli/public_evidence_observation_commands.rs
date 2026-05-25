@@ -7,16 +7,5 @@ pub(crate) struct ObservationTimestampArgs {
         value_name = "UNIX_SECONDS",
         help = "Unix timestamp for the observation."
     )]
-    observed_at: u64,
-}
-
-impl ObservationTimestampArgs {
-    #[cfg(test)]
-    pub(crate) fn new(observed_at: u64) -> Self {
-        Self { observed_at }
-    }
-
-    pub fn observed_at(&self) -> u64 {
-        self.observed_at
-    }
+    pub(crate) observed_at: u64,
 }

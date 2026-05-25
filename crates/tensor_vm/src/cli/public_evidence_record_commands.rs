@@ -152,11 +152,11 @@ impl PublicEvidenceRecordContextArgs {
     }
 
     pub fn bundle_id(&self) -> Hash {
-        self.bundle.id()
+        self.bundle.bundle_id.into_hash()
     }
 
     pub fn manifest_signer(&self) -> Address {
-        self.signer.signer()
+        self.signer.manifest_signer.into_address()
     }
 }
 
