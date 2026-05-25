@@ -1382,6 +1382,9 @@ spaghetti around.
 - Iteration 563 consolidated public run-window evidence execution around a typed bundle/signer context,
   removing repeated bundle-id and manifest-signer extraction from direct and file-backed run-window command
   variants.
+- Iteration 564 narrowed public publication evidence execution to explicit publish and audit handlers,
+  removing the broad `EvidenceCommand` executor plus its unreachable fallback and sharing bundle/public-URI
+  extraction through a typed publication bundle context.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
