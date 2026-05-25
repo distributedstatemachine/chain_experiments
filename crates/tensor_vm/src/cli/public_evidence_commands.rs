@@ -7,6 +7,7 @@ pub use super::public_evidence_node_commands::{
     EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
     PublicNodeIdentityArgs, PublicNodeRoleArg,
 };
+pub use super::public_evidence_observation_commands::ObservationTimestampArgs;
 pub use super::public_evidence_publication_commands::{
     AuditorRecordArgs, PublicationArgs, PublicationBundleArgs,
 };

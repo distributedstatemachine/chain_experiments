@@ -1,7 +1,8 @@
 use super::parser_support::{address_arg, publication_bundle_args};
 use super::{
     AuditorRecordArgs, EvidenceCommand, PublicCommand, PublicationArgs, TvmdCommand,
-    manifest_address, manifest_auditor_uri, manifest_hash, parse_test_cli,
+    manifest_address, manifest_auditor_uri, manifest_hash, observation_timestamp_args,
+    parse_test_cli,
 };
 use crate::types::{address, hash_bytes};
 
@@ -65,7 +66,7 @@ fn parses_publication_evidence_commands() {
                 ),
                 auditor_id: address_arg(address(b"public-evidence-auditor-0")),
                 audit_uri: manifest_auditor_uri(),
-                observed_at: 1_700_000_060,
+                observation: observation_timestamp_args(1_700_000_060),
             },
         )))
     );

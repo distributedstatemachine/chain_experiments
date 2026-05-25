@@ -2,7 +2,8 @@ use super::parser_support::{address_arg, hash_arg, path};
 use super::{
     EvidenceCommand, EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, PublicCommand, PublicNodeIdentityArgs, PublicNodeRoleArg, TvmdCommand,
-    block_height_window_args, manifest_address, manifest_hash, parse_test_cli,
+    block_height_window_args, manifest_address, manifest_hash, observation_timestamp_args,
+    parse_test_cli,
 };
 use crate::types::{address, hash_bytes};
 
@@ -83,7 +84,7 @@ fn parses_node_evidence_commands() {
             EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
                 node: miner_node_identity_args(),
                 identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-                observed_at: 1_700_000_000,
+                observation: observation_timestamp_args(1_700_000_000),
             }),
         )))
     );

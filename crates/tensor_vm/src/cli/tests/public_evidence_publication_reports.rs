@@ -38,7 +38,7 @@ fn execute_publication_evidence_reports_outputs() {
             ),
             auditor_id: address_arg(address(b"public-evidence-auditor-0")),
             audit_uri: manifest_auditor_uri(),
-            observed_at: 1_700_000_060,
+            observation: observation_timestamp_args(1_700_000_060),
         }))
         .unwrap();
     assert_eq!(

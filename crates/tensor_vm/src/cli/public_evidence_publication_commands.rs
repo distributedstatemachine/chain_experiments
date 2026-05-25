@@ -1,3 +1,4 @@
+use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::value_types::{AddressArg, HashArg};
 use crate::types::Hash;
 use clap::{Args, ValueHint};
@@ -43,12 +44,8 @@ pub struct AuditorRecordArgs {
         help = "Public URI for the auditor's review artifact."
     )]
     pub audit_uri: String,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the audit observation."
-    )]
-    pub observed_at: u64,
+    #[command(flatten)]
+    pub observation: ObservationTimestampArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

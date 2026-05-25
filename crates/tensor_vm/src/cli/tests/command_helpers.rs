@@ -42,6 +42,10 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
     AddressArg::new(value)
 }
 
+pub(super) fn observation_timestamp_args(observed_at: u64) -> ObservationTimestampArgs {
+    ObservationTimestampArgs { observed_at }
+}
+
 pub(super) fn network_observation_target_args(
     operator_id: Hash,
     listen_address: &str,
@@ -50,7 +54,7 @@ pub(super) fn network_observation_target_args(
     NetworkObservationTargetArgs {
         operator_id: hash_arg(operator_id),
         listen_address: multiaddr_arg(listen_address.to_owned()),
-        observed_at,
+        observation: observation_timestamp_args(observed_at),
     }
 }
 

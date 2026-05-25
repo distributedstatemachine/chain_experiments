@@ -2,7 +2,7 @@ use super::parser_support::{hash_arg, multiaddr, path};
 use super::{
     EvidenceCommand, EvidenceNetworkCommand, NetworkObservationArgs,
     NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, PublicCommand, TvmdCommand,
-    manifest_hash, parse_test_cli,
+    manifest_hash, observation_timestamp_args, parse_test_cli,
 };
 use crate::types::hash_bytes;
 use libp2p::PeerId;
@@ -84,6 +84,6 @@ fn network_observation_target_args() -> NetworkObservationTargetArgs {
     NetworkObservationTargetArgs {
         operator_id: hash_arg(hash_bytes(b"test", &[b"network-operator"])),
         listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
-        observed_at: 1_700_000_000,
+        observation: observation_timestamp_args(1_700_000_000),
     }
 }

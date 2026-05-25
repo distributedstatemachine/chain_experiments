@@ -36,7 +36,7 @@ pub(super) fn execute_public_evidence_service_command(
             &args.target.endpoint.public_url,
             &args.target.content_path,
             args.content_root.into_hash(),
-            args.target.observed_at,
+            args.target.observation.observed_at(),
             args.min_content_bytes,
         ),
         EvidenceServiceCommand::ContentBytes(args) => service_content_evidence_line_from_bytes(
@@ -44,7 +44,7 @@ pub(super) fn execute_public_evidence_service_command(
             args.target.endpoint.endpoint_id.into_hash(),
             &args.target.endpoint.public_url,
             &args.target.content_path,
-            args.target.observed_at,
+            args.target.observation.observed_at(),
             args.content.as_slice(),
         ),
         EvidenceServiceCommand::ContentFile(args) => std::fs::read(&args.content_file)
@@ -55,7 +55,7 @@ pub(super) fn execute_public_evidence_service_command(
                     args.target.endpoint.endpoint_id.into_hash(),
                     &args.target.endpoint.public_url,
                     &args.target.content_path,
-                    args.target.observed_at,
+                    args.target.observation.observed_at(),
                     &content_bytes,
                 )
             }),

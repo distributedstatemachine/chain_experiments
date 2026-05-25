@@ -1216,6 +1216,9 @@ spaghetti around.
 - Iteration 490 flattened repeated public evidence `--first-block` and `--last-block` Clap
   arguments into `BlockHeightWindowArgs`, keeping node heartbeat and service health evidence on one
   canonical block-height window model.
+- Iteration 491 flattened repeated public evidence `--observed-at` Clap arguments into
+  `ObservationTimestampArgs`, keeping network observations, operator attestations, auditor records,
+  and service content evidence on one canonical observation timestamp model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

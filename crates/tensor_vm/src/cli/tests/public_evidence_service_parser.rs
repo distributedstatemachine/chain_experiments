@@ -4,7 +4,7 @@ use super::{
     PublicServiceKindArg, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs, ServiceHealthPathArgs, TvmdCommand, block_height_window_args,
-    manifest_hash, parse_test_cli,
+    manifest_hash, observation_timestamp_args, parse_test_cli,
 };
 use crate::hash::hex;
 use crate::types::hash_bytes;
@@ -191,6 +191,6 @@ fn service_content_target_args(public_url: &str, content_path: &str) -> ServiceC
     ServiceContentTargetArgs {
         endpoint: service_endpoint_args(public_url),
         content_path: content_path.to_owned(),
-        observed_at: 1_700_000_000,
+        observation: observation_timestamp_args(1_700_000_000),
     }
 }

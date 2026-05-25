@@ -1,3 +1,4 @@
+use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::value_types::HashArg;
 use clap::{Args, Subcommand, ValueHint};
 use libp2p::{Multiaddr, PeerId};
@@ -69,10 +70,6 @@ pub struct NetworkObservationTargetArgs {
         help = "Public libp2p listen multiaddress."
     )]
     pub listen_address: Multiaddr,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
+    #[command(flatten)]
+    pub observation: ObservationTimestampArgs,
 }

@@ -198,6 +198,6 @@ fn execute_auditor_with_public_uri(
         ),
         auditor_id: address_arg(auditor_id),
         audit_uri: audit_uri.into(),
-        observed_at,
+        observation: observation_timestamp_args(observed_at),
     }))
 }

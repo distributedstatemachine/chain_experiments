@@ -72,7 +72,7 @@ fn execute_node_evidence_reports_outputs() {
         EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
             node: public_node_identity_args(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
             identity_uri: operator_identity_uri.clone(),
-            observed_at: 1_700_000_000,
+            observation: observation_timestamp_args(1_700_000_000),
         }),
     ))
     .unwrap();

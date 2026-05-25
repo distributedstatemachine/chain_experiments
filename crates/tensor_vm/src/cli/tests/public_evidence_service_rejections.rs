@@ -37,7 +37,7 @@ fn execute_public_service_evidence_rejects_invalid_args() {
         .is_err()
     );
     let mut args = valid_service_content_args();
-    args.target.observed_at = 0;
+    args.target.observation = observation_timestamp_args(0);
     assert!(
         execute_service_content(args).is_err(),
         "zero observation timestamp should be rejected"
@@ -92,7 +92,7 @@ fn valid_service_content_target_args() -> ServiceContentTargetArgs {
     ServiceContentTargetArgs {
         endpoint: valid_service_endpoint_args(),
         content_path: "/chain/head".to_owned(),
-        observed_at: 1_700_000_000,
+        observation: observation_timestamp_args(1_700_000_000),
     }
 }
 

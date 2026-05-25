@@ -1,4 +1,5 @@
 use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
+use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::value_types::{HashArg, HexBytesArg};
 use crate::testnet::PublicServiceKind;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
@@ -125,12 +126,8 @@ pub struct ServiceContentTargetArgs {
         help = "Content path observed on the public service."
     )]
     pub content_path: String,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
+    #[command(flatten)]
+    pub observation: ObservationTimestampArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

@@ -30,7 +30,7 @@ pub(super) fn execute_public_evidence_node_command(
                 args.node.address.into_address(),
                 args.node.operator_id.into_hash(),
                 &args.identity_uri,
-                args.observed_at,
+                args.observation.observed_at(),
             )
         }
     }

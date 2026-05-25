@@ -169,7 +169,7 @@ fn execute_operator_attestation(
         EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
             node: public_node_identity_args(address, operator_id),
             identity_uri: identity_uri.to_owned(),
-            observed_at,
+            observation: observation_timestamp_args(observed_at),
         }),
     ))
 }

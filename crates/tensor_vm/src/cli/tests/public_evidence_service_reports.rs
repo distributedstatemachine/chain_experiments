@@ -180,6 +180,6 @@ fn service_content_target_args(kind: PublicServiceKind, label: &[u8]) -> Service
     ServiceContentTargetArgs {
         endpoint: service_endpoint_args(kind, label, public_service_content_url(kind)),
         content_path: public_service_content_path(kind).to_owned(),
-        observed_at: 1_700_000_000,
+        observation: observation_timestamp_args(1_700_000_000),
     }
 }

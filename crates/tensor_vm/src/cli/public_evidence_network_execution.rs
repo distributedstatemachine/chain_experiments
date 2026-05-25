@@ -16,7 +16,7 @@ pub(super) fn execute_public_evidence_network_command(
                 operator_id: args.target.operator_id.into_hash(),
                 peer_id: &args.peer_id.to_string(),
                 listen_address: &args.target.listen_address.to_string(),
-                observed_at_unix_seconds: args.target.observed_at,
+                observed_at_unix_seconds: args.target.observation.observed_at(),
                 gossip_topic_count: args.gossip_topics,
                 request_response_protocol_count: args.request_response_protocols,
                 bootstrap_peer_count: args.bootstrap_peers,
@@ -29,7 +29,7 @@ pub(super) fn execute_public_evidence_network_command(
         EvidenceNetworkCommand::FromServiceLog(args) => network_observation_from_service_log(
             args.target.operator_id.into_hash(),
             &args.target.listen_address.to_string(),
-            args.target.observed_at,
+            args.target.observation.observed_at(),
             &path_argument(&args.service_log),
         ),
     }
