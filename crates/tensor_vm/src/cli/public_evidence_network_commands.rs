@@ -65,7 +65,8 @@ pub struct NetworkObservationTransportLimitsArgs {
 }
 
 impl NetworkObservationArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         target: NetworkObservationTargetArgs,
         peer_id: PeerId,
         protocol_counts: NetworkObservationProtocolCountsArgs,
@@ -125,7 +126,8 @@ impl NetworkObservationArgs {
 }
 
 impl NetworkObservationProtocolCountsArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         gossip_topic_count: u64,
         request_response_protocol_count: u64,
         bootstrap_peer_count: u64,
@@ -151,7 +153,8 @@ impl NetworkObservationProtocolCountsArgs {
 }
 
 impl NetworkObservationTransportLimitsArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         max_transmit_bytes: u64,
         request_timeout_seconds: u64,
         max_concurrent_streams: u64,
@@ -196,7 +199,8 @@ pub struct NetworkObservationFromServiceLogArgs {
 }
 
 impl NetworkObservationFromServiceLogArgs {
-    pub fn new(target: NetworkObservationTargetArgs, service_log: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(target: NetworkObservationTargetArgs, service_log: PathBuf) -> Self {
         Self {
             target,
             service_log,
@@ -235,7 +239,8 @@ pub struct NetworkObservationTargetArgs {
 }
 
 impl NetworkObservationTargetArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         operator: OperatorIdArgs,
         listen_address: Multiaddr,
         observation: ObservationTimestampArgs,

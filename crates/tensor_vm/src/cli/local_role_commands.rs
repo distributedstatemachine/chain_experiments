@@ -48,7 +48,8 @@ pub struct StakeArgs {
 }
 
 impl StakeArgs {
-    pub fn new(stake: u64) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(stake: u64) -> Self {
         Self { stake }
     }
 
@@ -73,7 +74,8 @@ pub struct MinerCheckArgs {
 }
 
 impl MinerCheckArgs {
-    pub fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, node: RoleNodeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, node: RoleNodeArgs) -> Self {
         Self {
             wallet,
             device,
@@ -110,7 +112,12 @@ pub struct MinerRunArgs {
 }
 
 impl MinerRunArgs {
-    pub fn new(wallet: RoleWalletArgs, device: MinerDeviceArg, runtime: RoleRuntimeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(
+        wallet: RoleWalletArgs,
+        device: MinerDeviceArg,
+        runtime: RoleRuntimeArgs,
+    ) -> Self {
         Self {
             wallet,
             device,
@@ -140,7 +147,8 @@ pub struct ValidatorCheckArgs {
 }
 
 impl ValidatorCheckArgs {
-    pub fn new(wallet: RoleWalletArgs, node: RoleNodeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(wallet: RoleWalletArgs, node: RoleNodeArgs) -> Self {
         Self { wallet, node }
     }
 
@@ -162,7 +170,8 @@ pub struct ValidatorRunArgs {
 }
 
 impl ValidatorRunArgs {
-    pub fn new(wallet: RoleWalletArgs, runtime: RoleRuntimeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(wallet: RoleWalletArgs, runtime: RoleRuntimeArgs) -> Self {
         Self { wallet, runtime }
     }
 
@@ -187,7 +196,8 @@ pub struct RoleWalletArgs {
 }
 
 impl RoleWalletArgs {
-    pub fn new(wallet: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(wallet: PathBuf) -> Self {
         Self { wallet }
     }
 
@@ -208,7 +218,8 @@ pub struct RoleNodeArgs {
 }
 
 impl RoleNodeArgs {
-    pub fn new(node: Multiaddr) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(node: Multiaddr) -> Self {
         Self { node }
     }
 
@@ -226,7 +237,8 @@ pub struct RoleRuntimeArgs {
 }
 
 impl RoleRuntimeArgs {
-    pub fn new(node: RoleNodeArgs, node_runtime: NodeRuntimeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(node: RoleNodeArgs, node_runtime: NodeRuntimeArgs) -> Self {
         Self { node, node_runtime }
     }
 

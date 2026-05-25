@@ -17,7 +17,8 @@ pub struct RecordArtifactArgs {
 }
 
 impl RecordArtifactArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         context: PublicEvidenceRecordContextArgs,
         artifact: RecordArtifactLocatorArgs,
         root: RecordRootArgs,
@@ -65,7 +66,8 @@ pub struct RecordArtifactFromRootsArgs {
 }
 
 impl RecordArtifactFromRootsArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         context: PublicEvidenceRecordContextArgs,
         artifact: RecordArtifactLocatorArgs,
         roots: RecordRootsArgs,
@@ -109,7 +111,8 @@ pub struct RecordArtifactFromFileArgs {
 }
 
 impl RecordArtifactFromFileArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         context: PublicEvidenceRecordContextArgs,
         artifact: RecordArtifactLocatorArgs,
         file: RecordFileArgs,
@@ -154,7 +157,8 @@ pub struct RecordArtifactLocatorArgs {
 }
 
 impl RecordArtifactLocatorArgs {
-    pub fn new(artifact_uri: impl Into<String>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(artifact_uri: impl Into<String>) -> Self {
         Self {
             artifact_uri: artifact_uri.into(),
         }

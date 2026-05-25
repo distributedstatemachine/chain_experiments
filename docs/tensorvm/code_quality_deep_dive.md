@@ -1300,6 +1300,8 @@ spaghetti around.
   endpoint/path/window groups, reachability counters, signed-check counters, and observation files out of public parser internals.
 - Iteration 529 hid public service-content Clap fields behind constructors and accessors, keeping
   endpoint triples, content targets, content roots, byte payloads, content files, and minimum byte counts out of public parser internals.
+- Iteration 530 tightened the public Clap boundary so external callers keep `TvmdCli` plus `app::run`
+  while direct `TvmdCommand` execution, parsed command extraction, and argument payload types remain crate-internal.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

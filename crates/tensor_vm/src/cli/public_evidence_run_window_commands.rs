@@ -38,7 +38,8 @@ pub struct RunWindowArgs {
 }
 
 impl RunWindowArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         context: RunWindowContextArgs,
         started_at: u64,
         ended_at: u64,
@@ -87,7 +88,8 @@ pub struct RunWindowFromFileArgs {
 }
 
 impl RunWindowFromFileArgs {
-    pub fn new(context: RunWindowContextArgs, block_observation_file: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(context: RunWindowContextArgs, block_observation_file: PathBuf) -> Self {
         Self {
             context,
             block_observation_file,
@@ -116,7 +118,8 @@ pub struct RunWindowContextArgs {
 }
 
 impl RunWindowContextArgs {
-    pub fn new(bundle: EvidenceBundleIdArgs, signer: ManifestSignerArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(bundle: EvidenceBundleIdArgs, signer: ManifestSignerArgs) -> Self {
         Self { bundle, signer }
     }
 

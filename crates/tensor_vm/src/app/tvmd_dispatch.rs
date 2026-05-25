@@ -19,7 +19,7 @@ pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
     execute_tvmd_command(cli.tvmd_command())
 }
 
-pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
+pub(crate) fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String, String> {
     match command {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Validate(args))) => {
             let contents = std::fs::read_to_string(args.path()).map_err(|error| {

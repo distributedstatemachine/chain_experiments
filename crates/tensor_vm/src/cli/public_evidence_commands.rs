@@ -1,36 +1,51 @@
+#[cfg(test)]
 pub use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
+#[cfg(test)]
 pub use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
+pub use super::public_evidence_network_commands::EvidenceNetworkCommand;
+#[cfg(test)]
 pub use super::public_evidence_network_commands::{
-    EvidenceNetworkCommand, NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs,
     NetworkObservationProtocolCountsArgs, NetworkObservationTargetArgs,
     NetworkObservationTransportLimitsArgs,
 };
+pub use super::public_evidence_node_commands::EvidenceNodeCommand;
+#[cfg(test)]
 pub use super::public_evidence_node_commands::{
-    EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
-    PublicNodeIdentityArgs, PublicNodeRoleArg,
+    NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicNodeIdentityArgs,
+    PublicNodeRoleArg,
 };
+#[cfg(test)]
 pub use super::public_evidence_observation_commands::ObservationTimestampArgs;
+#[cfg(test)]
 pub use super::public_evidence_operator_commands::OperatorIdArgs;
-pub use super::public_evidence_publication_commands::{
-    AuditorRecordArgs, PublicationArgs, PublicationBundleArgs,
-};
+#[cfg(test)]
+pub use super::public_evidence_publication_commands::PublicationBundleArgs;
+pub use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
+#[cfg(test)]
 pub use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
     RecordArtifactLocatorArgs,
 };
+pub use super::public_evidence_record_commands::EvidenceRecordCommand;
+#[cfg(test)]
 pub use super::public_evidence_record_commands::{
-    EvidenceRecordCommand, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
-    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
-    RecordSummaryFromRootsArgs,
+    PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, RecordFileArgs, RecordRootArgs,
+    RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
+pub use super::public_evidence_run_window_commands::EvidenceRunCommand;
+#[cfg(test)]
 pub use super::public_evidence_run_window_commands::{
-    EvidenceRunCommand, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
+    RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
 };
+pub use super::public_evidence_service_commands::EvidenceServiceCommand;
+#[cfg(test)]
 pub use super::public_evidence_service_commands::{
-    EvidenceServiceCommand, PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,
+    PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,
     ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
     ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
 };
+#[cfg(test)]
 pub use super::public_evidence_signing_commands::ManifestSignerArgs;
 use clap::{Args, Subcommand, ValueHint};
 use std::path::{Path, PathBuf};
@@ -78,7 +93,8 @@ pub struct PublicTestnetManifestArgs {
 }
 
 impl PublicTestnetManifestArgs {
-    pub fn new(manifest: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(manifest: PathBuf) -> Self {
         Self { manifest }
     }
 
@@ -94,7 +110,8 @@ pub struct PublicEvidenceManifestArgs {
 }
 
 impl PublicEvidenceManifestArgs {
-    pub fn new(manifest: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(manifest: PathBuf) -> Self {
         Self { manifest }
     }
 

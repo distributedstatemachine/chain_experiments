@@ -1,28 +1,7 @@
-pub use super::local_commands::{
-    BootstrapPeerArgs, DataDirArgs, IdentitySeedArgs, LocalCpuVerifyArgs, LocalnetCommand,
-    MinerCheckArgs, MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand,
-    NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, P2pListenArgs,
-    ProposerCommand, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, StakeArgs, ValidatorCheckArgs,
-    ValidatorCommand, ValidatorRunArgs,
+use super::local_commands::{
+    LocalnetCommand, MinerCommand, NodeCommand, ProposerCommand, ValidatorCommand,
 };
-pub use super::public_evidence_commands::{
-    AuditorRecordArgs, BlockHeightWindowArgs, EvidenceBundleIdArgs, EvidenceCommand,
-    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
-    EvidenceServiceCommand, ManifestSignerArgs, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, NetworkObservationProtocolCountsArgs,
-    NetworkObservationTargetArgs, NetworkObservationTransportLimitsArgs, NodeHeartbeatArgs,
-    NodeHeartbeatFromFileArgs, ObservationTimestampArgs, OperatorAttestationArgs, OperatorIdArgs,
-    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs,
-    PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
-    PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
-    PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
-    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
-    RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
-    RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs,
-    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
-    ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
-};
-pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
+use super::public_evidence_commands::PublicCommand;
 use clap::{Parser, Subcommand};
 
 const TVMD_AFTER_HELP: &str = "Examples:
@@ -46,11 +25,12 @@ pub struct TvmdCli {
 }
 
 impl TvmdCli {
-    pub fn tvmd_command(&self) -> &TvmdCommand {
+    pub(crate) fn tvmd_command(&self) -> &TvmdCommand {
         &self.command
     }
 
-    pub fn into_command(self) -> TvmdCommand {
+    #[cfg(test)]
+    pub(crate) fn into_command(self) -> TvmdCommand {
         self.command
     }
 }

@@ -59,7 +59,9 @@ pub use runtime_validator::tick_validator_role_work_once;
 pub use service_runtime::serve_service;
 pub use shared::{local_cpu_seed_beacon, p2p_identity_report};
 pub use status::{hex_hash_list, service_status};
-pub use tvmd_dispatch::{execute_tvmd_command, run};
+#[cfg(test)]
+pub(crate) use tvmd_dispatch::execute_tvmd_command;
+pub use tvmd_dispatch::run;
 pub use validator_fetch::{
     ValidatorRemoteTensorFetchReport, ValidatorRemoteTensorResponse,
     fetch_validator_role_missing_tensors, validator_remote_tensor_response,

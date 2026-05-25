@@ -9,7 +9,8 @@ pub struct EvidenceBundleIdArgs {
 }
 
 impl EvidenceBundleIdArgs {
-    pub fn new(bundle_id: Hash) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(bundle_id: Hash) -> Self {
         Self {
             bundle_id: HashArg::new(bundle_id),
         }

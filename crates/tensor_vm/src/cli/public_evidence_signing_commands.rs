@@ -13,7 +13,8 @@ pub struct ManifestSignerArgs {
 }
 
 impl ManifestSignerArgs {
-    pub fn new(manifest_signer: Address) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(manifest_signer: Address) -> Self {
         Self {
             manifest_signer: AddressArg::new(manifest_signer),
         }

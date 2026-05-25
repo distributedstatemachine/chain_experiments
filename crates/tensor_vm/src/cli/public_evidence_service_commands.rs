@@ -44,7 +44,8 @@ pub struct ServiceHealthArgs {
 }
 
 impl ServiceHealthArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         endpoint: PublicServiceEndpointArgs,
         health: ServiceHealthPathArgs,
         window: BlockHeightWindowArgs,
@@ -109,7 +110,8 @@ pub struct ServiceHealthFromFileArgs {
 }
 
 impl ServiceHealthFromFileArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         endpoint: PublicServiceEndpointArgs,
         health: ServiceHealthPathArgs,
         observation_file: PathBuf,
@@ -153,7 +155,8 @@ pub struct ServiceHealthPathArgs {
 }
 
 impl ServiceHealthPathArgs {
-    pub fn new(health_path: impl Into<String>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(health_path: impl Into<String>) -> Self {
         Self {
             health_path: health_path.into(),
         }
@@ -183,7 +186,8 @@ pub struct ServiceContentArgs {
 }
 
 impl ServiceContentArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         target: ServiceContentTargetArgs,
         content_root: HashArg,
         min_content_bytes: u64,
@@ -237,7 +241,8 @@ pub struct ServiceContentFromBytesArgs {
 }
 
 impl ServiceContentFromBytesArgs {
-    pub fn new(target: ServiceContentTargetArgs, content: HexBytesArg) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(target: ServiceContentTargetArgs, content: HexBytesArg) -> Self {
         Self { target, content }
     }
 
@@ -280,7 +285,8 @@ pub struct ServiceContentFromFileArgs {
 }
 
 impl ServiceContentFromFileArgs {
-    pub fn new(target: ServiceContentTargetArgs, content_file: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(target: ServiceContentTargetArgs, content_file: PathBuf) -> Self {
         Self {
             target,
             content_file,
@@ -327,7 +333,8 @@ pub struct ServiceContentTargetArgs {
 }
 
 impl ServiceContentTargetArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         endpoint: PublicServiceEndpointArgs,
         content_path: impl Into<String>,
         observation: ObservationTimestampArgs,
@@ -380,7 +387,8 @@ pub struct PublicServiceEndpointArgs {
 }
 
 impl PublicServiceEndpointArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         kind: PublicServiceKindArg,
         endpoint_id: HashArg,
         public_url: impl Into<String>,

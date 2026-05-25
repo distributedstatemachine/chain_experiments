@@ -9,7 +9,8 @@ pub struct OperatorIdArgs {
 }
 
 impl OperatorIdArgs {
-    pub fn new(operator_id: Hash) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(operator_id: Hash) -> Self {
         Self {
             operator_id: HashArg::new(operator_id),
         }

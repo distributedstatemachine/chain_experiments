@@ -8,7 +8,8 @@ use std::str::FromStr;
 pub struct HashArg(Hash);
 
 impl HashArg {
-    pub fn new(value: Hash) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(value: Hash) -> Self {
         Self(value)
     }
 
@@ -31,7 +32,8 @@ impl FromStr for HashArg {
 pub struct AddressArg(Address);
 
 impl AddressArg {
-    pub fn new(value: Address) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(value: Address) -> Self {
         Self(value)
     }
 
@@ -56,16 +58,13 @@ pub struct HexBytesArg {
 }
 
 impl HexBytesArg {
-    pub fn new(bytes: Vec<u8>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(bytes: Vec<u8>) -> Self {
         Self { bytes }
     }
 
     pub fn as_slice(&self) -> &[u8] {
         &self.bytes
-    }
-
-    pub fn into_vec(self) -> Vec<u8> {
-        self.bytes
     }
 }
 
@@ -74,7 +73,7 @@ impl FromStr for HexBytesArg {
 
     fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
         parse_hex_bytes(value)
-            .map(Self::new)
+            .map(|bytes| Self { bytes })
             .map_err(hex_bytes_parse_error)
     }
 }

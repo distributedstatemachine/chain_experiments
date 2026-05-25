@@ -49,8 +49,7 @@ pub use chain::{
 };
 pub use challenge::{ChallengeOutcome, FraudChallenge, TensorOpChallengeInput, TraceStep};
 pub use cli::{
-    TvmdCli, TvmdCommand, validate_public_evidence_manifest,
-    validate_public_testnet_preflight_manifest,
+    TvmdCli, validate_public_evidence_manifest, validate_public_testnet_preflight_manifest,
 };
 pub use error::{Result, TvmError};
 pub use faucet::Faucet;

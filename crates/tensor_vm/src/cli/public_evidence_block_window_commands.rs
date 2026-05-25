@@ -17,7 +17,8 @@ pub struct BlockHeightWindowArgs {
 }
 
 impl BlockHeightWindowArgs {
-    pub fn new(first_block: u64, last_block: u64) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(first_block: u64, last_block: u64) -> Self {
         Self {
             first_block,
             last_block,

@@ -1,4 +1,4 @@
-use super::commands::EvidenceCommand;
+use super::public_evidence_commands::EvidenceCommand;
 use super::public_evidence_network_execution::execute_public_evidence_network_command;
 use super::public_evidence_node_execution::execute_public_evidence_node_command;
 use super::public_evidence_publication_execution::execute_public_evidence_publication_command;

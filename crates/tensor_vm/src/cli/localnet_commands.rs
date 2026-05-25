@@ -19,7 +19,8 @@ pub struct LocalCpuVerifyArgs {
 }
 
 impl LocalCpuVerifyArgs {
-    pub fn new(data_dir: DataDirArgs, json: bool) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(data_dir: DataDirArgs, json: bool) -> Self {
         Self { data_dir, json }
     }
 

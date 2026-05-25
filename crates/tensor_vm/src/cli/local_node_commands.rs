@@ -36,7 +36,8 @@ pub struct NodePeerAddArgs {
 }
 
 impl NodePeerAddArgs {
-    pub fn new(data_dir: DataDirArgs, bootstrap_peer: BootstrapPeerArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(data_dir: DataDirArgs, bootstrap_peer: BootstrapPeerArgs) -> Self {
         Self {
             data_dir,
             bootstrap_peer,
@@ -69,7 +70,8 @@ pub struct BootstrapPeerArgs {
 }
 
 impl BootstrapPeerArgs {
-    pub fn new(peer_id: PeerId, address: Multiaddr) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(peer_id: PeerId, address: Multiaddr) -> Self {
         Self { peer_id, address }
     }
 
@@ -93,7 +95,8 @@ pub struct NodeCheckArgs {
 }
 
 impl NodeCheckArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         p2p_listen: P2pListenArgs,
         data_dir: DataDirArgs,
         identity_seed: IdentitySeedArgs,
@@ -125,7 +128,8 @@ pub struct NodeServeArgs {
 }
 
 impl NodeServeArgs {
-    pub fn new(runtime: NodeRuntimeArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(runtime: NodeRuntimeArgs) -> Self {
         Self { runtime }
     }
 
@@ -147,7 +151,8 @@ pub struct NodeBlockArgs {
 }
 
 impl NodeBlockArgs {
-    pub fn new(data_dir: DataDirArgs, height: u64) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(data_dir: DataDirArgs, height: u64) -> Self {
         Self { data_dir, height }
     }
 

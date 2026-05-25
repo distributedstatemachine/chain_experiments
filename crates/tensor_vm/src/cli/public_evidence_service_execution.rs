@@ -1,4 +1,4 @@
-use super::commands::EvidenceServiceCommand;
+use super::public_evidence_commands::EvidenceServiceCommand;
 use super::service_evidence::{
     ServiceHealthEvidenceLine, service_content_evidence_line,
     service_content_evidence_line_from_bytes, service_health_evidence_line,

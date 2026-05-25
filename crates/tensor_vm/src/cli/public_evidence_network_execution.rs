@@ -1,8 +1,8 @@
-use super::commands::EvidenceNetworkCommand;
 use super::network_evidence::{
     NetworkObservationEvidenceLine, network_observation_evidence_line,
     network_observation_evidence_line_from_service_log,
 };
+use super::public_evidence_commands::EvidenceNetworkCommand;
 use super::validation::path_argument;
 use crate::error::{Result, TvmError};
 use crate::types::Hash;

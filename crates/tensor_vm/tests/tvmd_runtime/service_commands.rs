@@ -1,10 +1,8 @@
 use super::*;
+use clap::Parser;
 use tensor_vm::{
-    app::{execute_tvmd_command, init_service_store},
-    cli::{
-        EvidenceCommand, PublicCommand, PublicEvidenceManifestArgs, PublicTestnetManifestArgs,
-        TvmdCommand,
-    },
+    TvmdCli,
+    app::{self, init_service_store},
 };
 
 fn workspace_manifest_path(relative_path: &str) -> String {
@@ -15,14 +13,17 @@ fn workspace_manifest_path(relative_path: &str) -> String {
         .into_owned()
 }
 
+fn execute_tvmd_args(args: &[&str]) -> std::result::Result<String, String> {
+    let mut argv = Vec::with_capacity(args.len() + 1);
+    argv.push("tvmd");
+    argv.extend_from_slice(args);
+    app::run(TvmdCli::parse_from(argv))
+}
+
 #[test]
 fn docs_public_testnet_preflight_command_reports_pending_status() {
-    let report = execute_tvmd_command(&TvmdCommand::Public(PublicCommand::Preflight(
-        PublicTestnetManifestArgs::new(
-            workspace_manifest_path("docs/tensorvm/public-testnet.preflight").into(),
-        ),
-    )))
-    .unwrap();
+    let manifest_path = workspace_manifest_path("docs/tensorvm/public-testnet.preflight");
+    let report = execute_tvmd_args(&["public", "preflight", manifest_path.as_str()]).unwrap();
 
     assert_eq!(
         report_field(&report, "public_testnet_preflight_ready"),
@@ -38,12 +39,9 @@ fn docs_public_testnet_preflight_command_reports_pending_status() {
 
 #[test]
 fn docs_public_testnet_evidence_command_reports_non_full_spec_status() {
-    let report = execute_tvmd_command(&TvmdCommand::Public(PublicCommand::Evidence(
-        EvidenceCommand::Validate(PublicEvidenceManifestArgs::new(
-            workspace_manifest_path("docs/tensorvm/public-testnet.evidence").into(),
-        )),
-    )))
-    .unwrap();
+    let manifest_path = workspace_manifest_path("docs/tensorvm/public-testnet.evidence");
+    let report =
+        execute_tvmd_args(&["public", "evidence", "validate", manifest_path.as_str()]).unwrap();
 
     assert_eq!(report_field(&report, "public_evidence_full_spec"), "false");
     assert_eq!(report_field(&report, "public_criterion"), "false");

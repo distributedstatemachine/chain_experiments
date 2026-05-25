@@ -1,8 +1,8 @@
-use super::commands::EvidenceNodeCommand;
 use super::node_evidence::{
     node_heartbeat_evidence_line, node_heartbeat_evidence_line_from_file,
     operator_identity_attestation_evidence_line,
 };
+use super::public_evidence_commands::EvidenceNodeCommand;
 use super::validation::path_argument;
 use crate::error::Result;
 

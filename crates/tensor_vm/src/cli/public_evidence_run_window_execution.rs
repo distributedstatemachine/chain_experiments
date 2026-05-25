@@ -1,4 +1,4 @@
-use super::commands::EvidenceRunCommand;
+use super::public_evidence_commands::EvidenceRunCommand;
 use super::run_window_evidence::{run_window_evidence_line, run_window_evidence_line_from_file};
 use super::validation::path_argument;
 use crate::error::Result;

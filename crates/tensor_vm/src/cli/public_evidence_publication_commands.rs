@@ -26,7 +26,8 @@ pub struct PublicationArgs {
 }
 
 impl PublicationArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         bundle: PublicationBundleArgs,
         signer: ManifestSignerArgs,
         manifest_signature_count: u64,
@@ -83,7 +84,8 @@ pub struct AuditorRecordArgs {
 }
 
 impl AuditorRecordArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         bundle: PublicationBundleArgs,
         auditor_id: AddressArg,
         audit_uri: impl Into<String>,
@@ -132,7 +134,8 @@ pub struct PublicationBundleArgs {
 }
 
 impl PublicationBundleArgs {
-    pub fn new(bundle: EvidenceBundleIdArgs, public_uri: impl Into<String>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(bundle: EvidenceBundleIdArgs, public_uri: impl Into<String>) -> Self {
         Self {
             bundle,
             public_uri: public_uri.into(),

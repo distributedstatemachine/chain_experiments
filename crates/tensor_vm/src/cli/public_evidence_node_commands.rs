@@ -33,7 +33,8 @@ pub struct NodeHeartbeatArgs {
 }
 
 impl NodeHeartbeatArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         node: PublicNodeIdentityArgs,
         window: BlockHeightWindowArgs,
         heartbeat_count: u64,
@@ -84,7 +85,8 @@ pub struct NodeHeartbeatFromFileArgs {
 }
 
 impl NodeHeartbeatFromFileArgs {
-    pub fn new(node: PublicNodeIdentityArgs, heartbeat_file: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(node: PublicNodeIdentityArgs, heartbeat_file: PathBuf) -> Self {
         Self {
             node,
             heartbeat_file,
@@ -124,7 +126,8 @@ pub struct OperatorAttestationArgs {
 }
 
 impl OperatorAttestationArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         node: PublicNodeIdentityArgs,
         identity_uri: impl Into<String>,
         observation: ObservationTimestampArgs,
@@ -168,7 +171,12 @@ pub struct PublicNodeIdentityArgs {
 }
 
 impl PublicNodeIdentityArgs {
-    pub fn new(role: PublicNodeRoleArg, address: AddressArg, operator: OperatorIdArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(
+        role: PublicNodeRoleArg,
+        address: AddressArg,
+        operator: OperatorIdArgs,
+    ) -> Self {
         Self {
             role,
             address,

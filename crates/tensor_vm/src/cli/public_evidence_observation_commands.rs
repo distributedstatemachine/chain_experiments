@@ -11,7 +11,8 @@ pub struct ObservationTimestampArgs {
 }
 
 impl ObservationTimestampArgs {
-    pub fn new(observed_at: u64) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(observed_at: u64) -> Self {
         Self { observed_at }
     }
 

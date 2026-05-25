@@ -57,7 +57,8 @@ pub struct NodeRuntimeArgs {
 }
 
 impl NodeRuntimeArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         listen: SocketAddr,
         p2p_listen: P2pListenArgs,
         data_dir: DataDirArgs,
@@ -114,7 +115,8 @@ pub struct DataDirArgs {
 }
 
 impl DataDirArgs {
-    pub fn new(data_dir: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(data_dir: PathBuf) -> Self {
         Self { data_dir }
     }
 
@@ -136,7 +138,8 @@ pub struct P2pListenArgs {
 }
 
 impl P2pListenArgs {
-    pub fn new(p2p_listen: Multiaddr) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(p2p_listen: Multiaddr) -> Self {
         Self { p2p_listen }
     }
 
@@ -156,7 +159,8 @@ pub struct IdentitySeedArgs {
 }
 
 impl IdentitySeedArgs {
-    pub fn new(identity_seed: Option<HashArg>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(identity_seed: Option<HashArg>) -> Self {
         Self { identity_seed }
     }
 

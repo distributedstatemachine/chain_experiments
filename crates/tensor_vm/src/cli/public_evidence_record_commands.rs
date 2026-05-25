@@ -35,7 +35,8 @@ pub struct RecordSummaryArgs {
 }
 
 impl RecordSummaryArgs {
-    pub fn new(context: PublicEvidenceRecordContextArgs, root: RecordRootArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, root: RecordRootArgs) -> Self {
         Self { context, root }
     }
 
@@ -69,7 +70,8 @@ pub struct RecordSummaryFromRootsArgs {
 }
 
 impl RecordSummaryFromRootsArgs {
-    pub fn new(context: PublicEvidenceRecordContextArgs, roots: RecordRootsArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, roots: RecordRootsArgs) -> Self {
         Self { context, roots }
     }
 
@@ -99,7 +101,8 @@ pub struct RecordSummaryFromFileArgs {
 }
 
 impl RecordSummaryFromFileArgs {
-    pub fn new(context: PublicEvidenceRecordContextArgs, file: RecordFileArgs) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(context: PublicEvidenceRecordContextArgs, file: RecordFileArgs) -> Self {
         Self { context, file }
     }
 
@@ -131,7 +134,8 @@ pub struct PublicEvidenceRecordContextArgs {
 }
 
 impl PublicEvidenceRecordContextArgs {
-    pub fn new(
+    #[cfg(test)]
+    pub(crate) fn new(
         kind: PublicEvidenceRecordKindArg,
         bundle: EvidenceBundleIdArgs,
         signer: ManifestSignerArgs,
@@ -173,7 +177,8 @@ pub struct RecordRootArgs {
 }
 
 impl RecordRootArgs {
-    pub fn new(record_root: Hash, record_count: u64) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(record_root: Hash, record_count: u64) -> Self {
         Self {
             record_root: HashArg::new(record_root),
             record_count,
@@ -202,7 +207,8 @@ pub struct RecordRootsArgs {
 }
 
 impl RecordRootsArgs {
-    pub fn new(record_roots: Vec<Hash>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(record_roots: Vec<Hash>) -> Self {
         Self {
             record_roots: record_roots.into_iter().map(HashArg::new).collect(),
         }
@@ -229,7 +235,8 @@ pub struct RecordFileArgs {
 }
 
 impl RecordFileArgs {
-    pub fn new(record_file: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(record_file: PathBuf) -> Self {
         Self { record_file }
     }
 
