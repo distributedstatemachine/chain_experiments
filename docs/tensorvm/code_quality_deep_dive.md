@@ -1154,6 +1154,9 @@ spaghetti around.
 - Iteration 469 split public evidence record root aggregation, record-file parsing, and
   supporting-record validation into `cli/record_evidence_roots.rs`, leaving `cli/record_evidence.rs`
   focused on rendering summary and artifact evidence lines.
+- Iteration 470 split node and localnet app command dispatch into `app/tvmd_node_dispatch.rs`
+  and shared path rendering into `app/tvmd_path.rs`, leaving `app/tvmd_dispatch.rs` focused on
+  top-level command-family routing and role/public evidence dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -20,6 +20,8 @@ mod service_runtime;
 mod shared;
 mod status;
 mod tvmd_dispatch;
+mod tvmd_node_dispatch;
+mod tvmd_path;
 mod validator_fetch;
 mod validator_role;
 
