@@ -13,7 +13,7 @@ use super::operator_checks::{
 use super::operator_validation::{validate_miner_runtime, validate_role_runtime};
 use super::tvmd_node_dispatch::{execute_localnet_command, execute_node_command};
 use super::tvmd_path::path_arg;
-use super::{RoleServiceConfig, run_miner_service, run_proposer_service, run_validator_service};
+use super::{RoleServiceConfig, RoleServiceRunner};
 
 pub fn run(cli: TvmdCli) -> std::result::Result<String, String> {
     execute_tvmd_command(&cli.command)
@@ -46,7 +46,8 @@ fn execute_miner_command(command: &MinerCommand) -> std::result::Result<String, 
                 &config.data_dir,
                 &config.auth_token,
             )?;
-            run_miner_service(config.as_role_service_config(Some(args.device.as_str())))
+            RoleServiceRunner::miner()
+                .run(config.as_role_service_config(Some(args.device.as_str())))
         }
         MinerCommand::Status => Ok(miner_status()),
     }
@@ -61,7 +62,7 @@ fn execute_validator_command(command: &ValidatorCommand) -> std::result::Result<
         ValidatorCommand::Run(args) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
-            run_validator_service(config.as_role_service_config(None))
+            RoleServiceRunner::validator().run(config.as_role_service_config(None))
         }
         ValidatorCommand::Status => Ok(validator_status()),
     }
@@ -72,7 +73,7 @@ fn execute_proposer_command(command: &ProposerCommand) -> std::result::Result<St
         ProposerCommand::Run(args) => {
             let config = RoleServiceDispatchConfig::from_args(&args.wallet.wallet, &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
-            run_proposer_service(config.as_role_service_config(None))
+            RoleServiceRunner::proposer().run(config.as_role_service_config(None))
         }
     }
 }

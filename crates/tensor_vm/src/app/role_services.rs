@@ -3,18 +3,6 @@ use super::{
     run_role_runtime_loop, runtime_node_config,
 };
 
-pub fn run_miner_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    RoleServiceRunner::miner().run(config)
-}
-
-pub fn run_validator_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    RoleServiceRunner::validator().run(config)
-}
-
-pub fn run_proposer_service(config: RoleServiceConfig<'_>) -> std::result::Result<String, String> {
-    RoleServiceRunner::proposer().run(config)
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum RoleServiceKind {
     Miner,

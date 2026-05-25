@@ -1385,6 +1385,9 @@ spaghetti around.
 - Iteration 564 narrowed public publication evidence execution to explicit publish and audit handlers,
   removing the broad `EvidenceCommand` executor plus its unreachable fallback and sharing bundle/public-URI
   extraction through a typed publication bundle context.
+- Iteration 565 removed the redundant miner, validator, and proposer service wrapper functions, so `tvmd`
+  role dispatch now invokes the typed `RoleServiceRunner` directly instead of preserving a second forwarding
+  API for the same runtime role execution.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

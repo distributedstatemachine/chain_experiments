@@ -40,9 +40,7 @@ pub use network::{
     ChainAnnouncementCheckpoint, chain_announcement_checkpoint, ingest_network_events,
     produce_and_publish_synthetic_round, publish_new_chain_announcements,
 };
-pub use role_services::{
-    RoleServiceRunner, run_miner_service, run_proposer_service, run_validator_service,
-};
+pub use role_services::RoleServiceRunner;
 pub use runtime_config::{
     RoleServiceConfig, RuntimeRole, ServiceRuntimeConfig, chain_profile_from_label,
     role_wallet_address, runtime_node_config, runtime_role_wallet_address_text,
