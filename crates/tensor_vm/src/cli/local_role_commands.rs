@@ -134,3 +134,13 @@ pub struct RoleRuntimeArgs {
     #[command(flatten)]
     pub node_runtime: NodeRuntimeArgs,
 }
+
+impl RoleRuntimeArgs {
+    pub fn node(&self) -> &RoleNodeArgs {
+        &self.node
+    }
+
+    pub fn node_runtime(&self) -> &NodeRuntimeArgs {
+        &self.node_runtime
+    }
+}

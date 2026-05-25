@@ -95,16 +95,16 @@ struct RoleServiceDispatchConfig {
 
 impl RoleServiceDispatchConfig {
     fn from_args(wallet: &Path, runtime: &RoleRuntimeArgs) -> Self {
-        let node_runtime = &runtime.node_runtime;
+        let node_runtime = runtime.node_runtime();
         Self {
             wallet: path_arg(wallet),
-            node: runtime.node.multiaddr().to_string(),
-            listen: node_runtime.listen.to_string(),
-            p2p_listen: node_runtime.p2p_listen.multiaddr().to_string(),
-            data_dir: path_arg(node_runtime.data_dir.path()),
-            identity_seed: node_runtime.identity_seed.hash(),
-            auth_token: node_runtime.auth_token.clone(),
-            max_requests: node_runtime.max_requests,
+            node: runtime.node().multiaddr().to_string(),
+            listen: node_runtime.listen().to_string(),
+            p2p_listen: node_runtime.p2p_listen().multiaddr().to_string(),
+            data_dir: path_arg(node_runtime.data_dir().path()),
+            identity_seed: node_runtime.identity_seed(),
+            auth_token: node_runtime.auth_token().to_owned(),
+            max_requests: node_runtime.max_requests(),
         }
     }
 

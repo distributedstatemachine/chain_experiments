@@ -1252,6 +1252,8 @@ spaghetti around.
   owner accessors, keeping evidence execution out of nested raw observation fields.
 - Iteration 505 routed top-level public preflight/evidence manifest Clap paths through typed path
   accessors, keeping app dispatch out of raw manifest path fields.
+- Iteration 506 routed local node/localnet runtime dispatch through typed Clap accessors, keeping
+  service dispatch out of raw runtime, peer, block-height, and JSON-mode fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

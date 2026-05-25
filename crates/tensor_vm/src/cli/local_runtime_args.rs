@@ -56,6 +56,32 @@ pub struct NodeRuntimeArgs {
     pub max_requests: usize,
 }
 
+impl NodeRuntimeArgs {
+    pub fn listen(&self) -> &SocketAddr {
+        &self.listen
+    }
+
+    pub fn p2p_listen(&self) -> &P2pListenArgs {
+        &self.p2p_listen
+    }
+
+    pub fn data_dir(&self) -> &DataDirArgs {
+        &self.data_dir
+    }
+
+    pub fn identity_seed(&self) -> Option<Hash> {
+        self.identity_seed.hash()
+    }
+
+    pub fn auth_token(&self) -> &str {
+        &self.auth_token
+    }
+
+    pub fn max_requests(&self) -> usize {
+        self.max_requests
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct DataDirArgs {
     #[arg(

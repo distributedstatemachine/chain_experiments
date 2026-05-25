@@ -17,3 +17,13 @@ pub struct LocalCpuVerifyArgs {
     #[arg(long, help = "Emit the verification report as JSON.")]
     pub json: bool,
 }
+
+impl LocalCpuVerifyArgs {
+    pub fn data_dir(&self) -> &DataDirArgs {
+        &self.data_dir
+    }
+
+    pub fn emit_json(&self) -> bool {
+        self.json
+    }
+}

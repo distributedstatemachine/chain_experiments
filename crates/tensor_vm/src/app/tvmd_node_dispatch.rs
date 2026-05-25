@@ -15,36 +15,37 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             init_service_store(&data_dir)
         }
         NodeCommand::Peer(NodePeerCommand::Add(args)) => {
-            let data_dir = path_arg(args.data_dir.path());
+            let data_dir = path_arg(args.data_dir().path());
             validate_data_dir(&data_dir)?;
+            let bootstrap_peer = args.bootstrap_peer();
             add_service_peer(
                 &data_dir,
-                &args.bootstrap_peer.peer_id().to_string(),
-                &args.bootstrap_peer.address().to_string(),
+                &bootstrap_peer.peer_id().to_string(),
+                &bootstrap_peer.address().to_string(),
             )
         }
         NodeCommand::Check(args) => {
-            let data_dir = path_arg(args.data_dir.path());
+            let data_dir = path_arg(args.data_dir().path());
             validate_data_dir(&data_dir)?;
             check_service_readiness(
-                &args.p2p_listen.multiaddr().to_string(),
+                &args.p2p_listen().multiaddr().to_string(),
                 &data_dir,
-                args.identity_seed.hash(),
+                args.identity_seed().hash(),
             )
         }
         NodeCommand::Serve(args) => {
-            let runtime = &args.runtime;
-            let listen = runtime.listen.to_string();
-            let p2p_listen = runtime.p2p_listen.multiaddr().to_string();
-            let data_dir = path_arg(runtime.data_dir.path());
-            validate_service_runtime(&data_dir, &runtime.auth_token)?;
+            let runtime = args.runtime();
+            let listen = runtime.listen().to_string();
+            let p2p_listen = runtime.p2p_listen().multiaddr().to_string();
+            let data_dir = path_arg(runtime.data_dir().path());
+            validate_service_runtime(&data_dir, runtime.auth_token())?;
             serve_service(
                 &listen,
                 &p2p_listen,
                 &data_dir,
-                runtime.identity_seed.hash(),
-                &runtime.auth_token,
-                runtime.max_requests,
+                runtime.identity_seed(),
+                runtime.auth_token(),
+                runtime.max_requests(),
             )
         }
         NodeCommand::Status(args) => {
@@ -53,9 +54,9 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             service_status(&data_dir)
         }
         NodeCommand::Block(args) => {
-            let data_dir = path_arg(args.data_dir.path());
+            let data_dir = path_arg(args.data_dir().path());
             validate_data_dir(&data_dir)?;
-            service_block_status(&data_dir, args.height)
+            service_block_status(&data_dir, args.height())
         }
     }
 }
@@ -70,9 +71,9 @@ pub(super) fn execute_localnet_command(
             seed_local_testnet(&data_dir)
         }
         LocalnetCommand::Verify(args) => {
-            let data_dir = path_arg(args.data_dir.path());
+            let data_dir = path_arg(args.data_dir().path());
             validate_data_dir(&data_dir)?;
-            verify_local_cpu_store(&data_dir, args.json)
+            verify_local_cpu_store(&data_dir, args.emit_json())
         }
     }
 }

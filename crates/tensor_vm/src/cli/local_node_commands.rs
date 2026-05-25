@@ -35,6 +35,16 @@ pub struct NodePeerAddArgs {
     pub bootstrap_peer: BootstrapPeerArgs,
 }
 
+impl NodePeerAddArgs {
+    pub fn data_dir(&self) -> &DataDirArgs {
+        &self.data_dir
+    }
+
+    pub fn bootstrap_peer(&self) -> &BootstrapPeerArgs {
+        &self.bootstrap_peer
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct BootstrapPeerArgs {
     #[arg(
@@ -71,10 +81,30 @@ pub struct NodeCheckArgs {
     pub identity_seed: IdentitySeedArgs,
 }
 
+impl NodeCheckArgs {
+    pub fn p2p_listen(&self) -> &P2pListenArgs {
+        &self.p2p_listen
+    }
+
+    pub fn data_dir(&self) -> &DataDirArgs {
+        &self.data_dir
+    }
+
+    pub fn identity_seed(&self) -> &IdentitySeedArgs {
+        &self.identity_seed
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeServeArgs {
     #[command(flatten)]
     pub runtime: NodeRuntimeArgs,
+}
+
+impl NodeServeArgs {
+    pub fn runtime(&self) -> &NodeRuntimeArgs {
+        &self.runtime
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -87,4 +117,14 @@ pub struct NodeBlockArgs {
         help = "Block height to load from the node store."
     )]
     pub height: u64,
+}
+
+impl NodeBlockArgs {
+    pub fn data_dir(&self) -> &DataDirArgs {
+        &self.data_dir
+    }
+
+    pub fn height(&self) -> u64 {
+        self.height
+    }
 }
