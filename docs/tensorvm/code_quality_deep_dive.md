@@ -1376,6 +1376,9 @@ spaghetti around.
 - Iteration 561 consolidated public network evidence execution around typed target, protocol-count, and
   transport-limit contexts, keeping observation and service-log variants from duplicating libp2p operator,
   listen address, timestamp, and runtime-limit extraction.
+- Iteration 562 consolidated public node evidence execution around a typed node identity context, removing
+  repeated role, address, and operator-id extraction from heartbeat, heartbeat-file, and operator-attestation
+  command variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
