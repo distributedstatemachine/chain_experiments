@@ -9,10 +9,16 @@ pub struct ManifestSignerArgs {
         value_name = "HEX",
         help = "Address signing the evidence manifest."
     )]
-    pub manifest_signer: AddressArg,
+    manifest_signer: AddressArg,
 }
 
 impl ManifestSignerArgs {
+    pub fn new(manifest_signer: Address) -> Self {
+        Self {
+            manifest_signer: AddressArg::new(manifest_signer),
+        }
+    }
+
     pub fn signer(&self) -> Address {
         self.manifest_signer.into_address()
     }

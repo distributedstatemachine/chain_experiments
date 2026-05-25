@@ -39,15 +39,11 @@ pub(super) fn hash_arg(value: Hash) -> HashArg {
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: Hash) -> EvidenceBundleIdArgs {
-    EvidenceBundleIdArgs {
-        bundle_id: hash_arg(bundle_id),
-    }
+    EvidenceBundleIdArgs::new(bundle_id)
 }
 
 pub(super) fn operator_id_args(operator_id: Hash) -> OperatorIdArgs {
-    OperatorIdArgs {
-        operator_id: hash_arg(operator_id),
-    }
+    OperatorIdArgs::new(operator_id)
 }
 
 pub(super) fn address_arg(value: Address) -> AddressArg {
@@ -55,13 +51,11 @@ pub(super) fn address_arg(value: Address) -> AddressArg {
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: Address) -> ManifestSignerArgs {
-    ManifestSignerArgs {
-        manifest_signer: address_arg(manifest_signer),
-    }
+    ManifestSignerArgs::new(manifest_signer)
 }
 
 pub(super) fn observation_timestamp_args(observed_at: u64) -> ObservationTimestampArgs {
-    ObservationTimestampArgs { observed_at }
+    ObservationTimestampArgs::new(observed_at)
 }
 
 pub(super) fn network_observation_target_args(

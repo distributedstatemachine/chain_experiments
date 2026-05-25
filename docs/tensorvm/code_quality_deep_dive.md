@@ -1270,6 +1270,8 @@ spaghetti around.
   direct and file-backed generators out of the nested bundle/signer context parser group.
 - Iteration 514 routed public supporting-record evidence execution through owning command accessors,
   keeping summary and artifact generators out of nested context/root/artifact/file parser groups.
+- Iteration 515 hid shared public evidence leaf Clap fields behind constructors and accessors, keeping
+  bundle IDs, manifest signers, operator IDs, and observation timestamps out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

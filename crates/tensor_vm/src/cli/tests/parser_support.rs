@@ -58,15 +58,11 @@ pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySee
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
-    EvidenceBundleIdArgs {
-        bundle_id: hash_arg(bundle_id),
-    }
+    EvidenceBundleIdArgs::new(bundle_id)
 }
 
 pub(super) fn operator_id_args(operator_id: [u8; 32]) -> OperatorIdArgs {
-    OperatorIdArgs {
-        operator_id: hash_arg(operator_id),
-    }
+    OperatorIdArgs::new(operator_id)
 }
 
 pub(super) fn publication_bundle_args(
@@ -119,9 +115,7 @@ pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: [u8; 32]) -> ManifestSignerArgs {
-    ManifestSignerArgs {
-        manifest_signer: address_arg(manifest_signer),
-    }
+    ManifestSignerArgs::new(manifest_signer)
 }
 
 pub(super) fn node_runtime_args(
