@@ -1308,6 +1308,8 @@ spaghetti around.
   `TvmdCli` public while preventing parser internals from becoming a library API by accident.
 - Iteration 533 made the `cli` module internal and kept only the root `TvmdCli` and manifest validators
   public, so the Clap command tree is an implementation detail behind `app::run`.
+- Iteration 534 moved service-status output assembly onto `KeyValueReportWriter`, keeping node-store and
+  role-runtime status fields parseable through the shared key-value report path instead of a giant format string.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
