@@ -15,9 +15,7 @@ fn parses_documented_public_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Validate(
-            PublicEvidenceManifestArgs {
-                manifest: path("docs/tensorvm/public-testnet.evidence"),
-            },
+            PublicEvidenceManifestArgs::new(path("docs/tensorvm/public-testnet.evidence")),
         )))
     );
     assert_eq!(
@@ -27,9 +25,9 @@ fn parses_documented_public_commands() {
             "docs/tensorvm/public-testnet.preflight"
         ])
         .unwrap(),
-        TvmdCommand::Public(PublicCommand::Preflight(PublicTestnetManifestArgs {
-            manifest: path("docs/tensorvm/public-testnet.preflight"),
-        }))
+        TvmdCommand::Public(PublicCommand::Preflight(PublicTestnetManifestArgs::new(
+            path("docs/tensorvm/public-testnet.preflight"),
+        )))
     );
 }
 

@@ -7,16 +7,23 @@ pub struct BlockHeightWindowArgs {
         value_name = "HEIGHT",
         help = "First block height covered by the evidence window."
     )]
-    pub first_block: u64,
+    first_block: u64,
     #[arg(
         long,
         value_name = "HEIGHT",
         help = "Last block height covered by the evidence window."
     )]
-    pub last_block: u64,
+    last_block: u64,
 }
 
 impl BlockHeightWindowArgs {
+    pub fn new(first_block: u64, last_block: u64) -> Self {
+        Self {
+            first_block,
+            last_block,
+        }
+    }
+
     pub fn first_block(&self) -> u64 {
         self.first_block
     }

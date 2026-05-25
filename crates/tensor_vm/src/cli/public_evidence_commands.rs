@@ -73,10 +73,14 @@ pub enum EvidenceCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicTestnetManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet preflight manifest to validate.")]
-    pub manifest: PathBuf,
+    manifest: PathBuf,
 }
 
 impl PublicTestnetManifestArgs {
+    pub fn new(manifest: PathBuf) -> Self {
+        Self { manifest }
+    }
+
     pub fn path(&self) -> &Path {
         &self.manifest
     }
@@ -85,10 +89,14 @@ impl PublicTestnetManifestArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceManifestArgs {
     #[arg(value_name = "PATH", value_hint = ValueHint::FilePath, help = "Public-testnet evidence manifest to validate.")]
-    pub manifest: PathBuf,
+    manifest: PathBuf,
 }
 
 impl PublicEvidenceManifestArgs {
+    pub fn new(manifest: PathBuf) -> Self {
+        Self { manifest }
+    }
+
     pub fn path(&self) -> &Path {
         &self.manifest
     }

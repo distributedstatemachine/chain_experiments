@@ -1284,6 +1284,8 @@ spaghetti around.
   peer-add, bootstrap-peer, node-check, node-serve, block, and verify args out of public parser internals.
 - Iteration 521 hid local role command Clap fields behind constructors and accessors, keeping miner,
   validator, and proposer check/run groups out of public parser internals.
+- Iteration 522 hid shared public manifest and block-window Clap fields behind constructors and
+  accessors, keeping manifest paths and block-height bounds out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
