@@ -2,7 +2,7 @@ use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::public_evidence_signing_commands::ManifestSignerArgs;
 use super::value_types::AddressArg;
-use crate::types::Hash;
+use crate::types::{Address, Hash};
 use clap::{Args, ValueHint};
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -25,6 +25,16 @@ pub struct PublicationArgs {
     pub independent_auditor_count: u64,
 }
 
+impl PublicationArgs {
+    pub fn manifest_signature_count(&self) -> u64 {
+        self.manifest_signature_count
+    }
+
+    pub fn independent_auditor_count(&self) -> u64 {
+        self.independent_auditor_count
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct AuditorRecordArgs {
     #[command(flatten)]
@@ -44,6 +54,16 @@ pub struct AuditorRecordArgs {
     pub audit_uri: String,
     #[command(flatten)]
     pub observation: ObservationTimestampArgs,
+}
+
+impl AuditorRecordArgs {
+    pub fn auditor_id(&self) -> Address {
+        self.auditor_id.into_address()
+    }
+
+    pub fn audit_uri(&self) -> &str {
+        &self.audit_uri
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

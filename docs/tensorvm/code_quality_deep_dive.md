@@ -1232,6 +1232,8 @@ spaghetti around.
   identifier model.
 - Iteration 496 routed public service endpoint Clap parsing through typed endpoint/target accessors,
   keeping service evidence execution out of raw parser fields and one-off hash conversions.
+- Iteration 497 routed public publication and auditor Clap parsing through typed accessors, keeping
+  publication evidence execution out of raw count, auditor address, and audit URI fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
