@@ -1,5 +1,5 @@
 use super::parser_support::{
-    data_dir_args, miner_device, multiaddr, role_runtime_args, role_wallet_args,
+    data_dir_args, miner_device, role_node_args, role_runtime_args, role_wallet_args,
 };
 use super::{
     LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, TvmdCommand, parse_test_cli,
@@ -39,7 +39,7 @@ fn clap_role_defaults_runtime_arguments() {
         TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
             wallet: role_wallet_args("miner.key"),
             device: miner_device("cpu"),
-            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+            node: role_node_args("/ip4/127.0.0.1/tcp/4001"),
         }))
     );
     assert_eq!(

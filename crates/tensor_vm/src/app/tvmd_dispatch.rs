@@ -43,7 +43,7 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
         TvmdCommand::Miner(MinerCommand::Check(args)) => check_miner_start(
             &path_arg(args.wallet.path()),
             args.device.as_str(),
-            &args.node.to_string(),
+            &args.node.multiaddr().to_string(),
         ),
         TvmdCommand::Miner(MinerCommand::Run(args)) => {
             let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
@@ -59,9 +59,10 @@ pub fn execute_tvmd_command(command: &TvmdCommand) -> std::result::Result<String
         TvmdCommand::Validator(ValidatorCommand::Register(args)) => {
             check_validator_registration(args.stake)
         }
-        TvmdCommand::Validator(ValidatorCommand::Check(args)) => {
-            check_validator_start(&path_arg(args.wallet.path()), &args.node.to_string())
-        }
+        TvmdCommand::Validator(ValidatorCommand::Check(args)) => check_validator_start(
+            &path_arg(args.wallet.path()),
+            &args.node.multiaddr().to_string(),
+        ),
         TvmdCommand::Validator(ValidatorCommand::Run(args)) => {
             let config = RoleServiceDispatchConfig::from_args(args.wallet.path(), &args.runtime);
             validate_role_runtime(&config.wallet, &config.data_dir, &config.auth_token)?;
@@ -97,7 +98,7 @@ impl RoleServiceDispatchConfig {
         let node_runtime = &runtime.node_runtime;
         Self {
             wallet: path_arg(wallet),
-            node: runtime.node.to_string(),
+            node: runtime.node.multiaddr().to_string(),
             listen: node_runtime.listen.to_string(),
             p2p_listen: node_runtime.p2p_listen.to_string(),
             data_dir: path_arg(&node_runtime.data_dir),

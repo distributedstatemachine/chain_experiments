@@ -1,6 +1,6 @@
 use super::{
-    AddressArg, DataDirArgs, HashArg, MinerDeviceArg, NodeRuntimeArgs, RoleRuntimeArgs,
-    RoleWalletArgs,
+    AddressArg, DataDirArgs, HashArg, MinerDeviceArg, NodeRuntimeArgs, RoleNodeArgs,
+    RoleRuntimeArgs, RoleWalletArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -30,6 +30,12 @@ pub(super) fn data_dir_args(data_dir: &str) -> DataDirArgs {
 pub(super) fn role_wallet_args(wallet: &str) -> RoleWalletArgs {
     RoleWalletArgs {
         wallet: path(wallet),
+    }
+}
+
+pub(super) fn role_node_args(node: &str) -> RoleNodeArgs {
+    RoleNodeArgs {
+        node: multiaddr(node),
     }
 }
 
@@ -69,7 +75,7 @@ pub(super) fn role_runtime_args(
     max_requests: usize,
 ) -> RoleRuntimeArgs {
     RoleRuntimeArgs {
-        node: multiaddr(node),
+        node: role_node_args(node),
         node_runtime: node_runtime_args(
             listen,
             p2p_listen,

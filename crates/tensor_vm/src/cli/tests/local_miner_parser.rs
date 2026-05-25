@@ -1,4 +1,4 @@
-use super::parser_support::{miner_device, multiaddr, role_runtime_args, role_wallet_args};
+use super::parser_support::{miner_device, role_node_args, role_runtime_args, role_wallet_args};
 use super::{MinerCheckArgs, MinerCommand, MinerRunArgs, StakeArgs, TvmdCommand, parse_test_cli};
 
 #[test]
@@ -22,7 +22,7 @@ fn parses_documented_miner_commands() {
         TvmdCommand::Miner(MinerCommand::Check(MinerCheckArgs {
             wallet: role_wallet_args("miner.key"),
             device: miner_device("cpu"),
-            node: multiaddr("/ip4/127.0.0.1/tcp/4001"),
+            node: role_node_args("/ip4/127.0.0.1/tcp/4001"),
         }))
     );
     assert_eq!(

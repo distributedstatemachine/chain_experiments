@@ -58,13 +58,8 @@ pub struct MinerCheckArgs {
         help = "Miner backend: cpu or cuda:N"
     )]
     pub device: MinerDeviceArg,
-    #[arg(
-        long,
-        default_value_t = default_p2p_listen_addr(),
-        value_name = "MULTIADDR",
-        help = "libp2p address of the TensorVM node to use."
-    )]
-    pub node: Multiaddr,
+    #[command(flatten)]
+    pub node: RoleNodeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -86,13 +81,8 @@ pub struct MinerRunArgs {
 pub struct ValidatorCheckArgs {
     #[command(flatten)]
     pub wallet: RoleWalletArgs,
-    #[arg(
-        long,
-        default_value_t = default_p2p_listen_addr(),
-        value_name = "MULTIADDR",
-        help = "libp2p address of the TensorVM node to use."
-    )]
-    pub node: Multiaddr,
+    #[command(flatten)]
+    pub node: RoleNodeArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -121,7 +111,7 @@ impl RoleWalletArgs {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
-pub struct RoleRuntimeArgs {
+pub struct RoleNodeArgs {
     #[arg(
         long,
         default_value_t = default_p2p_listen_addr(),
@@ -129,6 +119,18 @@ pub struct RoleRuntimeArgs {
         help = "libp2p address of the TensorVM node to use."
     )]
     pub node: Multiaddr,
+}
+
+impl RoleNodeArgs {
+    pub fn multiaddr(&self) -> &Multiaddr {
+        &self.node
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RoleRuntimeArgs {
+    #[command(flatten)]
+    pub node: RoleNodeArgs,
     #[command(flatten)]
     pub node_runtime: NodeRuntimeArgs,
 }

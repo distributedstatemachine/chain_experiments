@@ -1183,6 +1183,9 @@ spaghetti around.
 - Iteration 479 flattened repeated miner, validator, and proposer wallet-path Clap arguments into
   `RoleWalletArgs`, keeping local role check/run commands on one canonical typed wallet model while
   preserving the existing `--wallet` flag.
+- Iteration 480 flattened repeated miner, validator, and proposer node-address Clap arguments into
+  `RoleNodeArgs`, keeping local role check/run commands on one canonical typed node target model while
+  preserving the existing `--node` flag.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
