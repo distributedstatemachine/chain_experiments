@@ -1,4 +1,6 @@
-use super::parser_support::{data_dir_args, hash_arg, multiaddr, node_runtime_args};
+use super::parser_support::{
+    data_dir_args, identity_seed_args, multiaddr, node_runtime_args, p2p_listen_args,
+};
 use super::{
     NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeServeArgs,
     TvmdCommand, parse_test_cli,
@@ -42,9 +44,9 @@ fn parses_documented_node_commands() {
         ])
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
-            p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
+            p2p_listen: p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
             data_dir: data_dir_args("/var/lib/tensorvm"),
-            identity_seed: None,
+            identity_seed: identity_seed_args(None),
         }))
     );
     let identity_seed = "11".repeat(32);
@@ -61,9 +63,9 @@ fn parses_documented_node_commands() {
         ])
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
-            p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
+            p2p_listen: p2p_listen_args("/ip4/0.0.0.0/tcp/4001"),
             data_dir: data_dir_args("/var/lib/tensorvm"),
-            identity_seed: Some(hash_arg([0x11; 32])),
+            identity_seed: identity_seed_args(Some([0x11; 32])),
         }))
     );
     assert_eq!(

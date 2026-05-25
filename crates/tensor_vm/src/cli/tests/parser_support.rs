@@ -1,6 +1,6 @@
 use super::{
-    AddressArg, DataDirArgs, HashArg, MinerDeviceArg, NodeRuntimeArgs, RoleNodeArgs,
-    RoleRuntimeArgs, RoleWalletArgs,
+    AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
+    P2pListenArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -39,8 +39,20 @@ pub(super) fn role_node_args(node: &str) -> RoleNodeArgs {
     }
 }
 
+pub(super) fn p2p_listen_args(p2p_listen: &str) -> P2pListenArgs {
+    P2pListenArgs {
+        p2p_listen: multiaddr(p2p_listen),
+    }
+}
+
 pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
     HashArg::new(value)
+}
+
+pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySeedArgs {
+    IdentitySeedArgs {
+        identity_seed: identity_seed.map(HashArg::new),
+    }
 }
 
 pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {
@@ -57,9 +69,9 @@ pub(super) fn node_runtime_args(
 ) -> NodeRuntimeArgs {
     NodeRuntimeArgs {
         listen: socket_addr(listen),
-        p2p_listen: multiaddr(p2p_listen),
-        data_dir: path(data_dir),
-        identity_seed: identity_seed.map(HashArg::new),
+        p2p_listen: p2p_listen_args(p2p_listen),
+        data_dir: data_dir_args(data_dir),
+        identity_seed: identity_seed_args(identity_seed),
         auth_token: auth_token.to_owned(),
         max_requests,
     }

@@ -100,9 +100,9 @@ impl RoleServiceDispatchConfig {
             wallet: path_arg(wallet),
             node: runtime.node.multiaddr().to_string(),
             listen: node_runtime.listen.to_string(),
-            p2p_listen: node_runtime.p2p_listen.to_string(),
-            data_dir: path_arg(&node_runtime.data_dir),
-            identity_seed: node_runtime.identity_seed.map(|seed| seed.into_hash()),
+            p2p_listen: node_runtime.p2p_listen.multiaddr().to_string(),
+            data_dir: path_arg(node_runtime.data_dir.path()),
+            identity_seed: node_runtime.identity_seed.hash(),
             auth_token: node_runtime.auth_token.clone(),
             max_requests: node_runtime.max_requests,
         }

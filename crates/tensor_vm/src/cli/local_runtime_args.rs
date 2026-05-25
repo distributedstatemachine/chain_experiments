@@ -1,4 +1,5 @@
 use super::value_types::HashArg;
+use crate::types::Hash;
 use clap::{Args, ValueHint};
 use libp2p::Multiaddr;
 use std::net::SocketAddr;
@@ -31,29 +32,12 @@ pub struct NodeRuntimeArgs {
         help = "RPC and service listen address."
     )]
     pub listen: SocketAddr,
-    #[arg(
-        long,
-        env = "TVMD_P2P_LISTEN",
-        default_value_t = default_p2p_listen_addr(),
-        value_name = "MULTIADDR",
-        help = "libp2p listen multiaddress."
-    )]
-    pub p2p_listen: Multiaddr,
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Deterministic 32-byte seed for the libp2p identity."
-    )]
-    pub identity_seed: Option<HashArg>,
+    #[command(flatten)]
+    pub p2p_listen: P2pListenArgs,
+    #[command(flatten)]
+    pub data_dir: DataDirArgs,
+    #[command(flatten)]
+    pub identity_seed: IdentitySeedArgs,
     #[arg(
         long,
         env = "TVMD_AUTH_TOKEN",
@@ -88,5 +72,39 @@ pub struct DataDirArgs {
 impl DataDirArgs {
     pub fn path(&self) -> &Path {
         &self.data_dir
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct P2pListenArgs {
+    #[arg(
+        long,
+        env = "TVMD_P2P_LISTEN",
+        default_value_t = default_p2p_listen_addr(),
+        value_name = "MULTIADDR",
+        help = "libp2p listen multiaddress."
+    )]
+    pub p2p_listen: Multiaddr,
+}
+
+impl P2pListenArgs {
+    pub fn multiaddr(&self) -> &Multiaddr {
+        &self.p2p_listen
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Args)]
+pub struct IdentitySeedArgs {
+    #[arg(
+        long,
+        value_name = "HEX",
+        help = "Deterministic 32-byte seed for the libp2p identity."
+    )]
+    pub identity_seed: Option<HashArg>,
+}
+
+impl IdentitySeedArgs {
+    pub fn hash(&self) -> Option<Hash> {
+        self.identity_seed.map(HashArg::into_hash)
     }
 }

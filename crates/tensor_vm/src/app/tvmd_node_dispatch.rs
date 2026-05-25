@@ -27,22 +27,22 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             let data_dir = path_arg(args.data_dir.path());
             validate_data_dir(&data_dir)?;
             check_service_readiness(
-                &args.p2p_listen.to_string(),
+                &args.p2p_listen.multiaddr().to_string(),
                 &data_dir,
-                args.identity_seed.map(|seed| seed.into_hash()),
+                args.identity_seed.hash(),
             )
         }
         NodeCommand::Serve(args) => {
             let runtime = &args.runtime;
             let listen = runtime.listen.to_string();
-            let p2p_listen = runtime.p2p_listen.to_string();
-            let data_dir = path_arg(&runtime.data_dir);
+            let p2p_listen = runtime.p2p_listen.multiaddr().to_string();
+            let data_dir = path_arg(runtime.data_dir.path());
             validate_service_runtime(&data_dir, &runtime.auth_token)?;
             serve_service(
                 &listen,
                 &p2p_listen,
                 &data_dir,
-                runtime.identity_seed.map(|seed| seed.into_hash()),
+                runtime.identity_seed.hash(),
                 &runtime.auth_token,
                 runtime.max_requests,
             )

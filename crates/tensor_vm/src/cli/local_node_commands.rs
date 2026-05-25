@@ -1,5 +1,4 @@
-use super::local_runtime_args::{DataDirArgs, NodeRuntimeArgs, default_p2p_listen_addr};
-use super::value_types::HashArg;
+use super::local_runtime_args::{DataDirArgs, IdentitySeedArgs, NodeRuntimeArgs, P2pListenArgs};
 use clap::{Args, Subcommand};
 use libp2p::{Multiaddr, PeerId};
 
@@ -48,22 +47,12 @@ pub struct NodePeerAddArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeCheckArgs {
-    #[arg(
-        long,
-        env = "TVMD_P2P_LISTEN",
-        default_value_t = default_p2p_listen_addr(),
-        value_name = "MULTIADDR",
-        help = "libp2p listen multiaddress to validate."
-    )]
-    pub p2p_listen: Multiaddr,
+    #[command(flatten)]
+    pub p2p_listen: P2pListenArgs,
     #[command(flatten)]
     pub data_dir: DataDirArgs,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Deterministic 32-byte seed for the libp2p identity."
-    )]
-    pub identity_seed: Option<HashArg>,
+    #[command(flatten)]
+    pub identity_seed: IdentitySeedArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

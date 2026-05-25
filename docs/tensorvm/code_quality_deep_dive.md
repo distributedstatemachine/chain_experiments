@@ -1189,6 +1189,9 @@ spaghetti around.
 - Iteration 481 flattened repeated local node-store `--data-dir` Clap arguments into `DataDirArgs`
   for node peer, check, block, and localnet verify commands, and routed node/localnet dispatch
   through the typed data-dir accessor.
+- Iteration 482 flattened repeated local `--p2p-listen`, `--data-dir`, and `--identity-seed`
+  runtime Clap arguments into shared typed groups, keeping node check, node serve, and role runtime
+  dispatch on one canonical local runtime model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
