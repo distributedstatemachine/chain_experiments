@@ -44,6 +44,30 @@ pub struct ServiceHealthArgs {
 }
 
 impl ServiceHealthArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.endpoint.kind()
+    }
+
+    pub fn endpoint_id(&self) -> Hash {
+        self.endpoint.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.endpoint.public_url()
+    }
+
+    pub fn health_path(&self) -> &str {
+        self.health.path()
+    }
+
+    pub fn first_seen_block(&self) -> u64 {
+        self.window.first_block()
+    }
+
+    pub fn last_seen_block(&self) -> u64 {
+        self.window.last_block()
+    }
+
     pub fn reachable_count(&self) -> u64 {
         self.reachable_count
     }
@@ -69,6 +93,22 @@ pub struct ServiceHealthFromFileArgs {
 }
 
 impl ServiceHealthFromFileArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.endpoint.kind()
+    }
+
+    pub fn endpoint_id(&self) -> Hash {
+        self.endpoint.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.endpoint.public_url()
+    }
+
+    pub fn health_path(&self) -> &str {
+        self.health.path()
+    }
+
     pub fn observation_file(&self) -> &Path {
         &self.observation_file
     }
@@ -109,8 +149,28 @@ pub struct ServiceContentArgs {
 }
 
 impl ServiceContentArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.target.kind()
+    }
+
+    pub fn endpoint_id(&self) -> Hash {
+        self.target.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.target.public_url()
+    }
+
+    pub fn content_path(&self) -> &str {
+        self.target.content_path()
+    }
+
     pub fn content_root(&self) -> Hash {
         self.content_root.into_hash()
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.target.observed_at()
     }
 
     pub fn min_content_bytes(&self) -> u64 {
@@ -131,6 +191,26 @@ pub struct ServiceContentFromBytesArgs {
 }
 
 impl ServiceContentFromBytesArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.target.kind()
+    }
+
+    pub fn endpoint_id(&self) -> Hash {
+        self.target.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.target.public_url()
+    }
+
+    pub fn content_path(&self) -> &str {
+        self.target.content_path()
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.target.observed_at()
+    }
+
     pub fn content(&self) -> &[u8] {
         self.content.as_slice()
     }
@@ -150,6 +230,26 @@ pub struct ServiceContentFromFileArgs {
 }
 
 impl ServiceContentFromFileArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.target.kind()
+    }
+
+    pub fn endpoint_id(&self) -> Hash {
+        self.target.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.target.public_url()
+    }
+
+    pub fn content_path(&self) -> &str {
+        self.target.content_path()
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.target.observed_at()
+    }
+
     pub fn content_file(&self) -> &Path {
         &self.content_file
     }

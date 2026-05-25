@@ -1262,6 +1262,8 @@ spaghetti around.
   generator out of nested identity and block-window parser groups.
 - Iteration 510 routed public publication evidence execution through owning command accessors,
   keeping the generator out of nested bundle and signer parser groups.
+- Iteration 511 routed public service evidence execution through owning command accessors, keeping
+  health and content generators out of nested endpoint, path, window, and target parser groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
