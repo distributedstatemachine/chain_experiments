@@ -1388,6 +1388,9 @@ spaghetti around.
 - Iteration 565 removed the redundant miner, validator, and proposer service wrapper functions, so `tvmd`
   role dispatch now invokes the typed `RoleServiceRunner` directly instead of preserving a second forwarding
   API for the same runtime role execution.
+- Iteration 566 split RPC static route dispatch out of the dynamic route fallback path, keeping the existing
+  route table behavior while separating fixed service, explorer, telemetry, faucet, and submission routes
+  from path-segment-based dynamic routing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
