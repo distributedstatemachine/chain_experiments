@@ -1312,6 +1312,8 @@ spaghetti around.
   role-runtime status fields parseable through the shared key-value report path instead of a giant format string.
 - Iteration 535 collapsed service-status pass-through fields into ordered status-file field lists, keeping
   the output contract explicit without a long manual append sequence.
+- Iteration 536 made service-status field lookups borrow from the cached status-file map, avoiding
+  per-field `String` clones while keeping missing status fields rendered as `unknown`.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

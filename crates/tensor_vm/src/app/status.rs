@@ -18,6 +18,8 @@ struct StatusFileFields {
     fields: BTreeMap<String, String>,
 }
 
+const UNKNOWN_STATUS_VALUE: &str = "unknown";
+
 impl StatusFileFields {
     fn from_path(path: impl AsRef<Path>) -> Self {
         let fields = std::fs::read_to_string(path)
@@ -27,11 +29,11 @@ impl StatusFileFields {
         Self { fields }
     }
 
-    fn value(&self, key: &str) -> String {
+    fn value(&self, key: &str) -> &str {
         self.fields
             .get(key)
-            .cloned()
-            .unwrap_or_else(|| "unknown".to_owned())
+            .map(String::as_str)
+            .unwrap_or(UNKNOWN_STATUS_VALUE)
     }
 
     fn write_fields(&self, report: &mut KeyValueReportWriter, keys: &[&str]) {
