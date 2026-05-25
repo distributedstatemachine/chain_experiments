@@ -1326,6 +1326,8 @@ spaghetti around.
   preserving libp2p identity subreports while eliminating another large key-value format string.
 - Iteration 542 moved the persisted `role-runtime.status` writer onto `KeyValueReportWriter`, so both
   role runtime report surfaces now share validated app-owned key-value assembly.
+- Iteration 543 moved public evidence and public preflight manifest validation reports onto
+  `KeyValueReportWriter`, keeping the Clap-facing manifest validators on the shared key-value report path.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
