@@ -24,13 +24,9 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         })
         .is_err()
     );
-    assert!(
-        execute_service_health(ServiceHealthArgs {
-            first_block: 10,
-            ..valid_service_health_args()
-        })
-        .is_err()
-    );
+    let mut invalid_window = valid_service_health_args();
+    invalid_window.window = block_height_window_args(10, 9);
+    assert!(execute_service_health(invalid_window).is_err());
     let mut args = valid_service_health_args();
     args.endpoint.endpoint_id = hash_arg([0; 32]);
     assert!(
@@ -78,8 +74,7 @@ fn valid_service_health_args() -> ServiceHealthArgs {
     ServiceHealthArgs {
         endpoint: valid_service_health_endpoint_args(),
         health: service_health_path_args("/health"),
-        first_block: 0,
-        last_block: 9,
+        window: block_height_window_args(0, 9),
         reachable_count: 10,
         signed_health_check_count: 10,
     }

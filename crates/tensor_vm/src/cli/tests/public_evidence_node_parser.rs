@@ -2,7 +2,7 @@ use super::parser_support::{address_arg, hash_arg, path};
 use super::{
     EvidenceCommand, EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
     OperatorAttestationArgs, PublicCommand, PublicNodeIdentityArgs, PublicNodeRoleArg, TvmdCommand,
-    manifest_address, manifest_hash, parse_test_cli,
+    block_height_window_args, manifest_address, manifest_hash, parse_test_cli,
 };
 use crate::types::{address, hash_bytes};
 
@@ -31,8 +31,7 @@ fn parses_node_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
             EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
                 node: miner_node_identity_args(),
-                first_block: 0,
-                last_block: 9,
+                window: block_height_window_args(0, 9),
                 heartbeat_count: 10,
             }),
         )))

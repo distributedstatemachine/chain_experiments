@@ -11,6 +11,7 @@ mod local_runtime_args;
 mod localnet_commands;
 mod network_evidence;
 mod node_evidence;
+mod public_evidence_block_window_commands;
 mod public_evidence_commands;
 mod public_evidence_execution;
 mod public_evidence_network_commands;
@@ -37,17 +38,17 @@ mod validation;
 mod value_types;
 
 pub use commands::{
-    AddressArg, AuditorRecordArgs, DataDirArgs, EvidenceCommand, EvidenceNetworkCommand,
-    EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand, EvidenceServiceCommand,
-    HashArg, HexBytesArg, IdentitySeedArgs, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs,
-    MinerCommand, MinerDeviceArg, MinerRunArgs, NetworkObservationArgs,
-    NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs, NodeBlockArgs,
-    NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, NodePeerAddArgs,
-    NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs, P2pListenArgs,
-    ProposerCommand, PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs,
-    PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
-    PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
-    PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    AddressArg, AuditorRecordArgs, BlockHeightWindowArgs, DataDirArgs, EvidenceCommand,
+    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
+    EvidenceServiceCommand, HashArg, HexBytesArg, IdentitySeedArgs, LocalCpuVerifyArgs,
+    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerDeviceArg, MinerRunArgs,
+    NetworkObservationArgs, NetworkObservationFromServiceLogArgs, NetworkObservationTargetArgs,
+    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
+    NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, OperatorAttestationArgs,
+    P2pListenArgs, ProposerCommand, PublicCommand, PublicEvidenceManifestArgs,
+    PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
+    PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
+    PublicationArgs, PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
     RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
     RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowArgs, RunWindowContextArgs,

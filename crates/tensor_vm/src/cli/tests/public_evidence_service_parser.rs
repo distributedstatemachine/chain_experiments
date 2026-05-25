@@ -3,7 +3,8 @@ use super::{
     EvidenceCommand, EvidenceServiceCommand, HexBytesArg, PublicCommand, PublicServiceEndpointArgs,
     PublicServiceKindArg, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs, ServiceHealthPathArgs, TvmdCommand, manifest_hash, parse_test_cli,
+    ServiceHealthFromFileArgs, ServiceHealthPathArgs, TvmdCommand, block_height_window_args,
+    manifest_hash, parse_test_cli,
 };
 use crate::hash::hex;
 use crate::types::hash_bytes;
@@ -39,8 +40,7 @@ fn parses_service_evidence_commands() {
             EvidenceServiceCommand::Health(ServiceHealthArgs {
                 endpoint: service_endpoint_args("https://rpc.tensorvm.net/health"),
                 health: service_health_path_args("/health"),
-                first_block: 0,
-                last_block: 9,
+                window: block_height_window_args(0, 9),
                 reachable_count: 10,
                 signed_health_check_count: 10,
             }),

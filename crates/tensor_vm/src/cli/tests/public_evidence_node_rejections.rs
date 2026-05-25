@@ -141,8 +141,7 @@ fn execute_node_heartbeat(
     execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
         NodeHeartbeatArgs {
             node: public_node_identity_args(address, operator_id),
-            first_block,
-            last_block,
+            window: block_height_window_args(first_block, last_block),
             heartbeat_count,
         },
     )))

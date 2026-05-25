@@ -1,3 +1,4 @@
+use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 use super::value_types::{AddressArg, HashArg};
 use crate::testnet::PublicNodeRole;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
@@ -18,18 +19,8 @@ pub enum EvidenceNodeCommand {
 pub struct NodeHeartbeatArgs {
     #[command(flatten)]
     pub node: PublicNodeIdentityArgs,
-    #[arg(
-        long,
-        value_name = "HEIGHT",
-        help = "First block height covered by the heartbeat window."
-    )]
-    pub first_block: u64,
-    #[arg(
-        long,
-        value_name = "HEIGHT",
-        help = "Last block height covered by the heartbeat window."
-    )]
-    pub last_block: u64,
+    #[command(flatten)]
+    pub window: BlockHeightWindowArgs,
     #[arg(
         long,
         value_name = "N",

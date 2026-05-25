@@ -1,3 +1,4 @@
+use super::public_evidence_block_window_commands::BlockHeightWindowArgs;
 use super::value_types::{HashArg, HexBytesArg};
 use crate::testnet::PublicServiceKind;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
@@ -24,18 +25,8 @@ pub struct ServiceHealthArgs {
     pub endpoint: PublicServiceEndpointArgs,
     #[command(flatten)]
     pub health: ServiceHealthPathArgs,
-    #[arg(
-        long,
-        value_name = "HEIGHT",
-        help = "First block height covered by the observation window."
-    )]
-    pub first_block: u64,
-    #[arg(
-        long,
-        value_name = "HEIGHT",
-        help = "Last block height covered by the observation window."
-    )]
-    pub last_block: u64,
+    #[command(flatten)]
+    pub window: BlockHeightWindowArgs,
     #[arg(
         long,
         value_name = "N",

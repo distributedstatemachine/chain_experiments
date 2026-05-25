@@ -1213,6 +1213,9 @@ spaghetti around.
 - Iteration 489 flattened repeated supporting-record `--record-file` Clap arguments into
   `RecordFileArgs`, keeping summary-file and artifact-file evidence on one canonical record file
   source model.
+- Iteration 490 flattened repeated public evidence `--first-block` and `--last-block` Clap
+  arguments into `BlockHeightWindowArgs`, keeping node heartbeat and service health evidence on one
+  canonical block-height window model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

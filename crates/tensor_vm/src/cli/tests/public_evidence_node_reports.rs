@@ -20,8 +20,7 @@ fn execute_node_evidence_reports_outputs() {
         let node = execute_public_evidence_command(&EvidenceCommand::Node(
             EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
                 node: public_node_identity_args(role, address_label, operator_label),
-                first_block: 0,
-                last_block: 9,
+                window: block_height_window_args(0, 9),
                 heartbeat_count: 10,
             }),
         ))

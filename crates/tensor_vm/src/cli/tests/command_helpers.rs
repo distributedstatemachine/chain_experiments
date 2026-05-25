@@ -23,6 +23,13 @@ pub(super) fn execute_test_cli_args(args: &[&str]) -> std::result::Result<String
     execute_test_cli_command(&command)
 }
 
+pub(super) fn block_height_window_args(first_block: u64, last_block: u64) -> BlockHeightWindowArgs {
+    BlockHeightWindowArgs {
+        first_block,
+        last_block,
+    }
+}
+
 pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
     value.parse().expect("test multiaddr must parse")
 }

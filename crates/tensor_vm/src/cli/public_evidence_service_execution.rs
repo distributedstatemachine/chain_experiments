@@ -17,8 +17,8 @@ pub(super) fn execute_public_evidence_service_command(
                 endpoint_id: args.endpoint.endpoint_id.into_hash(),
                 public_url: &args.endpoint.public_url,
                 health_path: args.health.path(),
-                first_seen_block: args.first_block,
-                last_seen_block: args.last_block,
+                first_seen_block: args.window.first_block(),
+                last_seen_block: args.window.last_block(),
                 reachable_observation_count: args.reachable_count,
                 signed_health_check_count: args.signed_health_check_count,
             })
