@@ -1399,6 +1399,8 @@ spaghetti around.
   miner, validator, and receipt lookups behind a focused dynamic GET helper.
 - Iteration 569 split static RPC route dispatch by HTTP method, keeping GET service/explorer/telemetry/faucet
   reads separate from immutable POST reference acknowledgements before dynamic route fallback.
+- Iteration 570 split dynamic RPC GET route dispatch by first path segment, isolating chain, receipt,
+  miner, validator, explorer, tensor, and job lookups into route-family helpers.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -107,14 +107,57 @@ impl RpcNode {
     }
 
     fn handle_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments.first().copied()? {
+            "chain" => self.handle_chain_dynamic_get(segments),
+            "receipts" => self.handle_receipt_dynamic_get(segments),
+            "miners" => self.handle_miner_dynamic_get(segments),
+            "validators" => self.handle_validator_dynamic_get(segments),
+            "explorer" => self.handle_explorer_dynamic_get(segments),
+            "tensor" => self.handle_tensor_dynamic_get(segments),
+            "jobs" => self.handle_job_dynamic_get(segments),
+            _ => None,
+        }
+    }
+
+    fn handle_chain_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
         match segments {
             ["chain", "block", height] => Some(self.chain_block(height)),
+            _ => None,
+        }
+    }
+
+    fn handle_receipt_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["receipts", receipt_id] => Some(self.receipt(receipt_id)),
+            _ => None,
+        }
+    }
+
+    fn handle_miner_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["miners", address] => Some(self.miner(address)),
+            _ => None,
+        }
+    }
+
+    fn handle_validator_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["validators", address] => Some(self.validator(address)),
+            _ => None,
+        }
+    }
+
+    fn handle_explorer_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["explorer", "account", address] => Some(self.explorer_account(address)),
             ["explorer", "blocks", "latest", limit] => Some(self.explorer_latest_blocks(limit)),
             ["explorer", "receipts", "latest", limit] => Some(self.explorer_latest_receipts(limit)),
+            _ => None,
+        }
+    }
+
+    fn handle_tensor_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["tensor", tensor_id, "descriptor"] => Some(self.tensor_descriptor(tensor_id)),
             ["tensor", tensor_id, "chunk", chunk_index] => {
                 Some(self.tensor_chunk(tensor_id, chunk_index))
@@ -124,6 +167,12 @@ impl RpcNode {
                 Some(self.tensor_opening(tensor_id, chunk_index))
             }
             ["tensor", "latest"] => Some(self.tensor_latest()),
+            _ => None,
+        }
+    }
+
+    fn handle_job_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
             ["jobs", job_id] => Some(self.job(job_id)),
             _ => None,
         }
