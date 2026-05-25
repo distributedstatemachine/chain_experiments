@@ -1367,6 +1367,9 @@ spaghetti around.
 - Iteration 558 split local node and localnet app dispatch into focused handlers for node init, peer add,
   readiness, serving, status, block lookup, seed, and verify flows, keeping validation at the app boundary
   while shrinking the remaining nested node command match.
+- Iteration 559 consolidated public supporting-record evidence execution around one typed record context
+  extractor and shared root conversion helper, removing repeated Clap-field plumbing from summary,
+  artifact, roots, and file command variants.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
