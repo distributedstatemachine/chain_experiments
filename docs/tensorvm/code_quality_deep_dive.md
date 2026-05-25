@@ -1401,6 +1401,8 @@ spaghetti around.
   reads separate from immutable POST reference acknowledgements before dynamic route fallback.
 - Iteration 570 split dynamic RPC GET route dispatch by first path segment, isolating chain, receipt,
   miner, validator, explorer, tensor, and job lookups into route-family helpers.
+- Iteration 571 split static RPC GET dispatch into core, explorer, telemetry, and faucet route-family
+  helpers, keeping fixed read routes out of a single mixed service match.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

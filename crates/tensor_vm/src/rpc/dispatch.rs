@@ -24,12 +24,25 @@ impl RpcNode {
     }
 
     fn handle_static_get(&self, path: &str) -> Option<RpcResponse> {
+        self.handle_core_static_get(path)
+            .or_else(|| self.handle_explorer_static_get(path))
+            .or_else(|| self.handle_telemetry_static_get(path))
+            .or_else(|| self.handle_faucet_static_get(path))
+    }
+
+    fn handle_core_static_get(&self, path: &str) -> Option<RpcResponse> {
         match path {
             "/health" => Some(self.health("all")),
             "/rpc/health" => Some(self.health("rpc")),
             "/chain/head" => Some(self.chain_head()),
             "/epoch/current" => Some(self.current_epoch()),
             "/jobs/current" => Some(self.jobs_current()),
+            _ => None,
+        }
+    }
+
+    fn handle_explorer_static_get(&self, path: &str) -> Option<RpcResponse> {
+        match path {
             "/explorer/health" => Some(self.health("explorer")),
             "/explorer" => Some(self.ok(explorer_shell_html("/explorer/ws"))),
             "/explorer/summary" => Some(self.ok(explorer_summary(&self.chain).to_json())),
@@ -41,11 +54,23 @@ impl RpcNode {
                 Some(self.ok(validators_json(&explorer_validators(&self.chain))))
             }
             "/explorer/jobs" => Some(self.ok(jobs_json(&explorer_jobs(&self.chain, 50)))),
+            _ => None,
+        }
+    }
+
+    fn handle_telemetry_static_get(&self, path: &str) -> Option<RpcResponse> {
+        match path {
             "/telemetry/health" => Some(self.health("telemetry")),
             "/telemetry" => Some(self.ok(TelemetrySnapshot::from_chain(&self.chain).to_json())),
             "/telemetry/dashboard" => Some(self.ok(telemetry_dashboard_html(
                 &TelemetrySnapshot::from_chain(&self.chain),
             ))),
+            _ => None,
+        }
+    }
+
+    fn handle_faucet_static_get(&self, path: &str) -> Option<RpcResponse> {
+        match path {
             "/faucet/health" => Some(self.health("faucet")),
             "/faucet" => Some(self.faucet_status()),
             "/faucet/page" => Some(self.ok(faucet_page_html(self.faucet.as_ref()))),
