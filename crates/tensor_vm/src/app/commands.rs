@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use super::p2p_identity_report;
+use super::{KeyValueReportWriter, p2p_identity_report};
 use crate::{
-    Chain, Libp2pControlPlaneConfig, NodeStore, PeerRecord, hash::hex, spawn_libp2p_service,
-    types::hash_bytes,
+    Chain, Libp2pControlPlaneConfig, NodeStore, NodeStoreStatus, PeerRecord, hash::hex,
+    spawn_libp2p_service, types::hash_bytes,
 };
 
 pub fn init_service_store(data_dir: &str) -> std::result::Result<String, String> {
@@ -17,12 +17,7 @@ pub fn init_service_store(data_dir: &str) -> std::result::Result<String, String>
     {
         match store.load_chain().and_then(|_| store.status()) {
             Ok(status) => {
-                return Ok(format!(
-                    "command=service_init\ndata_dir={}\nexisting_store=true\nrecovered_store=false\nblock_count={}\nlatest_block_hash={}",
-                    status.data_dir.display(),
-                    status.block_count,
-                    hex(&status.latest_block_hash)
-                ));
+                return Ok(service_init_report(&status, true, false, None));
             }
             Err(error) => {
                 let status = store.recover_from_chain_state().map_err(|recovery_error| {
@@ -30,11 +25,11 @@ pub fn init_service_store(data_dir: &str) -> std::result::Result<String, String>
                         "existing node store is invalid: {error}; chain-state recovery failed: {recovery_error}"
                     )
                 })?;
-                return Ok(format!(
-                    "command=service_init\ndata_dir={}\nexisting_store=true\nrecovered_store=true\nrecovery_source=chain_state\nblock_count={}\nlatest_block_hash={}",
-                    status.data_dir.display(),
-                    status.block_count,
-                    hex(&status.latest_block_hash)
+                return Ok(service_init_report(
+                    &status,
+                    true,
+                    true,
+                    Some("chain_state"),
                 ));
             }
         }
@@ -47,12 +42,7 @@ pub fn init_service_store(data_dir: &str) -> std::result::Result<String, String>
     let status = store
         .persist_chain(&chain)
         .map_err(|error| format!("failed to initialize node store {data_dir}: {error}"))?;
-    Ok(format!(
-        "command=service_init\ndata_dir={}\nexisting_store=false\nrecovered_store=false\nblock_count={}\nlatest_block_hash={}",
-        status.data_dir.display(),
-        status.block_count,
-        hex(&status.latest_block_hash)
-    ))
+    Ok(service_init_report(&status, false, false, None))
 }
 
 pub fn add_service_peer(
@@ -71,10 +61,14 @@ pub fn add_service_peer(
         .peer_book_store()
         .upsert_record(record)
         .map_err(|error| format!("failed to update libp2p peer book {data_dir}: {error}"))?;
-    Ok(format!(
-        "command=service_peer_add\ndata_dir={data_dir}\npeer_id={peer_id}\naddress={address}\nbootstrap_address={bootstrap_address}\nbootstrap_peers={}",
-        records.len()
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field("command", "service_peer_add");
+    report.field("data_dir", data_dir);
+    report.field("peer_id", peer_id);
+    report.field("address", address);
+    report.field("bootstrap_address", bootstrap_address);
+    report.field("bootstrap_peers", records.len());
+    Ok(report.finish())
 }
 
 pub fn check_service_readiness(
@@ -108,10 +102,46 @@ pub fn check_service_readiness(
     let p2p_service = spawn_libp2p_service(p2p_config)
         .map_err(|error| format!("failed to start mandatory libp2p readiness check: {error}"))?;
     let identity = p2p_identity_report(identity_seed);
-    Ok(format!(
-        "command=service_readiness\np2p_listen={p2p_listen}\np2p_runtime=libp2p\np2p_peer_id={}\np2p_gossipsub_topics={}\np2p_request_response_protocols={}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={data_dir}\nnode_store_ready=true\nlibp2p_ready=true",
-        p2p_service.peer_id(),
+    let mut report = KeyValueReportWriter::new();
+    report.field("command", "service_readiness");
+    report.field("p2p_listen", p2p_listen);
+    report.field("p2p_runtime", "libp2p");
+    report.field("p2p_peer_id", p2p_service.peer_id());
+    report.field(
+        "p2p_gossipsub_topics",
         p2p_service.info().subscribed_topics.len(),
-        p2p_service.info().request_response_protocols.len()
-    ))
+    );
+    report.field(
+        "p2p_request_response_protocols",
+        p2p_service.info().request_response_protocols.len(),
+    );
+    report.field("p2p_bootstrap_peers", bootstrap_peer_count);
+    report.append_report(&identity);
+    report.field("p2p_max_transmit_bytes", max_transmit_bytes);
+    report.field("p2p_request_timeout_seconds", request_timeout_seconds);
+    report.field("p2p_max_concurrent_streams", max_concurrent_streams);
+    report.field("p2p_idle_timeout_seconds", idle_timeout_seconds);
+    report.field("data_dir", data_dir);
+    report.field("node_store_ready", true);
+    report.field("libp2p_ready", true);
+    Ok(report.finish())
+}
+
+fn service_init_report(
+    status: &NodeStoreStatus,
+    existing_store: bool,
+    recovered_store: bool,
+    recovery_source: Option<&str>,
+) -> String {
+    let mut report = KeyValueReportWriter::new();
+    report.field("command", "service_init");
+    report.field("data_dir", status.data_dir.display());
+    report.field("existing_store", existing_store);
+    report.field("recovered_store", recovered_store);
+    if let Some(recovery_source) = recovery_source {
+        report.field("recovery_source", recovery_source);
+    }
+    report.field("block_count", status.block_count);
+    report.field("latest_block_hash", hex(&status.latest_block_hash));
+    report.finish()
 }

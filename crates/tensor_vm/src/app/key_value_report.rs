@@ -70,7 +70,6 @@ impl KeyValueReportWriter {
         self.contents.push_str(&value);
     }
 
-    #[cfg(test)]
     pub(crate) fn append_report(&mut self, report: &str) {
         let mut addition = String::new();
         for line in report.lines().filter(|line| !line.trim().is_empty()) {
