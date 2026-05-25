@@ -1294,6 +1294,8 @@ spaghetti around.
   heartbeat windows, heartbeat files, identity URIs, and node identity triples out of public parser internals.
 - Iteration 526 hid public publication/auditor Clap fields behind constructors and accessors, keeping
   bundle publication URIs, manifest signature counts, auditor IDs, audit URIs, and observation times out of public parser internals.
+- Iteration 527 hid public supporting-record Clap group fields behind constructors and accessors, keeping
+  record context, root, roots, file, and artifact locator groups out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

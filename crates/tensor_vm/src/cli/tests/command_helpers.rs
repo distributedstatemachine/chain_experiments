@@ -138,11 +138,11 @@ pub(super) fn record_context_args_from(
     bundle_id: Hash,
     manifest_signer: Address,
 ) -> PublicEvidenceRecordContextArgs {
-    PublicEvidenceRecordContextArgs {
-        kind: record_kind_arg(kind),
-        bundle: evidence_bundle_id_args(bundle_id),
-        signer: manifest_signer_args(manifest_signer),
-    }
+    PublicEvidenceRecordContextArgs::new(
+        record_kind_arg(kind),
+        evidence_bundle_id_args(bundle_id),
+        manifest_signer_args(manifest_signer),
+    )
 }
 
 pub(super) fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {

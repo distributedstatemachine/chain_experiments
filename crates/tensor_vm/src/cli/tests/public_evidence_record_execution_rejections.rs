@@ -61,14 +61,14 @@ fn execute_record_summary(
     record_count: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(EvidenceRecordCommand::Summary(
-        RecordSummaryArgs {
-            context: record_context_args_from(
+        RecordSummaryArgs::new(
+            record_context_args_from(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id,
                 manifest_signer,
             ),
-            root: record_root_args(record_root, record_count),
-        },
+            record_root_args(record_root, record_count),
+        ),
     )))
 }
 
@@ -80,35 +80,33 @@ fn execute_record_artifact(
     record_count: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(EvidenceRecordCommand::Artifact(
-        RecordArtifactArgs {
-            context: record_context_args_from(
+        RecordArtifactArgs::new(
+            record_context_args_from(
                 PublicEvidenceRecordKind::NetworkRuntimeObservations,
                 bundle_id,
                 manifest_signer,
             ),
-            artifact: record_artifact_locator_args(artifact_uri),
-            root: record_root_args(record_root, record_count),
-        },
+            record_artifact_locator_args(artifact_uri),
+            record_root_args(record_root, record_count),
+        ),
     )))
 }
 
 fn execute_record_summary_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            roots: record_roots_args(record_roots),
-        }),
+        EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_roots_args(record_roots),
+        )),
     ))
 }
 
 fn execute_record_artifact_roots(record_roots: Vec<[u8; 32]>) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact: record_artifact_locator_args(
-                "https://evidence.tensorvm.net/network-runtime.json",
-            ),
-            roots: record_roots_args(record_roots),
-        }),
+        EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_artifact_locator_args("https://evidence.tensorvm.net/network-runtime.json"),
+            record_roots_args(record_roots),
+        )),
     ))
 }

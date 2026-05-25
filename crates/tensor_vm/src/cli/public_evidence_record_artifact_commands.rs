@@ -9,14 +9,26 @@ use std::path::Path;
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub artifact: RecordArtifactLocatorArgs,
+    artifact: RecordArtifactLocatorArgs,
     #[command(flatten)]
-    pub root: RecordRootArgs,
+    root: RecordRootArgs,
 }
 
 impl RecordArtifactArgs {
+    pub fn new(
+        context: PublicEvidenceRecordContextArgs,
+        artifact: RecordArtifactLocatorArgs,
+        root: RecordRootArgs,
+    ) -> Self {
+        Self {
+            context,
+            artifact,
+            root,
+        }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }
@@ -45,14 +57,26 @@ impl RecordArtifactArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromRootsArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub artifact: RecordArtifactLocatorArgs,
+    artifact: RecordArtifactLocatorArgs,
     #[command(flatten)]
-    pub roots: RecordRootsArgs,
+    roots: RecordRootsArgs,
 }
 
 impl RecordArtifactFromRootsArgs {
+    pub fn new(
+        context: PublicEvidenceRecordContextArgs,
+        artifact: RecordArtifactLocatorArgs,
+        roots: RecordRootsArgs,
+    ) -> Self {
+        Self {
+            context,
+            artifact,
+            roots,
+        }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }
@@ -77,14 +101,26 @@ impl RecordArtifactFromRootsArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactFromFileArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub artifact: RecordArtifactLocatorArgs,
+    artifact: RecordArtifactLocatorArgs,
     #[command(flatten)]
-    pub file: RecordFileArgs,
+    file: RecordFileArgs,
 }
 
 impl RecordArtifactFromFileArgs {
+    pub fn new(
+        context: PublicEvidenceRecordContextArgs,
+        artifact: RecordArtifactLocatorArgs,
+        file: RecordFileArgs,
+    ) -> Self {
+        Self {
+            context,
+            artifact,
+            file,
+        }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }

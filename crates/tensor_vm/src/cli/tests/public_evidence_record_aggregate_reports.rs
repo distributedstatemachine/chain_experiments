@@ -19,10 +19,10 @@ fn execute_public_evidence_record_aggregate_reports_outputs() {
         roots.len() as u64,
     );
     let aggregate_line = execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            roots: record_roots_args(roots.clone()),
-        }),
+        EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_roots_args(roots.clone()),
+        )),
     ))
     .unwrap();
     assert_eq!(
@@ -44,11 +44,11 @@ fn execute_public_evidence_record_aggregate_reports_outputs() {
         roots.len() as u64,
     );
     let aggregate_artifact_line = execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact: record_artifact_locator_args(aggregate_artifact_uri),
-            roots: record_roots_args(roots),
-        }),
+        EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_artifact_locator_args(aggregate_artifact_uri),
+            record_roots_args(roots),
+        )),
     ))
     .unwrap();
     assert_eq!(

@@ -65,10 +65,10 @@ fn execute_public_evidence_record_file_reports_outputs() {
     .unwrap();
     assert_eq!(record_file_roots_from_disk, record_file_roots);
     let record_file_summary = execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            file: record_file_args(record_file.clone()),
-        }),
+        EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_file_args(record_file.clone()),
+        )),
     ))
     .unwrap();
     let record_file_signature = sign_public_evidence_record(
@@ -88,11 +88,11 @@ fn execute_public_evidence_record_file_reports_outputs() {
     );
     let aggregate_artifact_uri = "https://evidence.tensorvm.net/network-runtime.json";
     let record_file_artifact = execute_public_evidence_command(&EvidenceCommand::Record(
-        EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
-            context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            artifact: record_artifact_locator_args(aggregate_artifact_uri),
-            file: record_file_args(record_file.clone()),
-        }),
+        EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs::new(
+            record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+            record_artifact_locator_args(aggregate_artifact_uri),
+            record_file_args(record_file.clone()),
+        )),
     ))
     .unwrap();
     let record_file_artifact_signature = crate::testnet::sign_public_evidence_artifact(

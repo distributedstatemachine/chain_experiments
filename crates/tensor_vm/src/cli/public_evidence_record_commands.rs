@@ -29,12 +29,16 @@ pub enum EvidenceRecordCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub root: RecordRootArgs,
+    root: RecordRootArgs,
 }
 
 impl RecordSummaryArgs {
+    pub fn new(context: PublicEvidenceRecordContextArgs, root: RecordRootArgs) -> Self {
+        Self { context, root }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }
@@ -59,12 +63,16 @@ impl RecordSummaryArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromRootsArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub roots: RecordRootsArgs,
+    roots: RecordRootsArgs,
 }
 
 impl RecordSummaryFromRootsArgs {
+    pub fn new(context: PublicEvidenceRecordContextArgs, roots: RecordRootsArgs) -> Self {
+        Self { context, roots }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }
@@ -85,12 +93,16 @@ impl RecordSummaryFromRootsArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromFileArgs {
     #[command(flatten)]
-    pub context: PublicEvidenceRecordContextArgs,
+    context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
-    pub file: RecordFileArgs,
+    file: RecordFileArgs,
 }
 
 impl RecordSummaryFromFileArgs {
+    pub fn new(context: PublicEvidenceRecordContextArgs, file: RecordFileArgs) -> Self {
+        Self { context, file }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.context.kind()
     }
@@ -111,14 +123,26 @@ impl RecordSummaryFromFileArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicEvidenceRecordContextArgs {
     #[arg(long, help = "Supporting-record class.")]
-    pub kind: PublicEvidenceRecordKindArg,
+    kind: PublicEvidenceRecordKindArg,
     #[command(flatten)]
-    pub bundle: EvidenceBundleIdArgs,
+    bundle: EvidenceBundleIdArgs,
     #[command(flatten)]
-    pub signer: ManifestSignerArgs,
+    signer: ManifestSignerArgs,
 }
 
 impl PublicEvidenceRecordContextArgs {
+    pub fn new(
+        kind: PublicEvidenceRecordKindArg,
+        bundle: EvidenceBundleIdArgs,
+        signer: ManifestSignerArgs,
+    ) -> Self {
+        Self {
+            kind,
+            bundle,
+            signer,
+        }
+    }
+
     pub fn kind(&self) -> PublicEvidenceRecordKind {
         self.kind.into()
     }

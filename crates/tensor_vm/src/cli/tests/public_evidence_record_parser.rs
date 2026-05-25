@@ -35,10 +35,10 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::Summary(RecordSummaryArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                root: record_root_args(hash_bytes(b"test", &[b"network-runtime-root"]), 4),
-            }),
+            EvidenceRecordCommand::Summary(RecordSummaryArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_root_args(hash_bytes(b"test", &[b"network-runtime-root"]), 4),
+            )),
         )))
     );
 
@@ -63,13 +63,11 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::Artifact(RecordArtifactArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact: record_artifact_locator_args(
-                    "https://evidence.tensorvm.net/network-runtime.json",
-                ),
-                root: record_root_args(hash_bytes(b"test", &[b"network-runtime-root"]), 4),
-            }),
+            EvidenceRecordCommand::Artifact(RecordArtifactArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_artifact_locator_args("https://evidence.tensorvm.net/network-runtime.json",),
+                record_root_args(hash_bytes(b"test", &[b"network-runtime-root"]), 4),
+            )),
         )))
     );
 
@@ -95,13 +93,13 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                roots: record_roots_args(vec![
+            EvidenceRecordCommand::SummaryRoots(RecordSummaryFromRootsArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_roots_args(vec![
                     hash_bytes(b"test", &[b"network-observation-a"]),
                     hash_bytes(b"test", &[b"network-observation-b"]),
                 ]),
-            }),
+            )),
         )))
     );
 
@@ -124,16 +122,14 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact: record_artifact_locator_args(
-                    "https://evidence.tensorvm.net/network-runtime.json",
-                ),
-                roots: record_roots_args(vec![
+            EvidenceRecordCommand::ArtifactRoots(RecordArtifactFromRootsArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_artifact_locator_args("https://evidence.tensorvm.net/network-runtime.json",),
+                record_roots_args(vec![
                     hash_bytes(b"test", &[b"network-observation-a"]),
                     hash_bytes(b"test", &[b"network-observation-b"]),
                 ]),
-            }),
+            )),
         )))
     );
 
@@ -154,10 +150,10 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                file: record_file_args("artifacts/network-runtime.records"),
-            }),
+            EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_file_args("artifacts/network-runtime.records"),
+            )),
         )))
     );
 
@@ -180,13 +176,11 @@ fn parses_record_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
-            EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
-                context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                artifact: record_artifact_locator_args(
-                    "https://evidence.tensorvm.net/network-runtime.json",
-                ),
-                file: record_file_args("artifacts/network-runtime.records"),
-            }),
+            EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs::new(
+                record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
+                record_artifact_locator_args("https://evidence.tensorvm.net/network-runtime.json",),
+                record_file_args("artifacts/network-runtime.records"),
+            )),
         )))
     );
 }
