@@ -53,14 +53,19 @@ impl RpcNode {
     }
 
     pub fn handle_mut(&mut self, request: &RpcRequest) -> RpcResponse {
+        self.handle_mutation(request)
+            .unwrap_or_else(|| self.handle(request))
+    }
+
+    fn handle_mutation(&mut self, request: &RpcRequest) -> Option<RpcResponse> {
         match (request.method.as_str(), request.path.as_str()) {
-            ("POST", "/tx") => self.submit_transaction(request),
-            ("POST", "/receipt") => self.submit_receipt_reference(request),
-            ("POST", "/attestation") => self.submit_attestation_reference(request),
+            ("POST", "/tx") => Some(self.submit_transaction(request)),
+            ("POST", "/receipt") => Some(self.submit_receipt_reference(request)),
+            ("POST", "/attestation") => Some(self.submit_attestation_reference(request)),
             _ if request.method == "POST" && request.path.starts_with("/faucet/claim/") => {
-                self.submit_faucet_claim(request)
+                Some(self.submit_faucet_claim(request))
             }
-            _ => self.handle(request),
+            _ => None,
         }
     }
 

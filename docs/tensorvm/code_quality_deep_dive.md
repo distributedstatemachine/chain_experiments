@@ -1391,6 +1391,9 @@ spaghetti around.
 - Iteration 566 split RPC static route dispatch out of the dynamic route fallback path, keeping the existing
   route table behavior while separating fixed service, explorer, telemetry, faucet, and submission routes
   from path-segment-based dynamic routing.
+- Iteration 567 split mutable RPC route dispatch out of the read-only fallback path, so transaction,
+  reference-submission, attestation, and faucet claim routes are identified before delegating unmatched
+  requests back to the static/dynamic read route pipeline.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
