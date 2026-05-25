@@ -1272,6 +1272,8 @@ spaghetti around.
   keeping summary and artifact generators out of nested context/root/artifact/file parser groups.
 - Iteration 515 hid shared public evidence leaf Clap fields behind constructors and accessors, keeping
   bundle IDs, manifest signers, operator IDs, and observation timestamps out of public parser internals.
+- Iteration 516 hid supporting-record leaf Clap fields behind constructors and accessors, keeping
+  record roots, root lists, record files, and artifact URIs out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

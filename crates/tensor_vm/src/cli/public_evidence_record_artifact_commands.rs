@@ -114,10 +114,16 @@ pub struct RecordArtifactLocatorArgs {
         value_hint = ValueHint::Url,
         help = "Public URI for the supporting-record artifact."
     )]
-    pub artifact_uri: String,
+    artifact_uri: String,
 }
 
 impl RecordArtifactLocatorArgs {
+    pub fn new(artifact_uri: impl Into<String>) -> Self {
+        Self {
+            artifact_uri: artifact_uri.into(),
+        }
+    }
+
     pub fn uri(&self) -> &str {
         &self.artifact_uri
     }

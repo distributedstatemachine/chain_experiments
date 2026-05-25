@@ -139,16 +139,23 @@ pub struct RecordRootArgs {
         value_name = "HEX",
         help = "Root hash of the supporting-record set."
     )]
-    pub record_root: HashArg,
+    record_root: HashArg,
     #[arg(
         long,
         value_name = "N",
         help = "Number of records covered by the root."
     )]
-    pub record_count: u64,
+    record_count: u64,
 }
 
 impl RecordRootArgs {
+    pub fn new(record_root: Hash, record_count: u64) -> Self {
+        Self {
+            record_root: HashArg::new(record_root),
+            record_count,
+        }
+    }
+
     pub fn root(&self) -> Hash {
         self.record_root.into_hash()
     }
@@ -167,10 +174,16 @@ pub struct RecordRootsArgs {
         num_args = 1..,
         help = "Comma-delimited record roots to aggregate."
     )]
-    pub record_roots: Vec<HashArg>,
+    record_roots: Vec<HashArg>,
 }
 
 impl RecordRootsArgs {
+    pub fn new(record_roots: Vec<Hash>) -> Self {
+        Self {
+            record_roots: record_roots.into_iter().map(HashArg::new).collect(),
+        }
+    }
+
     pub fn roots(&self) -> Vec<Hash> {
         self.record_roots
             .iter()
@@ -188,10 +201,14 @@ pub struct RecordFileArgs {
         value_hint = ValueHint::FilePath,
         help = "File containing supporting records to summarize."
     )]
-    pub record_file: PathBuf,
+    record_file: PathBuf,
 }
 
 impl RecordFileArgs {
+    pub fn new(record_file: PathBuf) -> Self {
+        Self { record_file }
+    }
+
     pub fn path(&self) -> &std::path::Path {
         &self.record_file
     }
