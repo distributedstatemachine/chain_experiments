@@ -1,4 +1,5 @@
 use super::evidence_fields::{exact_comma_fields, parse_u64_field, public_service_kind_tag};
+use crate::app::KeyValueReportWriter;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::{
@@ -35,18 +36,23 @@ pub(super) fn service_health_evidence_line(input: ServiceHealthEvidenceLine<'_>)
     if !evidence.has_reachable_endpoint_proof() {
         return Err(TvmError::InvalidReceipt("invalid service health evidence"));
     }
-    Ok(format!(
-        "service={},{},{},{},{},{},{},{},{}",
-        public_service_kind_tag(input.kind),
-        hex(&evidence.endpoint_id),
-        evidence.public_url,
-        evidence.health_path,
-        evidence.first_seen_block,
-        evidence.last_seen_block,
-        evidence.reachable_observation_count,
-        evidence.signed_health_check_count,
-        hex(&evidence.health_check_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "service",
+        format!(
+            "{},{},{},{},{},{},{},{},{}",
+            public_service_kind_tag(input.kind),
+            hex(&evidence.endpoint_id),
+            evidence.public_url,
+            evidence.health_path,
+            evidence.first_seen_block,
+            evidence.last_seen_block,
+            evidence.reachable_observation_count,
+            evidence.signed_health_check_count,
+            hex(&evidence.health_check_signature)
+        ),
+    );
+    Ok(report.finish())
 }
 
 pub(super) struct ServiceHealthObservationSummary {
@@ -170,17 +176,22 @@ pub(super) fn service_content_evidence_line(
     if !evidence.has_external_content_proof() {
         return Err(TvmError::InvalidReceipt("invalid service content evidence"));
     }
-    Ok(format!(
-        "service_content={},{},{},{},{},{},{},{}",
-        public_service_kind_tag(kind),
-        hex(&evidence.endpoint_id),
-        evidence.public_url,
-        evidence.content_path,
-        hex(&evidence.content_root),
-        evidence.observed_at_unix_seconds,
-        evidence.min_content_bytes,
-        hex(&evidence.content_signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "service_content",
+        format!(
+            "{},{},{},{},{},{},{},{}",
+            public_service_kind_tag(kind),
+            hex(&evidence.endpoint_id),
+            evidence.public_url,
+            evidence.content_path,
+            hex(&evidence.content_root),
+            evidence.observed_at_unix_seconds,
+            evidence.min_content_bytes,
+            hex(&evidence.content_signature)
+        ),
+    );
+    Ok(report.finish())
 }
 
 pub(super) fn public_service_content_root(content_bytes: &[u8]) -> Hash {

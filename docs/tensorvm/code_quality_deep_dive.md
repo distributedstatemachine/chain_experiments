@@ -1336,6 +1336,8 @@ spaghetti around.
   `KeyValueReportWriter`, preserving dynamic record prefixes and artifact comma payloads in validated fields.
 - Iteration 547 moved public node heartbeat and operator-attestation evidence outputs onto
   `KeyValueReportWriter`, keeping node/operator comma payloads inside validated report fields.
+- Iteration 548 moved public service health and content evidence outputs onto `KeyValueReportWriter`,
+  keeping service comma payloads inside validated report fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
