@@ -1,8 +1,52 @@
-use super::*;
+use super::commands::{TvmdCli, TvmdCommand};
+use super::evidence_fields::{public_evidence_record_kind_tag, public_service_kind_tag};
+use super::local_commands::{
+    BootstrapPeerArgs, DataDirArgs, IdentitySeedArgs, LocalCpuVerifyArgs, LocalnetCommand,
+    MinerCheckArgs, MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand,
+    NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, P2pListenArgs,
+    ProposerCommand, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, StakeArgs, ValidatorCheckArgs,
+    ValidatorCommand, ValidatorRunArgs,
+};
+use super::network_evidence::{
+    NetworkObservationEvidenceLine, network_observation_evidence_line_from_service_log,
+    network_observation_root, service_log_field,
+};
+use super::node_evidence::node_heartbeat_observation_summary_from_file;
+use super::public_evidence_commands::{
+    AuditorRecordArgs, BlockHeightWindowArgs, EvidenceBundleIdArgs, EvidenceCommand,
+    EvidenceNetworkCommand, EvidenceNodeCommand, EvidenceRecordCommand, EvidenceRunCommand,
+    EvidenceServiceCommand, ManifestSignerArgs, NetworkObservationArgs,
+    NetworkObservationFromServiceLogArgs, NetworkObservationProtocolCountsArgs,
+    NetworkObservationTargetArgs, NetworkObservationTransportLimitsArgs, NodeHeartbeatArgs,
+    NodeHeartbeatFromFileArgs, ObservationTimestampArgs, OperatorAttestationArgs, OperatorIdArgs,
+    PublicCommand, PublicEvidenceManifestArgs, PublicEvidenceRecordContextArgs,
+    PublicEvidenceRecordKindArg, PublicNodeIdentityArgs, PublicNodeRoleArg,
+    PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs, PublicationArgs,
+    PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordArtifactLocatorArgs, RecordFileArgs, RecordRootArgs,
+    RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
+    RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
+    ServiceHealthArgs, ServiceHealthFromFileArgs, ServiceHealthPathArgs,
+};
+use super::public_evidence_execution::execute_public_evidence_command;
+use super::record_evidence_roots::{
+    public_evidence_record_root_from_line, public_evidence_record_roots_from_file,
+};
+use super::record_supporting_evidence::{
+    supporting_record_line_prefix, supporting_record_root_from_line,
+    validate_supporting_record_payload,
+};
+use super::run_window_evidence::run_window_observation_summary_from_file;
+use super::service_evidence::{
+    public_service_content_root, service_health_observation_summary_from_file,
+};
+use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
+use crate::error::TvmError;
 use crate::hash::hex;
 use crate::testnet::{
     PublicEvidenceRecordKind, PublicNodeRole, PublicServiceKind,
-    aggregate_public_evidence_record_roots,
+    aggregate_public_evidence_record_roots, sign_public_evidence_record,
 };
 use crate::types::{address, hash_bytes};
 use libp2p::PeerId;

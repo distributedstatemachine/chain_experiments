@@ -1314,6 +1314,8 @@ spaghetti around.
   the output contract explicit without a long manual append sequence.
 - Iteration 536 made service-status field lookups borrow from the cached status-file map, avoiding
   per-field `String` clones while keeping missing status fields rendered as `unknown`.
+- Iteration 537 moved test-only CLI parser and evidence helper imports out of the production `cli.rs`
+  root and into `cli/tests.rs`, keeping the production Clap module boundary focused on runtime exports.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
