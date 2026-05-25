@@ -1397,6 +1397,8 @@ spaghetti around.
 - Iteration 568 split dynamic RPC route method handling from the dynamic GET path-segment route table,
   keeping non-GET dynamic requests on the not-found path while isolating chain, explorer, tensor, job,
   miner, validator, and receipt lookups behind a focused dynamic GET helper.
+- Iteration 569 split static RPC route dispatch by HTTP method, keeping GET service/explorer/telemetry/faucet
+  reads separate from immutable POST reference acknowledgements before dynamic route fallback.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

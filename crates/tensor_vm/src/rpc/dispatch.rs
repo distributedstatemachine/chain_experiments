@@ -16,38 +16,46 @@ impl RpcNode {
     }
 
     fn handle_static(&self, request: &RpcRequest) -> Option<RpcResponse> {
-        match (request.method.as_str(), request.path.as_str()) {
-            ("GET", "/health") => Some(self.health("all")),
-            ("GET", "/rpc/health") => Some(self.health("rpc")),
-            ("GET", "/chain/head") => Some(self.chain_head()),
-            ("GET", "/epoch/current") => Some(self.current_epoch()),
-            ("GET", "/jobs/current") => Some(self.jobs_current()),
-            ("GET", "/explorer/health") => Some(self.health("explorer")),
-            ("GET", "/explorer") => Some(self.ok(explorer_shell_html("/explorer/ws"))),
-            ("GET", "/explorer/summary") => Some(self.ok(explorer_summary(&self.chain).to_json())),
-            ("GET", "/explorer/overview") => {
+        match request.method.as_str() {
+            "GET" => self.handle_static_get(&request.path),
+            "POST" => self.handle_static_post(&request.path),
+            _ => None,
+        }
+    }
+
+    fn handle_static_get(&self, path: &str) -> Option<RpcResponse> {
+        match path {
+            "/health" => Some(self.health("all")),
+            "/rpc/health" => Some(self.health("rpc")),
+            "/chain/head" => Some(self.chain_head()),
+            "/epoch/current" => Some(self.current_epoch()),
+            "/jobs/current" => Some(self.jobs_current()),
+            "/explorer/health" => Some(self.health("explorer")),
+            "/explorer" => Some(self.ok(explorer_shell_html("/explorer/ws"))),
+            "/explorer/summary" => Some(self.ok(explorer_summary(&self.chain).to_json())),
+            "/explorer/overview" => {
                 Some(self.ok(explorer_overview(&self.chain, 10, 20, 20).to_json()))
             }
-            ("GET", "/explorer/miners") => {
-                Some(self.ok(miners_json(&explorer_miners(&self.chain))))
-            }
-            ("GET", "/explorer/validators") => {
+            "/explorer/miners" => Some(self.ok(miners_json(&explorer_miners(&self.chain)))),
+            "/explorer/validators" => {
                 Some(self.ok(validators_json(&explorer_validators(&self.chain))))
             }
-            ("GET", "/explorer/jobs") => Some(self.ok(jobs_json(&explorer_jobs(&self.chain, 50)))),
-            ("GET", "/telemetry/health") => Some(self.health("telemetry")),
-            ("GET", "/telemetry") => {
-                Some(self.ok(TelemetrySnapshot::from_chain(&self.chain).to_json()))
-            }
-            ("GET", "/telemetry/dashboard") => Some(self.ok(telemetry_dashboard_html(
+            "/explorer/jobs" => Some(self.ok(jobs_json(&explorer_jobs(&self.chain, 50)))),
+            "/telemetry/health" => Some(self.health("telemetry")),
+            "/telemetry" => Some(self.ok(TelemetrySnapshot::from_chain(&self.chain).to_json())),
+            "/telemetry/dashboard" => Some(self.ok(telemetry_dashboard_html(
                 &TelemetrySnapshot::from_chain(&self.chain),
             ))),
-            ("GET", "/faucet/health") => Some(self.health("faucet")),
-            ("GET", "/faucet") => Some(self.faucet_status()),
-            ("GET", "/faucet/page") => Some(self.ok(faucet_page_html(self.faucet.as_ref()))),
-            ("POST", "/tx") | ("POST", "/receipt") | ("POST", "/attestation") => {
-                Some(self.accepted())
-            }
+            "/faucet/health" => Some(self.health("faucet")),
+            "/faucet" => Some(self.faucet_status()),
+            "/faucet/page" => Some(self.ok(faucet_page_html(self.faucet.as_ref()))),
+            _ => None,
+        }
+    }
+
+    fn handle_static_post(&self, path: &str) -> Option<RpcResponse> {
+        match path {
+            "/tx" | "/receipt" | "/attestation" => Some(self.accepted()),
             _ => None,
         }
     }
