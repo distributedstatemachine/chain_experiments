@@ -1151,6 +1151,9 @@ spaghetti around.
 - Iteration 468 split local CPU store verification and report rendering into
   `app/local_cpu_verify.rs`, leaving `app/commands.rs` focused on node-store setup, peer readiness,
   and local testnet seeding.
+- Iteration 469 split public evidence record root aggregation, record-file parsing, and
+  supporting-record validation into `cli/record_evidence_roots.rs`, leaving `cli/record_evidence.rs`
+  focused on rendering summary and artifact evidence lines.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
