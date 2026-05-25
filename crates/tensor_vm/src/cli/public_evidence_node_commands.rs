@@ -3,6 +3,7 @@ use super::public_evidence_observation_commands::ObservationTimestampArgs;
 use super::public_evidence_operator_commands::OperatorIdArgs;
 use super::value_types::AddressArg;
 use crate::testnet::PublicNodeRole;
+use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
 use std::path::{Path, PathBuf};
 
@@ -32,6 +33,26 @@ pub struct NodeHeartbeatArgs {
 }
 
 impl NodeHeartbeatArgs {
+    pub fn role(&self) -> PublicNodeRole {
+        self.node.role()
+    }
+
+    pub fn address(&self) -> Address {
+        self.node.address()
+    }
+
+    pub fn operator_id(&self) -> Hash {
+        self.node.operator_id()
+    }
+
+    pub fn first_block(&self) -> u64 {
+        self.window.first_block()
+    }
+
+    pub fn last_block(&self) -> u64 {
+        self.window.last_block()
+    }
+
     pub fn heartbeat_count(&self) -> u64 {
         self.heartbeat_count
     }
@@ -51,6 +72,18 @@ pub struct NodeHeartbeatFromFileArgs {
 }
 
 impl NodeHeartbeatFromFileArgs {
+    pub fn role(&self) -> PublicNodeRole {
+        self.node.role()
+    }
+
+    pub fn address(&self) -> Address {
+        self.node.address()
+    }
+
+    pub fn operator_id(&self) -> Hash {
+        self.node.operator_id()
+    }
+
     pub fn heartbeat_file(&self) -> &Path {
         &self.heartbeat_file
     }
@@ -72,6 +105,18 @@ pub struct OperatorAttestationArgs {
 }
 
 impl OperatorAttestationArgs {
+    pub fn role(&self) -> PublicNodeRole {
+        self.node.role()
+    }
+
+    pub fn address(&self) -> Address {
+        self.node.address()
+    }
+
+    pub fn operator_id(&self) -> Hash {
+        self.node.operator_id()
+    }
+
     pub fn identity_uri(&self) -> &str {
         &self.identity_uri
     }
@@ -96,11 +141,11 @@ impl PublicNodeIdentityArgs {
         self.role.into()
     }
 
-    pub fn address(&self) -> crate::types::Address {
+    pub fn address(&self) -> Address {
         self.address.into_address()
     }
 
-    pub fn operator_id(&self) -> crate::types::Hash {
+    pub fn operator_id(&self) -> Hash {
         self.operator.id()
     }
 }

@@ -1258,6 +1258,8 @@ spaghetti around.
   validator, and proposer paths out of raw stake, wallet, device, node, and runtime fields.
 - Iteration 508 hid the root `TvmdCli` command field behind explicit accessors, keeping app dispatch
   and parser tests on the typed Clap root boundary instead of reaching into parser internals.
+- Iteration 509 routed public node evidence execution through owning command accessors, keeping the
+  generator out of nested identity and block-window parser groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
