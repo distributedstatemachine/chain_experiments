@@ -1403,6 +1403,8 @@ spaghetti around.
   miner, validator, explorer, tensor, and job lookups into route-family helpers.
 - Iteration 571 split static RPC GET dispatch into core, explorer, telemetry, and faucet route-family
   helpers, keeping fixed read routes out of a single mixed service match.
+- Iteration 572 split mutable RPC dispatch into method-first routing and a POST-only mutation helper,
+  removing the repeated POST guard from transaction, receipt, attestation, and faucet-claim routing.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
