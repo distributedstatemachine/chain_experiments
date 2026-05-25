@@ -1324,6 +1324,8 @@ spaghetti around.
   large `service_block` format string with validated key-value field assembly.
 - Iteration 541 moved the printed role-runtime `service_serve` report onto `KeyValueReportWriter`,
   preserving libp2p identity subreports while eliminating another large key-value format string.
+- Iteration 542 moved the persisted `role-runtime.status` writer onto `KeyValueReportWriter`, so both
+  role runtime report surfaces now share validated app-owned key-value assembly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
