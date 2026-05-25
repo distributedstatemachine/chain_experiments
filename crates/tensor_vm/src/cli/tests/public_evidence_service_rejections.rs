@@ -9,99 +9,114 @@ fn execute_public_service_evidence_rejects_invalid_args() {
         "https://rpc.tensorvm.net/chain/head#latest",
         "https://rpc.tensorvm.net/wrong",
     ] {
-        let mut args = valid_service_content_args();
-        args.target.endpoint.public_url = public_url.to_owned();
         assert!(
-            execute_service_content(args).is_err(),
+            execute_service_content(service_content_args(
+                service_content_target_args(public_url, "/chain/head", 1_700_000_000),
+                hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+                64,
+            ))
+            .is_err(),
             "public URL {public_url:?} should be rejected"
         );
     }
-    let mut args = valid_service_content_args();
-    args.target.content_path = "chain/head".to_owned();
     assert!(
-        execute_service_content(args).is_err(),
+        execute_service_content(service_content_args(
+            service_content_target_args(
+                "https://rpc.tensorvm.net/chain/head",
+                "chain/head",
+                1_700_000_000
+            ),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            64,
+        ))
+        .is_err(),
         "relative content path should be rejected"
     );
-    let mut args = valid_service_content_args();
-    args.target.endpoint.public_url = "https://rpc.tensorvm.net/wrong".to_owned();
-    args.target.content_path = "/wrong".to_owned();
     assert!(
-        execute_service_content(args).is_err(),
+        execute_service_content(service_content_args(
+            service_content_target_args("https://rpc.tensorvm.net/wrong", "/wrong", 1_700_000_000),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            64,
+        ))
+        .is_err(),
         "wrong content endpoint should be rejected"
     );
     assert!(
-        execute_service_content(ServiceContentArgs {
-            content_root: hash_arg([0; 32]),
-            ..valid_service_content_args()
-        })
+        execute_service_content(service_content_args(
+            valid_service_content_target_args(),
+            [0; 32],
+            64,
+        ))
         .is_err()
     );
-    let mut args = valid_service_content_args();
-    args.target.observation = observation_timestamp_args(0);
     assert!(
-        execute_service_content(args).is_err(),
+        execute_service_content(service_content_args(
+            service_content_target_args("https://rpc.tensorvm.net/chain/head", "/chain/head", 0),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            64,
+        ))
+        .is_err(),
         "zero observation timestamp should be rejected"
     );
     assert!(
-        execute_service_content(ServiceContentArgs {
-            min_content_bytes: 63,
-            ..valid_service_content_args()
-        })
+        execute_service_content(service_content_args(
+            valid_service_content_target_args(),
+            hash_bytes(b"test", &[b"rpc-service", b"content-root"]),
+            63,
+        ))
         .is_err()
     );
 
     assert!(
-        execute_service_content_bytes(ServiceContentFromBytesArgs {
-            content: HexBytesArg::new(vec![1_u8; 63]),
-            ..valid_service_content_bytes_args()
-        })
+        execute_service_content_bytes(ServiceContentFromBytesArgs::new(
+            valid_service_content_target_args(),
+            HexBytesArg::new(vec![1_u8; 63]),
+        ))
         .is_err()
     );
     assert!(
-        execute_service_content_file(ServiceContentFromFileArgs {
-            content_file: missing_temp_file("service-content", "body"),
-            ..valid_service_content_file_args()
-        })
+        execute_service_content_file(ServiceContentFromFileArgs::new(
+            valid_service_content_target_args(),
+            missing_temp_file("service-content", "body"),
+        ))
         .is_err()
     );
-}
-
-fn valid_service_content_args() -> ServiceContentArgs {
-    ServiceContentArgs {
-        target: valid_service_content_target_args(),
-        content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service", b"content-root"])),
-        min_content_bytes: 64,
-    }
-}
-
-fn valid_service_content_bytes_args() -> ServiceContentFromBytesArgs {
-    ServiceContentFromBytesArgs {
-        target: valid_service_content_target_args(),
-        content: HexBytesArg::new(vec![1_u8; 64]),
-    }
-}
-
-fn valid_service_content_file_args() -> ServiceContentFromFileArgs {
-    ServiceContentFromFileArgs {
-        target: valid_service_content_target_args(),
-        content_file: missing_temp_file("unused-service-content", "body"),
-    }
 }
 
 fn valid_service_content_target_args() -> ServiceContentTargetArgs {
-    ServiceContentTargetArgs {
-        endpoint: valid_service_endpoint_args(),
-        content_path: "/chain/head".to_owned(),
-        observation: observation_timestamp_args(1_700_000_000),
-    }
+    service_content_target_args(
+        "https://rpc.tensorvm.net/chain/head",
+        "/chain/head",
+        1_700_000_000,
+    )
 }
 
-fn valid_service_endpoint_args() -> PublicServiceEndpointArgs {
-    PublicServiceEndpointArgs {
-        kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-    }
+fn service_content_target_args(
+    public_url: &str,
+    content_path: &str,
+    observed_at: u64,
+) -> ServiceContentTargetArgs {
+    ServiceContentTargetArgs::new(
+        service_endpoint_args(public_url),
+        content_path,
+        observation_timestamp_args(observed_at),
+    )
+}
+
+fn service_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
+    PublicServiceEndpointArgs::new(
+        service_kind_arg(PublicServiceKind::Rpc),
+        hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url,
+    )
+}
+
+fn service_content_args(
+    target: ServiceContentTargetArgs,
+    content_root: [u8; 32],
+    min_content_bytes: u64,
+) -> ServiceContentArgs {
+    ServiceContentArgs::new(target, hash_arg(content_root), min_content_bytes)
 }
 
 fn execute_service_content(args: ServiceContentArgs) -> crate::error::Result<String> {

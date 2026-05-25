@@ -98,14 +98,11 @@ fn parses_service_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
-            EvidenceServiceCommand::Content(ServiceContentArgs {
-                target: service_content_target_args(
-                    "https://rpc.tensorvm.net/chain/head",
-                    "/chain/head",
-                ),
-                content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service-content"])),
-                min_content_bytes: 64,
-            }),
+            EvidenceServiceCommand::Content(ServiceContentArgs::new(
+                service_content_target_args("https://rpc.tensorvm.net/chain/head", "/chain/head",),
+                hash_arg(hash_bytes(b"test", &[b"rpc-service-content"])),
+                64,
+            )),
         )))
     );
 
@@ -131,13 +128,10 @@ fn parses_service_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
-            EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
-                target: service_content_target_args(
-                    "https://rpc.tensorvm.net/chain/head",
-                    "/chain/head",
-                ),
-                content: HexBytesArg::new(vec![42_u8; 64]),
-            }),
+            EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs::new(
+                service_content_target_args("https://rpc.tensorvm.net/chain/head", "/chain/head",),
+                HexBytesArg::new(vec![42_u8; 64]),
+            )),
         )))
     );
 
@@ -162,23 +156,20 @@ fn parses_service_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Service(
-            EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
-                target: service_content_target_args(
-                    "https://rpc.tensorvm.net/chain/head",
-                    "/chain/head",
-                ),
-                content_file: path("artifacts/rpc-chain-head.body"),
-            }),
+            EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs::new(
+                service_content_target_args("https://rpc.tensorvm.net/chain/head", "/chain/head",),
+                path("artifacts/rpc-chain-head.body"),
+            )),
         )))
     );
 }
 
 fn service_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
-    PublicServiceEndpointArgs {
-        kind: PublicServiceKindArg::Rpc,
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: public_url.to_owned(),
-    }
+    PublicServiceEndpointArgs::new(
+        PublicServiceKindArg::Rpc,
+        hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url,
+    )
 }
 
 fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {
@@ -186,9 +177,9 @@ fn service_health_path_args(health_path: &str) -> ServiceHealthPathArgs {
 }
 
 fn service_content_target_args(public_url: &str, content_path: &str) -> ServiceContentTargetArgs {
-    ServiceContentTargetArgs {
-        endpoint: service_endpoint_args(public_url),
-        content_path: content_path.to_owned(),
-        observation: observation_timestamp_args(1_700_000_000),
-    }
+    ServiceContentTargetArgs::new(
+        service_endpoint_args(public_url),
+        content_path,
+        observation_timestamp_args(1_700_000_000),
+    )
 }

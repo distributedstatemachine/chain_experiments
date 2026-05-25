@@ -1298,6 +1298,8 @@ spaghetti around.
   record context, root, roots, file, and artifact locator groups out of public parser internals.
 - Iteration 528 hid public service-health Clap fields behind constructors and accessors, keeping
   endpoint/path/window groups, reachability counters, signed-check counters, and observation files out of public parser internals.
+- Iteration 529 hid public service-content Clap fields behind constructors and accessors, keeping
+  endpoint triples, content targets, content roots, byte payloads, content files, and minimum byte counts out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -110,11 +110,11 @@ fn service_health_endpoint_args_from(
     endpoint_id: [u8; 32],
     public_url: &str,
 ) -> PublicServiceEndpointArgs {
-    PublicServiceEndpointArgs {
-        kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(endpoint_id),
-        public_url: public_url.to_owned(),
-    }
+    PublicServiceEndpointArgs::new(
+        service_kind_arg(PublicServiceKind::Rpc),
+        hash_arg(endpoint_id),
+        public_url,
+    )
 }
 
 fn service_health_args(

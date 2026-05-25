@@ -167,22 +167,34 @@ impl ServiceHealthPathArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentArgs {
     #[command(flatten)]
-    pub target: ServiceContentTargetArgs,
+    target: ServiceContentTargetArgs,
     #[arg(
         long,
         value_name = "HEX",
         help = "Merkle root or content hash committed by the observation."
     )]
-    pub content_root: HashArg,
+    content_root: HashArg,
     #[arg(
         long,
         value_name = "BYTES",
         help = "Minimum byte length accepted for the observed content."
     )]
-    pub min_content_bytes: u64,
+    min_content_bytes: u64,
 }
 
 impl ServiceContentArgs {
+    pub fn new(
+        target: ServiceContentTargetArgs,
+        content_root: HashArg,
+        min_content_bytes: u64,
+    ) -> Self {
+        Self {
+            target,
+            content_root,
+            min_content_bytes,
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.target.kind()
     }
@@ -215,16 +227,20 @@ impl ServiceContentArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromBytesArgs {
     #[command(flatten)]
-    pub target: ServiceContentTargetArgs,
+    target: ServiceContentTargetArgs,
     #[arg(
         long = "content-hex",
         value_name = "HEX",
         help = "Observed response bytes encoded as hex."
     )]
-    pub content: HexBytesArg,
+    content: HexBytesArg,
 }
 
 impl ServiceContentFromBytesArgs {
+    pub fn new(target: ServiceContentTargetArgs, content: HexBytesArg) -> Self {
+        Self { target, content }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.target.kind()
     }
@@ -253,17 +269,24 @@ impl ServiceContentFromBytesArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromFileArgs {
     #[command(flatten)]
-    pub target: ServiceContentTargetArgs,
+    target: ServiceContentTargetArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "File containing observed response bytes."
     )]
-    pub content_file: PathBuf,
+    content_file: PathBuf,
 }
 
 impl ServiceContentFromFileArgs {
+    pub fn new(target: ServiceContentTargetArgs, content_file: PathBuf) -> Self {
+        Self {
+            target,
+            content_file,
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.target.kind()
     }
@@ -292,18 +315,30 @@ impl ServiceContentFromFileArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentTargetArgs {
     #[command(flatten)]
-    pub endpoint: PublicServiceEndpointArgs,
+    endpoint: PublicServiceEndpointArgs,
     #[arg(
         long,
         value_name = "PATH",
         help = "Content path observed on the public service."
     )]
-    pub content_path: String,
+    content_path: String,
     #[command(flatten)]
-    pub observation: ObservationTimestampArgs,
+    observation: ObservationTimestampArgs,
 }
 
 impl ServiceContentTargetArgs {
+    pub fn new(
+        endpoint: PublicServiceEndpointArgs,
+        content_path: impl Into<String>,
+        observation: ObservationTimestampArgs,
+    ) -> Self {
+        Self {
+            endpoint,
+            content_path: content_path.into(),
+            observation,
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.endpoint.kind()
     }
@@ -328,23 +363,35 @@ impl ServiceContentTargetArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicServiceEndpointArgs {
     #[arg(long, help = "Public service being observed.")]
-    pub kind: PublicServiceKindArg,
+    kind: PublicServiceKindArg,
     #[arg(
         long,
         value_name = "HEX",
         help = "Stable 32-byte service endpoint identifier."
     )]
-    pub endpoint_id: HashArg,
+    endpoint_id: HashArg,
     #[arg(
         long,
         value_name = "URL",
         value_hint = ValueHint::Url,
         help = "Public URL for the service endpoint."
     )]
-    pub public_url: String,
+    public_url: String,
 }
 
 impl PublicServiceEndpointArgs {
+    pub fn new(
+        kind: PublicServiceKindArg,
+        endpoint_id: HashArg,
+        public_url: impl Into<String>,
+    ) -> Self {
+        Self {
+            kind,
+            endpoint_id,
+            public_url: public_url.into(),
+        }
+    }
+
     pub fn kind(&self) -> PublicServiceKind {
         self.kind.into()
     }
