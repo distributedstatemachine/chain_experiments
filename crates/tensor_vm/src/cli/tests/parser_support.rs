@@ -64,7 +64,9 @@ pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdAr
 }
 
 pub(super) fn operator_id_args(operator_id: [u8; 32]) -> OperatorIdArgs {
-    OperatorIdArgs::new(operator_id)
+    OperatorIdArgs {
+        operator_id: HashArg::new(operator_id),
+    }
 }
 
 pub(super) fn publication_bundle_args(

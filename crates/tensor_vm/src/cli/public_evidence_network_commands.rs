@@ -253,7 +253,7 @@ impl NetworkObservationTargetArgs {
     }
 
     pub fn operator_id(&self) -> Hash {
-        self.operator.id()
+        self.operator.operator_id.into_hash()
     }
 
     pub fn listen_address(&self) -> &Multiaddr {

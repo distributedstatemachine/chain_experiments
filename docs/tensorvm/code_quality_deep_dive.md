@@ -1346,6 +1346,9 @@ spaghetti around.
 - Iteration 551 removed the same compatibility layer from shared public manifest, publication, signing,
   observation, block-window, and run-window Clap payloads, keeping the public evidence command family on
   direct typed fields instead of constructor/getter adapters.
+- Iteration 552 moved public node and operator evidence Clap payloads to direct fields, removing the
+  node/operator getter constructors while keeping heartbeat, heartbeat-file, and operator-attestation
+  execution on the typed command tree.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
