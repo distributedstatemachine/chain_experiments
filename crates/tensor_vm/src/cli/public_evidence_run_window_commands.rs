@@ -2,7 +2,7 @@ use super::public_evidence_bundle_commands::EvidenceBundleIdArgs;
 use super::public_evidence_signing_commands::ManifestSignerArgs;
 use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueHint};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -37,6 +37,20 @@ pub struct RunWindowArgs {
     pub observed_blocks: u64,
 }
 
+impl RunWindowArgs {
+    pub fn started_at(&self) -> u64 {
+        self.started_at
+    }
+
+    pub fn ended_at(&self) -> u64 {
+        self.ended_at
+    }
+
+    pub fn observed_blocks(&self) -> u64 {
+        self.observed_blocks
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowFromFileArgs {
     #[command(flatten)]
@@ -48,6 +62,12 @@ pub struct RunWindowFromFileArgs {
         help = "File containing observed block records."
     )]
     pub block_observation_file: PathBuf,
+}
+
+impl RunWindowFromFileArgs {
+    pub fn block_observation_file(&self) -> &Path {
+        &self.block_observation_file
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

@@ -1237,6 +1237,8 @@ spaghetti around.
 - Iteration 498 routed public service health/content source Clap parsing through typed accessors,
   keeping service execution out of raw observation-file, content-root, content-byte, and content-file
   fields.
+- Iteration 499 routed public run-window Clap parsing through typed accessors, keeping run-window
+  evidence execution out of raw timestamp, observed-block, and block-observation-file fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
