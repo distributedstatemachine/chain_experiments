@@ -4,7 +4,7 @@ use super::public_evidence_operator_commands::OperatorIdArgs;
 use super::value_types::AddressArg;
 use crate::testnet::PublicNodeRole;
 use clap::{Args, Subcommand, ValueEnum, ValueHint};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -31,6 +31,12 @@ pub struct NodeHeartbeatArgs {
     pub heartbeat_count: u64,
 }
 
+impl NodeHeartbeatArgs {
+    pub fn heartbeat_count(&self) -> u64 {
+        self.heartbeat_count
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatFromFileArgs {
     #[command(flatten)]
@@ -42,6 +48,12 @@ pub struct NodeHeartbeatFromFileArgs {
         help = "File containing heartbeat records."
     )]
     pub heartbeat_file: PathBuf,
+}
+
+impl NodeHeartbeatFromFileArgs {
+    pub fn heartbeat_file(&self) -> &Path {
+        &self.heartbeat_file
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -59,6 +71,16 @@ pub struct OperatorAttestationArgs {
     pub observation: ObservationTimestampArgs,
 }
 
+impl OperatorAttestationArgs {
+    pub fn identity_uri(&self) -> &str {
+        &self.identity_uri
+    }
+
+    pub fn observed_at(&self) -> u64 {
+        self.observation.observed_at()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicNodeIdentityArgs {
     #[arg(long, help = "Public node role.")]
@@ -70,6 +92,10 @@ pub struct PublicNodeIdentityArgs {
 }
 
 impl PublicNodeIdentityArgs {
+    pub fn role(&self) -> PublicNodeRole {
+        self.role.into()
+    }
+
     pub fn address(&self) -> crate::types::Address {
         self.address.into_address()
     }

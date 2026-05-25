@@ -1241,6 +1241,9 @@ spaghetti around.
   evidence execution out of raw timestamp, observed-block, and block-observation-file fields.
 - Iteration 500 routed public network observation Clap parsing through typed accessors, keeping
   network evidence execution out of raw peer, protocol-count, limit, timeout, and service-log fields.
+- Iteration 501 routed public node/operator evidence Clap parsing through typed accessors, keeping
+  node evidence execution out of raw role, heartbeat-count, heartbeat-file, identity-URI, and
+  observation fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
