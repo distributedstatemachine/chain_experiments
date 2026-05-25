@@ -13,9 +13,9 @@ pub(super) fn execute_public_evidence_service_command(
     match command {
         EvidenceServiceCommand::Health(args) => {
             service_health_evidence_line(ServiceHealthEvidenceLine {
-                kind: args.endpoint.kind.into(),
-                endpoint_id: args.endpoint.endpoint_id.into_hash(),
-                public_url: &args.endpoint.public_url,
+                kind: args.endpoint.kind(),
+                endpoint_id: args.endpoint.endpoint_id(),
+                public_url: args.endpoint.public_url(),
                 health_path: args.health.path(),
                 first_seen_block: args.window.first_block(),
                 last_seen_block: args.window.last_block(),
@@ -24,26 +24,26 @@ pub(super) fn execute_public_evidence_service_command(
             })
         }
         EvidenceServiceCommand::HealthFile(args) => service_health_evidence_line_from_file(
-            args.endpoint.kind.into(),
-            args.endpoint.endpoint_id.into_hash(),
-            &args.endpoint.public_url,
+            args.endpoint.kind(),
+            args.endpoint.endpoint_id(),
+            args.endpoint.public_url(),
             args.health.path(),
             &path_argument(&args.observation_file),
         ),
         EvidenceServiceCommand::Content(args) => service_content_evidence_line(
-            args.target.endpoint.kind.into(),
-            args.target.endpoint.endpoint_id.into_hash(),
-            &args.target.endpoint.public_url,
-            &args.target.content_path,
+            args.target.kind(),
+            args.target.endpoint_id(),
+            args.target.public_url(),
+            args.target.content_path(),
             args.content_root.into_hash(),
             args.target.observation.observed_at(),
             args.min_content_bytes,
         ),
         EvidenceServiceCommand::ContentBytes(args) => service_content_evidence_line_from_bytes(
-            args.target.endpoint.kind.into(),
-            args.target.endpoint.endpoint_id.into_hash(),
-            &args.target.endpoint.public_url,
-            &args.target.content_path,
+            args.target.kind(),
+            args.target.endpoint_id(),
+            args.target.public_url(),
+            args.target.content_path(),
             args.target.observation.observed_at(),
             args.content.as_slice(),
         ),
@@ -51,10 +51,10 @@ pub(super) fn execute_public_evidence_service_command(
             .map_err(|_| TvmError::Storage("failed to read service content file"))
             .and_then(|content_bytes| {
                 service_content_evidence_line_from_bytes(
-                    args.target.endpoint.kind.into(),
-                    args.target.endpoint.endpoint_id.into_hash(),
-                    &args.target.endpoint.public_url,
-                    &args.target.content_path,
+                    args.target.kind(),
+                    args.target.endpoint_id(),
+                    args.target.public_url(),
+                    args.target.content_path(),
                     args.target.observation.observed_at(),
                     &content_bytes,
                 )

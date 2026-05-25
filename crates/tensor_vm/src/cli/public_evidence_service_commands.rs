@@ -130,6 +130,24 @@ pub struct ServiceContentTargetArgs {
     pub observation: ObservationTimestampArgs,
 }
 
+impl ServiceContentTargetArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.endpoint.kind()
+    }
+
+    pub fn endpoint_id(&self) -> crate::types::Hash {
+        self.endpoint.endpoint_id()
+    }
+
+    pub fn public_url(&self) -> &str {
+        self.endpoint.public_url()
+    }
+
+    pub fn content_path(&self) -> &str {
+        &self.content_path
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicServiceEndpointArgs {
     #[arg(long, help = "Public service being observed.")]
@@ -147,6 +165,20 @@ pub struct PublicServiceEndpointArgs {
         help = "Public URL for the service endpoint."
     )]
     pub public_url: String,
+}
+
+impl PublicServiceEndpointArgs {
+    pub fn kind(&self) -> PublicServiceKind {
+        self.kind.into()
+    }
+
+    pub fn endpoint_id(&self) -> crate::types::Hash {
+        self.endpoint_id.into_hash()
+    }
+
+    pub fn public_url(&self) -> &str {
+        &self.public_url
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

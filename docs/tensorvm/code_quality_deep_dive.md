@@ -1230,6 +1230,8 @@ spaghetti around.
 - Iteration 495 flattened repeated public evidence `--operator-id` Clap arguments into
   `OperatorIdArgs`, keeping node identity and network observation targets on one canonical operator
   identifier model.
+- Iteration 496 routed public service endpoint Clap parsing through typed endpoint/target accessors,
+  keeping service evidence execution out of raw parser fields and one-off hash conversions.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
