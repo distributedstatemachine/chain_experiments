@@ -18,7 +18,7 @@ pub(super) fn execute_public_evidence_publication_command(
             args.bundle.public_uri(),
             args.auditor_id(),
             args.audit_uri(),
-            args.observation.observed_at(),
+            args.observed_at(),
         ),
         _ => unreachable!("non-publication evidence commands are routed before this executor"),
     }

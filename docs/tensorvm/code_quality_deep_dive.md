@@ -1248,6 +1248,8 @@ spaghetti around.
   keeping service health execution out of raw reachability and signed-check count fields.
 - Iteration 503 routed supporting-record kind Clap parsing through the record context accessor,
   keeping record evidence execution out of repeated raw `context.kind` conversions.
+- Iteration 504 routed public auditor and service-content observation timestamps through typed
+  owner accessors, keeping evidence execution out of nested raw observation fields.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

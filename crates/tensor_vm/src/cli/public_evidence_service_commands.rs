@@ -185,6 +185,10 @@ impl ServiceContentTargetArgs {
     pub fn content_path(&self) -> &str {
         &self.content_path
     }
+
+    pub fn observed_at(&self) -> u64 {
+        self.observation.observed_at()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

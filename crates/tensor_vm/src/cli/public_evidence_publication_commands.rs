@@ -64,6 +64,10 @@ impl AuditorRecordArgs {
     pub fn audit_uri(&self) -> &str {
         &self.audit_uri
     }
+
+    pub fn observed_at(&self) -> u64 {
+        self.observation.observed_at()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
