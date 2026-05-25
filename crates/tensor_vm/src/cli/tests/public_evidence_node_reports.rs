@@ -19,9 +19,7 @@ fn execute_node_evidence_reports_outputs() {
     for (role, address_label, operator_label, tag) in node_cases {
         let node = execute_public_evidence_command(&EvidenceCommand::Node(
             EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
-                role: node_role_arg(role),
-                address: address_arg(address(address_label)),
-                operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+                node: public_node_identity_args(role, address_label, operator_label),
                 first_block: 0,
                 last_block: 9,
                 heartbeat_count: 10,
@@ -60,9 +58,7 @@ fn execute_node_evidence_reports_outputs() {
         std::fs::write(&heartbeat_file, heartbeat_records).unwrap();
         let node_from_file = execute_public_evidence_command(&EvidenceCommand::Node(
             EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
-                role: node_role_arg(role),
-                address: address_arg(address(address_label)),
-                operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+                node: public_node_identity_args(role, address_label, operator_label),
                 heartbeat_file: heartbeat_file.clone(),
             }),
         ))
@@ -75,9 +71,7 @@ fn execute_node_evidence_reports_outputs() {
     let operator_identity_uri = manifest_operator_identity_uri(&operator_id);
     let operator_attestation = execute_public_evidence_command(&EvidenceCommand::Node(
         EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-            role: node_role_arg(PublicNodeRole::Miner),
-            address: address_arg(address(b"miner-a")),
-            operator_id: hash_arg(operator_id),
+            node: public_node_identity_args(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator"),
             identity_uri: operator_identity_uri.clone(),
             observed_at: 1_700_000_000,
         }),
@@ -92,4 +86,16 @@ fn execute_node_evidence_reports_outputs() {
             manifest_operator_signature(PublicNodeRole::Miner, b"miner-a", b"miner-a-operator")
         )
     );
+}
+
+fn public_node_identity_args(
+    role: PublicNodeRole,
+    address_label: &[u8],
+    operator_label: &[u8],
+) -> PublicNodeIdentityArgs {
+    PublicNodeIdentityArgs {
+        role: node_role_arg(role),
+        address: address_arg(address(address_label)),
+        operator_id: hash_arg(hash_bytes(b"test", &[operator_label])),
+    }
 }

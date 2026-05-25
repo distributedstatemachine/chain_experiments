@@ -3,7 +3,7 @@ pub use super::public_evidence_network_commands::{
 };
 pub use super::public_evidence_node_commands::{
     EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
-    PublicNodeRoleArg,
+    PublicNodeIdentityArgs, PublicNodeRoleArg,
 };
 pub use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
 pub use super::public_evidence_record_artifact_commands::{

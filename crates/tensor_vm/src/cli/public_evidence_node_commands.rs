@@ -16,12 +16,8 @@ pub enum EvidenceNodeCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatArgs {
-    #[arg(long, help = "Public node role being observed.")]
-    pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX", help = "Node account address.")]
-    pub address: AddressArg,
-    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub node: PublicNodeIdentityArgs,
     #[arg(
         long,
         value_name = "HEIGHT",
@@ -44,12 +40,8 @@ pub struct NodeHeartbeatArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatFromFileArgs {
-    #[arg(long, help = "Public node role being observed.")]
-    pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX", help = "Node account address.")]
-    pub address: AddressArg,
-    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub node: PublicNodeIdentityArgs,
     #[arg(
         long,
         value_name = "PATH",
@@ -61,12 +53,8 @@ pub struct NodeHeartbeatFromFileArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct OperatorAttestationArgs {
-    #[arg(long, help = "Public node role being attested.")]
-    pub role: PublicNodeRoleArg,
-    #[arg(long, value_name = "HEX", help = "Node account address.")]
-    pub address: AddressArg,
-    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
-    pub operator_id: HashArg,
+    #[command(flatten)]
+    pub node: PublicNodeIdentityArgs,
     #[arg(
         long,
         value_name = "URI",
@@ -80,6 +68,16 @@ pub struct OperatorAttestationArgs {
         help = "Unix timestamp for the attestation observation."
     )]
     pub observed_at: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct PublicNodeIdentityArgs {
+    #[arg(long, help = "Public node role.")]
+    pub role: PublicNodeRoleArg,
+    #[arg(long, value_name = "HEX", help = "Node account address.")]
+    pub address: AddressArg,
+    #[arg(long, value_name = "HEX", help = "Operator identifier for the node.")]
+    pub operator_id: HashArg,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

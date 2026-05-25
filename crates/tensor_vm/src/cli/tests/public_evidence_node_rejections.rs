@@ -140,9 +140,7 @@ fn execute_node_heartbeat(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
         NodeHeartbeatArgs {
-            role: node_role_arg(PublicNodeRole::Miner),
-            address: address_arg(address),
-            operator_id: hash_arg(operator_id),
+            node: public_node_identity_args(address, operator_id),
             first_block,
             last_block,
             heartbeat_count,
@@ -153,9 +151,10 @@ fn execute_node_heartbeat(
 fn execute_node_heartbeat_file(heartbeat_file: std::path::PathBuf) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::HeartbeatFile(
         NodeHeartbeatFromFileArgs {
-            role: node_role_arg(PublicNodeRole::Miner),
-            address: address_arg(address(b"miner-a")),
-            operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+            node: public_node_identity_args(
+                address(b"miner-a"),
+                hash_bytes(b"test", &[b"miner-a-operator"]),
+            ),
             heartbeat_file,
         },
     )))
@@ -169,11 +168,17 @@ fn execute_operator_attestation(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(
         EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-            role: node_role_arg(PublicNodeRole::Miner),
-            address: address_arg(address),
-            operator_id: hash_arg(operator_id),
+            node: public_node_identity_args(address, operator_id),
             identity_uri: identity_uri.to_owned(),
             observed_at,
         }),
     ))
+}
+
+fn public_node_identity_args(address: [u8; 32], operator_id: [u8; 32]) -> PublicNodeIdentityArgs {
+    PublicNodeIdentityArgs {
+        role: node_role_arg(PublicNodeRole::Miner),
+        address: address_arg(address),
+        operator_id: hash_arg(operator_id),
+    }
 }

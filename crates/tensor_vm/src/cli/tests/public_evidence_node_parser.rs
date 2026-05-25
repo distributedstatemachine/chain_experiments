@@ -1,8 +1,8 @@
 use super::parser_support::{address_arg, hash_arg, path};
 use super::{
     EvidenceCommand, EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs,
-    OperatorAttestationArgs, PublicCommand, PublicNodeRoleArg, TvmdCommand, manifest_address,
-    manifest_hash, parse_test_cli,
+    OperatorAttestationArgs, PublicCommand, PublicNodeIdentityArgs, PublicNodeRoleArg, TvmdCommand,
+    manifest_address, manifest_hash, parse_test_cli,
 };
 use crate::types::{address, hash_bytes};
 
@@ -30,9 +30,7 @@ fn parses_node_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
             EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
-                role: PublicNodeRoleArg::Miner,
-                address: address_arg(address(b"miner-a")),
-                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                node: miner_node_identity_args(),
                 first_block: 0,
                 last_block: 9,
                 heartbeat_count: 10,
@@ -58,9 +56,7 @@ fn parses_node_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
             EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
-                role: PublicNodeRoleArg::Miner,
-                address: address_arg(address(b"miner-a")),
-                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                node: miner_node_identity_args(),
                 heartbeat_file: path("artifacts/miner-a-heartbeats.records"),
             }),
         )))
@@ -86,12 +82,18 @@ fn parses_node_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
             EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-                role: PublicNodeRoleArg::Miner,
-                address: address_arg(address(b"miner-a")),
-                operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+                node: miner_node_identity_args(),
                 identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
                 observed_at: 1_700_000_000,
             }),
         )))
     );
+}
+
+fn miner_node_identity_args() -> PublicNodeIdentityArgs {
+    PublicNodeIdentityArgs {
+        role: PublicNodeRoleArg::Miner,
+        address: address_arg(address(b"miner-a")),
+        operator_id: hash_arg(hash_bytes(b"test", &[b"miner-a-operator"])),
+    }
 }

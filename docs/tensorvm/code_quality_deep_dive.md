@@ -1171,6 +1171,9 @@ spaghetti around.
 - Iteration 475 flattened repeated public service endpoint and content-target Clap arguments into
   reusable `PublicServiceEndpointArgs` and `ServiceContentTargetArgs`, keeping service evidence
   subcommands on one canonical typed argument model instead of duplicating shared flags per command.
+- Iteration 476 flattened repeated public node role, address, and operator-id Clap arguments into
+  `PublicNodeIdentityArgs`, keeping node heartbeat, heartbeat-file, and operator-attestation commands
+  on one canonical typed identity model while preserving the existing flags.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
