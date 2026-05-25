@@ -1140,6 +1140,8 @@ spaghetti around.
 - Iteration 464 split network-runtime root aggregation and observation-line rendering into
   `cli/tests/manifest_network_fixtures.rs`, keeping full manifest assembly separate from network
   supporting-record fixture formatting.
+- Iteration 465 split `manifest_bundle()` construction into `cli/tests/manifest_bundle_fixtures.rs`,
+  leaving `cli/tests/manifest_fixtures.rs` focused on rendering full evidence and preflight manifest text.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

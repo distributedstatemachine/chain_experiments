@@ -18,6 +18,7 @@ mod local_parser;
 mod local_role_parser;
 mod local_validation;
 mod local_validator_parser;
+mod manifest_bundle_fixtures;
 mod manifest_fixtures;
 mod manifest_network_fixtures;
 mod manifest_node_fixtures;
@@ -54,6 +55,7 @@ mod public_parser;
 mod report_fields;
 
 use command_helpers::*;
+use manifest_bundle_fixtures::*;
 use manifest_fixtures::*;
 use manifest_node_fixtures::*;
 use manifest_publication_fixtures::*;
