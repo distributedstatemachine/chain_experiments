@@ -85,11 +85,11 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         assert!(service_health_observation_summary_from_file(invalid_health_observations).is_err());
     }
     assert!(
-        execute_service_health_file(ServiceHealthFromFileArgs::new(
-            valid_service_health_endpoint_args(),
-            service_health_path_args("/health"),
-            missing_temp_file("service-health", "records"),
-        ))
+        execute_service_health_file(ServiceHealthFromFileArgs {
+            endpoint: valid_service_health_endpoint_args(),
+            health: service_health_path_args("/health"),
+            observation_file: missing_temp_file("service-health", "records"),
+        })
         .is_err()
     );
 }
@@ -110,11 +110,11 @@ fn service_health_endpoint_args_from(
     endpoint_id: [u8; 32],
     public_url: &str,
 ) -> PublicServiceEndpointArgs {
-    PublicServiceEndpointArgs::new(
-        service_kind_arg(PublicServiceKind::Rpc),
-        hash_arg(endpoint_id),
-        public_url,
-    )
+    PublicServiceEndpointArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(endpoint_id),
+        public_url: public_url.to_owned(),
+    }
 }
 
 fn service_health_args(
@@ -124,13 +124,13 @@ fn service_health_args(
     reachable_count: u64,
     signed_health_check_count: u64,
 ) -> ServiceHealthArgs {
-    ServiceHealthArgs::new(
+    ServiceHealthArgs {
         endpoint,
         health,
         window,
         reachable_count,
         signed_health_check_count,
-    )
+    }
 }
 
 fn execute_service_health(args: ServiceHealthArgs) -> crate::error::Result<String> {

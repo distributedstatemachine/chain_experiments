@@ -1352,6 +1352,9 @@ spaghetti around.
 - Iteration 553 moved public network evidence Clap payloads to direct fields, removing observation,
   service-log, protocol-count, transport-limit, and target getter constructors while keeping network
   evidence execution on the typed command tree.
+- Iteration 554 moved public service evidence Clap payloads to direct fields, removing service endpoint,
+  health, content, byte-content, file-content, and target getter constructors while keeping service evidence
+  execution on the typed command tree.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

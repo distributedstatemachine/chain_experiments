@@ -68,17 +68,17 @@ fn execute_public_service_evidence_rejects_invalid_args() {
     );
 
     assert!(
-        execute_service_content_bytes(ServiceContentFromBytesArgs::new(
-            valid_service_content_target_args(),
-            HexBytesArg::new(vec![1_u8; 63]),
-        ))
+        execute_service_content_bytes(ServiceContentFromBytesArgs {
+            target: valid_service_content_target_args(),
+            content: HexBytesArg::new(vec![1_u8; 63]),
+        })
         .is_err()
     );
     assert!(
-        execute_service_content_file(ServiceContentFromFileArgs::new(
-            valid_service_content_target_args(),
-            missing_temp_file("service-content", "body"),
-        ))
+        execute_service_content_file(ServiceContentFromFileArgs {
+            target: valid_service_content_target_args(),
+            content_file: missing_temp_file("service-content", "body"),
+        })
         .is_err()
     );
 }
@@ -96,19 +96,19 @@ fn service_content_target_args(
     content_path: &str,
     observed_at: u64,
 ) -> ServiceContentTargetArgs {
-    ServiceContentTargetArgs::new(
-        service_endpoint_args(public_url),
-        content_path,
-        observation_timestamp_args(observed_at),
-    )
+    ServiceContentTargetArgs {
+        endpoint: service_endpoint_args(public_url),
+        content_path: content_path.to_owned(),
+        observation: observation_timestamp_args(observed_at),
+    }
 }
 
 fn service_endpoint_args(public_url: &str) -> PublicServiceEndpointArgs {
-    PublicServiceEndpointArgs::new(
-        service_kind_arg(PublicServiceKind::Rpc),
-        hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url,
-    )
+    PublicServiceEndpointArgs {
+        kind: service_kind_arg(PublicServiceKind::Rpc),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
+        public_url: public_url.to_owned(),
+    }
 }
 
 fn service_content_args(
@@ -116,7 +116,11 @@ fn service_content_args(
     content_root: [u8; 32],
     min_content_bytes: u64,
 ) -> ServiceContentArgs {
-    ServiceContentArgs::new(target, hash_arg(content_root), min_content_bytes)
+    ServiceContentArgs {
+        target,
+        content_root: hash_arg(content_root),
+        min_content_bytes,
+    }
 }
 
 fn execute_service_content(args: ServiceContentArgs) -> crate::error::Result<String> {
