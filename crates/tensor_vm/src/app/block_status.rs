@@ -1,4 +1,4 @@
-use super::status::hex_hash_list;
+use super::{KeyValueReportWriter, status::hex_hash_list};
 use std::collections::BTreeSet;
 
 use crate::{Chain, NodeStore, PrimitiveType, hash::hex};
@@ -78,47 +78,69 @@ pub fn service_block_status(data_dir: &str, height: u64) -> std::result::Result<
             PrimitiveType::LinearTrainingStep => linear_training_receipt_ids.push(receipt_id),
         }
     }
-    Ok(format!(
-        "command=service_block\ndata_dir={data_dir}\nheight={height}\nblock_hash={}\nblock_validation=useful_verification_pow\nparent_hash={}\nproposer={}\nproposer_role=validator\nproposer_registered={}\ntensorwork_proposer_selection=false\nstate_root={}\nepoch={}\nlatest_height={}\nfinalized={}\nsettled_receipt_set_root={}\nselected_receipt_ids={}\nselected_receipt_count={}\nselected_receipt_twu={}\nselected_receipt_bytes={}\nblock_twu_cap={}\nblock_byte_cap={}\nblock_receipt_cap={}\nchecks_root={}\ncheck_leaf_count={}\nchecks_root_recomputed={}\ndifficulty_target={}\nnonce={}\npow_header_hash={}\npow_hash={}\npow_valid={}\ncanonical_blockspace_valid={}\nblock_vote_count={}\nblock_vote_validators={}\nblock_vote_stake={}\nfinality_threshold_stake={}\nfinality_validated_block={}\nreceipt_count={}\nreceipt_ids={}\ntensor_op_receipt_count={}\ntensor_op_receipt_ids={}\nlinear_training_receipt_count={}\nlinear_training_receipt_ids={}\nsettled_receipt_count={}\nsettled_receipt_ids={}\nstatus_source=node_store",
-        hex(&block_hash),
-        hex(&block.parent_hash),
-        hex(&block.proposer),
-        proposer_registered,
-        hex(&block.state_root),
-        block.epoch,
-        chain.state().height(),
-        chain.is_block_finalized(&block_hash),
+    let finalized = chain.is_block_finalized(&block_hash);
+    let mut report = KeyValueReportWriter::new();
+    report.field("command", "service_block");
+    report.field("data_dir", data_dir);
+    report.field("height", height);
+    report.field("block_hash", hex(&block_hash));
+    report.field("block_validation", "useful_verification_pow");
+    report.field("parent_hash", hex(&block.parent_hash));
+    report.field("proposer", hex(&block.proposer));
+    report.field("proposer_role", "validator");
+    report.field("proposer_registered", proposer_registered);
+    report.field("tensorwork_proposer_selection", false);
+    report.field("state_root", hex(&block.state_root));
+    report.field("epoch", block.epoch);
+    report.field("latest_height", chain.state().height());
+    report.field("finalized", finalized);
+    report.field(
+        "settled_receipt_set_root",
         hex(&block.settled_receipt_set_root),
-        hex_hash_list(&selected_receipt_ids),
-        selected_receipt_ids.len(),
-        selected_receipt_twu,
-        selected_receipt_bytes,
-        blockspace_caps.max_tensor_work_units,
-        blockspace_caps.max_bytes,
-        blockspace_caps.max_receipts,
-        hex(&block.checks_root),
-        selected_receipt_ids.len(),
-        block_valid,
-        hex(&block.difficulty_target),
-        block.nonce,
-        hex(&pow_header_hash),
-        hex(&pow_hash),
-        block.pow_valid(),
-        block_valid,
-        valid_vote_validators.len(),
+    );
+    report.field("selected_receipt_ids", hex_hash_list(&selected_receipt_ids));
+    report.field("selected_receipt_count", selected_receipt_ids.len());
+    report.field("selected_receipt_twu", selected_receipt_twu);
+    report.field("selected_receipt_bytes", selected_receipt_bytes);
+    report.field("block_twu_cap", blockspace_caps.max_tensor_work_units);
+    report.field("block_byte_cap", blockspace_caps.max_bytes);
+    report.field("block_receipt_cap", blockspace_caps.max_receipts);
+    report.field("checks_root", hex(&block.checks_root));
+    report.field("check_leaf_count", selected_receipt_ids.len());
+    report.field("checks_root_recomputed", block_valid);
+    report.field("difficulty_target", hex(&block.difficulty_target));
+    report.field("nonce", block.nonce);
+    report.field("pow_header_hash", hex(&pow_header_hash));
+    report.field("pow_hash", hex(&pow_hash));
+    report.field("pow_valid", block.pow_valid());
+    report.field("canonical_blockspace_valid", block_valid);
+    report.field("block_vote_count", valid_vote_validators.len());
+    report.field(
+        "block_vote_validators",
         hex_hash_list(&valid_vote_validators),
-        valid_vote_stake,
-        finality_threshold_stake,
-        chain.is_block_finalized(&block_hash) && block_valid,
-        receipt_ids.len(),
-        hex_hash_list(&receipt_ids),
-        tensor_op_receipt_ids.len(),
+    );
+    report.field("block_vote_stake", valid_vote_stake);
+    report.field("finality_threshold_stake", finality_threshold_stake);
+    report.field("finality_validated_block", finalized && block_valid);
+    report.field("receipt_count", receipt_ids.len());
+    report.field("receipt_ids", hex_hash_list(&receipt_ids));
+    report.field("tensor_op_receipt_count", tensor_op_receipt_ids.len());
+    report.field(
+        "tensor_op_receipt_ids",
         hex_hash_list(&tensor_op_receipt_ids),
+    );
+    report.field(
+        "linear_training_receipt_count",
         linear_training_receipt_ids.len(),
+    );
+    report.field(
+        "linear_training_receipt_ids",
         hex_hash_list(&linear_training_receipt_ids),
-        settled_receipt_ids.len(),
-        hex_hash_list(&settled_receipt_ids),
-    ))
+    );
+    report.field("settled_receipt_count", settled_receipt_ids.len());
+    report.field("settled_receipt_ids", hex_hash_list(&settled_receipt_ids));
+    report.field("status_source", "node_store");
+    Ok(report.finish())
 }
 
 fn finality_threshold_stake(chain: &Chain, total_validator_stake: u64) -> u64 {

@@ -1320,6 +1320,8 @@ spaghetti around.
   including production subreport appends for shared libp2p identity fields.
 - Iteration 539 moved local-testnet seed report rendering onto `KeyValueReportWriter`, keeping seeded
   chain metrics parseable through the same app-owned key-value report path.
+- Iteration 540 moved per-block node status rendering onto `KeyValueReportWriter`, replacing the last
+  large `service_block` format string with validated key-value field assembly.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
