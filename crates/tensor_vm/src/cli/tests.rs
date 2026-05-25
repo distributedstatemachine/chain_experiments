@@ -20,6 +20,7 @@ mod local_validation;
 mod local_validator_parser;
 mod manifest_fixtures;
 mod manifest_reports;
+mod manifest_service_fixtures;
 mod parser_support;
 mod public_evidence_network_parser;
 mod public_evidence_network_rejections;
@@ -51,4 +52,5 @@ mod report_fields;
 
 use command_helpers::*;
 use manifest_fixtures::*;
+use manifest_service_fixtures::*;
 use report_fields::*;

@@ -1128,6 +1128,9 @@ spaghetti around.
 - Iteration 460 split node-specific Clap parser and local node validation coverage into
   `cli/tests/local_node_parser.rs` and `cli/tests/local_node_validation.rs`, leaving the mixed local
   suites focused on localnet defaults and role argument validation.
+- Iteration 461 split public service manifest fixture helpers into
+  `cli/tests/manifest_service_fixtures.rs`, leaving `cli/tests/manifest_fixtures.rs` focused on full
+  preflight/evidence manifest assembly and shared hashes/signatures.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
