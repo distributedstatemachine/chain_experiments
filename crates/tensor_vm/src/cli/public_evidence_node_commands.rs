@@ -21,18 +21,30 @@ pub enum EvidenceNodeCommand {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatArgs {
     #[command(flatten)]
-    pub node: PublicNodeIdentityArgs,
+    node: PublicNodeIdentityArgs,
     #[command(flatten)]
-    pub window: BlockHeightWindowArgs,
+    window: BlockHeightWindowArgs,
     #[arg(
         long,
         value_name = "N",
         help = "Heartbeat records observed in the window."
     )]
-    pub heartbeat_count: u64,
+    heartbeat_count: u64,
 }
 
 impl NodeHeartbeatArgs {
+    pub fn new(
+        node: PublicNodeIdentityArgs,
+        window: BlockHeightWindowArgs,
+        heartbeat_count: u64,
+    ) -> Self {
+        Self {
+            node,
+            window,
+            heartbeat_count,
+        }
+    }
+
     pub fn role(&self) -> PublicNodeRole {
         self.node.role()
     }
@@ -61,17 +73,24 @@ impl NodeHeartbeatArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeHeartbeatFromFileArgs {
     #[command(flatten)]
-    pub node: PublicNodeIdentityArgs,
+    node: PublicNodeIdentityArgs,
     #[arg(
         long,
         value_name = "PATH",
         value_hint = ValueHint::FilePath,
         help = "File containing heartbeat records."
     )]
-    pub heartbeat_file: PathBuf,
+    heartbeat_file: PathBuf,
 }
 
 impl NodeHeartbeatFromFileArgs {
+    pub fn new(node: PublicNodeIdentityArgs, heartbeat_file: PathBuf) -> Self {
+        Self {
+            node,
+            heartbeat_file,
+        }
+    }
+
     pub fn role(&self) -> PublicNodeRole {
         self.node.role()
     }
@@ -92,19 +111,31 @@ impl NodeHeartbeatFromFileArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct OperatorAttestationArgs {
     #[command(flatten)]
-    pub node: PublicNodeIdentityArgs,
+    node: PublicNodeIdentityArgs,
     #[arg(
         long,
         value_name = "URI",
         value_hint = ValueHint::Url,
         help = "Public operator identity URI."
     )]
-    pub identity_uri: String,
+    identity_uri: String,
     #[command(flatten)]
-    pub observation: ObservationTimestampArgs,
+    observation: ObservationTimestampArgs,
 }
 
 impl OperatorAttestationArgs {
+    pub fn new(
+        node: PublicNodeIdentityArgs,
+        identity_uri: impl Into<String>,
+        observation: ObservationTimestampArgs,
+    ) -> Self {
+        Self {
+            node,
+            identity_uri: identity_uri.into(),
+            observation,
+        }
+    }
+
     pub fn role(&self) -> PublicNodeRole {
         self.node.role()
     }
@@ -129,14 +160,22 @@ impl OperatorAttestationArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicNodeIdentityArgs {
     #[arg(long, help = "Public node role.")]
-    pub role: PublicNodeRoleArg,
+    role: PublicNodeRoleArg,
     #[arg(long, value_name = "HEX", help = "Node account address.")]
-    pub address: AddressArg,
+    address: AddressArg,
     #[command(flatten)]
-    pub operator: OperatorIdArgs,
+    operator: OperatorIdArgs,
 }
 
 impl PublicNodeIdentityArgs {
+    pub fn new(role: PublicNodeRoleArg, address: AddressArg, operator: OperatorIdArgs) -> Self {
+        Self {
+            role,
+            address,
+            operator,
+        }
+    }
+
     pub fn role(&self) -> PublicNodeRole {
         self.role.into()
     }

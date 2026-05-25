@@ -30,11 +30,11 @@ fn parses_node_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
-            EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs {
-                node: miner_node_identity_args(),
-                window: block_height_window_args(0, 9),
-                heartbeat_count: 10,
-            }),
+            EvidenceNodeCommand::Heartbeat(NodeHeartbeatArgs::new(
+                miner_node_identity_args(),
+                block_height_window_args(0, 9),
+                10,
+            )),
         )))
     );
 
@@ -55,10 +55,10 @@ fn parses_node_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
-            EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs {
-                node: miner_node_identity_args(),
-                heartbeat_file: path("artifacts/miner-a-heartbeats.records"),
-            }),
+            EvidenceNodeCommand::HeartbeatFile(NodeHeartbeatFromFileArgs::new(
+                miner_node_identity_args(),
+                path("artifacts/miner-a-heartbeats.records"),
+            )),
         )))
     );
 
@@ -81,19 +81,19 @@ fn parses_node_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Node(
-            EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-                node: miner_node_identity_args(),
-                identity_uri: "https://operators.tensorvm.net/miner-a".to_owned(),
-                observation: observation_timestamp_args(1_700_000_000),
-            }),
+            EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs::new(
+                miner_node_identity_args(),
+                "https://operators.tensorvm.net/miner-a",
+                observation_timestamp_args(1_700_000_000),
+            )),
         )))
     );
 }
 
 fn miner_node_identity_args() -> PublicNodeIdentityArgs {
-    PublicNodeIdentityArgs {
-        role: PublicNodeRoleArg::Miner,
-        address: address_arg(address(b"miner-a")),
-        operator: operator_id_args(hash_bytes(b"test", &[b"miner-a-operator"])),
-    }
+    PublicNodeIdentityArgs::new(
+        PublicNodeRoleArg::Miner,
+        address_arg(address(b"miner-a")),
+        operator_id_args(hash_bytes(b"test", &[b"miner-a-operator"])),
+    )
 }

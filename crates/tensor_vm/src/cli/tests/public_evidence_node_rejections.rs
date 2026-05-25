@@ -139,23 +139,23 @@ fn execute_node_heartbeat(
     heartbeat_count: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::Heartbeat(
-        NodeHeartbeatArgs {
-            node: public_node_identity_args(address, operator_id),
-            window: block_height_window_args(first_block, last_block),
+        NodeHeartbeatArgs::new(
+            public_node_identity_args(address, operator_id),
+            block_height_window_args(first_block, last_block),
             heartbeat_count,
-        },
+        ),
     )))
 }
 
 fn execute_node_heartbeat_file(heartbeat_file: std::path::PathBuf) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(EvidenceNodeCommand::HeartbeatFile(
-        NodeHeartbeatFromFileArgs {
-            node: public_node_identity_args(
+        NodeHeartbeatFromFileArgs::new(
+            public_node_identity_args(
                 address(b"miner-a"),
                 hash_bytes(b"test", &[b"miner-a-operator"]),
             ),
             heartbeat_file,
-        },
+        ),
     )))
 }
 
@@ -166,18 +166,18 @@ fn execute_operator_attestation(
     observed_at: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Node(
-        EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs {
-            node: public_node_identity_args(address, operator_id),
-            identity_uri: identity_uri.to_owned(),
-            observation: observation_timestamp_args(observed_at),
-        }),
+        EvidenceNodeCommand::OperatorAttestation(OperatorAttestationArgs::new(
+            public_node_identity_args(address, operator_id),
+            identity_uri,
+            observation_timestamp_args(observed_at),
+        )),
     ))
 }
 
 fn public_node_identity_args(address: [u8; 32], operator_id: [u8; 32]) -> PublicNodeIdentityArgs {
-    PublicNodeIdentityArgs {
-        role: node_role_arg(PublicNodeRole::Miner),
-        address: address_arg(address),
-        operator: operator_id_args(operator_id),
-    }
+    PublicNodeIdentityArgs::new(
+        node_role_arg(PublicNodeRole::Miner),
+        address_arg(address),
+        operator_id_args(operator_id),
+    )
 }

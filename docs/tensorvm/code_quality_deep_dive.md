@@ -1290,6 +1290,8 @@ spaghetti around.
   window timestamps, observed-block counts, file inputs, and bundle/signer context out of public parser internals.
 - Iteration 524 hid public network observation Clap fields behind constructors and accessors, grouping
   protocol counts and transport limits into typed argument owners while keeping service logs and observation targets out of public parser internals.
+- Iteration 525 hid public node/operator Clap fields behind constructors and accessors, keeping
+  heartbeat windows, heartbeat files, identity URIs, and node identity triples out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
