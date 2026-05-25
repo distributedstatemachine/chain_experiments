@@ -1,5 +1,5 @@
 use super::parser_support::{
-    path, record_artifact_locator_args, record_root_args, record_roots_args,
+    record_artifact_locator_args, record_file_args, record_root_args, record_roots_args,
 };
 use super::{
     EvidenceCommand, EvidenceRecordCommand, PublicCommand, RecordArtifactArgs,
@@ -156,7 +156,7 @@ fn parses_record_evidence_commands() {
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Record(
             EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
                 context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-                record_file: path("artifacts/network-runtime.records"),
+                file: record_file_args("artifacts/network-runtime.records"),
             }),
         )))
     );
@@ -185,7 +185,7 @@ fn parses_record_evidence_commands() {
                 artifact: record_artifact_locator_args(
                     "https://evidence.tensorvm.net/network-runtime.json",
                 ),
-                record_file: path("artifacts/network-runtime.records"),
+                file: record_file_args("artifacts/network-runtime.records"),
             }),
         )))
     );

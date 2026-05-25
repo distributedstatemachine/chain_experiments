@@ -42,7 +42,7 @@ pub(super) fn execute_public_evidence_record_command(
             args.context.bundle_id.into_hash(),
             args.context.manifest_signer.into_address(),
             args.artifact.uri(),
-            &path_argument(&args.record_file),
+            &path_argument(args.file.path()),
         ),
         EvidenceRecordCommand::SummaryRoots(args) => {
             let roots = args.roots.roots();
@@ -57,7 +57,7 @@ pub(super) fn execute_public_evidence_record_command(
             args.context.kind.into(),
             args.context.bundle_id.into_hash(),
             args.context.manifest_signer.into_address(),
-            &path_argument(&args.record_file),
+            &path_argument(args.file.path()),
         ),
     }
 }

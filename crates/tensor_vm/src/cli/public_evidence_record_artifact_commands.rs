@@ -1,8 +1,7 @@
 use super::public_evidence_record_commands::{
-    PublicEvidenceRecordContextArgs, RecordRootArgs, RecordRootsArgs,
+    PublicEvidenceRecordContextArgs, RecordFileArgs, RecordRootArgs, RecordRootsArgs,
 };
 use clap::{Args, ValueHint};
-use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordArtifactArgs {
@@ -30,13 +29,8 @@ pub struct RecordArtifactFromFileArgs {
     pub context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
     pub artifact: RecordArtifactLocatorArgs,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "File containing supporting records to summarize."
-    )]
-    pub record_file: PathBuf,
+    #[command(flatten)]
+    pub file: RecordFileArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

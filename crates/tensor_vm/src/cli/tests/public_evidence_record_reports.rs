@@ -70,7 +70,7 @@ fn execute_public_evidence_record_reports_outputs() {
         let summary = execute_public_evidence_command(&EvidenceCommand::Record(
             EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
                 context: record_context_args(kind),
-                record_file: raw_record_file.clone(),
+                file: record_file_args(raw_record_file.clone()),
             }),
         ))
         .unwrap();
@@ -97,7 +97,7 @@ fn execute_public_evidence_record_reports_outputs() {
             EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
                 context: record_context_args(kind),
                 artifact: record_artifact_locator_args(&artifact_uri),
-                record_file: raw_record_file.clone(),
+                file: record_file_args(raw_record_file.clone()),
             }),
         ))
         .unwrap();

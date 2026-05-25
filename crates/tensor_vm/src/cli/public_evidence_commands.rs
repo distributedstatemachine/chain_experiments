@@ -15,7 +15,7 @@ pub use super::public_evidence_record_artifact_commands::{
 };
 pub use super::public_evidence_record_commands::{
     EvidenceRecordCommand, PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg,
-    RecordRootArgs, RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordFileArgs, RecordRootArgs, RecordRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
     RecordSummaryFromRootsArgs,
 };
 pub use super::public_evidence_run_window_commands::{

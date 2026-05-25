@@ -72,7 +72,7 @@ fn execute_public_evidence_record_file_reports_outputs() {
     let record_file_summary = execute_public_evidence_command(&EvidenceCommand::Record(
         EvidenceRecordCommand::SummaryFile(RecordSummaryFromFileArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
-            record_file: record_file.clone(),
+            file: record_file_args(record_file.clone()),
         }),
     ))
     .unwrap();
@@ -96,7 +96,7 @@ fn execute_public_evidence_record_file_reports_outputs() {
         EvidenceRecordCommand::ArtifactFile(RecordArtifactFromFileArgs {
             context: record_context_args(PublicEvidenceRecordKind::NetworkRuntimeObservations),
             artifact: record_artifact_locator_args(aggregate_artifact_uri),
-            record_file: record_file.clone(),
+            file: record_file_args(record_file.clone()),
         }),
     ))
     .unwrap();

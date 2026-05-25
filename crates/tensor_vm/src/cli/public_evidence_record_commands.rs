@@ -44,13 +44,8 @@ pub struct RecordSummaryFromRootsArgs {
 pub struct RecordSummaryFromFileArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "File containing supporting records to summarize."
-    )]
-    pub record_file: PathBuf,
+    #[command(flatten)]
+    pub file: RecordFileArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
@@ -112,6 +107,23 @@ impl RecordRootsArgs {
             .copied()
             .map(HashArg::into_hash)
             .collect()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RecordFileArgs {
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "File containing supporting records to summarize."
+    )]
+    pub record_file: PathBuf,
+}
+
+impl RecordFileArgs {
+    pub fn path(&self) -> &std::path::Path {
+        &self.record_file
     }
 }
 

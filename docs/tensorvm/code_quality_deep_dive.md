@@ -1210,6 +1210,9 @@ spaghetti around.
 - Iteration 488 flattened repeated service `--health-path` Clap arguments into
   `ServiceHealthPathArgs`, keeping direct and file-backed service health evidence on one canonical
   observed health path model.
+- Iteration 489 flattened repeated supporting-record `--record-file` Clap arguments into
+  `RecordFileArgs`, keeping summary-file and artifact-file evidence on one canonical record file
+  source model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
