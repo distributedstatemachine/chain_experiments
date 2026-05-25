@@ -14,23 +14,23 @@ pub(super) fn execute_public_evidence_network_command(
         EvidenceNetworkCommand::Observation(args) => {
             network_observation_evidence_line(NetworkObservationEvidenceLine {
                 operator_id: args.target.operator_id(),
-                peer_id: &args.peer_id.to_string(),
+                peer_id: &args.peer_id().to_string(),
                 listen_address: &args.target.listen_address().to_string(),
-                observed_at_unix_seconds: args.target.observation.observed_at(),
-                gossip_topic_count: args.gossip_topics,
-                request_response_protocol_count: args.request_response_protocols,
-                bootstrap_peer_count: args.bootstrap_peers,
-                max_transmit_bytes: args.max_transmit_bytes,
-                request_timeout_seconds: args.request_timeout_seconds,
-                max_concurrent_streams: args.max_concurrent_streams,
-                idle_connection_timeout_seconds: args.idle_timeout_seconds,
+                observed_at_unix_seconds: args.target.observed_at(),
+                gossip_topic_count: args.gossip_topic_count(),
+                request_response_protocol_count: args.request_response_protocol_count(),
+                bootstrap_peer_count: args.bootstrap_peer_count(),
+                max_transmit_bytes: args.max_transmit_bytes(),
+                request_timeout_seconds: args.request_timeout_seconds(),
+                max_concurrent_streams: args.max_concurrent_streams(),
+                idle_connection_timeout_seconds: args.idle_timeout_seconds(),
             })
         }
         EvidenceNetworkCommand::FromServiceLog(args) => network_observation_from_service_log(
             args.target.operator_id(),
             &args.target.listen_address().to_string(),
-            args.target.observation.observed_at(),
-            &path_argument(&args.service_log),
+            args.target.observed_at(),
+            &path_argument(args.service_log()),
         ),
     }
 }
