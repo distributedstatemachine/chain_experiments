@@ -1,5 +1,5 @@
 use super::evidence_fields::{exact_comma_fields, parse_hash_field, parse_u64_field};
-use crate::app::{KeyValueReport, KeyValueReportError};
+use crate::app::{KeyValueReport, KeyValueReportError, KeyValueReportWriter};
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::public_network_runtime_multiaddr_is_external;
@@ -140,22 +140,27 @@ pub(super) fn network_observation_evidence_line(
         b"tensor-vm-network-runtime-observation-signature-v1",
         &[&input.operator_id, &root],
     );
-    Ok(format!(
-        "network_runtime_observation={},{},{},{},{},{},{},{},{},{},{},{},{}",
-        hex(&input.operator_id),
-        peer_id,
-        listen_address,
-        input.observed_at_unix_seconds,
-        input.gossip_topic_count,
-        input.request_response_protocol_count,
-        input.bootstrap_peer_count,
-        input.max_transmit_bytes,
-        input.request_timeout_seconds,
-        input.max_concurrent_streams,
-        input.idle_connection_timeout_seconds,
-        hex(&root),
-        hex(&signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field(
+        "network_runtime_observation",
+        format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            hex(&input.operator_id),
+            peer_id,
+            listen_address,
+            input.observed_at_unix_seconds,
+            input.gossip_topic_count,
+            input.request_response_protocol_count,
+            input.bootstrap_peer_count,
+            input.max_transmit_bytes,
+            input.request_timeout_seconds,
+            input.max_concurrent_streams,
+            input.idle_connection_timeout_seconds,
+            hex(&root),
+            hex(&signature)
+        ),
+    );
+    Ok(report.finish())
 }
 
 pub(super) fn network_observation_evidence_line_from_service_log(

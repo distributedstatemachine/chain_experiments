@@ -1338,6 +1338,8 @@ spaghetti around.
   `KeyValueReportWriter`, keeping node/operator comma payloads inside validated report fields.
 - Iteration 548 moved public service health and content evidence outputs onto `KeyValueReportWriter`,
   keeping service comma payloads inside validated report fields.
+- Iteration 549 moved public network runtime observation evidence output onto `KeyValueReportWriter`,
+  keeping the libp2p observation comma payload inside a validated report field.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
