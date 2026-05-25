@@ -1,4 +1,5 @@
 use super::evidence_fields::{exact_comma_fields, parse_u64_field};
+use crate::app::KeyValueReportWriter;
 use crate::error::{Result, TvmError};
 use crate::hash::hex;
 use crate::testnet::sign_public_run_window;
@@ -37,10 +38,12 @@ pub(super) fn run_window_evidence_line(
         run_ended_at_unix_seconds,
         observed_blocks,
     );
-    Ok(format!(
-        "run_started_at_unix_seconds={run_started_at_unix_seconds}\nrun_ended_at_unix_seconds={run_ended_at_unix_seconds}\nrun_window_signature={}\nobserved_blocks={observed_blocks}",
-        hex(&signature)
-    ))
+    let mut report = KeyValueReportWriter::new();
+    report.field("run_started_at_unix_seconds", run_started_at_unix_seconds);
+    report.field("run_ended_at_unix_seconds", run_ended_at_unix_seconds);
+    report.field("run_window_signature", hex(&signature));
+    report.field("observed_blocks", observed_blocks);
+    Ok(report.finish())
 }
 
 pub(super) struct RunWindowObservationSummary {

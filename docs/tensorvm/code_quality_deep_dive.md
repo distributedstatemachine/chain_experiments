@@ -1330,6 +1330,8 @@ spaghetti around.
   `KeyValueReportWriter`, keeping the Clap-facing manifest validators on the shared key-value report path.
 - Iteration 544 moved public publication and auditor evidence outputs onto `KeyValueReportWriter`,
   preserving their comma-record payloads inside validated key-value report fields.
+- Iteration 545 moved public run-window evidence output onto `KeyValueReportWriter`, keeping signed
+  run-window fields validated through the shared report assembler.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
