@@ -1,5 +1,4 @@
 use super::value_types::HashArg;
-use crate::types::Hash;
 use clap::{Args, ValueHint};
 use libp2p::Multiaddr;
 use std::net::SocketAddr;
@@ -89,10 +88,4 @@ pub(crate) struct IdentitySeedArgs {
         help = "Deterministic 32-byte seed for the libp2p identity."
     )]
     pub(crate) identity_seed: Option<HashArg>,
-}
-
-impl IdentitySeedArgs {
-    pub(crate) fn hash(&self) -> Option<Hash> {
-        self.identity_seed.map(HashArg::into_hash)
-    }
 }

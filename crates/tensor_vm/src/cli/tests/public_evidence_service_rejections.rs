@@ -70,7 +70,9 @@ fn execute_public_service_evidence_rejects_invalid_args() {
     assert!(
         execute_service_content_bytes(ServiceContentFromBytesArgs {
             target: valid_service_content_target_args(),
-            content: HexBytesArg::new(vec![1_u8; 63]),
+            content: HexBytesArg {
+                bytes: vec![1_u8; 63],
+            },
         })
         .is_err()
     );

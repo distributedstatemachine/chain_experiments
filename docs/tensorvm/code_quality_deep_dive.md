@@ -1358,6 +1358,9 @@ spaghetti around.
 - Iteration 555 moved public supporting-record Clap payloads to direct fields, removing summary, artifact,
   aggregate-root, file, locator, and record-context getter constructors while keeping record evidence
   execution on the typed command tree.
+- Iteration 556 removed the final CLI compatibility shims from value-parser test construction and identity
+  seed dispatch, so Clap payload structs remain the command data boundary instead of delegating through
+  legacy-style helper constructors and getters.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

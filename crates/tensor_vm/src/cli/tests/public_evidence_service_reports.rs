@@ -128,7 +128,9 @@ fn execute_service_evidence_reports_outputs() {
     let service_content_from_bytes = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
             target: service_content_target_args(PublicServiceKind::Rpc, b"rpc-service"),
-            content: HexBytesArg::new(observed_content.clone()),
+            content: HexBytesArg {
+                bytes: observed_content.clone(),
+            },
         }),
     ))
     .unwrap();

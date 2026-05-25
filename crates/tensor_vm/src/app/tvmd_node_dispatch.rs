@@ -29,7 +29,9 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             check_service_readiness(
                 &args.p2p_listen.p2p_listen.to_string(),
                 &data_dir,
-                args.identity_seed.hash(),
+                args.identity_seed
+                    .identity_seed
+                    .map(|seed| seed.into_hash()),
             )
         }
         NodeCommand::Serve(args) => {
@@ -42,7 +44,10 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
                 &listen,
                 &p2p_listen,
                 &data_dir,
-                runtime.identity_seed.hash(),
+                runtime
+                    .identity_seed
+                    .identity_seed
+                    .map(|seed| seed.into_hash()),
                 &runtime.auth_token,
                 runtime.max_requests,
             )

@@ -48,24 +48,24 @@ pub(super) fn p2p_listen_args(p2p_listen: &str) -> P2pListenArgs {
 }
 
 pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
-    HashArg::new(value)
+    HashArg(value)
 }
 
 pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySeedArgs {
     IdentitySeedArgs {
-        identity_seed: identity_seed.map(HashArg::new),
+        identity_seed: identity_seed.map(HashArg),
     }
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: [u8; 32]) -> EvidenceBundleIdArgs {
     EvidenceBundleIdArgs {
-        bundle_id: HashArg::new(bundle_id),
+        bundle_id: HashArg(bundle_id),
     }
 }
 
 pub(super) fn operator_id_args(operator_id: [u8; 32]) -> OperatorIdArgs {
     OperatorIdArgs {
-        operator_id: HashArg::new(operator_id),
+        operator_id: HashArg(operator_id),
     }
 }
 
@@ -103,24 +103,24 @@ pub(super) fn record_file_args(record_file: &str) -> RecordFileArgs {
 
 pub(super) fn record_root_args(record_root: [u8; 32], record_count: u64) -> RecordRootArgs {
     RecordRootArgs {
-        record_root: HashArg::new(record_root),
+        record_root: HashArg(record_root),
         record_count,
     }
 }
 
 pub(super) fn record_roots_args(record_roots: Vec<[u8; 32]>) -> RecordRootsArgs {
     RecordRootsArgs {
-        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
+        record_roots: record_roots.into_iter().map(HashArg).collect(),
     }
 }
 
 pub(super) fn address_arg(value: [u8; 32]) -> AddressArg {
-    AddressArg::new(value)
+    AddressArg(value)
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: [u8; 32]) -> ManifestSignerArgs {
     ManifestSignerArgs {
-        manifest_signer: AddressArg::new(manifest_signer),
+        manifest_signer: AddressArg(manifest_signer),
     }
 }
 

@@ -136,7 +136,9 @@ fn parses_service_evidence_commands() {
                     "https://rpc.tensorvm.net/chain/head",
                     "/chain/head",
                 ),
-                content: HexBytesArg::new(vec![42_u8; 64]),
+                content: HexBytesArg {
+                    bytes: vec![42_u8; 64],
+                },
             }),
         )))
     );

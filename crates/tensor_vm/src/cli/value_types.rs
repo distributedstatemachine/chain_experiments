@@ -5,14 +5,9 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct HashArg(Hash);
+pub(crate) struct HashArg(pub(crate) Hash);
 
 impl HashArg {
-    #[cfg(test)]
-    pub(crate) fn new(value: Hash) -> Self {
-        Self(value)
-    }
-
     pub fn into_hash(self) -> Hash {
         self.0
     }
@@ -29,14 +24,9 @@ impl FromStr for HashArg {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct AddressArg(Address);
+pub(crate) struct AddressArg(pub(crate) Address);
 
 impl AddressArg {
-    #[cfg(test)]
-    pub(crate) fn new(value: Address) -> Self {
-        Self(value)
-    }
-
     pub fn into_address(self) -> Address {
         self.0
     }
@@ -54,15 +44,10 @@ impl FromStr for AddressArg {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct HexBytesArg {
-    bytes: Vec<u8>,
+    pub(crate) bytes: Vec<u8>,
 }
 
 impl HexBytesArg {
-    #[cfg(test)]
-    pub(crate) fn new(bytes: Vec<u8>) -> Self {
-        Self { bytes }
-    }
-
     pub fn as_slice(&self) -> &[u8] {
         &self.bytes
     }

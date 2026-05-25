@@ -35,28 +35,28 @@ pub(super) fn multiaddr_arg(value: String) -> libp2p::Multiaddr {
 }
 
 pub(super) fn hash_arg(value: Hash) -> HashArg {
-    HashArg::new(value)
+    HashArg(value)
 }
 
 pub(super) fn evidence_bundle_id_args(bundle_id: Hash) -> EvidenceBundleIdArgs {
     EvidenceBundleIdArgs {
-        bundle_id: HashArg::new(bundle_id),
+        bundle_id: HashArg(bundle_id),
     }
 }
 
 pub(super) fn operator_id_args(operator_id: Hash) -> OperatorIdArgs {
     OperatorIdArgs {
-        operator_id: HashArg::new(operator_id),
+        operator_id: HashArg(operator_id),
     }
 }
 
 pub(super) fn address_arg(value: Address) -> AddressArg {
-    AddressArg::new(value)
+    AddressArg(value)
 }
 
 pub(super) fn manifest_signer_args(manifest_signer: Address) -> ManifestSignerArgs {
     ManifestSignerArgs {
-        manifest_signer: AddressArg::new(manifest_signer),
+        manifest_signer: AddressArg(manifest_signer),
     }
 }
 
@@ -131,14 +131,14 @@ pub(super) fn record_file_args(record_file: std::path::PathBuf) -> RecordFileArg
 
 pub(super) fn record_root_args(record_root: Hash, record_count: u64) -> RecordRootArgs {
     RecordRootArgs {
-        record_root: HashArg::new(record_root),
+        record_root: HashArg(record_root),
         record_count,
     }
 }
 
 pub(super) fn record_roots_args(record_roots: Vec<Hash>) -> RecordRootsArgs {
     RecordRootsArgs {
-        record_roots: record_roots.into_iter().map(HashArg::new).collect(),
+        record_roots: record_roots.into_iter().map(HashArg).collect(),
     }
 }
 
