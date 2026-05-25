@@ -9,28 +9,25 @@ fn execute_public_service_evidence_rejects_invalid_args() {
         "https://rpc.tensorvm.net/chain/head#latest",
         "https://rpc.tensorvm.net/wrong",
     ] {
+        let mut args = valid_service_content_args();
+        args.target.endpoint.public_url = public_url.to_owned();
         assert!(
-            execute_service_content(ServiceContentArgs {
-                public_url: public_url.to_owned(),
-                ..valid_service_content_args()
-            })
-            .is_err()
+            execute_service_content(args).is_err(),
+            "public URL {public_url:?} should be rejected"
         );
     }
+    let mut args = valid_service_content_args();
+    args.target.content_path = "chain/head".to_owned();
     assert!(
-        execute_service_content(ServiceContentArgs {
-            content_path: "chain/head".to_owned(),
-            ..valid_service_content_args()
-        })
-        .is_err()
+        execute_service_content(args).is_err(),
+        "relative content path should be rejected"
     );
+    let mut args = valid_service_content_args();
+    args.target.endpoint.public_url = "https://rpc.tensorvm.net/wrong".to_owned();
+    args.target.content_path = "/wrong".to_owned();
     assert!(
-        execute_service_content(ServiceContentArgs {
-            public_url: "https://rpc.tensorvm.net/wrong".to_owned(),
-            content_path: "/wrong".to_owned(),
-            ..valid_service_content_args()
-        })
-        .is_err()
+        execute_service_content(args).is_err(),
+        "wrong content endpoint should be rejected"
     );
     assert!(
         execute_service_content(ServiceContentArgs {
@@ -39,12 +36,11 @@ fn execute_public_service_evidence_rejects_invalid_args() {
         })
         .is_err()
     );
+    let mut args = valid_service_content_args();
+    args.target.observed_at = 0;
     assert!(
-        execute_service_content(ServiceContentArgs {
-            observed_at: 0,
-            ..valid_service_content_args()
-        })
-        .is_err()
+        execute_service_content(args).is_err(),
+        "zero observation timestamp should be rejected"
     );
     assert!(
         execute_service_content(ServiceContentArgs {
@@ -72,35 +68,39 @@ fn execute_public_service_evidence_rejects_invalid_args() {
 
 fn valid_service_content_args() -> ServiceContentArgs {
     ServiceContentArgs {
-        kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-        content_path: "/chain/head".to_owned(),
+        target: valid_service_content_target_args(),
         content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service", b"content-root"])),
-        observed_at: 1_700_000_000,
         min_content_bytes: 64,
     }
 }
 
 fn valid_service_content_bytes_args() -> ServiceContentFromBytesArgs {
     ServiceContentFromBytesArgs {
-        kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-        content_path: "/chain/head".to_owned(),
-        observed_at: 1_700_000_000,
+        target: valid_service_content_target_args(),
         content: HexBytesArg::new(vec![1_u8; 64]),
     }
 }
 
 fn valid_service_content_file_args() -> ServiceContentFromFileArgs {
     ServiceContentFromFileArgs {
+        target: valid_service_content_target_args(),
+        content_file: missing_temp_file("unused-service-content", "body"),
+    }
+}
+
+fn valid_service_content_target_args() -> ServiceContentTargetArgs {
+    ServiceContentTargetArgs {
+        endpoint: valid_service_endpoint_args(),
+        content_path: "/chain/head".to_owned(),
+        observed_at: 1_700_000_000,
+    }
+}
+
+fn valid_service_endpoint_args() -> PublicServiceEndpointArgs {
+    PublicServiceEndpointArgs {
         kind: service_kind_arg(PublicServiceKind::Rpc),
         endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
         public_url: "https://rpc.tensorvm.net/chain/head".to_owned(),
-        content_path: "/chain/head".to_owned(),
-        observed_at: 1_700_000_000,
-        content_file: missing_temp_file("unused-service-content", "body"),
     }
 }
 

@@ -17,8 +17,9 @@ pub use super::public_evidence_run_window_commands::{
     EvidenceRunCommand, RunWindowArgs, RunWindowFromFileArgs,
 };
 pub use super::public_evidence_service_commands::{
-    EvidenceServiceCommand, PublicServiceKindArg, ServiceContentArgs, ServiceContentFromBytesArgs,
-    ServiceContentFromFileArgs, ServiceHealthArgs, ServiceHealthFromFileArgs,
+    EvidenceServiceCommand, PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
+    ServiceHealthArgs, ServiceHealthFromFileArgs,
 };
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;

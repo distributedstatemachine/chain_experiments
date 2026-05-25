@@ -20,21 +20,8 @@ pub enum EvidenceServiceCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthArgs {
-    #[arg(long, help = "Public service being observed.")]
-    pub kind: PublicServiceKindArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Stable 32-byte service endpoint identifier."
-    )]
-    pub endpoint_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URL",
-        value_hint = ValueHint::Url,
-        help = "Public URL for the service endpoint."
-    )]
-    pub public_url: String,
+    #[command(flatten)]
+    pub endpoint: PublicServiceEndpointArgs,
     #[arg(
         long,
         value_name = "PATH",
@@ -69,21 +56,8 @@ pub struct ServiceHealthArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceHealthFromFileArgs {
-    #[arg(long, help = "Public service being observed.")]
-    pub kind: PublicServiceKindArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Stable 32-byte service endpoint identifier."
-    )]
-    pub endpoint_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URL",
-        value_hint = ValueHint::Url,
-        help = "Public URL for the service endpoint."
-    )]
-    pub public_url: String,
+    #[command(flatten)]
+    pub endpoint: PublicServiceEndpointArgs,
     #[arg(
         long,
         value_name = "PATH",
@@ -101,39 +75,14 @@ pub struct ServiceHealthFromFileArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentArgs {
-    #[arg(long, help = "Public service being observed.")]
-    pub kind: PublicServiceKindArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Stable 32-byte service endpoint identifier."
-    )]
-    pub endpoint_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URL",
-        value_hint = ValueHint::Url,
-        help = "Public URL for the service endpoint."
-    )]
-    pub public_url: String,
-    #[arg(
-        long,
-        value_name = "PATH",
-        help = "Content path observed on the public service."
-    )]
-    pub content_path: String,
+    #[command(flatten)]
+    pub target: ServiceContentTargetArgs,
     #[arg(
         long,
         value_name = "HEX",
         help = "Merkle root or content hash committed by the observation."
     )]
     pub content_root: HashArg,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
     #[arg(
         long,
         value_name = "BYTES",
@@ -144,33 +93,8 @@ pub struct ServiceContentArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromBytesArgs {
-    #[arg(long, help = "Public service being observed.")]
-    pub kind: PublicServiceKindArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Stable 32-byte service endpoint identifier."
-    )]
-    pub endpoint_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URL",
-        value_hint = ValueHint::Url,
-        help = "Public URL for the service endpoint."
-    )]
-    pub public_url: String,
-    #[arg(
-        long,
-        value_name = "PATH",
-        help = "Content path observed on the public service."
-    )]
-    pub content_path: String,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
+    #[command(flatten)]
+    pub target: ServiceContentTargetArgs,
     #[arg(
         long = "content-hex",
         value_name = "HEX",
@@ -181,6 +105,37 @@ pub struct ServiceContentFromBytesArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct ServiceContentFromFileArgs {
+    #[command(flatten)]
+    pub target: ServiceContentTargetArgs,
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "File containing observed response bytes."
+    )]
+    pub content_file: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct ServiceContentTargetArgs {
+    #[command(flatten)]
+    pub endpoint: PublicServiceEndpointArgs,
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Content path observed on the public service."
+    )]
+    pub content_path: String,
+    #[arg(
+        long,
+        value_name = "UNIX_SECONDS",
+        help = "Unix timestamp for the observation."
+    )]
+    pub observed_at: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct PublicServiceEndpointArgs {
     #[arg(long, help = "Public service being observed.")]
     pub kind: PublicServiceKindArg,
     #[arg(
@@ -196,25 +151,6 @@ pub struct ServiceContentFromFileArgs {
         help = "Public URL for the service endpoint."
     )]
     pub public_url: String,
-    #[arg(
-        long,
-        value_name = "PATH",
-        help = "Content path observed on the public service."
-    )]
-    pub content_path: String,
-    #[arg(
-        long,
-        value_name = "UNIX_SECONDS",
-        help = "Unix timestamp for the observation."
-    )]
-    pub observed_at: u64,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "File containing observed response bytes."
-    )]
-    pub content_file: PathBuf,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]

@@ -1168,6 +1168,9 @@ spaghetti around.
 - Iteration 474 split artifact-specific public evidence record Clap arguments into
   `cli/public_evidence_record_artifact_commands.rs`, leaving `cli/public_evidence_record_commands.rs`
   focused on the record command enum, summary arguments, and record-kind value enum.
+- Iteration 475 flattened repeated public service endpoint and content-target Clap arguments into
+  reusable `PublicServiceEndpointArgs` and `ServiceContentTargetArgs`, keeping service evidence
+  subcommands on one canonical typed argument model instead of duplicating shared flags per command.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

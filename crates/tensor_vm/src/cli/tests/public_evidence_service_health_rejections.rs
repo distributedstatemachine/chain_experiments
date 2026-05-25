@@ -10,12 +10,11 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         "https://rpc.tensorvm.net/health#probe",
         "https://rpc.tensorvm.net/wrong",
     ] {
+        let mut args = valid_service_health_args();
+        args.endpoint.public_url = public_url.to_owned();
         assert!(
-            execute_service_health(ServiceHealthArgs {
-                public_url: public_url.to_owned(),
-                ..valid_service_health_args()
-            })
-            .is_err()
+            execute_service_health(args).is_err(),
+            "public URL {public_url:?} should be rejected"
         );
     }
     assert!(
@@ -32,12 +31,11 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
         })
         .is_err()
     );
+    let mut args = valid_service_health_args();
+    args.endpoint.endpoint_id = hash_arg([0; 32]);
     assert!(
-        execute_service_health(ServiceHealthArgs {
-            endpoint_id: hash_arg([0; 32]),
-            ..valid_service_health_args()
-        })
-        .is_err()
+        execute_service_health(args).is_err(),
+        "zero endpoint id should be rejected"
     );
     assert!(
         execute_service_health(ServiceHealthArgs {
@@ -78,9 +76,7 @@ fn execute_public_service_health_evidence_rejects_invalid_args() {
 
 fn valid_service_health_args() -> ServiceHealthArgs {
     ServiceHealthArgs {
-        kind: service_kind_arg(PublicServiceKind::Rpc),
-        endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-        public_url: "https://rpc.tensorvm.net/health".to_owned(),
+        endpoint: valid_service_health_endpoint_args(),
         health_path: "/health".to_owned(),
         first_block: 0,
         last_block: 9,
@@ -91,11 +87,17 @@ fn valid_service_health_args() -> ServiceHealthArgs {
 
 fn valid_service_health_file_args() -> ServiceHealthFromFileArgs {
     ServiceHealthFromFileArgs {
+        endpoint: valid_service_health_endpoint_args(),
+        health_path: "/health".to_owned(),
+        observation_file: missing_temp_file("unused-service-health", "records"),
+    }
+}
+
+fn valid_service_health_endpoint_args() -> PublicServiceEndpointArgs {
+    PublicServiceEndpointArgs {
         kind: service_kind_arg(PublicServiceKind::Rpc),
         endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
         public_url: "https://rpc.tensorvm.net/health".to_owned(),
-        health_path: "/health".to_owned(),
-        observation_file: missing_temp_file("unused-service-health", "records"),
     }
 }
 

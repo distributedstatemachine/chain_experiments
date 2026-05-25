@@ -4,9 +4,11 @@ use super::*;
 fn execute_service_evidence_reports_outputs() {
     let service_health = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::Health(ServiceHealthArgs {
-            kind: service_kind_arg(PublicServiceKind::Rpc),
-            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
+            endpoint: service_endpoint_args(
+                PublicServiceKind::Rpc,
+                b"rpc-service",
+                "https://rpc.tensorvm.net/health",
+            ),
             health_path: "/health".to_owned(),
             first_block: 0,
             last_block: 9,
@@ -43,9 +45,11 @@ fn execute_service_evidence_reports_outputs() {
     std::fs::write(&health_observation_file, health_observations).unwrap();
     let service_health_from_file = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::HealthFile(ServiceHealthFromFileArgs {
-            kind: service_kind_arg(PublicServiceKind::Rpc),
-            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-            public_url: "https://rpc.tensorvm.net/health".to_owned(),
+            endpoint: service_endpoint_args(
+                PublicServiceKind::Rpc,
+                b"rpc-service",
+                "https://rpc.tensorvm.net/health",
+            ),
             health_path: "/health".to_owned(),
             observation_file: health_observation_file.clone(),
         }),
@@ -65,9 +69,7 @@ fn execute_service_evidence_reports_outputs() {
     for (kind, label, tag) in additional_service_cases {
         let line = execute_public_evidence_command(&EvidenceCommand::Service(
             EvidenceServiceCommand::Health(ServiceHealthArgs {
-                kind: service_kind_arg(kind),
-                endpoint_id: hash_arg(hash_bytes(b"test", &[label])),
-                public_url: public_service_url(kind).to_owned(),
+                endpoint: service_endpoint_args(kind, label, public_service_url(kind)),
                 health_path: "/health".to_owned(),
                 first_block: 0,
                 last_block: 9,
@@ -96,12 +98,8 @@ fn execute_service_evidence_reports_outputs() {
 
     let service_content = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::Content(ServiceContentArgs {
-            kind: service_kind_arg(PublicServiceKind::Rpc),
-            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-            public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
-            content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
+            target: service_content_target_args(PublicServiceKind::Rpc, b"rpc-service"),
             content_root: hash_arg(hash_bytes(b"test", &[b"rpc-service", b"content-root"])),
-            observed_at: 1_700_000_000,
             min_content_bytes: 64,
         }),
     ))
@@ -131,11 +129,7 @@ fn execute_service_evidence_reports_outputs() {
     let observed_content_root = public_service_content_root(&observed_content);
     let service_content_from_bytes = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::ContentBytes(ServiceContentFromBytesArgs {
-            kind: service_kind_arg(PublicServiceKind::Rpc),
-            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-            public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
-            content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-            observed_at: 1_700_000_000,
+            target: service_content_target_args(PublicServiceKind::Rpc, b"rpc-service"),
             content: HexBytesArg::new(observed_content.clone()),
         }),
     ))
@@ -163,15 +157,31 @@ fn execute_service_evidence_reports_outputs() {
     std::fs::write(&content_file, &observed_content).unwrap();
     let service_content_from_file = execute_public_evidence_command(&EvidenceCommand::Service(
         EvidenceServiceCommand::ContentFile(ServiceContentFromFileArgs {
-            kind: service_kind_arg(PublicServiceKind::Rpc),
-            endpoint_id: hash_arg(hash_bytes(b"test", &[b"rpc-service"])),
-            public_url: public_service_content_url(PublicServiceKind::Rpc).to_owned(),
-            content_path: public_service_content_path(PublicServiceKind::Rpc).to_owned(),
-            observed_at: 1_700_000_000,
+            target: service_content_target_args(PublicServiceKind::Rpc, b"rpc-service"),
             content_file: content_file.clone(),
         }),
     ))
     .unwrap();
     std::fs::remove_file(&content_file).unwrap();
     assert_eq!(service_content_from_file, service_content_from_bytes);
+}
+
+fn service_endpoint_args(
+    kind: PublicServiceKind,
+    label: &[u8],
+    public_url: &str,
+) -> PublicServiceEndpointArgs {
+    PublicServiceEndpointArgs {
+        kind: service_kind_arg(kind),
+        endpoint_id: hash_arg(hash_bytes(b"test", &[label])),
+        public_url: public_url.to_owned(),
+    }
+}
+
+fn service_content_target_args(kind: PublicServiceKind, label: &[u8]) -> ServiceContentTargetArgs {
+    ServiceContentTargetArgs {
+        endpoint: service_endpoint_args(kind, label, public_service_content_url(kind)),
+        content_path: public_service_content_path(kind).to_owned(),
+        observed_at: 1_700_000_000,
+    }
 }
