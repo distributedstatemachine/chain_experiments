@@ -6,7 +6,9 @@ pub use super::public_evidence_node_commands::{
     EvidenceNodeCommand, NodeHeartbeatArgs, NodeHeartbeatFromFileArgs, OperatorAttestationArgs,
     PublicNodeIdentityArgs, PublicNodeRoleArg,
 };
-pub use super::public_evidence_publication_commands::{AuditorRecordArgs, PublicationArgs};
+pub use super::public_evidence_publication_commands::{
+    AuditorRecordArgs, PublicationArgs, PublicationBundleArgs,
+};
 pub use super::public_evidence_record_artifact_commands::{
     RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
 };

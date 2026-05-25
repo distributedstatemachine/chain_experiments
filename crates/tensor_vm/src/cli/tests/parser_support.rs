@@ -1,6 +1,6 @@
 use super::{
     AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
-    P2pListenArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
+    P2pListenArgs, PublicationBundleArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -52,6 +52,16 @@ pub(super) fn hash_arg(value: [u8; 32]) -> HashArg {
 pub(super) fn identity_seed_args(identity_seed: Option<[u8; 32]>) -> IdentitySeedArgs {
     IdentitySeedArgs {
         identity_seed: identity_seed.map(HashArg::new),
+    }
+}
+
+pub(super) fn publication_bundle_args(
+    bundle_id: [u8; 32],
+    public_uri: &str,
+) -> PublicationBundleArgs {
+    PublicationBundleArgs {
+        bundle_id: hash_arg(bundle_id),
+        public_uri: public_uri.to_owned(),
     }
 }
 

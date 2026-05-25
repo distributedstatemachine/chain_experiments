@@ -51,6 +51,13 @@ pub(super) fn network_observation_target_args(
     }
 }
 
+pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> PublicationBundleArgs {
+    PublicationBundleArgs {
+        bundle_id: hash_arg(bundle_id),
+        public_uri: public_uri.to_owned(),
+    }
+}
+
 pub(super) fn record_context_args(
     kind: PublicEvidenceRecordKind,
 ) -> PublicEvidenceRecordContextArgs {

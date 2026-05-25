@@ -165,8 +165,7 @@ fn execute_publication(
     independent_auditor_count: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
-        bundle_id: hash_arg(bundle_id),
-        public_uri: public_uri.to_owned(),
+        bundle: publication_bundle_args(bundle_id, public_uri),
         manifest_signer: address_arg(manifest_signer),
         manifest_signature_count,
         independent_auditor_count,
@@ -193,8 +192,10 @@ fn execute_auditor_with_public_uri(
     observed_at: u64,
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Audit(AuditorRecordArgs {
-        bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-        public_uri: public_uri.to_owned(),
+        bundle: publication_bundle_args(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            public_uri,
+        ),
         auditor_id: address_arg(auditor_id),
         audit_uri: audit_uri.into(),
         observed_at,

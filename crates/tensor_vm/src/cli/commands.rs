@@ -12,11 +12,11 @@ pub use super::public_evidence_commands::{
     NodeHeartbeatFromFileArgs, OperatorAttestationArgs, PublicCommand, PublicEvidenceManifestArgs,
     PublicEvidenceRecordContextArgs, PublicEvidenceRecordKindArg, PublicNodeIdentityArgs,
     PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
-    PublicationArgs, RecordArtifactArgs, RecordArtifactFromFileArgs, RecordArtifactFromRootsArgs,
-    RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs, RunWindowArgs,
-    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
-    ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
-    ServiceHealthFromFileArgs,
+    PublicationArgs, PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
+    RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
+    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
+    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
+    ServiceHealthArgs, ServiceHealthFromFileArgs,
 };
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};

@@ -1,17 +1,11 @@
 use super::value_types::{AddressArg, HashArg};
+use crate::types::Hash;
 use clap::{Args, ValueHint};
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct PublicationArgs {
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URI",
-        value_hint = ValueHint::Url,
-        help = "Public URI where the evidence bundle is published."
-    )]
-    pub public_uri: String,
+    #[command(flatten)]
+    pub bundle: PublicationBundleArgs,
     #[arg(
         long,
         value_name = "HEX",
@@ -34,15 +28,8 @@ pub struct PublicationArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct AuditorRecordArgs {
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "URI",
-        value_hint = ValueHint::Url,
-        help = "Public URI where the evidence bundle is published."
-    )]
-    pub public_uri: String,
+    #[command(flatten)]
+    pub bundle: PublicationBundleArgs,
     #[arg(
         long,
         value_name = "HEX",
@@ -62,4 +49,27 @@ pub struct AuditorRecordArgs {
         help = "Unix timestamp for the audit observation."
     )]
     pub observed_at: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct PublicationBundleArgs {
+    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
+    pub bundle_id: HashArg,
+    #[arg(
+        long,
+        value_name = "URI",
+        value_hint = ValueHint::Url,
+        help = "Public URI where the evidence bundle is published."
+    )]
+    pub public_uri: String,
+}
+
+impl PublicationBundleArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.bundle_id.into_hash()
+    }
+
+    pub fn public_uri(&self) -> &str {
+        &self.public_uri
+    }
 }

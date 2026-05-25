@@ -3,8 +3,10 @@ use super::*;
 #[test]
 fn execute_publication_evidence_reports_outputs() {
     let publication = execute_public_evidence_command(&EvidenceCommand::Publish(PublicationArgs {
-        bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-        public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+        bundle: publication_bundle_args(
+            hash_bytes(b"test", &[b"public-evidence-bundle"]),
+            "https://tensorvm.net/tensorvm/public-evidence.json",
+        ),
         manifest_signer: address_arg(address(b"public-evidence-publisher")),
         manifest_signature_count: 1,
         independent_auditor_count: 1,
@@ -30,8 +32,10 @@ fn execute_publication_evidence_reports_outputs() {
 
     let auditor_record =
         execute_public_evidence_command(&EvidenceCommand::Audit(AuditorRecordArgs {
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            public_uri: "https://tensorvm.net/tensorvm/public-evidence.json".to_owned(),
+            bundle: publication_bundle_args(
+                hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                "https://tensorvm.net/tensorvm/public-evidence.json",
+            ),
             auditor_id: address_arg(address(b"public-evidence-auditor-0")),
             audit_uri: manifest_auditor_uri(),
             observed_at: 1_700_000_060,

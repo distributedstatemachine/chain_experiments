@@ -1192,6 +1192,9 @@ spaghetti around.
 - Iteration 482 flattened repeated local `--p2p-listen`, `--data-dir`, and `--identity-seed`
   runtime Clap arguments into shared typed groups, keeping node check, node serve, and role runtime
   dispatch on one canonical local runtime model.
+- Iteration 483 flattened repeated public publication `--bundle-id` and `--public-uri` Clap arguments
+  into `PublicationBundleArgs`, keeping publish and audit evidence commands on one canonical bundle
+  target model.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
