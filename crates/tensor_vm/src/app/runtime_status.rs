@@ -1,6 +1,6 @@
 use super::{
-    RuntimeP2pReport, RuntimeStatusSnapshot, ServiceRuntimeConfig, hex_hash_list,
-    runtime_role_wallet_address_text,
+    KeyValueReportWriter, RuntimeP2pReport, RuntimeStatusSnapshot, ServiceRuntimeConfig,
+    hex_hash_list, runtime_role_wallet_address_text,
 };
 use crate::hash::hex;
 
@@ -11,80 +11,199 @@ pub fn format_role_runtime_report(
 ) -> String {
     let network = &config.node.network;
     let network_events = snapshot.network_events;
-    format!(
-        "command=service_serve\nruntime_command={}\nrole={}\nchain_profile={}\nrole_loop_ready=true\nrole_can_produce_blocks={}\nrole_wallet_address={}\nrole_wallet_registration={}\nrole_wallet_registered={}\nminer_work_ready={}\nminer_assigned_jobs_seen={}\nminer_unreceipted_jobs={}\nminer_receipts_submitted={}\nminer_tensors_inserted={}\nvalidator_work_ready={}\nvalidator_assigned_receipts_seen={}\nvalidator_unattested_receipts={}\nvalidator_artifact_ready_receipts={}\nvalidator_artifact_missing_receipts={}\nvalidator_remote_tensor_fetch_attempts={}\nvalidator_remote_tensor_fetch_successes={}\nvalidator_remote_tensor_fetch_failures={}\nvalidator_remote_tensor_fetch_bytes={}\nvalidator_remote_tensors_inserted={}\nvalidator_attestations_submitted={}\nvalidator_block_votes_submitted={}\nlocal_producer={local_producer}\nlisten={}\np2p_listen={}\np2p_runtime=libp2p\np2p_peer_id={p2p_peer_id}\np2p_connected_peers={}\np2p_observed_block_gossip_count={}\np2p_observed_block_payload_gossip_count={}\np2p_observed_block_vote_gossip_count={}\np2p_observed_job_gossip_count={}\np2p_observed_receipt_gossip_count={}\np2p_observed_attestation_gossip_count={}\np2p_latest_observed_block_height={}\np2p_latest_observed_block_hash={}\np2p_observed_block_hashes={}\np2p_latest_observed_block_payload_height={}\np2p_latest_observed_block_payload_hash={}\np2p_observed_block_payload_hashes={}\np2p_gossipsub_topics={p2p_topics}\np2p_request_response_protocols={p2p_request_response_protocols}\np2p_bootstrap_peers={bootstrap_peer_count}\n{identity}\np2p_max_transmit_bytes={max_transmit_bytes}\np2p_request_timeout_seconds={request_timeout_seconds}\np2p_max_concurrent_streams={max_concurrent_streams}\np2p_idle_timeout_seconds={idle_timeout_seconds}\ndata_dir={}\nserved_requests={served_requests}\nproduced_blocks={produced_blocks}\nnetwork_applied_blocks={network_applied_blocks}\nnetwork_events_ingested={}\nnetwork_block_events_ingested={}\nnetwork_block_headers_ingested={}\nnetwork_block_payloads_ingested={}\nnetwork_block_payloads_applied={}\nnetwork_block_votes_ingested={}\nnetwork_block_votes_applied={}\nnetwork_job_events_ingested={}\nnetwork_job_payloads_ingested={}\nnetwork_job_payloads_applied={}\nnetwork_receipt_events_ingested={}\nnetwork_receipt_payloads_ingested={}\nnetwork_receipt_payloads_applied={}\nnetwork_attestation_events_ingested={}\nnetwork_attestation_payloads_ingested={}\nnetwork_attestation_payloads_applied={}\nnetwork_peer_events_ingested={}\nnetwork_invalid_events={}",
-        config.runtime_command,
-        config.role.label(),
-        config.node.profile.label(),
+    let mut report = KeyValueReportWriter::new();
+    report.field("command", "service_serve");
+    report.field("runtime_command", config.runtime_command);
+    report.field("role", config.role.label());
+    report.field("chain_profile", config.node.profile.label());
+    report.field("role_loop_ready", true);
+    report.field(
+        "role_can_produce_blocks",
         config.node.can_produce_local_blocks(),
+    );
+    report.field(
+        "role_wallet_address",
         runtime_role_wallet_address_text(snapshot.role_wallet_address),
+    );
+    report.field(
+        "role_wallet_registration",
         snapshot.role_wallet_registration,
-        snapshot.role_wallet_registered,
-        snapshot.miner_work_ready,
+    );
+    report.field("role_wallet_registered", snapshot.role_wallet_registered);
+    report.field("miner_work_ready", snapshot.miner_work_ready);
+    report.field(
+        "miner_assigned_jobs_seen",
         snapshot.miner_assigned_jobs_seen,
-        snapshot.miner_unreceipted_jobs,
+    );
+    report.field("miner_unreceipted_jobs", snapshot.miner_unreceipted_jobs);
+    report.field(
+        "miner_receipts_submitted",
         snapshot.miner_receipts_submitted,
-        snapshot.miner_tensors_inserted,
-        snapshot.validator_work_ready,
+    );
+    report.field("miner_tensors_inserted", snapshot.miner_tensors_inserted);
+    report.field("validator_work_ready", snapshot.validator_work_ready);
+    report.field(
+        "validator_assigned_receipts_seen",
         snapshot.validator_assigned_receipts_seen,
+    );
+    report.field(
+        "validator_unattested_receipts",
         snapshot.validator_unattested_receipts,
+    );
+    report.field(
+        "validator_artifact_ready_receipts",
         snapshot.validator_artifact_ready_receipts,
+    );
+    report.field(
+        "validator_artifact_missing_receipts",
         snapshot.validator_artifact_missing_receipts,
+    );
+    report.field(
+        "validator_remote_tensor_fetch_attempts",
         snapshot.validator_remote_tensor_fetch_attempts,
+    );
+    report.field(
+        "validator_remote_tensor_fetch_successes",
         snapshot.validator_remote_tensor_fetch_successes,
+    );
+    report.field(
+        "validator_remote_tensor_fetch_failures",
         snapshot.validator_remote_tensor_fetch_failures,
+    );
+    report.field(
+        "validator_remote_tensor_fetch_bytes",
         snapshot.validator_remote_tensor_fetch_bytes,
+    );
+    report.field(
+        "validator_remote_tensors_inserted",
         snapshot.validator_remote_tensors_inserted,
+    );
+    report.field(
+        "validator_attestations_submitted",
         snapshot.validator_attestations_submitted,
+    );
+    report.field(
+        "validator_block_votes_submitted",
         snapshot.validator_block_votes_submitted,
-        network.rpc_listen,
-        network.p2p_listen,
-        snapshot.p2p_connected_peers,
+    );
+    report.field("local_producer", snapshot.local_producer);
+    report.field("listen", &network.rpc_listen);
+    report.field("p2p_listen", &network.p2p_listen);
+    report.field("p2p_runtime", "libp2p");
+    report.field("p2p_peer_id", p2p.peer_id);
+    report.field("p2p_connected_peers", snapshot.p2p_connected_peers);
+    report.field(
+        "p2p_observed_block_gossip_count",
         snapshot.p2p_observed_blocks,
+    );
+    report.field(
+        "p2p_observed_block_payload_gossip_count",
         snapshot.p2p_observed_block_payloads,
+    );
+    report.field(
+        "p2p_observed_block_vote_gossip_count",
         snapshot.p2p_observed_block_votes,
-        snapshot.p2p_observed_jobs,
+    );
+    report.field("p2p_observed_job_gossip_count", snapshot.p2p_observed_jobs);
+    report.field(
+        "p2p_observed_receipt_gossip_count",
         snapshot.p2p_observed_receipts,
+    );
+    report.field(
+        "p2p_observed_attestation_gossip_count",
         snapshot.p2p_observed_attestations,
+    );
+    report.field(
+        "p2p_latest_observed_block_height",
         snapshot.p2p_latest_observed_block_height,
+    );
+    report.field(
+        "p2p_latest_observed_block_hash",
         hex(&snapshot.p2p_latest_observed_block_hash),
+    );
+    report.field(
+        "p2p_observed_block_hashes",
         hex_hash_list(&snapshot.p2p_observed_block_hashes),
+    );
+    report.field(
+        "p2p_latest_observed_block_payload_height",
         snapshot.p2p_latest_observed_block_payload_height,
+    );
+    report.field(
+        "p2p_latest_observed_block_payload_hash",
         hex(&snapshot.p2p_latest_observed_block_payload_hash),
+    );
+    report.field(
+        "p2p_observed_block_payload_hashes",
         hex_hash_list(&snapshot.p2p_observed_block_payload_hashes),
-        config.node.data_dir().display(),
-        network_events.events,
+    );
+    report.field("p2p_gossipsub_topics", p2p.topics);
+    report.field(
+        "p2p_request_response_protocols",
+        p2p.request_response_protocols,
+    );
+    report.field("p2p_bootstrap_peers", p2p.bootstrap_peer_count);
+    report.append_report(p2p.identity);
+    report.field("p2p_max_transmit_bytes", p2p.max_transmit_bytes);
+    report.field("p2p_request_timeout_seconds", p2p.request_timeout_seconds);
+    report.field("p2p_max_concurrent_streams", p2p.max_concurrent_streams);
+    report.field("p2p_idle_timeout_seconds", p2p.idle_timeout_seconds);
+    report.field("data_dir", config.node.data_dir().display());
+    report.field("served_requests", snapshot.served_requests);
+    report.field("produced_blocks", snapshot.produced_blocks);
+    report.field("network_applied_blocks", snapshot.network_applied_blocks);
+    report.field("network_events_ingested", network_events.events);
+    report.field(
+        "network_block_events_ingested",
         network_events.block_announcements,
+    );
+    report.field(
+        "network_block_headers_ingested",
         network_events.block_headers,
+    );
+    report.field(
+        "network_block_payloads_ingested",
         network_events.block_payloads,
+    );
+    report.field(
+        "network_block_payloads_applied",
         network_events.block_payloads_applied,
-        network_events.block_votes,
+    );
+    report.field("network_block_votes_ingested", network_events.block_votes);
+    report.field(
+        "network_block_votes_applied",
         network_events.block_votes_applied,
-        network_events.jobs,
-        network_events.job_payloads,
+    );
+    report.field("network_job_events_ingested", network_events.jobs);
+    report.field("network_job_payloads_ingested", network_events.job_payloads);
+    report.field(
+        "network_job_payloads_applied",
         network_events.job_payloads_applied,
-        network_events.receipts,
+    );
+    report.field("network_receipt_events_ingested", network_events.receipts);
+    report.field(
+        "network_receipt_payloads_ingested",
         network_events.receipt_payloads,
+    );
+    report.field(
+        "network_receipt_payloads_applied",
         network_events.receipt_payloads_applied,
+    );
+    report.field(
+        "network_attestation_events_ingested",
         network_events.attestations,
+    );
+    report.field(
+        "network_attestation_payloads_ingested",
         network_events.attestation_payloads,
+    );
+    report.field(
+        "network_attestation_payloads_applied",
         network_events.attestation_payloads_applied,
-        network_events.peers,
-        network_events.invalid_events,
-        local_producer = snapshot.local_producer,
-        p2p_peer_id = p2p.peer_id,
-        p2p_topics = p2p.topics,
-        p2p_request_response_protocols = p2p.request_response_protocols,
-        bootstrap_peer_count = p2p.bootstrap_peer_count,
-        identity = p2p.identity,
-        max_transmit_bytes = p2p.max_transmit_bytes,
-        request_timeout_seconds = p2p.request_timeout_seconds,
-        max_concurrent_streams = p2p.max_concurrent_streams,
-        idle_timeout_seconds = p2p.idle_timeout_seconds,
-        served_requests = snapshot.served_requests,
-        produced_blocks = snapshot.produced_blocks,
-        network_applied_blocks = snapshot.network_applied_blocks
-    )
+    );
+    report.field("network_peer_events_ingested", network_events.peers);
+    report.field("network_invalid_events", network_events.invalid_events);
+    report.finish()
 }
 
 pub fn write_role_runtime_status(

@@ -1322,6 +1322,8 @@ spaghetti around.
   chain metrics parseable through the same app-owned key-value report path.
 - Iteration 540 moved per-block node status rendering onto `KeyValueReportWriter`, replacing the last
   large `service_block` format string with validated key-value field assembly.
+- Iteration 541 moved the printed role-runtime `service_serve` report onto `KeyValueReportWriter`,
+  preserving libp2p identity subreports while eliminating another large key-value format string.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
