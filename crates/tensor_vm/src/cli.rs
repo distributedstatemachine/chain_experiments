@@ -50,7 +50,7 @@ pub use commands::{
     PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
     RecordSummaryFromRootsArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, RunWindowArgs,
-    RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
+    RunWindowContextArgs, RunWindowFromFileArgs, ServiceContentArgs, ServiceContentFromBytesArgs,
     ServiceContentFromFileArgs, ServiceContentTargetArgs, ServiceHealthArgs,
     ServiceHealthFromFileArgs, StakeArgs, TvmdCli, TvmdCommand, ValidatorCheckArgs,
     ValidatorCommand, ValidatorRunArgs,

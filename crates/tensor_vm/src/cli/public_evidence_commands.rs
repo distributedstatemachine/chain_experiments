@@ -17,7 +17,7 @@ pub use super::public_evidence_record_commands::{
     RecordSummaryArgs, RecordSummaryFromFileArgs, RecordSummaryFromRootsArgs,
 };
 pub use super::public_evidence_run_window_commands::{
-    EvidenceRunCommand, RunWindowArgs, RunWindowFromFileArgs,
+    EvidenceRunCommand, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
 };
 pub use super::public_evidence_service_commands::{
     EvidenceServiceCommand, PublicServiceEndpointArgs, PublicServiceKindArg, ServiceContentArgs,

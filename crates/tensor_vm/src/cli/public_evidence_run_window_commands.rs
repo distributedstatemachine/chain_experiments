@@ -1,4 +1,5 @@
 use super::value_types::{AddressArg, HashArg};
+use crate::types::{Address, Hash};
 use clap::{Args, Subcommand, ValueHint};
 use std::path::PathBuf;
 
@@ -13,14 +14,8 @@ pub enum EvidenceRunCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowArgs {
-    #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
-    pub bundle_id: HashArg,
-    #[arg(
-        long,
-        value_name = "HEX",
-        help = "Address signing the evidence manifest."
-    )]
-    pub manifest_signer: AddressArg,
+    #[command(flatten)]
+    pub context: RunWindowContextArgs,
     #[arg(
         long,
         value_name = "UNIX_SECONDS",
@@ -43,6 +38,19 @@ pub struct RunWindowArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RunWindowFromFileArgs {
+    #[command(flatten)]
+    pub context: RunWindowContextArgs,
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::FilePath,
+        help = "File containing observed block records."
+    )]
+    pub block_observation_file: PathBuf,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct RunWindowContextArgs {
     #[arg(long, value_name = "HEX", help = "Public evidence bundle identifier.")]
     pub bundle_id: HashArg,
     #[arg(
@@ -51,11 +59,14 @@ pub struct RunWindowFromFileArgs {
         help = "Address signing the evidence manifest."
     )]
     pub manifest_signer: AddressArg,
-    #[arg(
-        long,
-        value_name = "PATH",
-        value_hint = ValueHint::FilePath,
-        help = "File containing observed block records."
-    )]
-    pub block_observation_file: PathBuf,
+}
+
+impl RunWindowContextArgs {
+    pub fn bundle_id(&self) -> Hash {
+        self.bundle_id.into_hash()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.manifest_signer.into_address()
+    }
 }

@@ -1,4 +1,4 @@
-use super::parser_support::{address_arg, hash_arg, path};
+use super::parser_support::{path, run_window_context_args};
 use super::{
     EvidenceCommand, EvidenceRunCommand, PublicCommand, RunWindowArgs, RunWindowFromFileArgs,
     TvmdCommand, manifest_address, manifest_hash, parse_test_cli,
@@ -30,8 +30,10 @@ fn parses_run_window_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Run(
             EvidenceRunCommand::Window(RunWindowArgs {
-                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                context: run_window_context_args(
+                    hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                    address(b"public-evidence-publisher"),
+                ),
                 started_at: 1_700_000_000,
                 ended_at: 1_700_000_060,
                 observed_blocks: 10,
@@ -55,8 +57,10 @@ fn parses_run_window_evidence_commands() {
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Run(
             EvidenceRunCommand::WindowFile(RunWindowFromFileArgs {
-                bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-                manifest_signer: address_arg(address(b"public-evidence-publisher")),
+                context: run_window_context_args(
+                    hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                    address(b"public-evidence-publisher"),
+                ),
                 block_observation_file: path("artifacts/block-observations.records"),
             }),
         )))

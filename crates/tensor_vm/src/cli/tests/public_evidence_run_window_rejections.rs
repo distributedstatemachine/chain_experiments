@@ -83,8 +83,7 @@ fn execute_run_window(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::Window(
         RunWindowArgs {
-            bundle_id: hash_arg(bundle_id),
-            manifest_signer: address_arg(manifest_signer),
+            context: run_window_context_args(bundle_id, manifest_signer),
             started_at,
             ended_at,
             observed_blocks,
@@ -97,8 +96,10 @@ fn execute_run_window_file(
 ) -> crate::error::Result<String> {
     execute_public_evidence_command(&EvidenceCommand::Run(EvidenceRunCommand::WindowFile(
         RunWindowFromFileArgs {
-            bundle_id: hash_arg(hash_bytes(b"test", &[b"public-evidence-bundle"])),
-            manifest_signer: address_arg(address(b"public-evidence-publisher")),
+            context: run_window_context_args(
+                hash_bytes(b"test", &[b"public-evidence-bundle"]),
+                address(b"public-evidence-publisher"),
+            ),
             block_observation_file,
         },
     )))

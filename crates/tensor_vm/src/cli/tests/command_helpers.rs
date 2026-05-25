@@ -58,6 +58,16 @@ pub(super) fn publication_bundle_args(bundle_id: Hash, public_uri: &str) -> Publ
     }
 }
 
+pub(super) fn run_window_context_args(
+    bundle_id: Hash,
+    manifest_signer: Address,
+) -> RunWindowContextArgs {
+    RunWindowContextArgs {
+        bundle_id: hash_arg(bundle_id),
+        manifest_signer: address_arg(manifest_signer),
+    }
+}
+
 pub(super) fn record_context_args(
     kind: PublicEvidenceRecordKind,
 ) -> PublicEvidenceRecordContextArgs {

@@ -14,9 +14,9 @@ pub use super::public_evidence_commands::{
     PublicNodeRoleArg, PublicServiceEndpointArgs, PublicServiceKindArg, PublicTestnetManifestArgs,
     PublicationArgs, PublicationBundleArgs, RecordArtifactArgs, RecordArtifactFromFileArgs,
     RecordArtifactFromRootsArgs, RecordSummaryArgs, RecordSummaryFromFileArgs,
-    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowFromFileArgs, ServiceContentArgs,
-    ServiceContentFromBytesArgs, ServiceContentFromFileArgs, ServiceContentTargetArgs,
-    ServiceHealthArgs, ServiceHealthFromFileArgs,
+    RecordSummaryFromRootsArgs, RunWindowArgs, RunWindowContextArgs, RunWindowFromFileArgs,
+    ServiceContentArgs, ServiceContentFromBytesArgs, ServiceContentFromFileArgs,
+    ServiceContentTargetArgs, ServiceHealthArgs, ServiceHealthFromFileArgs,
 };
 pub use super::value_types::{AddressArg, HashArg, HexBytesArg, MinerDeviceArg};
 use clap::{Parser, Subcommand};

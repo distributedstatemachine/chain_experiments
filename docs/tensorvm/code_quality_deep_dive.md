@@ -1195,6 +1195,9 @@ spaghetti around.
 - Iteration 483 flattened repeated public publication `--bundle-id` and `--public-uri` Clap arguments
   into `PublicationBundleArgs`, keeping publish and audit evidence commands on one canonical bundle
   target model.
+- Iteration 484 flattened repeated public run-window `--bundle-id` and `--manifest-signer` Clap
+  arguments into `RunWindowContextArgs`, keeping direct and file-backed run-window evidence on one
+  canonical signing context.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

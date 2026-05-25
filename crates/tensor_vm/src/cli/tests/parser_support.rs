@@ -1,6 +1,7 @@
 use super::{
     AddressArg, DataDirArgs, HashArg, IdentitySeedArgs, MinerDeviceArg, NodeRuntimeArgs,
     P2pListenArgs, PublicationBundleArgs, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs,
+    RunWindowContextArgs,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -62,6 +63,16 @@ pub(super) fn publication_bundle_args(
     PublicationBundleArgs {
         bundle_id: hash_arg(bundle_id),
         public_uri: public_uri.to_owned(),
+    }
+}
+
+pub(super) fn run_window_context_args(
+    bundle_id: [u8; 32],
+    manifest_signer: [u8; 32],
+) -> RunWindowContextArgs {
+    RunWindowContextArgs {
+        bundle_id: hash_arg(bundle_id),
+        manifest_signer: address_arg(manifest_signer),
     }
 }
 
