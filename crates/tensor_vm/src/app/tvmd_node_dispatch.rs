@@ -10,12 +10,12 @@ use super::{
 pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result<String, String> {
     match command {
         NodeCommand::Init(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.path());
             validate_data_dir(&data_dir)?;
             init_service_store(&data_dir)
         }
         NodeCommand::Peer(NodePeerCommand::Add(args)) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.data_dir.path());
             validate_data_dir(&data_dir)?;
             add_service_peer(
                 &data_dir,
@@ -24,7 +24,7 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             )
         }
         NodeCommand::Check(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.data_dir.path());
             validate_data_dir(&data_dir)?;
             check_service_readiness(
                 &args.p2p_listen.to_string(),
@@ -48,12 +48,12 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             )
         }
         NodeCommand::Status(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.path());
             validate_data_dir(&data_dir)?;
             service_status(&data_dir)
         }
         NodeCommand::Block(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.data_dir.path());
             validate_data_dir(&data_dir)?;
             service_block_status(&data_dir, args.height)
         }
@@ -65,12 +65,12 @@ pub(super) fn execute_localnet_command(
 ) -> std::result::Result<String, String> {
     match command {
         LocalnetCommand::Seed(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.path());
             validate_data_dir(&data_dir)?;
             seed_local_testnet(&data_dir)
         }
         LocalnetCommand::Verify(args) => {
-            let data_dir = path_arg(&args.data_dir);
+            let data_dir = path_arg(args.data_dir.path());
             validate_data_dir(&data_dir)?;
             verify_local_cpu_store(&data_dir, args.json)
         }

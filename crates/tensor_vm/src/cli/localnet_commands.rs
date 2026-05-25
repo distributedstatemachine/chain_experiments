@@ -1,6 +1,5 @@
-use super::local_runtime_args::{DEFAULT_DATA_DIR, DataDirArgs};
-use clap::{Args, Subcommand, ValueHint};
-use std::path::PathBuf;
+use super::local_runtime_args::DataDirArgs;
+use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -13,15 +12,8 @@ pub enum LocalnetCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct LocalCpuVerifyArgs {
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
+    #[command(flatten)]
+    pub data_dir: DataDirArgs,
     #[arg(long, help = "Emit the verification report as JSON.")]
     pub json: bool,
 }

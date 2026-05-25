@@ -1,10 +1,7 @@
-use super::local_runtime_args::{
-    DEFAULT_DATA_DIR, DataDirArgs, NodeRuntimeArgs, default_p2p_listen_addr,
-};
+use super::local_runtime_args::{DataDirArgs, NodeRuntimeArgs, default_p2p_listen_addr};
 use super::value_types::HashArg;
-use clap::{Args, Subcommand, ValueHint};
+use clap::{Args, Subcommand};
 use libp2p::{Multiaddr, PeerId};
-use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq, Subcommand)]
 #[command(rename_all = "kebab-case", arg_required_else_help = true)]
@@ -33,15 +30,8 @@ pub enum NodePeerCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodePeerAddArgs {
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
+    #[command(flatten)]
+    pub data_dir: DataDirArgs,
     #[arg(
         long,
         value_name = "PEER_ID",
@@ -66,15 +56,8 @@ pub struct NodeCheckArgs {
         help = "libp2p listen multiaddress to validate."
     )]
     pub p2p_listen: Multiaddr,
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
+    #[command(flatten)]
+    pub data_dir: DataDirArgs,
     #[arg(
         long,
         value_name = "HEX",
@@ -91,15 +74,8 @@ pub struct NodeServeArgs {
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct NodeBlockArgs {
-    #[arg(
-        long,
-        env = "TVMD_DATA_DIR",
-        default_value = DEFAULT_DATA_DIR,
-        value_name = "DIR",
-        value_hint = ValueHint::DirPath,
-        help = "Node store directory."
-    )]
-    pub data_dir: PathBuf,
+    #[command(flatten)]
+    pub data_dir: DataDirArgs,
     #[arg(
         long,
         value_name = "HEIGHT",

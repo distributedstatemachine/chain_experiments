@@ -1,4 +1,4 @@
-use super::parser_support::{data_dir_args, hash_arg, multiaddr, node_runtime_args, path};
+use super::parser_support::{data_dir_args, hash_arg, multiaddr, node_runtime_args};
 use super::{
     NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeServeArgs,
     TvmdCommand, parse_test_cli,
@@ -26,7 +26,7 @@ fn parses_documented_node_commands() {
         ])
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(NodePeerAddArgs {
-            data_dir: path("/var/lib/tensorvm"),
+            data_dir: data_dir_args("/var/lib/tensorvm"),
             peer_id: bootstrap_peer.parse().expect("test peer ID must parse"),
             address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
         })))
@@ -43,7 +43,7 @@ fn parses_documented_node_commands() {
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
             p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
-            data_dir: path("/var/lib/tensorvm"),
+            data_dir: data_dir_args("/var/lib/tensorvm"),
             identity_seed: None,
         }))
     );
@@ -62,7 +62,7 @@ fn parses_documented_node_commands() {
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Check(NodeCheckArgs {
             p2p_listen: multiaddr("/ip4/0.0.0.0/tcp/4001"),
-            data_dir: path("/var/lib/tensorvm"),
+            data_dir: data_dir_args("/var/lib/tensorvm"),
             identity_seed: Some(hash_arg([0x11; 32])),
         }))
     );
@@ -137,7 +137,7 @@ fn parses_documented_node_commands() {
         ])
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Block(NodeBlockArgs {
-            data_dir: path("/var/lib/tensorvm"),
+            data_dir: data_dir_args("/var/lib/tensorvm"),
             height: 3,
         }))
     );

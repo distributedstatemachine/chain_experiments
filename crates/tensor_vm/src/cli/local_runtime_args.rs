@@ -2,7 +2,7 @@ use super::value_types::HashArg;
 use clap::{Args, ValueHint};
 use libp2p::Multiaddr;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(super) const DEFAULT_DATA_DIR: &str = ".tensorvm";
 const DEFAULT_LISTEN_ADDR: &str = "127.0.0.1:8545";
@@ -83,4 +83,10 @@ pub struct DataDirArgs {
         help = "Node store directory."
     )]
     pub data_dir: PathBuf,
+}
+
+impl DataDirArgs {
+    pub fn path(&self) -> &Path {
+        &self.data_dir
+    }
 }

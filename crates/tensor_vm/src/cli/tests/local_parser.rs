@@ -2,7 +2,8 @@ use super::parser_support::{
     data_dir_args, miner_device, role_node_args, role_runtime_args, role_wallet_args,
 };
 use super::{
-    LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, TvmdCommand, parse_test_cli,
+    LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs, MinerCommand, MinerRunArgs, TvmdCommand,
+    parse_test_cli,
 };
 
 #[test]
@@ -10,6 +11,20 @@ fn parses_documented_localnet_commands() {
     assert_eq!(
         parse_test_cli(&["localnet", "seed", "--data-dir", "/var/lib/tensorvm"]).unwrap(),
         TvmdCommand::Localnet(LocalnetCommand::Seed(data_dir_args("/var/lib/tensorvm")))
+    );
+    assert_eq!(
+        parse_test_cli(&[
+            "localnet",
+            "verify",
+            "--data-dir",
+            "/var/lib/tensorvm",
+            "--json",
+        ])
+        .unwrap(),
+        TvmdCommand::Localnet(LocalnetCommand::Verify(LocalCpuVerifyArgs {
+            data_dir: data_dir_args("/var/lib/tensorvm"),
+            json: true,
+        }))
     );
 }
 

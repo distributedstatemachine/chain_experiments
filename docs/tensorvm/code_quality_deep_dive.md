@@ -1186,6 +1186,9 @@ spaghetti around.
 - Iteration 480 flattened repeated miner, validator, and proposer node-address Clap arguments into
   `RoleNodeArgs`, keeping local role check/run commands on one canonical typed node target model while
   preserving the existing `--node` flag.
+- Iteration 481 flattened repeated local node-store `--data-dir` Clap arguments into `DataDirArgs`
+  for node peer, check, block, and localnet verify commands, and routed node/localnet dispatch
+  through the typed data-dir accessor.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
