@@ -1394,6 +1394,9 @@ spaghetti around.
 - Iteration 567 split mutable RPC route dispatch out of the read-only fallback path, so transaction,
   reference-submission, attestation, and faucet claim routes are identified before delegating unmatched
   requests back to the static/dynamic read route pipeline.
+- Iteration 568 split dynamic RPC route method handling from the dynamic GET path-segment route table,
+  keeping non-GET dynamic requests on the not-found path while isolating chain, explorer, tensor, job,
+  miner, validator, and receipt lookups behind a focused dynamic GET helper.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

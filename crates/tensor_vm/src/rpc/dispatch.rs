@@ -90,30 +90,34 @@ impl RpcNode {
     }
 
     fn handle_dynamic(&self, request: &RpcRequest) -> RpcResponse {
+        if request.method != "GET" {
+            return self.not_found("route not found");
+        }
         let path = DynamicRoutePath::parse(&request.path);
-        match (request.method.as_str(), path.segments()) {
-            ("GET", ["chain", "block", height]) => self.chain_block(height),
-            ("GET", ["receipts", receipt_id]) => self.receipt(receipt_id),
-            ("GET", ["miners", address]) => self.miner(address),
-            ("GET", ["validators", address]) => self.validator(address),
-            ("GET", ["explorer", "account", address]) => self.explorer_account(address),
-            ("GET", ["explorer", "blocks", "latest", limit]) => self.explorer_latest_blocks(limit),
-            ("GET", ["explorer", "receipts", "latest", limit]) => {
-                self.explorer_latest_receipts(limit)
+        self.handle_dynamic_get(path.segments())
+            .unwrap_or_else(|| self.not_found("route not found"))
+    }
+
+    fn handle_dynamic_get(&self, segments: &[&str]) -> Option<RpcResponse> {
+        match segments {
+            ["chain", "block", height] => Some(self.chain_block(height)),
+            ["receipts", receipt_id] => Some(self.receipt(receipt_id)),
+            ["miners", address] => Some(self.miner(address)),
+            ["validators", address] => Some(self.validator(address)),
+            ["explorer", "account", address] => Some(self.explorer_account(address)),
+            ["explorer", "blocks", "latest", limit] => Some(self.explorer_latest_blocks(limit)),
+            ["explorer", "receipts", "latest", limit] => Some(self.explorer_latest_receipts(limit)),
+            ["tensor", tensor_id, "descriptor"] => Some(self.tensor_descriptor(tensor_id)),
+            ["tensor", tensor_id, "chunk", chunk_index] => {
+                Some(self.tensor_chunk(tensor_id, chunk_index))
             }
-            ("GET", ["tensor", tensor_id, "descriptor"]) => self.tensor_descriptor(tensor_id),
-            ("GET", ["tensor", tensor_id, "chunk", chunk_index]) => {
-                self.tensor_chunk(tensor_id, chunk_index)
+            ["tensor", tensor_id, "row", row_index] => Some(self.tensor_row(tensor_id, row_index)),
+            ["tensor", tensor_id, "opening", chunk_index] => {
+                Some(self.tensor_opening(tensor_id, chunk_index))
             }
-            ("GET", ["tensor", tensor_id, "row", row_index]) => {
-                self.tensor_row(tensor_id, row_index)
-            }
-            ("GET", ["tensor", tensor_id, "opening", chunk_index]) => {
-                self.tensor_opening(tensor_id, chunk_index)
-            }
-            ("GET", ["tensor", "latest"]) => self.tensor_latest(),
-            ("GET", ["jobs", job_id]) => self.job(job_id),
-            _ => self.not_found("route not found"),
+            ["tensor", "latest"] => Some(self.tensor_latest()),
+            ["jobs", job_id] => Some(self.job(job_id)),
+            _ => None,
         }
     }
 }
