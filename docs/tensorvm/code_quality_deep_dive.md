@@ -1310,6 +1310,8 @@ spaghetti around.
   public, so the Clap command tree is an implementation detail behind `app::run`.
 - Iteration 534 moved service-status output assembly onto `KeyValueReportWriter`, keeping node-store and
   role-runtime status fields parseable through the shared key-value report path instead of a giant format string.
+- Iteration 535 collapsed service-status pass-through fields into ordered status-file field lists, keeping
+  the output contract explicit without a long manual append sequence.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
