@@ -13,51 +13,51 @@ pub(super) fn execute_public_evidence_record_command(
 ) -> Result<String> {
     match command {
         EvidenceRecordCommand::Summary(args) => record_summary_evidence_lines(
-            args.context.kind(),
-            args.context.bundle_id(),
-            args.context.manifest_signer(),
-            args.root.root(),
-            args.root.count(),
+            args.kind(),
+            args.bundle_id(),
+            args.manifest_signer(),
+            args.root(),
+            args.count(),
         ),
         EvidenceRecordCommand::Artifact(args) => record_artifact_evidence_line(
-            args.context.kind(),
-            args.context.bundle_id(),
-            args.context.manifest_signer(),
-            args.artifact.uri(),
-            args.root.root(),
-            args.root.count(),
+            args.kind(),
+            args.bundle_id(),
+            args.manifest_signer(),
+            args.artifact_uri(),
+            args.root(),
+            args.count(),
         ),
         EvidenceRecordCommand::ArtifactRoots(args) => {
-            let roots = args.roots.roots();
+            let roots = args.roots();
             record_artifact_from_roots(
-                args.context.kind(),
-                args.context.bundle_id(),
-                args.context.manifest_signer(),
-                args.artifact.uri(),
+                args.kind(),
+                args.bundle_id(),
+                args.manifest_signer(),
+                args.artifact_uri(),
                 &roots,
             )
         }
         EvidenceRecordCommand::ArtifactFile(args) => record_artifact_from_file(
-            args.context.kind(),
-            args.context.bundle_id(),
-            args.context.manifest_signer(),
-            args.artifact.uri(),
-            &path_argument(args.file.path()),
+            args.kind(),
+            args.bundle_id(),
+            args.manifest_signer(),
+            args.artifact_uri(),
+            &path_argument(args.file_path()),
         ),
         EvidenceRecordCommand::SummaryRoots(args) => {
-            let roots = args.roots.roots();
+            let roots = args.roots();
             record_summary_from_roots(
-                args.context.kind(),
-                args.context.bundle_id(),
-                args.context.manifest_signer(),
+                args.kind(),
+                args.bundle_id(),
+                args.manifest_signer(),
                 &roots,
             )
         }
         EvidenceRecordCommand::SummaryFile(args) => record_summary_from_file(
-            args.context.kind(),
-            args.context.bundle_id(),
-            args.context.manifest_signer(),
-            &path_argument(args.file.path()),
+            args.kind(),
+            args.bundle_id(),
+            args.manifest_signer(),
+            &path_argument(args.file_path()),
         ),
     }
 }

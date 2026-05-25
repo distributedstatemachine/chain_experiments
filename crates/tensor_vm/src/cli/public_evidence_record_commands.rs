@@ -34,6 +34,28 @@ pub struct RecordSummaryArgs {
     pub root: RecordRootArgs,
 }
 
+impl RecordSummaryArgs {
+    pub fn kind(&self) -> PublicEvidenceRecordKind {
+        self.context.kind()
+    }
+
+    pub fn bundle_id(&self) -> Hash {
+        self.context.bundle_id()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.context.manifest_signer()
+    }
+
+    pub fn root(&self) -> Hash {
+        self.root.root()
+    }
+
+    pub fn count(&self) -> u64 {
+        self.root.count()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromRootsArgs {
     #[command(flatten)]
@@ -42,12 +64,48 @@ pub struct RecordSummaryFromRootsArgs {
     pub roots: RecordRootsArgs,
 }
 
+impl RecordSummaryFromRootsArgs {
+    pub fn kind(&self) -> PublicEvidenceRecordKind {
+        self.context.kind()
+    }
+
+    pub fn bundle_id(&self) -> Hash {
+        self.context.bundle_id()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.context.manifest_signer()
+    }
+
+    pub fn roots(&self) -> Vec<Hash> {
+        self.roots.roots()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RecordSummaryFromFileArgs {
     #[command(flatten)]
     pub context: PublicEvidenceRecordContextArgs,
     #[command(flatten)]
     pub file: RecordFileArgs,
+}
+
+impl RecordSummaryFromFileArgs {
+    pub fn kind(&self) -> PublicEvidenceRecordKind {
+        self.context.kind()
+    }
+
+    pub fn bundle_id(&self) -> Hash {
+        self.context.bundle_id()
+    }
+
+    pub fn manifest_signer(&self) -> Address {
+        self.context.manifest_signer()
+    }
+
+    pub fn file_path(&self) -> &std::path::Path {
+        self.file.path()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

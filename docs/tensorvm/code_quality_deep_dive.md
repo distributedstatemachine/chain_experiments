@@ -1268,6 +1268,8 @@ spaghetti around.
   runtime and service-log generators out of the nested observation target parser group.
 - Iteration 513 routed public run-window evidence execution through owning command accessors, keeping
   direct and file-backed generators out of the nested bundle/signer context parser group.
+- Iteration 514 routed public supporting-record evidence execution through owning command accessors,
+  keeping summary and artifact generators out of nested context/root/artifact/file parser groups.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
