@@ -7,7 +7,7 @@ use super::{
 fn parses_documented_validator_commands() {
     assert_eq!(
         parse_test_cli(&["validator", "register", "--stake", "10000"]).unwrap(),
-        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs { stake: 10_000 }))
+        TvmdCommand::Validator(ValidatorCommand::Register(StakeArgs::new(10_000)))
     );
     assert_eq!(
         parse_test_cli(&[

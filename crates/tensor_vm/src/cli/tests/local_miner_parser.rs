@@ -5,7 +5,7 @@ use super::{MinerCheckArgs, MinerCommand, MinerRunArgs, StakeArgs, TvmdCommand, 
 fn parses_documented_miner_commands() {
     assert_eq!(
         parse_test_cli(&["miner", "register", "--stake", "100"]).unwrap(),
-        TvmdCommand::Miner(MinerCommand::Register(StakeArgs { stake: 100 }))
+        TvmdCommand::Miner(MinerCommand::Register(StakeArgs::new(100)))
     );
     assert_eq!(
         parse_test_cli(&[

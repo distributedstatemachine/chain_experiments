@@ -30,15 +30,11 @@ pub(super) fn data_dir_args(data_dir: &str) -> DataDirArgs {
 }
 
 pub(super) fn role_wallet_args(wallet: &str) -> RoleWalletArgs {
-    RoleWalletArgs {
-        wallet: path(wallet),
-    }
+    RoleWalletArgs::new(path(wallet))
 }
 
 pub(super) fn role_node_args(node: &str) -> RoleNodeArgs {
-    RoleNodeArgs {
-        node: multiaddr(node),
-    }
+    RoleNodeArgs::new(multiaddr(node))
 }
 
 pub(super) fn p2p_listen_args(p2p_listen: &str) -> P2pListenArgs {

@@ -1274,6 +1274,8 @@ spaghetti around.
   bundle IDs, manifest signers, operator IDs, and observation timestamps out of public parser internals.
 - Iteration 516 hid supporting-record leaf Clap fields behind constructors and accessors, keeping
   record roots, root lists, record files, and artifact URIs out of public parser internals.
+- Iteration 517 hid local role leaf Clap fields behind constructors and accessors, keeping stake
+  amounts, wallet paths, and role node multiaddrs out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

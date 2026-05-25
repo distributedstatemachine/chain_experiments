@@ -44,10 +44,14 @@ pub struct StakeArgs {
         value_name = "TOKENS",
         help = "Stake amount to validate for registration."
     )]
-    pub stake: u64,
+    stake: u64,
 }
 
 impl StakeArgs {
+    pub fn new(stake: u64) -> Self {
+        Self { stake }
+    }
+
     pub fn amount(&self) -> u64 {
         self.stake
     }
@@ -155,10 +159,14 @@ pub struct RoleWalletArgs {
         value_hint = ValueHint::FilePath,
         help = "Path to the role wallet key."
     )]
-    pub wallet: PathBuf,
+    wallet: PathBuf,
 }
 
 impl RoleWalletArgs {
+    pub fn new(wallet: PathBuf) -> Self {
+        Self { wallet }
+    }
+
     pub fn path(&self) -> &Path {
         &self.wallet
     }
@@ -172,10 +180,14 @@ pub struct RoleNodeArgs {
         value_name = "MULTIADDR",
         help = "libp2p address of the TensorVM node to use."
     )]
-    pub node: Multiaddr,
+    node: Multiaddr,
 }
 
 impl RoleNodeArgs {
+    pub fn new(node: Multiaddr) -> Self {
+        Self { node }
+    }
+
     pub fn multiaddr(&self) -> &Multiaddr {
         &self.node
     }
