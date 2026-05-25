@@ -4,16 +4,16 @@ use super::*;
 fn execute_network_evidence_reports_outputs() {
     let peer_id = PeerId::random().to_string();
     let network_observation = execute_public_evidence_command(&EvidenceCommand::Network(
-        EvidenceNetworkCommand::Observation(NetworkObservationArgs::new(
-            network_observation_target_args(
+        EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+            target: network_observation_target_args(
                 hash_bytes(b"test", &[b"network-operator"]),
                 "/dns/node-a.tensorvm.net/tcp/4001",
                 1_700_000_000,
             ),
-            peer_id.parse().expect("test peer ID must parse"),
-            network_observation_protocol_counts_args(5, 4, 2),
-            network_observation_transport_limits_args(1_048_576, 10, 128, 60),
-        )),
+            peer_id: peer_id.parse().expect("test peer ID must parse"),
+            protocol_counts: network_observation_protocol_counts_args(5, 4, 2),
+            transport_limits: network_observation_transport_limits_args(1_048_576, 10, 128, 60),
+        }),
     ))
     .unwrap();
     let observation_input = NetworkObservationEvidenceLine {
@@ -183,14 +183,14 @@ p2p_idle_timeout_seconds=60
     ));
     std::fs::write(&service_log_file, &service_log).unwrap();
     let network_observation_from_file = execute_public_evidence_command(&EvidenceCommand::Network(
-        EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs::new(
-            network_observation_target_args(
+        EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+            target: network_observation_target_args(
                 hash_bytes(b"test", &[b"network-operator"]),
                 "/dns/node-a.tensorvm.net/tcp/4001",
                 1_700_000_000,
             ),
-            service_log_file.clone(),
-        )),
+            service_log: service_log_file.clone(),
+        }),
     ))
     .unwrap();
     std::fs::remove_file(&service_log_file).unwrap();
@@ -198,14 +198,14 @@ p2p_idle_timeout_seconds=60
 
     assert_eq!(
         execute_public_evidence_command(&EvidenceCommand::Network(
-            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs::new(
-                network_observation_target_args(
+            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+                target: network_observation_target_args(
                     hash_bytes(b"test", &[b"network-operator"]),
                     "/dns/node-a.tensorvm.net/tcp/4001",
                     1_700_000_000,
                 ),
-                service_log_file.clone(),
-            )),
+                service_log: service_log_file.clone(),
+            }),
         ))
         .unwrap_err()
         .to_string(),

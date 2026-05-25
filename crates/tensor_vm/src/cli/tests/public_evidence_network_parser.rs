@@ -42,12 +42,21 @@ fn parses_network_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
-            EvidenceNetworkCommand::Observation(NetworkObservationArgs::new(
-                network_observation_target_args(),
-                peer_id.parse().expect("test peer ID must parse"),
-                NetworkObservationProtocolCountsArgs::new(5, 4, 2),
-                NetworkObservationTransportLimitsArgs::new(1_048_576, 10, 128, 60),
-            )),
+            EvidenceNetworkCommand::Observation(NetworkObservationArgs {
+                target: network_observation_target_args(),
+                peer_id: peer_id.parse().expect("test peer ID must parse"),
+                protocol_counts: NetworkObservationProtocolCountsArgs {
+                    gossip_topic_count: 5,
+                    request_response_protocol_count: 4,
+                    bootstrap_peer_count: 2,
+                },
+                transport_limits: NetworkObservationTransportLimitsArgs {
+                    max_transmit_bytes: 1_048_576,
+                    request_timeout_seconds: 10,
+                    max_concurrent_streams: 128,
+                    idle_timeout_seconds: 60,
+                },
+            }),
         )))
     );
 
@@ -68,18 +77,18 @@ fn parses_network_evidence_commands() {
         ])
         .unwrap(),
         TvmdCommand::Public(PublicCommand::Evidence(EvidenceCommand::Network(
-            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs::new(
-                network_observation_target_args(),
-                path("artifacts/node-a-service.log"),
-            )),
+            EvidenceNetworkCommand::FromServiceLog(NetworkObservationFromServiceLogArgs {
+                target: network_observation_target_args(),
+                service_log: path("artifacts/node-a-service.log"),
+            }),
         )))
     );
 }
 
 fn network_observation_target_args() -> NetworkObservationTargetArgs {
-    NetworkObservationTargetArgs::new(
-        operator_id_args(hash_bytes(b"test", &[b"network-operator"])),
-        multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
-        observation_timestamp_args(1_700_000_000),
-    )
+    NetworkObservationTargetArgs {
+        operator: operator_id_args(hash_bytes(b"test", &[b"network-operator"])),
+        listen_address: multiaddr("/dns/node-a.tensorvm.net/tcp/4001"),
+        observation: observation_timestamp_args(1_700_000_000),
+    }
 }

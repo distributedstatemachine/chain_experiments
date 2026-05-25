@@ -1349,6 +1349,9 @@ spaghetti around.
 - Iteration 552 moved public node and operator evidence Clap payloads to direct fields, removing the
   node/operator getter constructors while keeping heartbeat, heartbeat-file, and operator-attestation
   execution on the typed command tree.
+- Iteration 553 moved public network evidence Clap payloads to direct fields, removing observation,
+  service-log, protocol-count, transport-limit, and target getter constructors while keeping network
+  evidence execution on the typed command tree.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
