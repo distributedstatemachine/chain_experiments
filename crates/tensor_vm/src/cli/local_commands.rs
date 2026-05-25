@@ -1,5 +1,6 @@
 pub use super::local_node_commands::{
-    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeServeArgs,
+    BootstrapPeerArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand,
+    NodeServeArgs,
 };
 pub use super::local_role_commands::{
     MinerCheckArgs, MinerCommand, MinerRunArgs, ProposerCommand, RoleNodeArgs, RoleRuntimeArgs,

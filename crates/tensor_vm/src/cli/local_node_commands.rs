@@ -31,6 +31,12 @@ pub enum NodePeerCommand {
 pub struct NodePeerAddArgs {
     #[command(flatten)]
     pub data_dir: DataDirArgs,
+    #[command(flatten)]
+    pub bootstrap_peer: BootstrapPeerArgs,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Args)]
+pub struct BootstrapPeerArgs {
     #[arg(
         long,
         value_name = "PEER_ID",
@@ -43,6 +49,16 @@ pub struct NodePeerAddArgs {
         help = "Reachable multiaddress for the peer."
     )]
     pub address: Multiaddr,
+}
+
+impl BootstrapPeerArgs {
+    pub fn peer_id(&self) -> &PeerId {
+        &self.peer_id
+    }
+
+    pub fn address(&self) -> &Multiaddr {
+        &self.address
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Args)]

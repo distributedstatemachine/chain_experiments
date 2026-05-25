@@ -1225,6 +1225,8 @@ spaghetti around.
 - Iteration 493 flattened repeated public evidence `--bundle-id` Clap arguments into
   `EvidenceBundleIdArgs`, keeping publication bundles, run-window contexts, and supporting-record
   contexts on one canonical evidence bundle identifier model.
+- Iteration 494 flattened local `node peer add` target arguments into `BootstrapPeerArgs`, keeping
+  the `--peer-id` and `--address` flags as one typed bootstrap peer model for parsing and dispatch.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

@@ -2,8 +2,8 @@ use super::parser_support::{
     data_dir_args, identity_seed_args, multiaddr, node_runtime_args, p2p_listen_args,
 };
 use super::{
-    NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand, NodeServeArgs,
-    TvmdCommand, parse_test_cli,
+    BootstrapPeerArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs, NodePeerCommand,
+    NodeServeArgs, TvmdCommand, parse_test_cli,
 };
 use libp2p::PeerId;
 
@@ -29,8 +29,10 @@ fn parses_documented_node_commands() {
         .unwrap(),
         TvmdCommand::Node(NodeCommand::Peer(NodePeerCommand::Add(NodePeerAddArgs {
             data_dir: data_dir_args("/var/lib/tensorvm"),
-            peer_id: bootstrap_peer.parse().expect("test peer ID must parse"),
-            address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
+            bootstrap_peer: BootstrapPeerArgs {
+                peer_id: bootstrap_peer.parse().expect("test peer ID must parse"),
+                address: multiaddr("/dns/bootstrap.tensorvm.net/tcp/4001"),
+            },
         })))
     );
     assert_eq!(

@@ -1,9 +1,9 @@
 pub use super::local_commands::{
-    DataDirArgs, IdentitySeedArgs, LocalCpuVerifyArgs, LocalnetCommand, MinerCheckArgs,
-    MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand, NodePeerAddArgs,
-    NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, P2pListenArgs, ProposerCommand, RoleNodeArgs,
-    RoleRuntimeArgs, RoleWalletArgs, StakeArgs, ValidatorCheckArgs, ValidatorCommand,
-    ValidatorRunArgs,
+    BootstrapPeerArgs, DataDirArgs, IdentitySeedArgs, LocalCpuVerifyArgs, LocalnetCommand,
+    MinerCheckArgs, MinerCommand, MinerRunArgs, NodeBlockArgs, NodeCheckArgs, NodeCommand,
+    NodePeerAddArgs, NodePeerCommand, NodeRuntimeArgs, NodeServeArgs, P2pListenArgs,
+    ProposerCommand, RoleNodeArgs, RoleRuntimeArgs, RoleWalletArgs, StakeArgs, ValidatorCheckArgs,
+    ValidatorCommand, ValidatorRunArgs,
 };
 pub use super::public_evidence_commands::{
     AuditorRecordArgs, BlockHeightWindowArgs, EvidenceBundleIdArgs, EvidenceCommand,

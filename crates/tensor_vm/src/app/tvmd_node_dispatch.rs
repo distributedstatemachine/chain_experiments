@@ -19,8 +19,8 @@ pub(super) fn execute_node_command(command: &NodeCommand) -> std::result::Result
             validate_data_dir(&data_dir)?;
             add_service_peer(
                 &data_dir,
-                &args.peer_id.to_string(),
-                &args.address.to_string(),
+                &args.bootstrap_peer.peer_id().to_string(),
+                &args.bootstrap_peer.address().to_string(),
             )
         }
         NodeCommand::Check(args) => {
