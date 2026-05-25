@@ -196,12 +196,16 @@ impl RoleNodeArgs {
 #[derive(Clone, Debug, Eq, PartialEq, Args)]
 pub struct RoleRuntimeArgs {
     #[command(flatten)]
-    pub node: RoleNodeArgs,
+    node: RoleNodeArgs,
     #[command(flatten)]
-    pub node_runtime: NodeRuntimeArgs,
+    node_runtime: NodeRuntimeArgs,
 }
 
 impl RoleRuntimeArgs {
+    pub fn new(node: RoleNodeArgs, node_runtime: NodeRuntimeArgs) -> Self {
+        Self { node, node_runtime }
+    }
+
     pub fn node(&self) -> &RoleNodeArgs {
         &self.node
     }

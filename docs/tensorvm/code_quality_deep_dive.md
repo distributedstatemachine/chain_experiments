@@ -1278,6 +1278,8 @@ spaghetti around.
   amounts, wallet paths, and role node multiaddrs out of public parser internals.
 - Iteration 518 hid local runtime leaf Clap fields behind constructors and accessors, keeping data
   directories, P2P listen addresses, and identity seeds out of public parser internals.
+- Iteration 519 hid local runtime owner Clap fields behind constructors and accessors, keeping
+  node and role runtime groups out of public parser internals.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 

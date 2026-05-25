@@ -31,13 +31,13 @@ pub struct NodeRuntimeArgs {
         value_name = "ADDR",
         help = "RPC and service listen address."
     )]
-    pub listen: SocketAddr,
+    listen: SocketAddr,
     #[command(flatten)]
-    pub p2p_listen: P2pListenArgs,
+    p2p_listen: P2pListenArgs,
     #[command(flatten)]
-    pub data_dir: DataDirArgs,
+    data_dir: DataDirArgs,
     #[command(flatten)]
-    pub identity_seed: IdentitySeedArgs,
+    identity_seed: IdentitySeedArgs,
     #[arg(
         long,
         env = "TVMD_AUTH_TOKEN",
@@ -45,7 +45,7 @@ pub struct NodeRuntimeArgs {
         hide_env_values = true,
         help = "Bearer token required by local RPC, explorer, faucet, and telemetry endpoints."
     )]
-    pub auth_token: String,
+    auth_token: String,
     #[arg(
         long,
         env = "TVMD_MAX_REQUESTS",
@@ -53,10 +53,28 @@ pub struct NodeRuntimeArgs {
         value_name = "N",
         help = "Maximum RPC requests before the service exits; 0 keeps serving."
     )]
-    pub max_requests: usize,
+    max_requests: usize,
 }
 
 impl NodeRuntimeArgs {
+    pub fn new(
+        listen: SocketAddr,
+        p2p_listen: P2pListenArgs,
+        data_dir: DataDirArgs,
+        identity_seed: IdentitySeedArgs,
+        auth_token: String,
+        max_requests: usize,
+    ) -> Self {
+        Self {
+            listen,
+            p2p_listen,
+            data_dir,
+            identity_seed,
+            auth_token,
+            max_requests,
+        }
+    }
+
     pub fn listen(&self) -> &SocketAddr {
         &self.listen
     }

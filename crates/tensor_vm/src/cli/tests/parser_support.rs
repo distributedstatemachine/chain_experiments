@@ -107,14 +107,14 @@ pub(super) fn node_runtime_args(
     auth_token: &str,
     max_requests: usize,
 ) -> NodeRuntimeArgs {
-    NodeRuntimeArgs {
-        listen: socket_addr(listen),
-        p2p_listen: p2p_listen_args(p2p_listen),
-        data_dir: data_dir_args(data_dir),
-        identity_seed: identity_seed_args(identity_seed),
-        auth_token: auth_token.to_owned(),
+    NodeRuntimeArgs::new(
+        socket_addr(listen),
+        p2p_listen_args(p2p_listen),
+        data_dir_args(data_dir),
+        identity_seed_args(identity_seed),
+        auth_token.to_owned(),
         max_requests,
-    }
+    )
 }
 
 pub(super) fn role_runtime_args(
@@ -126,9 +126,9 @@ pub(super) fn role_runtime_args(
     auth_token: &str,
     max_requests: usize,
 ) -> RoleRuntimeArgs {
-    RoleRuntimeArgs {
-        node: role_node_args(node),
-        node_runtime: node_runtime_args(
+    RoleRuntimeArgs::new(
+        role_node_args(node),
+        node_runtime_args(
             listen,
             p2p_listen,
             data_dir,
@@ -136,5 +136,5 @@ pub(super) fn role_runtime_args(
             auth_token,
             max_requests,
         ),
-    }
+    )
 }
