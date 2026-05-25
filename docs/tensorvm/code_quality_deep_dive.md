@@ -1370,6 +1370,9 @@ spaghetti around.
 - Iteration 559 consolidated public supporting-record evidence execution around one typed record context
   extractor and shared root conversion helper, removing repeated Clap-field plumbing from summary,
   artifact, roots, and file command variants.
+- Iteration 560 consolidated public service evidence execution around typed endpoint and content-target
+  contexts, so health, health-file, content-root, content-bytes, and content-file variants no longer repeat
+  the same Clap-field extraction before calling the service evidence builders.
 
 ## Core Abstraction Correction: `Chain`, Not `LocalChain`
 
